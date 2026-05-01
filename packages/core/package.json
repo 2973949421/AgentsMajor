@@ -1,0 +1,25 @@
+{
+  "name": "@agent-major/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@agent-major/db": "workspace:*",
+    "@agent-major/llm": "workspace:*",
+    "@agent-major/queue": "workspace:*",
+    "@agent-major/shared": "workspace:*"
+  }
+}

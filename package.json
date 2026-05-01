@@ -1,0 +1,26 @@
+{
+  "name": "agent-major",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agent Major Phase 1.0 engineering skeleton.",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r --sort build",
+    "data:init": "pnpm --filter @agent-major/cli data:init",
+    "dev": "pnpm --filter @agent-major/web dev",
+    "phase11:demo": "pnpm --filter @agent-major/cli phase11:demo",
+    "phase11:round": "pnpm --filter @agent-major/cli phase11:round",
+    "phase11:replay": "pnpm --filter @agent-major/cli phase11:replay",
+    "phase11:export": "pnpm --filter @agent-major/cli phase11:export",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --sort typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "drizzle-kit": "^0.31.1",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.2"
+  },
+  "packageManager": "pnpm@10.10.0"
+}
