@@ -59,12 +59,26 @@ export interface RunCurrentMapResult {
   mapSummary?: Summary;
 }
 
+export interface RunCurrentMatchInput {
+  matchId: string;
+  selectedMapIds?: string[];
+  maxMaps?: number;
+}
+
+export interface RunCurrentMatchResult {
+  match: Match;
+  mapGames: MapGame[];
+  mapResults: RunCurrentMapResult[];
+  matchSummary?: Summary;
+}
+
 export interface SimulationEngine {
   startMatch(input: StartMatchInput): Promise<Match>;
   completeVeto(input: CompleteVetoInput): Promise<Match>;
   startMap(input: StartMapInput): Promise<MapGame>;
   playNextRound(input: PlayNextRoundInput): Promise<Round>;
   runCurrentMap(input: RunCurrentMapInput): Promise<RunCurrentMapResult>;
+  runCurrentMatch(input: RunCurrentMatchInput): Promise<RunCurrentMatchResult>;
 }
 
 type TransactionalRepositories = Repositories & {
@@ -116,6 +130,9 @@ export function createPhase10SimulationEngine(): SimulationEngine {
     },
     async runCurrentMap(): Promise<RunCurrentMapResult> {
       throw new Phase10NotImplementedError("runCurrentMap");
+    },
+    async runCurrentMatch(): Promise<RunCurrentMatchResult> {
+      throw new Phase10NotImplementedError("runCurrentMatch");
     }
   };
 }
@@ -125,6 +142,10 @@ export function createPhase11SimulationEngine(context: EngineContext): Simulatio
 }
 
 export function createPhase12SimulationEngine(context: EngineContext): SimulationEngine {
+  return new Phase12SimulationEngine(context);
+}
+
+export function createPhase13SimulationEngine(context: EngineContext): SimulationEngine {
   return new Phase12SimulationEngine(context);
 }
 
@@ -166,29 +187,15 @@ class Phase12SimulationEngine implements SimulationEngine {
 
   async completeVeto(input: CompleteVetoInput): Promise<Match> {
     const match = await required(this.context.repositories.matches.getById(input.matchId), `Match not found: ${input.matchId}`);
-    const maps = await this.context.repositories.mapGames.listByMatch(match.id);
-    if ((match.status === "running" || match.status === "completed") && maps.length > 0) {
+    if (match.status === "completed") {
       return match;
     }
 
     const now = timestamp();
     const selectedMapIds = input.selectedMapIds.length > 0 ? input.selectedMapIds : ["DUST2"];
-    if (maps.length === 0) {
-      for (const [index, mapName] of selectedMapIds.entries()) {
-        await this.context.repositories.mapGames.save({
-          id: `map_${match.id}_${index + 1}`,
-          matchId: match.id,
-          mapName,
-          order: index + 1,
-          status: "scheduled",
-          runControlState: "idle",
-          teamAScore: 0,
-          teamBScore: 0,
-          currentRoundNumber: 0,
-          createdAt: now
-        });
-      }
-    }
+    await runInTransaction(this.context.repositories, async () => {
+      await this.ensureVetoMaps(match, selectedMapIds, now);
+    });
 
     const updated: Match = {
       ...match,
@@ -196,21 +203,32 @@ class Phase12SimulationEngine implements SimulationEngine {
       startedAt: match.startedAt ?? now
     };
     await this.context.repositories.matches.save(updated);
-    await this.appendEvent({
-      id: `evt_${match.id}_map_veto_completed`,
-      type: "map_veto_completed",
-      category: "simulation",
-      tournamentId: match.tournamentId,
-      matchId: match.id,
-      scopeType: "match",
-      scopeId: match.id,
-      payload: {
-        schemaVersion: 1,
+    const vetoEventId = `evt_${match.id}_map_veto_completed`;
+    const existingVetoEvent = await this.context.repositories.events.getById(vetoEventId);
+    if (!existingVetoEvent) {
+      await this.appendEvent({
+        id: vetoEventId,
+        type: "map_veto_completed",
+        category: "simulation",
+        tournamentId: match.tournamentId,
         matchId: match.id,
-        selectedMapIds
-      },
-      createdAt: now
-    });
+        scopeType: "match",
+        scopeId: match.id,
+        payload: {
+          schemaVersion: 1,
+          matchId: match.id,
+          selectedMapIds
+        },
+        createdAt: now
+      });
+    } else {
+      await this.appendVetoRevisionIfNeeded({
+        existingVetoEvent,
+        match,
+        selectedMapIds,
+        createdAt: now
+      });
+    }
 
     return updated;
   }
@@ -286,10 +304,124 @@ class Phase12SimulationEngine implements SimulationEngine {
     throw new Error(`runCurrentMap exceeded safety cap of ${maxRounds} rounds for ${input.mapGameId}.`);
   }
 
+  async runCurrentMatch(input: RunCurrentMatchInput): Promise<RunCurrentMatchResult> {
+    const selectedMapIds = normalizeSelectedMapIds(input.selectedMapIds, input.maxMaps);
+    await this.startMatch({ matchId: input.matchId });
+    await this.completeVeto({ matchId: input.matchId, selectedMapIds });
+
+    for (let iteration = 0; iteration < selectedMapIds.length; iteration += 1) {
+      const match = await required(this.context.repositories.matches.getById(input.matchId), `Match not found: ${input.matchId}`);
+      if (match.status === "completed") {
+        return this.buildRunCurrentMatchResult(match);
+      }
+
+      if (hasMatchWinner(match)) {
+        await this.completeMatch(match);
+        const completed = await required(this.context.repositories.matches.getById(match.id), `Match not found: ${match.id}`);
+        return this.buildRunCurrentMatchResult(completed);
+      }
+
+      const mapGames = await this.context.repositories.mapGames.listByMatch(match.id);
+      const nextMap = [...mapGames]
+        .sort((left, right) => left.order - right.order)
+        .find((mapGame) => mapGame.status !== "completed");
+      if (!nextMap) {
+        throw new Error(`Match ${match.id} has no remaining map but is not completed.`);
+      }
+
+      await this.runCurrentMap({ mapGameId: nextMap.id });
+      const updatedMatch = await required(this.context.repositories.matches.getById(match.id), `Match not found: ${match.id}`);
+      if (hasMatchWinner(updatedMatch)) {
+        await this.completeMatch(updatedMatch);
+        const completed = await required(this.context.repositories.matches.getById(match.id), `Match not found: ${match.id}`);
+        return this.buildRunCurrentMatchResult(completed);
+      }
+    }
+
+    const match = await required(this.context.repositories.matches.getById(input.matchId), `Match not found: ${input.matchId}`);
+    if (hasMatchWinner(match)) {
+      await this.completeMatch(match);
+      const completed = await required(this.context.repositories.matches.getById(match.id), `Match not found: ${match.id}`);
+      return this.buildRunCurrentMatchResult(completed);
+    }
+
+    throw new Error(`runCurrentMatch exhausted ${selectedMapIds.length} maps without a BO3 winner for ${input.matchId}.`);
+  }
+
   private async buildRunCurrentMapResult(mapGame: MapGame): Promise<RunCurrentMapResult> {
     const rounds = (await this.context.repositories.rounds.listByMapGame(mapGame.id)).filter((round) => round.status === "completed");
     const mapSummary = mapGame.summaryId ? await this.context.repositories.summaries.getById(mapGame.summaryId) : null;
     return mapSummary ? { mapGame, rounds, mapSummary } : { mapGame, rounds };
+  }
+
+  private async buildRunCurrentMatchResult(match: Match): Promise<RunCurrentMatchResult> {
+    const mapGames = await this.context.repositories.mapGames.listByMatch(match.id);
+    const mapResults = await Promise.all(
+      mapGames.filter((mapGame) => mapGame.status === "completed").map((mapGame) => this.buildRunCurrentMapResult(mapGame))
+    );
+    const matchSummary = await this.context.repositories.summaries.getLatestByScope("match", match.id);
+    return matchSummary ? { match, mapGames, mapResults, matchSummary } : { match, mapGames, mapResults };
+  }
+
+  private async ensureVetoMaps(match: Match, selectedMapIds: string[], createdAt: string): Promise<void> {
+    const existingMaps = await this.context.repositories.mapGames.listByMatch(match.id);
+    const mapsByOrder = new Map(existingMaps.map((mapGame) => [mapGame.order, mapGame]));
+    for (const [index, mapName] of selectedMapIds.entries()) {
+      const order = index + 1;
+      const existingMap = mapsByOrder.get(order);
+      if (existingMap) {
+        if (existingMap.mapName !== mapName) {
+          throw new Error(`Match ${match.id} already has map ${order} as ${existingMap.mapName}; cannot replace it with ${mapName}.`);
+        }
+        continue;
+      }
+
+      await this.context.repositories.mapGames.save({
+        id: `map_${match.id}_${order}`,
+        matchId: match.id,
+        mapName,
+        order,
+        status: "scheduled",
+        runControlState: "idle",
+        teamAScore: 0,
+        teamBScore: 0,
+        currentRoundNumber: 0,
+        createdAt
+      });
+    }
+  }
+
+  private async appendVetoRevisionIfNeeded(input: {
+    existingVetoEvent: Event;
+    match: Match;
+    selectedMapIds: string[];
+    createdAt: string;
+  }): Promise<void> {
+    const previousSelectedMapIds = readStringArrayPayloadField(input.existingVetoEvent.payload, "selectedMapIds");
+    if (stringArraysEqual(previousSelectedMapIds, input.selectedMapIds)) {
+      return;
+    }
+
+    await this.appendEvent({
+      id: `evt_${input.match.id}_map_veto_revision_${stableHex(input.selectedMapIds.join("|")).slice(0, 8)}`,
+      type: "event_revision_created",
+      category: "admin",
+      tournamentId: input.match.tournamentId,
+      matchId: input.match.id,
+      scopeType: "match",
+      scopeId: input.match.id,
+      payload: {
+        schemaVersion: 1,
+        targetEventId: input.existingVetoEvent.id,
+        targetEventType: input.existingVetoEvent.type,
+        revisionType: "map_veto_expanded_to_bo3",
+        previousSelectedMapIds,
+        revisedSelectedMapIds: input.selectedMapIds,
+        reason: "Phase 1.3 upgraded an existing single-map veto into a BO3 map order."
+      },
+      sourceModule: "core.phase13",
+      createdAt: input.createdAt
+    });
   }
 
   private async prepareRoundGeneration(mapGameId: string): Promise<RoundGeneration> {
@@ -370,6 +502,7 @@ class Phase12SimulationEngine implements SimulationEngine {
       ])
     });
     const judgeResult = await this.judgeRound({
+      mapGame,
       roundNumber,
       scoreBeforeRound,
       teamA,
@@ -810,6 +943,97 @@ class Phase12SimulationEngine implements SimulationEngine {
       },
       createdAt: input.completedAt
     });
+    if (hasMatchWinner(completedMatch)) {
+      await this.completeMatchInCurrentTransaction(completedMatch, input.completedAt);
+    }
+  }
+
+  private async completeMatch(match: Match): Promise<void> {
+    if (match.status === "completed") {
+      return;
+    }
+
+    if (!hasMatchWinner(match)) {
+      throw new Error(`Match ${match.id} cannot complete without a BO3 winner.`);
+    }
+
+    await runInTransaction(this.context.repositories, async () => {
+      await this.completeMatchInCurrentTransaction(match, timestamp());
+    });
+  }
+
+  private async completeMatchInCurrentTransaction(match: Match, completedAt: string): Promise<void> {
+    if (match.status === "completed") {
+      return;
+    }
+    if (!hasMatchWinner(match)) {
+      throw new Error(`Match ${match.id} cannot complete without a BO3 winner.`);
+    }
+
+    const [teamA, teamB, mapGames, matchEvents] = await Promise.all([
+      required(this.context.repositories.teams.getById(match.teamAId), `Team not found: ${match.teamAId}`),
+      required(this.context.repositories.teams.getById(match.teamBId), `Team not found: ${match.teamBId}`),
+      this.context.repositories.mapGames.listByMatch(match.id),
+      this.context.repositories.events.listByMatch(match.id)
+    ]);
+    const winnerTeamId = match.teamAMapsWon >= 2 ? teamA.id : teamB.id;
+    const completedMaps = mapGames.filter((mapGame) => mapGame.status === "completed");
+    const mapSummaries = (
+      await Promise.all(
+        completedMaps.map(async (mapGame) => (mapGame.summaryId ? this.context.repositories.summaries.getById(mapGame.summaryId) : null))
+      )
+    ).filter((summary): summary is Summary => summary !== null);
+    const matchCompletedEvent = await this.appendEvent({
+      id: `evt_${match.id}_match_completed`,
+      type: "match_completed",
+      category: "simulation",
+      tournamentId: match.tournamentId,
+      matchId: match.id,
+      scopeType: "match",
+      scopeId: match.id,
+      payload: {
+        schemaVersion: 1,
+        matchId: match.id,
+        winnerTeamId,
+        teamAMapsWon: match.teamAMapsWon,
+        teamBMapsWon: match.teamBMapsWon,
+        completedMapIds: completedMaps.map((mapGame) => mapGame.id),
+        mapResults: completedMaps.map((mapGame) => ({
+          mapGameId: mapGame.id,
+          mapName: mapGame.mapName,
+          order: mapGame.order,
+          winnerTeamId: mapGame.winnerTeamId,
+          score: {
+            teamA: mapGame.teamAScore,
+            teamB: mapGame.teamBScore
+          }
+        }))
+      },
+      sourceModule: "core.phase13",
+      createdAt: completedAt
+    });
+    const summary = buildMatchSummary({
+      match,
+      mapGames: completedMaps,
+      teamA,
+      teamB,
+      winnerTeamId,
+      mapSummaries,
+      sourceEventIds: [
+        matchCompletedEvent.id,
+        ...matchEvents.filter((event) => event.type === "map_completed").map((event) => event.id),
+        ...mapSummaries.flatMap((mapSummary) => mapSummary.sourceEventIds)
+      ],
+      createdAt: completedAt
+    });
+    const completedMatch: Match = {
+      ...match,
+      status: "completed",
+      winnerTeamId,
+      completedAt: match.completedAt ?? completedAt
+    };
+    await this.context.repositories.summaries.save(summary);
+    await this.context.repositories.matches.save(completedMatch);
   }
 
   private async generateAgentOutputs(input: {
@@ -858,6 +1082,7 @@ class Phase12SimulationEngine implements SimulationEngine {
   }
 
   private async judgeRound(input: {
+    mapGame: MapGame;
     roundNumber: number;
     scoreBeforeRound: ScorePair;
     teamA: Team;
@@ -866,7 +1091,7 @@ class Phase12SimulationEngine implements SimulationEngine {
     activeB: Agent[];
     agentOutputs: AgentOutput[];
   }): Promise<JudgeResult> {
-    const plannedWinnerSide = plannedDemoWinnerSide(input.roundNumber);
+    const plannedWinnerSide = plannedDemoWinnerSideForMap(input.mapGame, input.roundNumber);
     const winnerTeamId = plannedWinnerSide === "teamA" ? input.teamA.id : input.teamB.id;
     const loserTeamId = winnerTeamId === input.teamA.id ? input.teamB.id : input.teamA.id;
     const winnerAgents = winnerTeamId === input.teamA.id ? input.activeA : input.activeB;
@@ -1247,6 +1472,62 @@ function buildMapSummary(input: {
   };
 }
 
+function buildMatchSummary(input: {
+  match: Match;
+  mapGames: MapGame[];
+  teamA: Team;
+  teamB: Team;
+  winnerTeamId: string;
+  mapSummaries: Summary[];
+  sourceEventIds: string[];
+  createdAt: string;
+}): Summary {
+  const winnerName = input.winnerTeamId === input.teamA.id ? input.teamA.displayName : input.teamB.displayName;
+  const finalMapScore = `${input.match.teamAMapsWon}-${input.match.teamBMapsWon}`;
+  const mvpAgentId = mostFrequent(
+    input.mapSummaries
+      .map((summary) => summary.payload)
+      .map((payload) => (isRecord(payload) && typeof payload.mvpAgentId === "string" ? payload.mvpAgentId : undefined))
+      .filter((mvpAgentId): mvpAgentId is string => typeof mvpAgentId === "string")
+  );
+  const mapResults = [...input.mapGames]
+    .sort((left, right) => left.order - right.order)
+    .map((mapGame) => ({
+      mapGameId: mapGame.id,
+      mapName: mapGame.mapName,
+      order: mapGame.order,
+      winnerTeamId: mapGame.winnerTeamId,
+      score: {
+        teamA: mapGame.teamAScore,
+        teamB: mapGame.teamBScore
+      },
+      summaryId: mapGame.summaryId
+    }));
+
+  return {
+    id: `summary_${input.match.id}`,
+    summaryType: "match",
+    scopeType: "match",
+    scopeId: input.match.id,
+    tournamentId: input.match.tournamentId,
+    matchId: input.match.id,
+    title: `BO3 比赛总结：${winnerName} ${finalMapScore}`,
+    content: `${winnerName} 以 ${finalMapScore} 赢下 BO3。系列赛共完成 ${input.mapGames.length} 张地图，MVP 候选为 ${mvpAgentId}。`,
+    payload: {
+      winnerTeamId: input.winnerTeamId,
+      finalMapScore: {
+        teamA: input.match.teamAMapsWon,
+        teamB: input.match.teamBMapsWon
+      },
+      mvpAgentId,
+      deciderMapId: input.mapGames.at(-1)?.id,
+      mapResults
+    },
+    sourceEventIds: [...new Set(input.sourceEventIds)],
+    createdAt: input.createdAt
+  };
+}
+
 function requiredProjection(event: Event): ProjectedEvent {
   return {
     type: event.type,
@@ -1266,6 +1547,60 @@ async function required<T>(promise: Promise<T | null>, message: string): Promise
 
 function timestamp(): string {
   return "2026-05-01T00:00:00.000Z";
+}
+
+const defaultPhase13MapIds = ["DUST2", "INFERNO", "MIRAGE"] as const;
+
+function normalizeSelectedMapIds(selectedMapIds: string[] | undefined, maxMaps: number | undefined): string[] {
+  if (maxMaps !== undefined && (!Number.isInteger(maxMaps) || maxMaps < 2)) {
+    throw new Error(`BO3 requires at least 2 maps, received maxMaps=${maxMaps}.`);
+  }
+
+  const mapLimit = Math.min(maxMaps ?? 3, 3);
+  const candidates = selectedMapIds && selectedMapIds.length > 0 ? selectedMapIds : [...defaultPhase13MapIds];
+  const normalized = candidates.slice(0, mapLimit);
+  if (normalized.length < 2) {
+    throw new Error(`BO3 requires at least 2 selected maps, received ${normalized.length}.`);
+  }
+
+  return normalized;
+}
+
+function hasMatchWinner(match: Match): boolean {
+  return match.teamAMapsWon >= 2 || match.teamBMapsWon >= 2;
+}
+
+function plannedDemoWinnerSideForMap(mapGame: MapGame, roundNumber: number): "teamA" | "teamB" {
+  const baseWinnerSide = plannedDemoWinnerSide(roundNumber);
+  const mapWinnerSide = plannedDemoMapWinnerSide(mapGame.mapName);
+  return mapWinnerSide === "teamA" ? baseWinnerSide : invertSide(baseWinnerSide);
+}
+
+function plannedDemoMapWinnerSide(mapName: string): "teamA" | "teamB" {
+  switch (mapName.toUpperCase()) {
+    case "INFERNO":
+    case "NUKE":
+      return "teamB";
+    default:
+      return "teamA";
+  }
+}
+
+function invertSide(side: "teamA" | "teamB"): "teamA" | "teamB" {
+  return side === "teamA" ? "teamB" : "teamA";
+}
+
+function readStringArrayPayloadField(payload: unknown, fieldName: string): string[] {
+  if (!isRecord(payload)) {
+    return [];
+  }
+
+  const value = payload[fieldName];
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function stringArraysEqual(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((item, index) => item === right[index]);
 }
 
 function sortAgentsForRound(agents: Agent[]): Agent[] {
@@ -1349,4 +1684,8 @@ function stableHex(input: string): string {
   }
 
   return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

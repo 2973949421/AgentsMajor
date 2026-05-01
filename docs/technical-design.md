@@ -1047,22 +1047,23 @@ Support rate is an entertainment metric, not betting odds.
 
 P / Phase 的具体协作规则以 `docs/p-phase-delivery-framework.md` 为准。P0-P4 是模块契约优先级，Phase 0-4 是工程交付阶段，二者互相勾稽但不一一对应。
 
-当前推进决策是：P0 / P1 / P2.1 已完成，下一步进入工程骨架和 fake provider MVP。不要等待 P2.2 / P2.3 / P3 / P4 全部文档完成后再开始代码。
+当前推进状态是：P0 / P1 / P2.1 已完成，Phase 1.0 / 1.1 / 1.2 / 1.3 已完成。项目已经从“工程骨架和单回合 replay”推进到“BO3 match replay”。下一步主线应进入 Phase 1.4：极简伪直播 demo。
 
-P2.1 之后的工作模式是“代码主线，文档随行”：主线目标切换为跑通 fake provider MVP；只有当实现会改变核心契约时，才先补文档再写代码。核心契约包括 EventType / payload、RoundReport、状态机、Token 经济、DriverModel 接口、SQLite 核心表和 Event -> TimelineEvent 投影。Repository 内部实现、fake provider 样例、CLI 输出、极简页面布局和测试 seed 不应阻塞代码推进。
+P2.1 之后的工作模式仍然是“代码主线，文档随行”：只有当实现会改变核心契约时，才先补文档再写代码。核心契约包括 EventType / payload、RoundReport、状态机、Token 经济、DriverModel 接口、SQLite 核心表和 Event -> TimelineEvent 投影。Repository 内部实现、fake provider 样例、CLI 输出、极简页面布局和测试 seed 不应阻塞代码推进。
 
-最合理的实现顺序是：
+当前后的实现顺序应更新为：
 
 ```text
-1. 建 TypeScript 项目骨架。
-2. 定义核心 domain types 和 Zod schemas。
-3. 建 SQLite schema。
-4. 实现一场 BO3 的状态机。
-5. 实现 fake LLM provider，先用假数据跑通。
-6. 从 Event 投影 TimelineEvent，并用 CLI 或极简页面播放 / 打印单回合 replay。
-7. 做 2D Live 页面消费 timeline events。
-8. 再接真实 LLM。
-9. 再扩展 16 队 bracket 和外围生态。
+已完成：建 TypeScript 项目骨架。
+已完成：定义核心 domain types 和 Zod schemas。
+已完成：建 SQLite schema。
+已完成：实现 fake LLM provider。
+已完成：单回合 replay。
+已完成：单张地图 replay。
+已完成：BO3 fake provider。
+当前：做极简伪直播 demo 消费 timeline events。
+之后：再接真实 LLM。
+之后：再扩展 16 队 bracket 和外围生态。
 ```
 
 先用 fake provider 是关键，它能让 UI、状态机、数据库、回放全部先跑起来，不被 LLM 成本和不稳定性拖住。

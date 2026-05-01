@@ -24,6 +24,23 @@ export interface MapReplay {
   };
 }
 
+export interface MatchReplay {
+  match: Match;
+  teams: {
+    teamA: Team;
+    teamB: Team;
+  };
+  mapGames: MapGame[];
+  maps: MapReplay[];
+  matchSummary: Summary | null;
+  eventCounts: {
+    match: number;
+    map: number;
+    round: number;
+    timeline: number;
+  };
+}
+
 export async function readMapReplay(repositories: Repositories, mapGameId: string): Promise<MapReplay | null> {
   const mapGame = await repositories.mapGames.getById(mapGameId);
   if (!mapGame) {
@@ -61,6 +78,43 @@ export async function readMapReplay(repositories: Repositories, mapGameId: strin
       map: mapEvents.length,
       round: mapEvents.filter((event) => typeof event.roundId === "string").length,
       timeline: mapTimelineEvents.length
+    }
+  };
+}
+
+export async function readMatchReplay(repositories: Repositories, matchId: string): Promise<MatchReplay | null> {
+  const match = await repositories.matches.getById(matchId);
+  if (!match) {
+    return null;
+  }
+
+  const [teamA, teamB, mapGames, matchEvents] = await Promise.all([
+    required(repositories.teams.getById(match.teamAId), `Team not found: ${match.teamAId}`),
+    required(repositories.teams.getById(match.teamBId), `Team not found: ${match.teamBId}`),
+    repositories.mapGames.listByMatch(match.id),
+    repositories.events.listByMatch(match.id)
+  ]);
+  const maps = (
+    await Promise.all(
+      [...mapGames]
+        .sort((left, right) => left.order - right.order)
+        .filter((mapGame) => mapGame.status === "completed")
+        .map((mapGame) => readMapReplay(repositories, mapGame.id))
+    )
+  ).filter((mapReplay): mapReplay is MapReplay => mapReplay !== null);
+  const matchSummary = await repositories.summaries.getLatestByScope("match", match.id);
+
+  return {
+    match,
+    teams: { teamA, teamB },
+    mapGames,
+    maps,
+    matchSummary,
+    eventCounts: {
+      match: matchEvents.length,
+      map: maps.reduce((sum, mapReplay) => sum + mapReplay.eventCounts.map, 0),
+      round: maps.reduce((sum, mapReplay) => sum + mapReplay.eventCounts.round, 0),
+      timeline: maps.reduce((sum, mapReplay) => sum + mapReplay.eventCounts.timeline, 0)
     }
   };
 }

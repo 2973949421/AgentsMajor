@@ -97,6 +97,7 @@ export interface EventRepository extends Repository<Event> {
   getMaxSequenceInScope(scopeType: Event["scopeType"], scopeId: string): Promise<number>;
   listByRound(roundId: string): Promise<Event[]>;
   listByMapGame(mapGameId: string): Promise<Event[]>;
+  listByMatch(matchId: string): Promise<Event[]>;
   listByIds(ids: string[]): Promise<Event[]>;
 }
 export interface TimelineEventRepository extends Repository<TimelineEvent> {
@@ -795,6 +796,12 @@ class EventSqliteRepository implements EventRepository {
 
   async listByMapGame(mapGameId: string): Promise<Event[]> {
     return (this.sqlite.prepare("SELECT * FROM events WHERE map_game_id = ? ORDER BY global_sequence ASC").all(mapGameId) as Row[]).map((row) =>
+      eventSchema.parse(mapEvent(row))
+    );
+  }
+
+  async listByMatch(matchId: string): Promise<Event[]> {
+    return (this.sqlite.prepare("SELECT * FROM events WHERE match_id = ? ORDER BY global_sequence ASC").all(matchId) as Row[]).map((row) =>
       eventSchema.parse(mapEvent(row))
     );
   }

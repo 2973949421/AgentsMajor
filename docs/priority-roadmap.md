@@ -603,32 +603,34 @@ docs/web-migration.md
 ### 当前最应该做
 
 ```text
-1. Phase 1.0：工程骨架。
-2. Phase 1.1：单回合 replay。
+1. Phase 1.4：极简伪直播 demo。
+2. Phase 1.5：真实 LLM 小范围接入。
+3. Phase 2.0：完整赛事编排。
 ```
 
 原因：
 
-- P0 / P1 / P2.1 核心契约已经完成。
-- 当前可以进入“代码主线，文档随行”的工程阶段。
-- 第一阶段要先跑通 fake provider、Event Log、RoundReport、TimelineEvent、CLI replay 和极简 Web replay。
+- Phase 1.0 / 1.1 / 1.2 / 1.3 已经跑通，当前已经有本地 SQLite、单回合 replay、单图 replay、BO3 match replay、summary、CLI replay/export 和极简 Web 展示。
+- 下一层风险已经从事实源转向观赛层消费：TimelineEvent 能否稳定驱动伪直播体验。
+- Phase 1.4 仍然不接真实 LLM，能继续验证 replay 数据到前端播放状态的边界，不会被模型成本拖住。
 
-### P2.1 后的工程切换决策
+### P2.1 后的工程切换结果
 
-当前决策：
+当前结果：
 
 ```text
 docs/live-timeline.md 已完成，优先进入工程骨架和 fake provider MVP。
 不要继续等待 P2.2 / P2.3 / P3 / P4 全部写完再开始代码。
+该决策已经执行，工程已推进到 Phase 1.2。
 ```
 
 原因：
 
 - P0 / P1 已经定义事实源、事件、规则、回合战报、经济、驾驶员、比赛引擎和本地持久化。
 - P2.1 已补齐 Event 到 TimelineEvent 的播放投影，足以支撑第一个伪直播 demo。
-- 继续只写文档会推迟验证状态机、事件顺序、SQLite 持久化和 replay 能否真实跑通。
+- Phase 1.2 已经验证状态机、事件顺序、SQLite 持久化和 replay 可以真实跑通。
 
-P2.1 后的最小工程目标：
+已完成的最小工程目标：
 
 ```text
 1. 建立 TypeScript 项目骨架。
@@ -639,13 +641,17 @@ P2.1 后的最小工程目标：
 6. 写入 RoundReport / Event / EconomyState。
 7. 从 Event 投影 TimelineEvent。
 8. 用 CLI 或极简页面播放 / 打印单回合 replay。
+9. 跑通 runCurrentMap。
+10. 完成 MR6 + MR3 加时的单图 replay。
+11. 生成 map summary。
+12. 导出 map JSON。
 ```
 
 边界：
 
 - 这个工程切换不取消 P2.2、P2.3、P3、P4。
-- P2.2 / P2.3 可以在 MVP 骨架跑通后继续补文档和实现。
-- 第一个 demo 不要求真实 LLM，不要求完整 2D 地图，不要求新闻、奖项和 Web 部署。
+- P2.2 / P2.3 可以在 Phase 1.4 期间继续补文档和实现。
+- 当前仍不要求真实 LLM，不要求完整 2D 地图，不要求新闻、奖项和 Web 部署。
 
 ### P2.1 后的工作模式
 
@@ -690,11 +696,24 @@ P2.1 之后采用：
 阶段目标：
 
 ```text
-P2.1 完成后，优先跑通单回合 replay。
-单回合 replay 跑通后，再扩展到单张地图。
-单张地图跑通后，再扩展到 BO3。
-BO3 fake provider 跑通后，再决定补 P2.2 / P2.3 文档还是接真实 LLM。
+已完成：P2.1 直播时间线说明。
+已完成：Phase 1.1 单回合 replay。
+已完成：Phase 1.2 单张地图 replay。
+已完成：Phase 1.3 BO3 fake provider。
+当前：Phase 1.4 极简伪直播 demo。
+之后：根据伪直播结果决定补 P2.2 / P2.3，或小范围接真实 LLM。
 ```
+
+### 长期规划判断
+
+当前文档需要保留长期视野，但不要把远期模块提前写成实现细节。判断标准如下：
+
+```text
+如果远期设计会影响事实源、状态机、持久化、API、replay 兼容性、队列恢复或真实成本观测，就必须现在立边界。
+如果远期设计只是内容包装、页面表现、弹幕语料、奖项命名或运营风格，可以先保留方向，不展开细节。
+```
+
+因此，当前应继续保持“近期写深，远期写边界”的文档策略。Phase 1.4 前后可以补一份高层长期路线图，覆盖 Phase 2 完整赛事、Phase 3 赛事生态和 Phase 4 Web 化，但不应该让远期文档阻塞当前伪直播闭环。
 
 ### 后续文档补充顺序
 

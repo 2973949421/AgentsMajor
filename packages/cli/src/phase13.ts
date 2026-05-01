@@ -2,71 +2,69 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { createPhase12SimulationEngine, phase11DemoIds, readMapReplay, seedPhase11Demo, type MapReplay } from "@agent-major/core";
+import { createPhase13SimulationEngine, phase11DemoIds, readMatchReplay, seedPhase11Demo, type MatchReplay } from "@agent-major/core";
 import { createSqliteRepositories, defaultSqlitePath } from "@agent-major/db";
 import { FakeProvider } from "@agent-major/llm";
 import { UnconfiguredJobQueue } from "@agent-major/queue";
 
 import { ensureDataDirectories } from "./data-init.js";
 
-export type Phase12Command = "map" | "replay" | "export";
+export type Phase13Command = "match" | "replay" | "export";
 
-export interface Phase12CommandResult {
-  command: Phase12Command;
+export interface Phase13CommandResult {
+  command: Phase13Command;
   lines: string[];
   exportPath?: string;
 }
 
-export async function runPhase12Command(command: Phase12Command, projectRoot = findProjectRoot(process.cwd())): Promise<Phase12CommandResult> {
+const defaultPhase13Maps = ["DUST2", "INFERNO", "MIRAGE"];
+
+export async function runPhase13Command(command: Phase13Command, projectRoot = findProjectRoot(process.cwd())): Promise<Phase13CommandResult> {
   ensureDataDirectories(projectRoot);
   const repositories = createSqliteRepositories(resolve(projectRoot, defaultSqlitePath));
   try {
-    const engine = createPhase12SimulationEngine({
+    const engine = createPhase13SimulationEngine({
       repositories,
-      llmGateway: new FakeProvider({ providerId: "phase12-fake-provider" }),
+      llmGateway: new FakeProvider({ providerId: "phase13-fake-provider" }),
       jobQueue: new UnconfiguredJobQueue()
     });
 
-    if (command === "map") {
+    if (command === "match") {
       await resetDemoFixture(repositories);
-      await prepareDemo(engine, repositories);
-      await engine.runCurrentMap({ mapGameId: phase11DemoIds.mapGameId });
+      await seedPhase11Demo(repositories);
+      await engine.runCurrentMatch({ matchId: phase11DemoIds.matchId, selectedMapIds: defaultPhase13Maps });
     }
 
-    const replay = await readMapReplay(repositories, phase11DemoIds.mapGameId);
-    if (!replay || replay.rounds.length === 0) {
+    const replay = await readMatchReplay(repositories, phase11DemoIds.matchId);
+    if (!replay || replay.maps.length === 0) {
       return {
         command,
-        lines: ["No Phase 1.2 map replay found. Run `pnpm phase12:map` first."]
+        lines: ["No Phase 1.3 match replay found. Run `pnpm phase13:match` first."]
+      };
+    }
+    if (!isCompletedMatchReplay(replay)) {
+      return {
+        command,
+        lines: ["Phase 1.3 match replay is incomplete. Run `pnpm phase13:match` to complete the BO3 first."]
       };
     }
 
     if (command === "export") {
-      const exportPath = exportMapReplay(projectRoot, replay);
+      const exportPath = exportMatchReplay(projectRoot, replay);
       return {
         command,
         exportPath,
-        lines: [...formatMapReplayLines(replay), `Exported JSON: ${exportPath}`]
+        lines: [...formatMatchReplayLines(replay), `Exported JSON: ${exportPath}`]
       };
     }
 
     return {
       command,
-      lines: formatMapReplayLines(replay)
+      lines: formatMatchReplayLines(replay)
     };
   } finally {
     repositories.close();
   }
-}
-
-async function prepareDemo(
-  engine: ReturnType<typeof createPhase12SimulationEngine>,
-  repositories: ReturnType<typeof createSqliteRepositories>
-): Promise<void> {
-  await seedPhase11Demo(repositories);
-  await engine.startMatch({ matchId: phase11DemoIds.matchId });
-  await engine.completeVeto({ matchId: phase11DemoIds.matchId, selectedMapIds: ["DUST2"] });
-  await engine.startMap({ mapGameId: phase11DemoIds.mapGameId });
 }
 
 async function resetDemoFixture(repositories: ReturnType<typeof createSqliteRepositories>): Promise<void> {
@@ -95,52 +93,55 @@ async function resetDemoFixture(repositories: ReturnType<typeof createSqliteRepo
   });
 }
 
-function formatMapReplayLines(replay: MapReplay): string[] {
-  const overtimePlayed = replay.mapGame.currentRoundNumber > 12;
-  const summaryPayload = replay.mapSummary?.payload as { mvpAgentId?: string; keyRounds?: Array<{ roundNumber: number }> } | undefined;
+function formatMatchReplayLines(replay: MatchReplay): string[] {
+  const payload = replay.matchSummary?.payload as { mvpAgentId?: string; deciderMapId?: string } | undefined;
   return [
-    `Map ${replay.mapGame.mapName} ${replay.mapGame.status} for ${replay.teams.teamA.displayName} vs ${replay.teams.teamB.displayName}.`,
-    `Winner: ${replay.mapGame.winnerTeamId ?? "pending"}`,
-    `Score: ${replay.mapGame.teamAScore}-${replay.mapGame.teamBScore}`,
-    `Rounds: ${replay.mapGame.currentRoundNumber} | Overtime: ${overtimePlayed ? "yes" : "no"} | Summary: ${replay.mapGame.summaryId ?? "pending"}`,
-    `Events: ${replay.eventCounts.map} | RoundEvents: ${replay.eventCounts.round} | TimelineEvents: ${replay.eventCounts.timeline}`,
-    `MVP: ${summaryPayload?.mvpAgentId ?? "pending"}`,
-    `Summary: ${replay.mapSummary?.content ?? "Map summary pending."}`,
-    "Key rounds:",
-    ...(summaryPayload?.keyRounds?.map((round) => `- Round ${round.roundNumber}`) ?? ["- pending"]),
-    "Round ledger:",
-    ...replay.rounds.map(
-      (item) =>
-        `- R${String(item.round.roundNumber).padStart(2, "0")} ${item.roundReport.winnerTeamId} ${item.roundReport.scoreAfterRound.teamA}-${item.roundReport.scoreAfterRound.teamB} events=${item.events.length} timeline=${item.timelineEvents.length}`
-    )
+    `Match ${replay.match.id} ${replay.match.status} for ${replay.teams.teamA.displayName} vs ${replay.teams.teamB.displayName}.`,
+    `Winner: ${replay.match.winnerTeamId ?? "pending"}`,
+    `Maps: ${replay.match.teamAMapsWon}-${replay.match.teamBMapsWon}`,
+    `Completed maps: ${replay.maps.length} | Scheduled maps: ${replay.mapGames.length}`,
+    `Events: ${replay.eventCounts.match} match | ${replay.eventCounts.map} map | ${replay.eventCounts.round} round | ${replay.eventCounts.timeline} timeline`,
+    `MVP: ${payload?.mvpAgentId ?? "pending"} | Decider: ${payload?.deciderMapId ?? "pending"}`,
+    `Summary: ${replay.matchSummary?.content ?? "Match summary pending."}`,
+    "Map ledger:",
+    ...[...replay.mapGames]
+      .sort((left, right) => left.order - right.order)
+      .map(
+        (mapGame) =>
+          `- M${mapGame.order} ${mapGame.mapName} ${mapGame.status} winner=${mapGame.winnerTeamId ?? "pending"} score=${mapGame.teamAScore}-${mapGame.teamBScore}`
+      )
   ];
 }
 
-function exportMapReplay(projectRoot: string, replay: MapReplay): string {
-  const exportDirectory = resolve(projectRoot, "data", "exports", "maps");
+function isCompletedMatchReplay(replay: MatchReplay): boolean {
+  return replay.match.status === "completed" && replay.matchSummary !== null && replay.maps.length === replay.match.teamAMapsWon + replay.match.teamBMapsWon;
+}
+
+function exportMatchReplay(projectRoot: string, replay: MatchReplay): string {
+  const exportDirectory = resolve(projectRoot, "data", "exports", "matches");
   if (!existsSync(exportDirectory)) {
     mkdirSync(exportDirectory, { recursive: true });
   }
 
-  const exportPath = resolve(exportDirectory, `${replay.match.id}_${replay.mapGame.id}.json`);
+  const exportPath = resolve(exportDirectory, `${replay.match.id}.json`);
   writeFileSync(exportPath, `${JSON.stringify(replay, null, 2)}\n`, "utf8");
   return exportPath;
 }
 
 async function main(): Promise<void> {
   const command = parseCommand(process.argv[2]);
-  const result = await runPhase12Command(command);
+  const result = await runPhase13Command(command);
   for (const line of result.lines) {
     console.log(line);
   }
 }
 
-function parseCommand(value: string | undefined): Phase12Command {
-  if (value === "map" || value === "replay" || value === "export") {
+function parseCommand(value: string | undefined): Phase13Command {
+  if (value === "match" || value === "replay" || value === "export") {
     return value;
   }
 
-  return "map";
+  return "match";
 }
 
 function findProjectRoot(startDirectory: string): string {

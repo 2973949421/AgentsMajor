@@ -178,18 +178,22 @@ P4：Reserved，但接口意识必须保留。
 P0：事实源与边界层。
 P1：最小比赛闭环。
 P2.1：直播时间线说明。
+Phase 1.0：工程骨架。
+Phase 1.1：单回合 replay。
+Phase 1.2：单张地图 replay。
+Phase 1.3：BO3 fake provider。
 ```
 
 当前必须先做：
 
 ```text
-Phase 1.0：工程骨架。
+Phase 1.4：极简伪直播 demo。
 ```
 
 当前进入：
 
 ```text
-Phase 1：本地 fake provider MVP。
+Phase 1：本地 fake provider MVP 的后半段。
 ```
 
 工作模式：
@@ -691,9 +695,15 @@ Phase 4 不需要重写核心引擎。
 ## 11. 当前下一步
 
 ```text
-1. 进入 Phase 1.0：工程骨架。
-2. 跑通 Phase 1.1：单回合 replay。
-3. 扩展 Phase 1.2：单张地图。
-4. 扩展 Phase 1.3：BO3 fake provider。
-5. 再决定补 P2.2 / P2.3，或进入真实 LLM 小范围接入。
+已完成：
+1. Phase 1.0：工程骨架。
+2. Phase 1.1：单回合 replay。
+3. Phase 1.2：单张地图 replay。
+4. Phase 1.3：BO3 fake provider。
+
+当前下一步：
+5. 扩展 Phase 1.4：极简伪直播 demo。
+
+Phase 1.4 完成后再判断：
+6. 补 P2.2 / P2.3，或进入真实 LLM 小范围接入。
 ```

@@ -1,0 +1,435 @@
+.shell {
+  --bg: #071215;
+  --ink: #fff8df;
+  --muted: #cabf9f;
+  --gold: #f4b846;
+  --goldDeep: #d1952c;
+  --teal: #2fd1bf;
+  --panel: rgba(7, 18, 21, 0.78);
+  min-height: 100vh;
+  padding: 40px;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 18% 8%, rgba(244, 184, 70, 0.28), transparent 25%),
+    radial-gradient(circle at 82% 18%, rgba(47, 209, 191, 0.18), transparent 24%),
+    linear-gradient(135deg, #071215 0%, #132b2f 52%, #d1952c 140%);
+  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 28px;
+  align-items: end;
+  margin-bottom: 24px;
+}
+
+.kicker,
+.matchPlate span,
+.scoreboard span,
+.stageHeader span,
+.mapComplete span {
+  margin: 0;
+  color: var(--gold);
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  max-width: 1040px;
+  margin: 10px 0 14px;
+  font-size: clamp(44px, 7vw, 98px);
+  line-height: 0.9;
+}
+
+.subtitle {
+  display: block;
+  max-width: 900px;
+  color: #fff0bd;
+  font-size: 19px;
+  line-height: 1.55;
+}
+
+.matchPlate {
+  display: grid;
+  gap: 8px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(0, 0, 0, 0.28);
+  box-shadow: 12px 12px 0 rgba(0, 0, 0, 0.22);
+}
+
+.matchPlate strong {
+  font-size: 56px;
+  line-height: 1;
+}
+
+.matchPlate small,
+.scoreMeta,
+.muted {
+  color: var(--muted);
+}
+
+.mapTabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.mapTab,
+.controlBar button,
+.controlBar select,
+.mapComplete button,
+.roundButton {
+  color: var(--ink);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+
+.mapTab {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  text-align: left;
+}
+
+.mapTab strong {
+  font-size: 28px;
+}
+
+.mapTab small {
+  color: var(--muted);
+}
+
+.mapTabActive,
+.roundButtonActive {
+  color: #071215;
+  border-color: var(--gold);
+  background: var(--gold);
+}
+
+.mapTabActive small,
+.roundButtonActive small {
+  color: #273034;
+}
+
+.scoreboard {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: var(--panel);
+  box-shadow: 14px 14px 0 rgba(0, 0, 0, 0.2);
+}
+
+.scoreboard > div:first-child {
+  display: grid;
+  gap: 6px;
+}
+
+.scoreboard strong {
+  font-size: clamp(56px, 9vw, 104px);
+  line-height: 0.95;
+}
+
+.scoreboard small {
+  color: #fff0bd;
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+}
+
+.scoreMeta {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  min-width: 260px;
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 13px;
+}
+
+.controlBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 18px 0 12px;
+}
+
+.controlBar button,
+.controlBar select,
+.mapComplete button {
+  min-height: 42px;
+  padding: 0 16px;
+  font: inherit;
+}
+
+.controlBar button:hover,
+.mapTab:hover,
+.mapComplete button:hover,
+.roundButton:hover {
+  border-color: var(--gold);
+}
+
+.controlBar button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.controlBar label {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+}
+
+.progressTrack {
+  height: 10px;
+  margin-bottom: 22px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.progressTrack span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), var(--teal));
+  transition: width 160ms linear;
+}
+
+.liveGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.75fr);
+  gap: 22px;
+  margin-bottom: 22px;
+}
+
+.stageCard,
+.panel,
+.mapComplete,
+.emptyState {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--panel);
+}
+
+.stageCard,
+.panel {
+  padding: 22px;
+}
+
+.stageHeader {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.stageHeader strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 32px;
+}
+
+.stageHeader small {
+  color: #fff0bd;
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.virtualMap {
+  min-height: 440px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 18px;
+  background:
+    linear-gradient(90deg, rgba(244, 184, 70, 0.08) 1px, transparent 1px),
+    linear-gradient(rgba(244, 184, 70, 0.08) 1px, transparent 1px),
+    rgba(0, 0, 0, 0.22);
+  background-size: 34px 34px;
+}
+
+.zone {
+  display: grid;
+  align-content: end;
+  gap: 8px;
+  min-height: 170px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.zone span {
+  color: var(--gold);
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 13px;
+}
+
+.zone strong {
+  font-size: 24px;
+  text-transform: capitalize;
+}
+
+.zone small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.zoneActive {
+  color: #071215;
+  border-color: var(--gold);
+  background: linear-gradient(135deg, var(--gold), #ffe49b);
+  box-shadow: 0 0 28px rgba(244, 184, 70, 0.28);
+}
+
+.zoneActive span,
+.zoneActive small {
+  color: #253035;
+}
+
+.sideStack {
+  display: grid;
+  gap: 14px;
+}
+
+.panel h2 {
+  margin: 0 0 14px;
+  color: var(--gold);
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.casterLine {
+  margin: 0;
+  color: #fff0bd;
+  font-size: 19px;
+  line-height: 1.55;
+}
+
+.feedList,
+.timelineList,
+.economyGrid,
+.roundGrid {
+  display: grid;
+  gap: 10px;
+}
+
+.feedItem,
+.timelineItem,
+.economyRow {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-left: 4px solid var(--gold);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.feedItem span,
+.timelineItem span,
+.economyRow span,
+.roundButton span {
+  color: var(--gold);
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+}
+
+.feedItem small,
+.timelineItem small,
+.economyRow small {
+  color: var(--muted);
+}
+
+.highlightBox {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  color: #071215;
+  background: var(--gold);
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.2fr;
+  gap: 22px;
+}
+
+.economyGrid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.roundGrid {
+  max-height: 440px;
+  overflow: auto;
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+}
+
+.roundButton {
+  display: grid;
+  gap: 4px;
+  min-height: 78px;
+  padding: 10px;
+  text-align: left;
+}
+
+.roundButton strong {
+  font-size: 21px;
+}
+
+.roundButton small {
+  color: var(--muted);
+}
+
+.mapComplete {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  margin-top: 22px;
+  padding: 22px;
+}
+
+.mapComplete strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 28px;
+}
+
+.emptyState {
+  max-width: 760px;
+  padding: 40px;
+}
+
+@media (max-width: 1080px) {
+  .shell {
+    padding: 24px;
+  }
+
+  .hero,
+  .scoreboard,
+  .liveGrid,
+  .detailGrid,
+  .mapTabs {
+    grid-template-columns: 1fr;
+  }
+
+  .scoreboard,
+  .mapComplete {
+    display: grid;
+  }
+}
+
+@media (max-width: 620px) {
+  .shell {
+    padding: 16px;
+  }
+
+  .virtualMap,
+  .economyGrid,
+  .roundGrid {
+    grid-template-columns: 1fr;
+  }
+}

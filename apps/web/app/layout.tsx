@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "AgentsMajor Phase 1.1",
-  description: "Single-round replay viewer backed by SQLite events"
+  title: "AgentsMajor Phase 1.4",
+  description: "Pseudo-live match replay viewer backed by SQLite TimelineEvent data"
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
