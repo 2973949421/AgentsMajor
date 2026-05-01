@@ -1,299 +1,229 @@
-import { existsSync } from "node:fs";
-import { createRequire } from "node:module";
-import { resolve } from "node:path";
+import type { CSSProperties } from "react";
+
+import type { MapReplay, RoundReplayItem } from "@agent-major/core";
+
+import { defaultMapGameId, loadMapReplay } from "./map-replay-data";
 
 export const dynamic = "force-dynamic";
 
-let sqliteWarningFilterInstalled = false;
-
-interface Row {
-  [key: string]: unknown;
-}
-
-interface ReplayView {
-  mapGame: {
-    mapName: string;
-  };
-  round: {
-    id: string;
+interface MapSummaryPayload {
+  mvpAgentId?: string;
+  keyRounds?: Array<{
     roundNumber: number;
-  };
-  roundReport: {
     winnerTeamId: string;
     scoreAfterRound: { teamA: number; teamB: number };
-    summary: string;
-    keyEvents: Array<{ id: string; type: string; zoneId: string; impact: string }>;
-  };
-  eventsCount: number;
-  timelineEvents: Array<{ id: string; atMs: number; kind: string; sourceEventIds: string[] }>;
-  economyStatesCount: number;
+    reason: string;
+  }>;
+  economySwingRounds?: number[];
+  overtimePlayed?: boolean;
 }
 
 export default async function HomePage() {
-  const replay = loadReplay();
+  const replay = await loadMapReplay(defaultMapGameId);
 
   if (!replay) {
     return (
       <main style={styles.shell}>
         <section style={styles.hero}>
-          <p style={styles.kicker}>Agent Major Phase 1.1</p>
-          <h1 style={styles.title}>等待第一条单回合 Replay</h1>
-          <p style={styles.copy}>运行 `pnpm phase11:round` 后，这里会读取同一个 SQLite 事实源并展示时间线。</p>
+          <p style={styles.kicker}>Agent Major Phase 1.2</p>
+          <h1 style={styles.title}>等待单张地图 Replay</h1>
+          <p style={styles.copy}>运行 `pnpm phase12:map` 后，这里会读取同一个 SQLite 事实源并展示地图回放。</p>
         </section>
       </main>
     );
   }
 
+  const payload = replay.mapSummary?.payload as MapSummaryPayload | undefined;
+  const latestRound = replay.rounds.at(-1);
+  const overtimePlayed = replay.mapGame.currentRoundNumber > 12;
+
   return (
     <main style={styles.shell}>
       <section style={styles.hero}>
-        <p style={styles.kicker}>Agent Major Phase 1.1 Replay Viewer</p>
+        <p style={styles.kicker}>Agent Major Phase 1.2 Map Viewer</p>
         <h1 style={styles.title}>
-          {replay.mapGame.mapName} / Round {replay.round.roundNumber}
+          {replay.mapGame.mapName} / {replay.teams.teamA.shortName} vs {replay.teams.teamB.shortName}
         </h1>
-        <p style={styles.copy}>{replay.roundReport.summary}</p>
+        <p style={styles.copy}>{replay.mapSummary?.content ?? "地图仍在生成中，当前展示已完成回合。"}</p>
       </section>
 
-      <section style={styles.grid}>
-        <article style={styles.card}>
-          <p style={styles.label}>比分</p>
+      <section style={styles.scoreboard}>
+        <div>
+          <p style={styles.label}>最终比分</p>
           <strong style={styles.score}>
-            {replay.roundReport.scoreAfterRound.teamA} : {replay.roundReport.scoreAfterRound.teamB}
+            {replay.mapGame.teamAScore} : {replay.mapGame.teamBScore}
           </strong>
-          <p style={styles.muted}>Winner: {replay.roundReport.winnerTeamId}</p>
-        </article>
-        <article style={styles.card}>
-          <p style={styles.label}>事实源</p>
-          <strong style={styles.metric}>{replay.eventsCount} Events</strong>
-          <p style={styles.muted}>
-            {replay.timelineEvents.length} TimelineEvents / {replay.economyStatesCount} EconomyStates
-          </p>
-        </article>
+        </div>
+        <div style={styles.scoreMeta}>
+          <span>状态：{replay.mapGame.status}</span>
+          <span>胜者：{replay.mapGame.winnerTeamId ?? "pending"}</span>
+          <span>回合：{replay.mapGame.currentRoundNumber}</span>
+          <span>加时：{overtimePlayed ? "yes" : "no"}</span>
+        </div>
       </section>
 
       <section style={styles.grid}>
         <article style={styles.card}>
-          <h2 style={styles.heading}>关键事件</h2>
+          <h2 style={styles.heading}>地图摘要</h2>
           <div style={styles.stack}>
-            {replay.roundReport.keyEvents.map((event) => (
-              <div key={event.id} style={styles.item}>
+            <Metric label="Summary ID" value={replay.mapGame.summaryId ?? "pending"} />
+            <Metric label="MVP" value={payload?.mvpAgentId ?? "pending"} />
+            <Metric label="Events" value={`${replay.eventCounts.map} map / ${replay.eventCounts.timeline} timeline`} />
+            <Metric label="Economy swings" value={(payload?.economySwingRounds ?? []).join(", ") || "none"} />
+          </div>
+        </article>
+
+        <article style={styles.card}>
+          <h2 style={styles.heading}>关键回合</h2>
+          <div style={styles.stack}>
+            {(payload?.keyRounds ?? []).map((round) => (
+              <div key={round.roundNumber} style={styles.item}>
                 <strong>
-                  {event.type} / {event.zoneId}
+                  Round {round.roundNumber} / {round.scoreAfterRound.teamA}-{round.scoreAfterRound.teamB}
                 </strong>
-                <span>{event.impact}</span>
+                <span>{round.reason}</span>
               </div>
+            ))}
+            {(payload?.keyRounds ?? []).length === 0 ? <span style={styles.muted}>地图完成后生成关键回合。</span> : null}
+          </div>
+        </article>
+      </section>
+
+      <section style={styles.gridWide}>
+        <article style={styles.card}>
+          <h2 style={styles.heading}>回合列表</h2>
+          <div style={styles.roundGrid}>
+            {replay.rounds.map((item) => (
+              <RoundCard key={item.round.id} item={item} replay={replay} />
             ))}
           </div>
         </article>
+
         <article style={styles.card}>
-          <h2 style={styles.heading}>播放时间线</h2>
-          <div style={styles.stack}>
-            {replay.timelineEvents.map((event) => (
-              <div key={event.id} style={styles.timelineItem}>
-                <span style={styles.time}>{event.atMs}ms</span>
-                <strong>{event.kind}</strong>
-                <small>{event.sourceEventIds.join(", ")}</small>
-              </div>
-            ))}
-          </div>
+          <h2 style={styles.heading}>Viewer Mode / 最新回合时间线</h2>
+          {latestRound ? (
+            <div style={styles.timeline}>
+              {latestRound.timelineEvents.map((event) => (
+                <div key={event.id} style={styles.timelineItem}>
+                  <span style={styles.time}>{event.atMs}ms</span>
+                  <strong>{event.kind}</strong>
+                  <small>{event.sourceEventIds.join(", ")}</small>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <span style={styles.muted}>暂无已完成回合。</span>
+          )}
         </article>
       </section>
     </main>
   );
 }
 
-function loadReplay(): ReplayView | null {
-  const sqlitePath = resolve(getProjectRoot(), "data", "agent-major.sqlite");
-  if (!existsSync(sqlitePath)) {
-    return null;
-  }
-
-  installSqliteWarningFilter();
-  const require = createRequire(import.meta.url);
-  const { DatabaseSync } = require("node:sqlite") as {
-    DatabaseSync: new (path: string) => {
-      prepare(sql: string): {
-        get(...params: unknown[]): Row | undefined;
-        all(...params: unknown[]): Row[];
-      };
-      close(): void;
-    };
-  };
-  const db = new DatabaseSync(sqlitePath);
-  try {
-    const round = db
-      .prepare("SELECT * FROM rounds WHERE map_game_id = ? AND status = 'completed' ORDER BY round_number DESC LIMIT 1")
-      .get("map_demo_match_phase11_1");
-    if (!round) {
-      return null;
-    }
-
-    const mapGame = requiredRow(db.prepare("SELECT * FROM map_games WHERE id = ?").get(asString(round.map_game_id)));
-    const roundReport = requiredRow(db.prepare("SELECT * FROM round_reports WHERE round_id = ?").get(asString(round.id)));
-    const eventsCount = asNumber(requiredRow(db.prepare("SELECT COUNT(*) AS count FROM events WHERE round_id = ?").get(asString(round.id))).count);
-    const timelineRows = db
-      .prepare("SELECT * FROM timeline_events WHERE round_id = ? ORDER BY sequence_index ASC")
-      .all(asString(round.id));
-    const economyStatesCount = asNumber(
-      requiredRow(db.prepare("SELECT COUNT(*) AS count FROM economy_states WHERE round_id = ?").get(asString(round.id))).count
-    );
-
-    return {
-      mapGame: {
-        mapName: asString(mapGame.map_name)
-      },
-      round: {
-        id: asString(round.id),
-        roundNumber: asNumber(round.round_number)
-      },
-      roundReport: {
-        winnerTeamId: asString(roundReport.winner_team_id),
-        scoreAfterRound: parseJson(roundReport.score_after_round_json),
-        summary: asString(roundReport.summary),
-        keyEvents: parseJson(roundReport.key_events_json)
-      },
-      eventsCount,
-      timelineEvents: timelineRows.map((row) => ({
-        id: asString(row.id),
-        atMs: asNumber(row.at_ms),
-        kind: asString(row.kind),
-        sourceEventIds: parseJson(row.source_event_ids_json)
-      })),
-      economyStatesCount
-    };
-  } finally {
-    db.close();
-  }
+function RoundCard({ item, replay }: { item: RoundReplayItem; replay: MapReplay }) {
+  const winnerName =
+    item.roundReport.winnerTeamId === replay.teams.teamA.id ? replay.teams.teamA.shortName : replay.teams.teamB.shortName;
+  return (
+    <div style={styles.roundCard}>
+      <span style={styles.roundNumber}>R{String(item.round.roundNumber).padStart(2, "0")}</span>
+      <strong>{winnerName}</strong>
+      <span>
+        {item.roundReport.scoreAfterRound.teamA}-{item.roundReport.scoreAfterRound.teamB}
+      </span>
+      <small>
+        {item.events.length} events / {item.timelineEvents.length} timeline
+      </small>
+    </div>
+  );
 }
 
-function installSqliteWarningFilter(): void {
-  if (sqliteWarningFilterInstalled) {
-    return;
-  }
-
-  const mutableProcess = process as NodeJS.Process & {
-    emitWarning: (...args: unknown[]) => void;
-  };
-  const originalEmitWarning = mutableProcess.emitWarning.bind(process);
-  mutableProcess.emitWarning = (...args: unknown[]) => {
-    const warning = args[0];
-    const message = typeof warning === "string" ? warning : warning instanceof Error ? warning.message : "";
-    if (message.includes("SQLite is an experimental feature")) {
-      return;
-    }
-
-    originalEmitWarning(...args);
-  };
-  sqliteWarningFilterInstalled = true;
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={styles.metricRow}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
 }
 
-function getProjectRoot(): string {
-  const cwd = process.cwd();
-  if (existsSync(resolve(cwd, "pnpm-workspace.yaml"))) {
-    return cwd;
-  }
-
-  return resolve(cwd, "../..");
-}
-
-function requiredRow(row: Row | undefined): Row {
-  if (!row) {
-    throw new Error("Expected SQLite row.");
-  }
-
-  return row;
-}
-
-function asString(value: unknown): string {
-  if (typeof value !== "string") {
-    throw new Error(`Expected string but received ${typeof value}`);
-  }
-
-  return value;
-}
-
-function asNumber(value: unknown): number {
-  if (typeof value !== "number") {
-    throw new Error(`Expected number but received ${typeof value}`);
-  }
-
-  return value;
-}
-
-function parseJson<T>(value: unknown): T {
-  if (typeof value !== "string") {
-    throw new Error(`Expected JSON string but received ${typeof value}`);
-  }
-
-  return JSON.parse(value) as T;
-}
-
-const styles = {
+const styles: Record<string, CSSProperties> = {
   shell: {
     minHeight: "100vh",
     padding: "48px",
-    background: "linear-gradient(135deg, #101820 0%, #162c2f 48%, #f2b84b 100%)",
+    background:
+      "radial-gradient(circle at 18% 12%, rgba(242,184,75,0.32), transparent 28%), linear-gradient(135deg, #0d1719 0%, #163034 52%, #e5a735 100%)",
     color: "#f8f1df",
     fontFamily: "Georgia, 'Times New Roman', serif"
   },
   hero: {
-    maxWidth: "960px",
-    padding: "32px",
-    border: "1px solid rgba(248, 241, 223, 0.28)",
-    background: "rgba(16, 24, 32, 0.72)",
-    boxShadow: "0 24px 80px rgba(0, 0, 0, 0.32)"
+    maxWidth: "1060px",
+    marginBottom: "32px"
   },
   kicker: {
     margin: 0,
+    textTransform: "uppercase",
+    letterSpacing: "0.16em",
     color: "#f2b84b",
-    letterSpacing: "0.18em",
-    textTransform: "uppercase" as const
+    fontSize: "13px"
   },
   title: {
     margin: "12px 0",
-    fontSize: "clamp(40px, 7vw, 88px)",
-    lineHeight: 0.92
+    fontSize: "clamp(42px, 7vw, 92px)",
+    lineHeight: 0.9
   },
   copy: {
-    maxWidth: "760px",
-    color: "#e8dcc4",
-    fontSize: "18px"
+    maxWidth: "900px",
+    fontSize: "20px",
+    lineHeight: 1.55,
+    color: "#fff4d0"
+  },
+  scoreboard: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "24px",
+    padding: "28px",
+    border: "1px solid rgba(255,255,255,0.24)",
+    background: "rgba(7, 16, 18, 0.72)",
+    boxShadow: "14px 14px 0 rgba(0,0,0,0.24)",
+    marginBottom: "24px"
+  },
+  scoreMeta: {
+    display: "grid",
+    gap: "8px",
+    minWidth: "260px",
+    color: "#f8dc95",
+    textTransform: "uppercase",
+    letterSpacing: "0.08em"
+  },
+  label: {
+    margin: "0 0 8px",
+    color: "#f2b84b",
+    letterSpacing: "0.14em",
+    textTransform: "uppercase"
+  },
+  score: {
+    fontSize: "76px",
+    lineHeight: 1
   },
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: "20px",
-    marginTop: "20px",
-    maxWidth: "1180px"
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: "24px",
+    marginBottom: "24px"
+  },
+  gridWide: {
+    display: "grid",
+    gridTemplateColumns: "1.3fr 0.9fr",
+    gap: "24px"
   },
   card: {
     padding: "24px",
-    background: "rgba(248, 241, 223, 0.92)",
-    color: "#101820",
-    border: "2px solid rgba(16, 24, 32, 0.2)"
-  },
-  label: {
-    margin: 0,
-    color: "#6b5a32",
-    letterSpacing: "0.12em",
-    textTransform: "uppercase" as const
-  },
-  score: {
-    display: "block",
-    fontSize: "64px",
-    lineHeight: 1
-  },
-  metric: {
-    display: "block",
-    fontSize: "38px",
-    lineHeight: 1.1
-  },
-  muted: {
-    color: "#5b5141"
+    background: "rgba(10, 25, 27, 0.82)",
+    border: "1px solid rgba(255,255,255,0.2)"
   },
   heading: {
-    marginTop: 0,
-    fontSize: "28px"
+    margin: "0 0 18px",
+    fontSize: "24px"
   },
   stack: {
     display: "grid",
@@ -301,19 +231,49 @@ const styles = {
   },
   item: {
     display: "grid",
-    gap: "4px",
+    gap: "6px",
     padding: "12px",
-    background: "rgba(16, 24, 32, 0.08)"
+    background: "rgba(255,255,255,0.07)"
+  },
+  muted: {
+    color: "#cbbf9e"
+  },
+  metricRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "16px",
+    paddingBottom: "10px",
+    borderBottom: "1px solid rgba(255,255,255,0.14)"
+  },
+  roundGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+    gap: "10px"
+  },
+  roundCard: {
+    display: "grid",
+    gap: "6px",
+    padding: "12px",
+    color: "#101820",
+    background: "#f2b84b"
+  },
+  roundNumber: {
+    fontSize: "12px",
+    letterSpacing: "0.12em"
+  },
+  timeline: {
+    display: "grid",
+    gap: "10px"
   },
   timelineItem: {
     display: "grid",
-    gridTemplateColumns: "80px 1fr",
-    gap: "4px 12px",
+    gap: "4px",
     padding: "12px",
-    background: "rgba(16, 24, 32, 0.08)"
+    borderLeft: "4px solid #f2b84b",
+    background: "rgba(255,255,255,0.08)"
   },
   time: {
-    color: "#8a5f00",
-    fontVariantNumeric: "tabular-nums" as const
+    color: "#f2b84b",
+    fontVariantNumeric: "tabular-nums"
   }
 };

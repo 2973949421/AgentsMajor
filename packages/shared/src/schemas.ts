@@ -120,6 +120,24 @@ export const mapGameSchema = z.object({
 });
 export type MapGame = z.infer<typeof mapGameSchema>;
 
+export const summarySchema = z.object({
+  id: z.string().min(1),
+  summaryType: z.enum(["round", "map", "match", "tournament", "team_memory"]),
+  scopeType: z.enum(["round", "map", "match", "tournament", "team"]),
+  scopeId: z.string().min(1),
+  tournamentId: z.string().optional(),
+  matchId: z.string().optional(),
+  mapGameId: z.string().optional(),
+  roundId: z.string().optional(),
+  title: z.string().min(1),
+  content: z.string().min(1),
+  payload: z.unknown().optional(),
+  sourceEventIds: stringArray,
+  createdAt: isoDateString,
+  updatedAt: optionalIsoDateString
+});
+export type Summary = z.infer<typeof summarySchema>;
+
 export const roundSchema = z.object({
   id: z.string().min(1),
   mapGameId: z.string().min(1),

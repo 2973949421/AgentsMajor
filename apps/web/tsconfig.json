@@ -4,7 +4,10 @@
     "allowJs": true,
     "incremental": true,
     "jsx": "preserve",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "noEmit": true,
+    "paths": {},
     "plugins": [{ "name": "next" }],
     "rootDir": "../..",
     "tsBuildInfoFile": ".next/tsconfig.tsbuildinfo"

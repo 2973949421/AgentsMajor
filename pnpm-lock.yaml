@@ -26,6 +26,12 @@ importers:
 
   apps/web:
     dependencies:
+      '@agent-major/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@agent-major/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       next:
         specifier: ^15.3.3
         version: 15.5.15(react-dom@19.2.5(react@19.2.5))(react@19.2.5)

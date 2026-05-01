@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agentSchema, economyStateSchema, eventSchema, timelineEventSchema, tournamentSchema } from "./schemas.js";
+import { agentSchema, economyStateSchema, eventSchema, summarySchema, timelineEventSchema, tournamentSchema } from "./schemas.js";
 
 const now = "2026-05-01T00:00:00.000Z";
 
@@ -81,5 +81,21 @@ describe("shared contracts", () => {
         createdAt: now
       })
     ).toThrow();
+  });
+
+  it("parses a map summary with source events", () => {
+    expect(
+      summarySchema.parse({
+        id: "sum_map_001",
+        summaryType: "map",
+        scopeType: "map",
+        scopeId: "map_001",
+        mapGameId: "map_001",
+        title: "DUST2 map summary",
+        content: "Team A closed the map after overtime.",
+        sourceEventIds: ["evt_map_completed"],
+        createdAt: now
+      })
+    ).toMatchObject({ id: "sum_map_001", summaryType: "map" });
   });
 });

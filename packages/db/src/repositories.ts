@@ -14,6 +14,7 @@ import type {
   Match,
   Round,
   RoundReport,
+  Summary,
   Team,
   TimelineEvent,
   Tournament
@@ -30,6 +31,7 @@ import {
   matchSchema,
   roundReportSchema,
   roundSchema,
+  summarySchema,
   teamSchema,
   timelineEventSchema,
   tournamentSchema
@@ -48,6 +50,7 @@ interface SqliteStatement {
 interface SqliteDatabase {
   exec(sql: string): void;
   prepare(sql: string): SqliteStatement;
+  close(): void;
 }
 
 const require = createRequire(import.meta.url);
@@ -81,6 +84,7 @@ export interface RoundRepository extends Repository<Round> {
 }
 export interface RoundReportRepository extends Repository<RoundReport> {
   getByRoundId(roundId: string): Promise<RoundReport | null>;
+  listByMapGame(mapGameId: string): Promise<RoundReport[]>;
 }
 export interface EconomyStateRepository extends Repository<EconomyState> {
   getLatestByAgent(agentId: string, mapGameId: string): Promise<EconomyState | null>;
@@ -88,15 +92,20 @@ export interface EconomyStateRepository extends Repository<EconomyState> {
   listLatestByMapGame(mapGameId: string): Promise<EconomyState[]>;
 }
 export interface EventRepository extends Repository<Event> {
-  append(event: Event): Promise<void>;
+  append(event: Event): Promise<Event>;
   getMaxGlobalSequence(): Promise<number>;
   getMaxSequenceInScope(scopeType: Event["scopeType"], scopeId: string): Promise<number>;
   listByRound(roundId: string): Promise<Event[]>;
+  listByMapGame(mapGameId: string): Promise<Event[]>;
   listByIds(ids: string[]): Promise<Event[]>;
 }
 export interface TimelineEventRepository extends Repository<TimelineEvent> {
   listByRound(roundId: string): Promise<TimelineEvent[]>;
+  listByMapGame(mapGameId: string): Promise<TimelineEvent[]>;
   deleteByRound(roundId: string): Promise<void>;
+}
+export interface SummaryRepository extends Repository<Summary> {
+  getLatestByScope(scopeType: Summary["scopeType"], scopeId: string): Promise<Summary | null>;
 }
 export interface ArtifactRepository extends Repository<Artifact> {}
 export interface LlmCallRepository extends Repository<LlmCall> {}
@@ -114,6 +123,7 @@ export interface Repositories {
   economyStates: EconomyStateRepository;
   events: EventRepository;
   timelineEvents: TimelineEventRepository;
+  summaries: SummaryRepository;
   artifacts: ArtifactRepository;
   llmCalls: LlmCallRepository;
   jobs: JobRepository;
@@ -121,7 +131,8 @@ export interface Repositories {
 
 export interface SqliteRepositoryBundle extends Repositories {
   readonly sqlite: SqliteDatabase;
-  transaction<T>(work: () => T): T;
+  transaction<T>(work: () => T | Promise<T>): Promise<T>;
+  close(): void;
 }
 
 export function createSqliteRepositories(filePath = defaultSqlitePath): SqliteRepositoryBundle {
@@ -138,21 +149,28 @@ export function createSqliteRepositories(filePath = defaultSqlitePath): SqliteRe
       statement.setAllowBareNamedParameters?.(true);
       statement.setAllowUnknownNamedParameters?.(true);
       return statement;
-    }
+    },
+    close: () => rawSqlite.close()
   };
   sqlite.exec("PRAGMA foreign_keys = ON");
+  sqlite.exec("PRAGMA busy_timeout = 10000");
   ensureSqliteSchema(sqlite);
 
   return {
     sqlite,
-    transaction: <T>(work: () => T): T => {
-      sqlite.exec("BEGIN");
+    close: () => sqlite.close(),
+    transaction: async <T>(work: () => T | Promise<T>): Promise<T> => {
+      sqlite.exec("BEGIN IMMEDIATE");
       try {
-        const result = work();
+        const result = await work();
         sqlite.exec("COMMIT");
         return result;
       } catch (error) {
-        sqlite.exec("ROLLBACK");
+        try {
+          sqlite.exec("ROLLBACK");
+        } catch {
+          // Keep the original failure as the actionable error for callers.
+        }
         throw error;
       }
     },
@@ -167,6 +185,7 @@ export function createSqliteRepositories(filePath = defaultSqlitePath): SqliteRe
     economyStates: new EconomyStateSqliteRepository(sqlite),
     events: new EventSqliteRepository(sqlite),
     timelineEvents: new TimelineEventSqliteRepository(sqlite),
+    summaries: new SummarySqliteRepository(sqlite),
     artifacts: new ArtifactSqliteRepository(sqlite),
     llmCalls: new LlmCallSqliteRepository(sqlite),
     jobs: new JobSqliteRepository(sqlite)
@@ -338,6 +357,22 @@ CREATE TABLE IF NOT EXISTS timeline_events (
   sequence_index integer NOT NULL,
   created_at text NOT NULL
 );
+CREATE TABLE IF NOT EXISTS summaries (
+  id text PRIMARY KEY NOT NULL,
+  summary_type text NOT NULL,
+  scope_type text NOT NULL,
+  scope_id text NOT NULL,
+  tournament_id text REFERENCES tournaments(id),
+  match_id text REFERENCES matches(id),
+  map_game_id text REFERENCES map_games(id),
+  round_id text REFERENCES rounds(id),
+  title text NOT NULL,
+  content text NOT NULL,
+  payload_json text,
+  source_event_ids_json text NOT NULL,
+  created_at text NOT NULL,
+  updated_at text
+);
 CREATE TABLE IF NOT EXISTS artifacts (
   id text PRIMARY KEY NOT NULL,
   artifact_type text NOT NULL,
@@ -402,6 +437,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS events_global_sequence_unique ON events(global
 CREATE UNIQUE INDEX IF NOT EXISTS events_scope_sequence_unique ON events(scope_type, scope_id, sequence_in_scope);
 CREATE INDEX IF NOT EXISTS timeline_events_round_idx ON timeline_events(round_id, sequence_index);
 CREATE INDEX IF NOT EXISTS economy_states_agent_round_idx ON economy_states(agent_id, round_id);
+CREATE INDEX IF NOT EXISTS summaries_scope_idx ON summaries(scope_type, scope_id, created_at);
 `);
 }
 
@@ -638,6 +674,12 @@ class RoundReportSqliteRepository implements RoundReportRepository {
     return row ? roundReportSchema.parse(mapRoundReport(row)) : null;
   }
 
+  async listByMapGame(mapGameId: string): Promise<RoundReport[]> {
+    return (this.sqlite.prepare("SELECT * FROM round_reports WHERE map_game_id = ? ORDER BY round_number ASC").all(mapGameId) as Row[]).map(
+      (row) => roundReportSchema.parse(mapRoundReport(row))
+    );
+  }
+
   async save(entity: RoundReport): Promise<void> {
     const item = roundReportSchema.parse(entity);
     this.sqlite
@@ -722,8 +764,15 @@ class EventSqliteRepository implements EventRepository {
     return row ? eventSchema.parse(mapEvent(row)) : null;
   }
 
-  async append(event: Event): Promise<void> {
-    await this.save(event);
+  async append(event: Event): Promise<Event> {
+    const item = eventSchema.parse(event);
+    await this.save(item);
+    const stored = await this.getById(item.id);
+    if (!stored) {
+      throw new Error(`Event append did not persist event: ${item.id}`);
+    }
+
+    return stored;
   }
 
   async getMaxGlobalSequence(): Promise<number> {
@@ -744,6 +793,12 @@ class EventSqliteRepository implements EventRepository {
     );
   }
 
+  async listByMapGame(mapGameId: string): Promise<Event[]> {
+    return (this.sqlite.prepare("SELECT * FROM events WHERE map_game_id = ? ORDER BY global_sequence ASC").all(mapGameId) as Row[]).map((row) =>
+      eventSchema.parse(mapEvent(row))
+    );
+  }
+
   async listByIds(ids: string[]): Promise<Event[]> {
     if (ids.length === 0) {
       return [];
@@ -759,17 +814,15 @@ class EventSqliteRepository implements EventRepository {
     const item = eventSchema.parse(entity);
     this.sqlite
       .prepare(
-        `INSERT INTO events (id, type, category, tournament_id, match_id, map_game_id, round_id, payload_json, global_sequence, scope_type, scope_id, sequence_in_scope, timeline_ms, source_module, created_at, updated_at, deleted_at, deleted_reason)
-         VALUES (@id, @type, @category, @tournamentId, @matchId, @mapGameId, @roundId, @payloadJson, @globalSequence, @scopeType, @scopeId, @sequenceInScope, @timelineMs, @sourceModule, @createdAt, @updatedAt, @deletedAt, @deletedReason)
-         ON CONFLICT(id) DO UPDATE SET
-         type = excluded.type, category = excluded.category, tournament_id = excluded.tournament_id,
-         match_id = excluded.match_id, map_game_id = excluded.map_game_id, round_id = excluded.round_id,
-         payload_json = excluded.payload_json, global_sequence = excluded.global_sequence,
-         scope_type = excluded.scope_type, scope_id = excluded.scope_id, sequence_in_scope = excluded.sequence_in_scope,
-         timeline_ms = excluded.timeline_ms, source_module = excluded.source_module, created_at = excluded.created_at,
-         updated_at = excluded.updated_at, deleted_at = excluded.deleted_at, deleted_reason = excluded.deleted_reason`
+        `INSERT OR IGNORE INTO events (id, type, category, tournament_id, match_id, map_game_id, round_id, payload_json, global_sequence, scope_type, scope_id, sequence_in_scope, timeline_ms, source_module, created_at, updated_at, deleted_at, deleted_reason)
+         VALUES (@id, @type, @category, @tournamentId, @matchId, @mapGameId, @roundId, @payloadJson, @globalSequence, @scopeType, @scopeId, @sequenceInScope, @timelineMs, @sourceModule, @createdAt, @updatedAt, @deletedAt, @deletedReason)`
       )
       .run(toNullable({ ...item, payloadJson: JSON.stringify(item.payload) }));
+    const stored = await this.getById(item.id);
+    if (!stored) {
+      throw new Error(`Event save did not persist event: ${item.id}`);
+    }
+    assertSameLogicalEvent(stored, item);
   }
 }
 
@@ -785,6 +838,18 @@ class TimelineEventSqliteRepository implements TimelineEventRepository {
     return (this.sqlite.prepare("SELECT * FROM timeline_events WHERE round_id = ? ORDER BY sequence_index ASC").all(roundId) as Row[]).map(
       (row) => timelineEventSchema.parse(mapTimelineEvent(row))
     );
+  }
+
+  async listByMapGame(mapGameId: string): Promise<TimelineEvent[]> {
+    return (this.sqlite
+      .prepare(
+        `SELECT timeline_events.*
+         FROM timeline_events
+         LEFT JOIN rounds ON rounds.id = timeline_events.round_id
+         WHERE timeline_events.map_game_id = ?
+         ORDER BY COALESCE(rounds.round_number, 999999) ASC, timeline_events.sequence_index ASC, timeline_events.at_ms ASC, timeline_events.id ASC`
+      )
+      .all(mapGameId) as Row[]).map((row) => timelineEventSchema.parse(mapTimelineEvent(row)));
   }
 
   async deleteByRound(roundId: string): Promise<void> {
@@ -806,6 +871,37 @@ class TimelineEventSqliteRepository implements TimelineEventRepository {
          created_at = excluded.created_at`
       )
       .run(toNullable({ ...item, sourceEventIdsJson: JSON.stringify(item.sourceEventIds), payloadJson: JSON.stringify(item.payload) }));
+  }
+}
+
+class SummarySqliteRepository implements SummaryRepository {
+  constructor(private readonly sqlite: SqliteDatabase) {}
+
+  async getById(id: string): Promise<Summary | null> {
+    const row = this.sqlite.prepare("SELECT * FROM summaries WHERE id = ?").get(id) as Row | undefined;
+    return row ? summarySchema.parse(mapSummary(row)) : null;
+  }
+
+  async getLatestByScope(scopeType: Summary["scopeType"], scopeId: string): Promise<Summary | null> {
+    const row = this.sqlite
+      .prepare("SELECT * FROM summaries WHERE scope_type = ? AND scope_id = ? ORDER BY created_at DESC, id DESC LIMIT 1")
+      .get(scopeType, scopeId) as Row | undefined;
+    return row ? summarySchema.parse(mapSummary(row)) : null;
+  }
+
+  async save(entity: Summary): Promise<void> {
+    const item = summarySchema.parse(entity);
+    this.sqlite
+      .prepare(
+        `INSERT INTO summaries (id, summary_type, scope_type, scope_id, tournament_id, match_id, map_game_id, round_id, title, content, payload_json, source_event_ids_json, created_at, updated_at)
+         VALUES (@id, @summaryType, @scopeType, @scopeId, @tournamentId, @matchId, @mapGameId, @roundId, @title, @content, @payloadJson, @sourceEventIdsJson, @createdAt, @updatedAt)
+         ON CONFLICT(id) DO UPDATE SET
+         summary_type = excluded.summary_type, scope_type = excluded.scope_type, scope_id = excluded.scope_id,
+         tournament_id = excluded.tournament_id, match_id = excluded.match_id, map_game_id = excluded.map_game_id,
+         round_id = excluded.round_id, title = excluded.title, content = excluded.content, payload_json = excluded.payload_json,
+         source_event_ids_json = excluded.source_event_ids_json, created_at = excluded.created_at, updated_at = excluded.updated_at`
+      )
+      .run(toNullable({ ...item, payloadJson: stringifyOptional(item.payload), sourceEventIdsJson: JSON.stringify(item.sourceEventIds) }));
   }
 }
 
@@ -1059,6 +1155,19 @@ function mapEvent(row: Row) {
   });
 }
 
+function assertSameLogicalEvent(existing: Event, incoming: Event): void {
+  const existingLogical = logicalEventForConflict(existing);
+  const incomingLogical = logicalEventForConflict(incoming);
+  if (JSON.stringify(existingLogical) !== JSON.stringify(incomingLogical)) {
+    throw new Error(`Event id conflict with different payload or scope: ${incoming.id}`);
+  }
+}
+
+function logicalEventForConflict(event: Event): Omit<Event, "globalSequence" | "sequenceInScope"> {
+  const { globalSequence: _globalSequence, sequenceInScope: _sequenceInScope, ...logicalEvent } = event;
+  return logicalEvent;
+}
+
 function mapTimelineEvent(row: Row) {
   return removeUndefined({
     id: asString(row.id),
@@ -1075,6 +1184,25 @@ function mapTimelineEvent(row: Row) {
     playbackScopeId: asString(row.playback_scope_id),
     sequenceIndex: asNumber(row.sequence_index),
     createdAt: asString(row.created_at)
+  });
+}
+
+function mapSummary(row: Row) {
+  return removeUndefined({
+    id: asString(row.id),
+    summaryType: asString(row.summary_type),
+    scopeType: asString(row.scope_type),
+    scopeId: asString(row.scope_id),
+    tournamentId: nullableString(row.tournament_id),
+    matchId: nullableString(row.match_id),
+    mapGameId: nullableString(row.map_game_id),
+    roundId: nullableString(row.round_id),
+    title: asString(row.title),
+    content: asString(row.content),
+    payload: parseOptionalJson(row.payload_json),
+    sourceEventIds: parseJson<string[]>(row.source_event_ids_json),
+    createdAt: asString(row.created_at),
+    updatedAt: nullableString(row.updated_at)
   });
 }
 

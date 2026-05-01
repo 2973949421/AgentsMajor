@@ -11,6 +11,7 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
       "default": "./dist/index.js"
     }
   },
@@ -22,7 +23,10 @@
     "phase11:demo": "tsx src/phase11.ts demo",
     "phase11:round": "tsx src/phase11.ts round",
     "phase11:replay": "tsx src/phase11.ts replay",
-    "phase11:export": "tsx src/phase11.ts export"
+    "phase11:export": "tsx src/phase11.ts export",
+    "phase12:map": "tsx src/phase12.ts map",
+    "phase12:replay": "tsx src/phase12.ts replay",
+    "phase12:export": "tsx src/phase12.ts export"
   },
   "dependencies": {
     "@agent-major/core": "workspace:*",
