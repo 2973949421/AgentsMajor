@@ -165,7 +165,8 @@ Reserved：
 ```text
 P0 / P1：Frozen。
 P2.1：完成后进入 Frozen。
-P2.2 / P2.3：Draft，等 MVP 骨架跑通后再完善。
+P2.2：Frozen。
+P2.3：Draft，当前待完善。
 P3：Reserved。
 P4：Reserved，但接口意识必须保留。
 ```
@@ -178,22 +179,25 @@ P4：Reserved，但接口意识必须保留。
 P0：事实源与边界层。
 P1：最小比赛闭环。
 P2.1：直播时间线说明。
+P2.2：2D 战术地图说明。
 Phase 1.0：工程骨架。
 Phase 1.1：单回合 replay。
 Phase 1.2：单张地图 replay。
 Phase 1.3：BO3 fake provider。
+Phase 1.4：极简伪直播播放器基础版。
+Phase 1.4 内容质量与事件可信度收口。
 ```
 
 当前必须先做：
 
 ```text
-Phase 1.4：极简伪直播 demo。
+P2.3：转播系统边界补齐。
 ```
 
 当前进入：
 
 ```text
-Phase 1：本地 fake provider MVP 的后半段。
+Phase 1：本地 fake provider MVP 的表现层契约补齐阶段。
 ```
 
 工作模式：
@@ -205,7 +209,7 @@ Phase 1：本地 fake provider MVP 的后半段。
 明确不做：
 
 ```text
-不等 P2.2 / P2.3 / P3 / P4 全部完成后再开始代码。
+不等 P2.3 / P3 / P4 全部完成后再开始代码。
 不在 Phase 1 做完整 Web 化。
 不在 Phase 1 做完整新闻站、奖项站、16 队赛事生态。
 ```
@@ -473,7 +477,8 @@ fallback 验证。
 ```text
 P0 / P1。
 P2.1。
-必要时补 P2.2 / P2.3。
+P2.2。
+必要时补 P2.3。
 ```
 
 输出：
@@ -577,7 +582,7 @@ BullMQ 或等价队列。
 | P1.4 比赛引擎 | Frozen | Phase 1+ | 是 |
 | P1.5 本地持久化 | Frozen | Phase 1+ | 是 |
 | P2.1 直播时间线 | Frozen | Phase 1.1+ | 是 |
-| P2.2 2D 战术地图 | Draft | Phase 1.4 / Phase 2 | 否 |
+| P2.2 2D 战术地图 | Frozen | Phase 1.4 / Phase 2 | 否 |
 | P2.3 转播系统 | Draft | Phase 1.4 / Phase 2 | 否 |
 | P3.1 数据统计与奖项 | Reserved | Phase 3 | 否 |
 | P3.2 新闻与媒体 | Reserved | Phase 3 | 否 |
@@ -700,10 +705,13 @@ Phase 4 不需要重写核心引擎。
 2. Phase 1.1：单回合 replay。
 3. Phase 1.2：单张地图 replay。
 4. Phase 1.3：BO3 fake provider。
+5. Phase 1.4：极简伪直播播放器基础版。
+6. Phase 1.4 播放结果的内容质量与事件可信度收口。
+7. P2.2：2D 战术地图说明。
 
 当前下一步：
-5. 扩展 Phase 1.4：极简伪直播 demo。
+8. 补 P2.3，明确转播系统边界。
 
-Phase 1.4 完成后再判断：
-6. 补 P2.2 / P2.3，或进入真实 LLM 小范围接入。
+P2.3 完成后再判断：
+9. 是否进入真实 LLM 小范围接入。
 ```

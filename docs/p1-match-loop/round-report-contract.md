@@ -125,11 +125,11 @@ P1.1 中的提交额度不限制：
 
 P1.1 不锁死最终行动顺序。
 
-通过下面两个字段承载顺序：
+行动顺序由 `AgentOutput` 承载，而不是重复写入 `RoundKeyEvent`。
 
 ```text
-actionPhase
-sequenceIndex
+AgentOutput.actionPhase
+AgentOutput.sequenceIndex
 ```
 
 这允许后续支持：
@@ -139,6 +139,12 @@ sequenceIndex
 固定先后手
 开局 / 反制 / 收束 多阶段回合
 ```
+
+约束：
+
+- `RoundKeyEvent` 只记录关键事实归因、区域和影响说明。
+- 播放顺序由 `TimelineEvent` 和事件数组顺序负责。
+- P2.2 2D 战术地图不能依赖 `RoundKeyEvent.actionPhase` 或 `RoundKeyEvent.sequenceIndex`，因为当前工程 schema 中没有这两个字段。
 
 ## 3. 输入与输出关系
 
@@ -162,10 +168,10 @@ sequenceIndex
 | 下游模块 | 消费内容 |
 |---|---|
 | 事件日志（Event Log） | 裁判结果、比分、经济变化、关键事件、高光标签。 |
-| 2D 战术渲染器（2D Tactical Renderer） | 关键事件、地图区域、行动阶段、顺序、影响。 |
-| 击杀播报（Kill Feed） | 可投影关键事件、actor、target、displayName。 |
+| 2D 战术渲染器（2D Tactical Renderer） | `keyEvents[].zoneId`、`keyEvents[].type`、`actorTeamId`、`actorAgentId`、`impact`。 |
+| 击杀播报（Kill Feed） | 关键事件的 actor、target、zoneId 和 impact。 |
 | 转播与伪直播（Broadcast & Pseudo Live） | summary、keyEvents、highlightTags、submittedOutputSummary。 |
-| 数据统计与奖项（Stats & Awards） | winnerTeamId、primaryActorAgentId、keyEvents、buyType、highlightTags。 |
+| 数据统计与奖项（Stats & Awards） | winnerTeamId、judgeResult.mvpAgentId、keyEvents[].actorAgentId、buyType、highlightTags。 |
 | 新闻与媒体（News & Media） | summary、judgeResult、highlightTags、sourceEventIds。 |
 
 ### 3.3 数据流
@@ -373,228 +379,146 @@ type AgentOutput = {
 
 ## 7. 关键事件（RoundKeyEvent）
 
+当前工程已经采用压缩版 `RoundKeyEvent`。它只保存后续模块必须消费的事实入口：事件类型、行动方、可选目标方、区域、影响说明和来源输出。展示名、徽标、权重、投影提示属于转播层或播放投影，不写回当前 `RoundReport.keyEvents`。
+
 ### 7.1 字段表
 
 | 中文字段 | 代码字段 | 类型草案 | 必填 | 说明 |
 |---|---|---|---|---|
 | 关键事件 ID | `id` | `string` | 是 | 稳定引用 ID。 |
-| 类型 | `type` | `RoundKeyEventType` | 是 | 稳定英文代码。 |
-| 展示名 | `displayName` | `string` | 是 | 中文优先。 |
-| 描述 | `description` | `string` | 是 | 简短解释发生了什么。 |
+| 类型 | `type` | `RoundKeyEventType` | 是 | 当前稳定枚举，见 8.1。 |
+| 行动智能体 ID | `actorAgentId` | `string` | 是 | 事件主导 agent。 |
 | 行动队伍 ID | `actorTeamId` | `string` | 是 | 事件发起队伍。 |
-| 主导智能体 ID | `primaryActorAgentId` | `string` | 是 | MVP / rating 主要归因对象。 |
-| 参与智能体 ID 列表 | `actorAgentIds` | `string[]` | 是 | 至少 1 个。 |
-| 目标 | `target` | `RoundEventTarget` | 是 | 被影响对象。 |
-| 地图区域 | `zone` | `MapZoneRef` | 否 | 纯经济 / 比分事件可为空。 |
-| 行动阶段 | `actionPhase` | `ActionPhase` | 是 | 对应 agent 输出阶段。 |
-| 顺序索引 | `sequenceIndex` | `number` | 是 | 用于播放排序。 |
-| 影响 | `impact` | `RoundEventImpact` | 是 | 控制、经济、比分、统计影响。 |
-| 投影提示 | `projectionHints` | `ProjectionHints` | 是 | 是否可生成击杀播报、2D、高光等。 |
-| 高光权重 | `highlightWeight` | `number` | 是 | 0-100。 |
-| 来源输出 ID | `sourceAgentOutputIds` | `string[]` | 是 | 追溯到 AgentOutput。 |
+| 目标智能体 ID | `targetAgentId` | `string` | 否 | 被影响的主要对手 agent；团队 / 经济事件可为空。 |
+| 目标队伍 ID | `targetTeamId` | `string` | 否 | 被影响队伍；纯己方强化事件可为空。 |
+| 地图区域 ID | `zoneId` | `string` | 是 | P2.2 2D 战术地图的主入口。 |
+| 影响说明 | `impact` | `string` | 是 | 面向解说、击杀播报和复盘的简短事实说明。 |
+| 来源输出 ID | `sourceAgentOutputIds` | `string[]` | 是 | 追溯到 `AgentOutput`。 |
 
 ### 7.2 类型草案
 
 ```ts
+type RoundKeyEventType =
+  | "entry"
+  | "trade"
+  | "clutch"
+  | "economy_swing"
+  | "conversion"
+  | "highlight";
+
 type RoundKeyEvent = {
   id: string;
   type: RoundKeyEventType;
-  displayName: string;
-  description: string;
+  actorAgentId: string;
   actorTeamId: string;
-  primaryActorAgentId: string;
-  actorAgentIds: string[];
-  target: RoundEventTarget;
-  zone?: MapZoneRef;
-  actionPhase: ActionPhase;
-  sequenceIndex: number;
-  impact: RoundEventImpact;
-  projectionHints: ProjectionHints;
-  highlightWeight: number;
+  targetAgentId?: string;
+  targetTeamId?: string;
+  zoneId: string;
+  impact: string;
   sourceAgentOutputIds: string[];
 };
 ```
 
-### 7.3 目标结构（RoundEventTarget）
+### 7.3 归因规则
 
-```ts
-type RoundEventTarget = {
-  targetType: TargetType;
-  targetId: string;
-  targetDisplayName: string;
-};
-```
+- `actorAgentId` 是当前事件的主导智能体。
+- 多 agent 参与不再通过 `actorAgentIds` 表达，而是通过 `sourceAgentOutputIds` 追溯到多个 `AgentOutput`。
+- MVP / rating 的主归因来自 `judgeResult.mvpAgentId`，不是 `RoundKeyEvent.primaryActorAgentId`。
+- `targetAgentId` 和 `targetTeamId` 是可选字段，适合击杀播报、地图标记和复盘文案使用。
 
-第一版 `targetType`：
+### 7.4 影响说明
 
-| 中文名 | 代码值 | 说明 |
-|---|---|---|
-| 智能体 | `agent` | 指向单个 agent。 |
-| 智能体组 | `agent_group` | 指向多个 agent。 |
-| 队伍 | `team` | 指向整支队伍。 |
-| 地图区域 | `zone` | 指向地图区域。 |
-| 经济状态 | `economy_state` | 指向经济状态。 |
-| 产品方案 | `product_plan` | 指向产品计划。 |
-| 技术方案 | `technical_plan` | 指向技术计划。 |
-| 商业化方案 | `monetization_plan` | 指向商业化计划。 |
-| 增长方案 | `growth_plan` | 指向增长计划。 |
-| 比分牌 | `scoreboard` | 指向比分和局势。 |
+当前 `impact` 是字符串，不是结构化数值对象。结构化结算已经由 `judgeResult`、`scoreAfterRound`、`economyDelta` 和 `highlightTags` 承载。
 
-### 7.4 影响结构（RoundEventImpact）
+如果后续需要结构化 `controlDelta`、`momentumDelta` 或 `statImpact`，必须先修改 schema 和本文档，不能在示例里单独扩展。
 
-```ts
-type RoundEventImpact = {
-  controlDelta?: number;
-  economyDelta?: number;
-  scorePressure?: "none" | "small" | "medium" | "large";
-  momentumDelta?: "none" | "small" | "medium" | "large";
-  statImpact?: {
-    rating?: number;
-    impact?: number;
-    clutch?: number;
-    support?: number;
-    economyEfficiency?: number;
-  };
-};
-```
+### 7.5 投影提示
 
-### 7.5 投影提示（ProjectionHints）
+当前 `RoundKeyEvent` 不包含 `projectionHints` 和 `highlightWeight`。
 
-```ts
-type ProjectionHints = {
-  canProjectToKillFeed: boolean;
-  canProjectTo2D: boolean;
-  canProjectToCaster: boolean;
-  canProjectToBarrage: boolean;
-  canProjectToHighlight: boolean;
-  canProjectToStats: boolean;
-};
+投影关系由三处共同决定：
+
+```text
+RoundKeyEvent.type
+RoundKeyEvent.zoneId
+TimelineEvent / highlightTags
 ```
 
 ### 7.6 关键约束
 
-- `actorAgentIds` 至少包含 1 个 agent。
-- 多 agent 事件必须指定 `primaryActorAgentId`。
-- 团队级事件也要能追溯到参与 agent。
-- `target` 必须存在。
-- 每个 keyEvent 必须能追溯到 `sourceAgentOutputIds`。
-- 每个 keyEvent 应能落到一个地图区域，除非它是纯经济 / 比分事件。
-- `highlightWeight` 范围为 0-100。
+- 每个 keyEvent 必须有 `actorAgentId`、`actorTeamId` 和 `zoneId`。
+- 经济类事件也必须落到区域，当前统一使用 `token_economy`。
+- `sourceAgentOutputIds` 必须能在同一份 `RoundReport.agentOutputs` 中找到。
+- 当前不使用 `displayName`、`description`、`target`、`zone`、`actionPhase`、`sequenceIndex`、`projectionHints`、`highlightWeight`。
 - 建议每个 RoundReport 包含 2-5 个 keyEvents。
 
 ## 8. 关键事件类型
 
-P1.1 先定义第一批稳定事件类型，不追求穷尽。
+P1.1 第一批稳定事件类型必须和当前工程 schema 保持一致。
 
-| 中文展示名 | 代码值 | 适用地图 | 击杀播报 | 2D 地图 | 高光候选 | 统计影响 |
-|---|---|---|---|---|---|---|
-| 中路控制突破 | `mid_control_breakthrough` | 通用 | 是 | 是 | 是 | impact + |
-| 反制成功 | `counter_play` | 通用 | 是 | 是 | 是 | impact + |
-| 残局收束 | `clutch_finish` | 通用 | 是 | 是 | 是 | clutch + |
-| 教练调整生效 | `coach_adjustment` | 通用 | 否 | 可选 | 是 | support / impact + |
-| 辅助修补漏洞 | `support_repair` | 通用 | 可选 | 可选 | 可选 | support + |
-| 潜伏偷点 | `lurker_steal` | 通用 | 是 | 是 | 是 | impact + |
-| 经济压制 | `economy_pressure` | 通用 | 可选 | 可选 | 可选 | economyEfficiency + |
-| 商业闭环突破 | `conversion_breakthrough` | MIRAGE | 是 | 是 | 是 | impact + |
-| 工程风险拆解 | `technical_risk_breakdown` | OVERPASS / NUKE | 可选 | 可选 | 可选 | support / impact + |
-| 增长入口偷家 | `growth_backdoor` | ANUBIS | 是 | 是 | 是 | impact + |
-| 上下文受限失误 | `context_limit_mistake` | 通用 | 可选 | 可选 | 可选 | rating - |
-| 输出额度截断 | `output_budget_trim` | 通用 | 可选 | 否 | 是 | economyEfficiency 视结果而定 |
+### 8.1 稳定枚举
 
-### 8.1 事件类型解释
+| 中文展示名 | 代码值 | 适用场景 | 2D 地图用途 | 高光候选 |
+|---|---|---|---|---|
+| 入口突破 | `entry` | 打开关键区域或论点入口。 | 区域控制闪烁、入口路径。 | 可选 |
+| 交换反制 | `trade` | 双方围绕同一区域完成攻防交换。 | 双方控制色短暂交替。 | 可选 |
+| 残局收束 | `clutch` | 低经济、劣势或高压下完成收束。 | 强高光闪烁、MVP 标记。 | 是 |
+| 经济波动 | `economy_swing` | 经济差、强起、eco、保经济或资源效率形成影响。 | 点亮 `token_economy`。 | 是 |
+| 优势转化 | `conversion` | 把入口优势转成得分、商业闭环或执行闭环。 | 目标区域变为得分方控制色。 | 是 |
+| 高光事件 | `highlight` | 无法归类但需要进入高光池的关键事实。 | 强高光闪烁。 | 是 |
 
-#### 中路控制突破（mid_control_breakthrough）
+### 8.2 事件类型解释
 
-通过关键论点或核心切口拿到地图中路控制权，通常对应项目方向、用户痛点或关键执行入口被打开。
+#### 入口突破（entry）
 
-#### 反制成功（counter_play）
+通过关键论点、用户切口、技术入口或执行动作拿到区域主动权。
 
-针对对手上一段行动完成有效反制，例如拆掉对手商业假设、指出工程漏洞、反击增长路径。
+#### 交换反制（trade）
 
-#### 残局收束（clutch_finish）
+针对对手上一段行动完成有效交换或反制，例如拆掉假设、指出漏洞、补回区域控制。
 
-在信息、经济或回合局势不利的情况下，由某个 agent 完成最终收束，帮助队伍赢下回合。
+#### 残局收束（clutch）
 
-#### 教练调整生效（coach_adjustment）
+在信息、经济或回合局势不利的情况下，由某个 agent 完成最终收束。
 
-教练或指挥通过暂停、方向调整、资源分配，让队伍本回合策略明显改善。
+#### 经济波动（economy_swing）
 
-#### 辅助修补漏洞（support_repair）
+通过更高效的提交额度使用、强起成功、eco 翻盘或让对手被迫高消耗形成经济叙事。
 
-辅助位修复方案中的关键缺口，例如补齐用户路径、工程边界、数据流、运营闭环。
+#### 优势转化（conversion）
 
-#### 潜伏偷点（lurker_steal）
+把中路、入口或论点优势推进成可计分结果，例如明确 buyer、定价、转化路径、工程交付路径。
 
-潜伏位从对手忽视的角度打开突破口，例如发现被忽略的分发渠道、付费入口或技术捷径。
+#### 高光事件（highlight）
 
-#### 经济压制（economy_pressure）
-
-通过更高效的提交额度使用或让对手被迫高消耗，形成经济优势。
-
-#### 商业闭环突破（conversion_breakthrough）
-
-在 MIRAGE 或商业相关回合里明确 buyer、定价、转化路径或付费动机。
-
-#### 工程风险拆解（technical_risk_breakdown）
-
-拆解关键工程风险，让方案从“想法”变成“可交付路径”。
-
-#### 增长入口偷家（growth_backdoor）
-
-发现一个低成本、被对手忽视的增长入口或运营循环。
-
-#### 上下文受限失误（context_limit_mistake）
-
-因为经济限制导致提交内容缺少关键上下文，进而产生误判或方案缺口。
-
-#### 输出额度截断（output_budget_trim）
-
-agent 原始输出较长，但提交内容因经济额度被裁剪。该事件本身不必然是负面；如果裁剪后仍赢，可形成节目效果。
+当某个关键事实无法稳定归入前五类，但需要被直播、回放、奖项或新闻消费时使用。
 
 ## 9. 地图区域引用
 
-P1.1 不定义 2D 坐标，只定义地图区域引用方式。
+P1.1 只在 `RoundKeyEvent.zoneId` 中保存稳定区域 ID，不定义 2D 坐标、展示名、地图素材或区域角色。完整布局由 P2.2 `docs/p2-broadcast-viewer/tactical-map.md` 负责。
 
 ### 9.1 字段表
 
 | 中文字段 | 代码字段 | 类型草案 | 必填 | 说明 |
 |---|---|---|---|---|
-| 区域 ID | `zoneId` | `string` | 是 | 机器稳定引用。 |
-| 区域名称 | `zoneName` | `string` | 是 | 英文稳定代码。 |
-| 区域展示名 | `zoneDisplayName` | `string` | 是 | 中文优先。 |
-| 地图名 | `mapName` | `MapName` | 是 | DUST2、MIRAGE 等。 |
-| 区域角色 | `zoneRole` | `ZoneRole` | 是 | mid、site、connector 等。 |
+| 区域 ID | `zoneId` | `string` | 是 | 机器稳定引用，供 Timeline、2D 地图、击杀播报和高光回放消费。 |
 
-### 9.2 类型草案
+### 9.2 示例区域
 
-```ts
-type MapZoneRef = {
-  zoneId: string;
-  zoneName: string;
-  zoneDisplayName: string;
-  mapName: MapName;
-  zoneRole: "spawn" | "mid" | "site" | "connector" | "ramp" | "pit" | "long" | "short";
-};
-```
+| 中文展示名 | 代码值 | 语义 |
+|---|---|---|
+| 买家中路 | `buyer_mid` | 买家识别、核心切口和中路控制。 |
+| 转化 A 点 | `conversion_site_a` | 转化路径、商业闭环或执行闭环。 |
+| Token 经济区 | `token_economy` | 经济差、强起、eco、资源波动。 |
+| 转化 B 点 | `conversion_site_b` | 第二落点、转点或替代闭环。 |
+| 留存连接区 | `retention_connector` | 留存、运营循环、反馈机制。 |
+| 定价斜坡 | `pricing_ramp` | 定价、套餐、价值锚点。 |
 
-### 9.3 示例区域
-
-| 中文展示名 | 代码值 | 适用地图 | 语义 |
-|---|---|---|---|
-| 买家中路 | `buyer_mid` | MIRAGE | 买家识别与付费动机争夺。 |
-| 转化 A 点 | `conversion_site_a` | MIRAGE | 转化路径和商业闭环。 |
-| 定价斜坡 | `pricing_ramp` | MIRAGE | 定价、套餐、价值锚点。 |
-| 增长长廊 | `growth_long` | ANUBIS | 冷启动、分发、传播路径。 |
-| 技术深坑 | `tech_pit` | OVERPASS / NUKE | 工程风险和复杂度。 |
-| 留存连接区 | `retention_connector` | ANUBIS | 留存、运营循环、反馈机制。 |
-
-### 9.4 约束
+### 9.3 约束
 
 - `zoneId` 必须稳定。
-- `zoneDisplayName` 中文优先。
-- 地图区域名应混合电竞地点和产品 / 技术 / 运营语义。
-- 完整区域列表留给 P2.2 或地图素材文档。
-- P1.1 示例可以使用少量示例区域。
+- 当前 fake provider 已产出的 `buyer_mid`、`conversion_site_a`、`token_economy` 必须在 P2.2 三图布局中存在。
+- 未知区域的 fallback 规则属于 P2.2，不反写 `RoundReport`。
 
 ## 10. 经济变化与提交额度
 
@@ -732,8 +656,8 @@ type ProjectedEvent = {
 
 | 事件类型 | 大类 | 来源字段 | 说明 |
 |---|---|---|---|
-| `kill_feed_created` | broadcast | `keyEvents.projectionHints` | 可投影击杀播报时生成。 |
-| `highlight_detected` | broadcast | `highlightTags`、`keyEvents.highlightWeight` | 形成高光候选。 |
+| `kill_feed_created` | broadcast | `keyEvents`、`TimelineEvent` | 可投影击杀播报时生成。 |
+| `highlight_detected` | broadcast | `highlightTags`、`keyEvents` | 形成高光候选。 |
 | `support_rate_updated` | broadcast | `judgeResult`、`keyEvents` | 支持率变化依据。 |
 
 ### 12.4 投影约束
@@ -750,8 +674,8 @@ type ProjectedEvent = {
 |---|---|---|
 | M08 事件日志 | `judgeResult`、`scoreAfterRound`、`economyDelta`、`keyEvents`、`eventProjection` | 拆解事实事件和包装候选。 |
 | M09 转播与伪直播 | `keyEvents`、`summary`、`highlightTags`、`agentOutputs.submittedOutputSummary` | 生成解说、弹幕、击杀播报、支持率。 |
-| M10 2D 战术渲染器 | `keyEvents.zone`、`keyEvents.impact`、`actionPhase`、`sequenceIndex` | 更新地图控制、路径和高光闪烁。 |
-| M11 数据统计与奖项 | `winnerTeamId`、`primaryActorAgentId`、`keyEvents`、`buyType`、`highlightTags` | 更新 rating、impact、clutch、经济效率。 |
+| M10 2D 战术渲染器 | `keyEvents[].zoneId`、`keyEvents[].type`、`keyEvents[].impact`、`keyEvents[].actorTeamId`、`keyEvents[].actorAgentId` | 更新地图控制、路径、agent 标记和高光闪烁。 |
+| M11 数据统计与奖项 | `winnerTeamId`、`judgeResult.mvpAgentId`、`keyEvents[].actorAgentId`、`buyType`、`highlightTags` | 更新 rating、impact、clutch、经济效率。 |
 | M12 新闻与媒体 | `summary`、`judgeResult`、`highlightTags`、`sourceAgentOutputIds` | 生成战报、快讯、复盘素材。 |
 
 ## 14. 示例一：普通回合
@@ -846,85 +770,24 @@ type ProjectedEvent = {
   "keyEvents": [
     {
       "id": "rke_004_001",
-      "type": "mid_control_breakthrough",
-      "displayName": "买家中路突破",
-      "description": "Ghost NAV Star 把 buyer 从泛用户压缩到招聘团队负责人，拿到买家中路控制权。",
+      "type": "entry",
+      "actorAgentId": "agent_nav_star",
       "actorTeamId": "team_ghost_nav",
-      "primaryActorAgentId": "agent_nav_star",
-      "actorAgentIds": ["agent_nav_star"],
-      "target": {
-        "targetType": "monetization_plan",
-        "targetId": "plan_fur_generic_meeting_recap",
-        "targetDisplayName": "Ghost FUR 泛会议复盘商业化方案"
-      },
-      "zone": {
-        "zoneId": "zone_mirage_buyer_mid",
-        "zoneName": "buyer_mid",
-        "zoneDisplayName": "买家中路",
-        "mapName": "MIRAGE",
-        "zoneRole": "mid"
-      },
-      "actionPhase": "opening",
-      "sequenceIndex": 1,
-      "impact": {
-        "controlDelta": 2,
-        "scorePressure": "medium",
-        "momentumDelta": "medium",
-        "statImpact": {
-          "impact": 1.2
-        }
-      },
-      "projectionHints": {
-        "canProjectToKillFeed": true,
-        "canProjectTo2D": true,
-        "canProjectToCaster": true,
-        "canProjectToBarrage": true,
-        "canProjectToHighlight": false,
-        "canProjectToStats": true
-      },
-      "highlightWeight": 45,
+      "targetAgentId": "agent_fur_igl",
+      "targetTeamId": "team_ghost_fur",
+      "zoneId": "buyer_mid",
+      "impact": "Ghost NAV Star 把 buyer 从泛用户压缩到招聘团队负责人，拿到买家中路控制权。",
       "sourceAgentOutputIds": ["ao_nav_star_004"]
     },
     {
       "id": "rke_004_002",
-      "type": "conversion_breakthrough",
-      "displayName": "转化 A 点突破",
-      "description": "Ghost NAV Support 补齐套餐、试点和转化路径，完成商业闭环。",
+      "type": "conversion",
+      "actorAgentId": "agent_nav_support",
       "actorTeamId": "team_ghost_nav",
-      "primaryActorAgentId": "agent_nav_support",
-      "actorAgentIds": ["agent_nav_support", "agent_nav_star"],
-      "target": {
-        "targetType": "zone",
-        "targetId": "zone_mirage_conversion_site_a",
-        "targetDisplayName": "转化 A 点"
-      },
-      "zone": {
-        "zoneId": "zone_mirage_conversion_site_a",
-        "zoneName": "conversion_site_a",
-        "zoneDisplayName": "转化 A 点",
-        "mapName": "MIRAGE",
-        "zoneRole": "site"
-      },
-      "actionPhase": "mid_round",
-      "sequenceIndex": 2,
-      "impact": {
-        "controlDelta": 3,
-        "scorePressure": "large",
-        "momentumDelta": "medium",
-        "statImpact": {
-          "support": 1.1,
-          "impact": 0.8
-        }
-      },
-      "projectionHints": {
-        "canProjectToKillFeed": true,
-        "canProjectTo2D": true,
-        "canProjectToCaster": true,
-        "canProjectToBarrage": true,
-        "canProjectToHighlight": true,
-        "canProjectToStats": true
-      },
-      "highlightWeight": 68,
+      "targetAgentId": "agent_fur_lurker",
+      "targetTeamId": "team_ghost_fur",
+      "zoneId": "conversion_site_a",
+      "impact": "Ghost NAV Support 补齐套餐、试点和转化路径，在转化 A 点完成商业闭环。",
       "sourceAgentOutputIds": ["ao_nav_support_004", "ao_nav_star_004"]
     }
   ],
@@ -1019,7 +882,7 @@ type ProjectedEvent = {
       {
         "eventType": "highlight_detected",
         "category": "broadcast",
-        "sourceFields": ["highlightTags", "keyEvents.highlightWeight"]
+        "sourceFields": ["highlightTags", "keyEvents"]
       },
       {
         "eventType": "support_rate_updated",
@@ -1034,7 +897,7 @@ type ProjectedEvent = {
 
 ## 15. 示例二：高光回合
 
-场景：ANUBIS 增长运营图，第 9 回合。Ghost FUR 低经济强起，Lurker 原始输出很长，但只能提交很短内容。提交内容被裁剪后仍抓住一个低成本增长入口，完成翻盘。
+场景：INFERNO 留存运营图，第 9 回合。Ghost FUR 低经济强起，Lurker 原始输出很长，但只能提交很短内容。提交内容被裁剪后仍抓住一个低成本增长入口，完成翻盘。
 
 ```json
 {
@@ -1044,7 +907,7 @@ type ProjectedEvent = {
   "mapGameId": "map_002",
   "roundId": "round_009",
   "roundNumber": 9,
-  "mapName": "ANUBIS",
+  "mapName": "INFERNO",
   "winnerTeamId": "team_ghost_fur",
   "scoreBeforeRound": {
     "teamA": 5,
@@ -1126,79 +989,23 @@ type ProjectedEvent = {
   "keyEvents": [
     {
       "id": "rke_009_001",
-      "type": "output_budget_trim",
-      "displayName": "强起截断",
-      "description": "Ghost FUR Lurker 原始输出超过一万 token，但强起预算只允许提交 220 token。",
+      "type": "economy_swing",
+      "actorAgentId": "agent_fur_lurker",
       "actorTeamId": "team_ghost_fur",
-      "primaryActorAgentId": "agent_fur_lurker",
-      "actorAgentIds": ["agent_fur_lurker"],
-      "target": {
-        "targetType": "economy_state",
-        "targetId": "eco_fur_round_009",
-        "targetDisplayName": "Ghost FUR 第 9 回合低经济状态"
-      },
-      "actionPhase": "closing",
-      "sequenceIndex": 1,
-      "impact": {
-        "economyDelta": -220,
-        "scorePressure": "large",
-        "momentumDelta": "small",
-        "statImpact": {
-          "economyEfficiency": 1.5
-        }
-      },
-      "projectionHints": {
-        "canProjectToKillFeed": false,
-        "canProjectTo2D": false,
-        "canProjectToCaster": true,
-        "canProjectToBarrage": true,
-        "canProjectToHighlight": true,
-        "canProjectToStats": true
-      },
-      "highlightWeight": 76,
+      "targetTeamId": "team_ghost_nav",
+      "zoneId": "token_economy",
+      "impact": "Ghost FUR Lurker 原始输出超过一万 token，但强起预算只允许提交 220 token，仍保留关键增长动作。",
       "sourceAgentOutputIds": ["ao_fur_lurker_009"]
     },
     {
       "id": "rke_009_002",
-      "type": "growth_backdoor",
-      "displayName": "增长长廊偷家",
-      "description": "Ghost FUR Lurker 用极短提交抓住“面试复盘模板”这个可转发增长资产，绕开了高成本投放。",
+      "type": "clutch",
+      "actorAgentId": "agent_fur_lurker",
       "actorTeamId": "team_ghost_fur",
-      "primaryActorAgentId": "agent_fur_lurker",
-      "actorAgentIds": ["agent_fur_lurker", "agent_fur_support"],
-      "target": {
-        "targetType": "growth_plan",
-        "targetId": "plan_nav_paid_growth_mix",
-        "targetDisplayName": "Ghost NAV 高成本组合增长方案"
-      },
-      "zone": {
-        "zoneId": "zone_anubis_growth_long",
-        "zoneName": "growth_long",
-        "zoneDisplayName": "增长长廊",
-        "mapName": "ANUBIS",
-        "zoneRole": "long"
-      },
-      "actionPhase": "closing",
-      "sequenceIndex": 2,
-      "impact": {
-        "controlDelta": 3,
-        "scorePressure": "large",
-        "momentumDelta": "large",
-        "statImpact": {
-          "impact": 1.8,
-          "clutch": 1.5,
-          "economyEfficiency": 2.0
-        }
-      },
-      "projectionHints": {
-        "canProjectToKillFeed": true,
-        "canProjectTo2D": true,
-        "canProjectToCaster": true,
-        "canProjectToBarrage": true,
-        "canProjectToHighlight": true,
-        "canProjectToStats": true
-      },
-      "highlightWeight": 92,
+      "targetAgentId": "agent_nav_star",
+      "targetTeamId": "team_ghost_nav",
+      "zoneId": "retention_connector",
+      "impact": "Ghost FUR Lurker 用极短提交抓住面试复盘模板这个可转发增长资产，在留存连接区完成残局收束。",
       "sourceAgentOutputIds": ["ao_fur_lurker_009", "ao_fur_support_009"]
     }
   ],
@@ -1264,7 +1071,7 @@ type ProjectedEvent = {
     "growth_steal",
     "output_trim_drama"
   ],
-  "summary": "Ghost FUR 在 ANUBIS 第 9 回合低经济强起，Lurker 的原始长方案被裁剪到 220 token，但仍保留了面试复盘模板这个低成本增长入口，完成增长长廊偷家并扳回一分。",
+  "summary": "Ghost FUR 在 INFERNO 第 9 回合低经济强起，Lurker 的原始长方案被裁剪到 220 token，但仍保留了面试复盘模板这个低成本增长入口，在留存连接区完成残局收束并扳回一分。",
   "eventProjection": {
     "coreEventsLinkedByRoundReport": [
       {
@@ -1297,7 +1104,7 @@ type ProjectedEvent = {
       {
         "eventType": "highlight_detected",
         "category": "broadcast",
-        "sourceFields": ["highlightTags", "keyEvents.highlightWeight"]
+        "sourceFields": ["highlightTags", "keyEvents"]
       },
       {
         "eventType": "support_rate_updated",
@@ -1315,7 +1122,7 @@ type ProjectedEvent = {
 以下问题不阻塞 P1.1 契约，但会影响后续专项文档：
 
 - 最终出招模式采用同时出招、固定先后手，还是多阶段回合。
-- P1.2 中具体经济公式、收入、阈值、Drop 和 Output Gate 已由 `docs/token-economy.md` 定义；P1.1 只引用结果。
+- P1.2 中具体经济公式、收入、阈值、Drop 和 Output Gate 已由 `docs/p1-match-loop/token-economy.md` 定义；P1.1 只引用结果。
 - P2.2 中每张地图的具体 zone 列表和 2D 坐标。
 - P2.3 中解说、弹幕、支持率变化的生成策略。
 - P1.4 中模拟引擎如何选择 active agents 和 actionPhase。

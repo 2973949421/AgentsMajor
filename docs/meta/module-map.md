@@ -1,10 +1,10 @@
-﻿# Agent Major 全模块地图 v1
+# Agent Major 全模块地图 v1
 
 ## 1. 模块划分原则
 
 这份文档只做一件事：把 Agent Major 的所有模块放到同一张图里，并说明模块之间的输入、输出和依赖关系。
 
-这份文档是总览索引，不参与 `P0/P1/P2` 的实施编号。后续优先级、排期和工程任务以 `docs/priority-roadmap.md` 为准。
+这份文档是总览索引，不参与 `P0/P1/P2` 的实施编号。后续优先级、排期和工程任务以 `docs/meta/priority-roadmap.md` 为准。
 
 核心边界：
 

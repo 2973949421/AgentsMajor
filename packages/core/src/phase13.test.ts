@@ -37,6 +37,27 @@ describe("Phase 1.3 BO3 match chain", () => {
       expect(mapReplay.eventCounts.timeline).toBeGreaterThan(0);
     }
 
+    const genericTags = new Set(["phase11_demo", "phase12_demo", "team_a_round", "team_b_round"]);
+    const roundReports = replay.maps.flatMap((mapReplay) => mapReplay.rounds.map((roundReplay) => roundReplay.roundReport));
+    expect(roundReports.every((report) => !report.summary.includes("Phase 1.2") && !report.judgeResult.reason.includes("Phase 1.2"))).toBe(true);
+    expect(
+      roundReports.every((report) => (report.highlightTags ?? []).length > 0 && (report.highlightTags ?? []).every((tag) => !genericTags.has(tag)))
+    ).toBe(true);
+    expect(roundReports.some((report) => report.highlightTags?.includes("overtime_round"))).toBe(true);
+    expect(roundReports.some((report) => report.keyEvents.some((event) => event.type === "economy_swing"))).toBe(true);
+
+    const firstRound = replay.maps[0]?.rounds[0];
+    const highlightTimeline = firstRound?.timelineEvents.find((event) => event.kind === "highlight_reveal");
+    expect(highlightTimeline?.payload).toMatchObject({
+      tags: firstRound?.roundReport.highlightTags,
+      reason: firstRound?.roundReport.judgeResult.reason
+    });
+    for (const mapReplay of replay.maps) {
+      const keyRounds = (mapReplay.mapSummary?.payload as { keyRounds?: Array<{ highlightTags?: string[]; summary?: string }> } | undefined)?.keyRounds ?? [];
+      expect(keyRounds.length).toBeGreaterThan(0);
+      expect(keyRounds.every((round) => (round.highlightTags ?? []).some((tag) => !genericTags.has(tag)) && typeof round.summary === "string")).toBe(true);
+    }
+
     const events = await repositories.events.listByMatch(phase11DemoIds.matchId);
     expect(events.some((event) => event.type === "match_completed")).toBe(true);
     const eventIds = new Set(events.map((event) => event.id));

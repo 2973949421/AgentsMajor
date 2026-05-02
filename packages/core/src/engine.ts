@@ -530,12 +530,16 @@ class Phase12SimulationEngine implements SimulationEngine {
     const economyStates = economyDelta.agents.map((delta) => economyStateFromDelta(delta, mapGame.id, roundId, now));
     const keyEvents = buildKeyEvents({
       roundId,
+      roundNumber,
       winnerTeamId,
       loserTeamId,
       activeA,
       activeB,
       agentOutputs,
-      mvpAgentId: judgeResult.mvpAgentId
+      mvpAgentId: judgeResult.mvpAgentId,
+      economyDelta,
+      teamABuyType,
+      teamBBuyType
     });
 
     return {
@@ -689,6 +693,18 @@ class Phase12SimulationEngine implements SimulationEngine {
             })
           );
         }
+        const highlightTags = buildHighlightTags({
+          roundNumber: round.roundNumber,
+          winnerTeamId: generation.judgeResult.winnerTeamId,
+          teamAId: teamA.id,
+          teamBId: teamB.id,
+          scoreBeforeRound: generation.scoreBeforeRound,
+          scoreAfterRound: generation.scoreAfterRound,
+          judgeResult: generation.judgeResult,
+          economyDelta: generation.economyDelta,
+          teamABuyType: generation.teamABuyType,
+          teamBBuyType: generation.teamBBuyType
+        });
         const highlightEvent = await this.appendEvent({
           id: `evt_${round.id}_highlight_detected`,
           type: "highlight_detected",
@@ -702,8 +718,9 @@ class Phase12SimulationEngine implements SimulationEngine {
           payload: {
             schemaVersion: 1,
             roundId: round.id,
-            tags: ["phase12_demo", generation.judgeResult.margin === "decisive" ? "decisive_round" : "swing_round"],
-            mvpAgentId: generation.judgeResult.mvpAgentId
+            tags: highlightTags,
+            mvpAgentId: generation.judgeResult.mvpAgentId,
+            reason: generation.judgeResult.reason
           },
           createdAt: now
         });
@@ -743,18 +760,23 @@ class Phase12SimulationEngine implements SimulationEngine {
             totalOutputBudget: generation.economyStates.reduce((sum, state) => sum + (state.outputBudget ?? 0), 0),
             outputGate: {
               applied: true,
-              reason: "Phase 1.2 deterministic output gate"
+              reason: "本地确定性输出闸门：按 active agent 与本回合购买态势限制输出预算。"
             }
           },
-          highlightTags: ["phase12_demo", generation.judgeResult.winnerTeamId === teamA.id ? "team_a_round" : "team_b_round"],
+          highlightTags,
           summary: buildSummary({
+            roundNumber: round.roundNumber,
             winnerTeamId: generation.judgeResult.winnerTeamId,
             teamA,
             teamB,
             mapName: mapGame.mapName,
             keyEvents: generation.keyEvents,
+            scoreBeforeRound: generation.scoreBeforeRound,
             scoreAfterRound: generation.scoreAfterRound,
-            sideContext: generation.sideContext
+            sideContext: generation.sideContext,
+            teamABuyType: generation.teamABuyType,
+            teamBBuyType: generation.teamBBuyType,
+            highlightTags
           }),
           eventProjection: {
             coreEventsLinkedByRoundReport: coreProjection,
@@ -777,7 +799,9 @@ class Phase12SimulationEngine implements SimulationEngine {
             schemaVersion: 1,
             roundReportId: roundReport.id,
             summary: roundReport.summary,
-            keyEventCount: roundReport.keyEvents.length
+            keyEventCount: roundReport.keyEvents.length,
+            highlightTags: roundReport.highlightTags ?? [],
+            judgeReason: roundReport.judgeResult.reason
           },
           createdAt: now
         });
@@ -939,7 +963,7 @@ class Phase12SimulationEngine implements SimulationEngine {
         mapGameId: input.mapGame.id,
         summaryId: summary.id,
         runControlState: "map_review_window",
-        reason: "Phase 1.2 map completed and awaits review confirmation."
+        reason: "地图已完成，进入本地回放复盘窗口。"
       },
       createdAt: input.completedAt
     });
@@ -1114,11 +1138,22 @@ class Phase12SimulationEngine implements SimulationEngine {
       temperature: 0
     });
 
+    const margin: JudgeResult["margin"] = input.roundNumber % 3 === 0 ? "decisive" : "standard";
+
     return {
       winnerTeamId,
       loserTeamId,
-      margin: input.roundNumber % 3 === 0 ? "decisive" : "standard",
-      reason: `Round ${input.roundNumber} resolved by deterministic Phase 1.2 judge.`,
+      margin,
+      reason: buildJudgeReason({
+        mapName: input.mapGame.mapName,
+        roundNumber: input.roundNumber,
+        scoreBeforeRound: input.scoreBeforeRound,
+        teamA: input.teamA,
+        teamB: input.teamB,
+        winnerTeamId,
+        mvpAgent,
+        margin
+      }),
       mvpAgentId: mvpAgent.id,
       confidence: 0.84
     };
@@ -1244,17 +1279,50 @@ function economyStateFromDelta(delta: AgentEconomyDelta, mapGameId: string, roun
   };
 }
 
+function buildJudgeReason(input: {
+  mapName: string;
+  roundNumber: number;
+  scoreBeforeRound: ScorePair;
+  teamA: Team;
+  teamB: Team;
+  winnerTeamId: string;
+  mvpAgent: Agent;
+  margin: JudgeResult["margin"];
+}): string {
+  const winnerName = input.winnerTeamId === input.teamA.id ? input.teamA.displayName : input.teamB.displayName;
+  const scoreAfterRound = advanceScore(input.scoreBeforeRound, input.winnerTeamId, input.teamA.id);
+  const pressureLine = describeScorePressure({
+    roundNumber: input.roundNumber,
+    winnerTeamId: input.winnerTeamId,
+    teamAId: input.teamA.id,
+    scoreBeforeRound: input.scoreBeforeRound,
+    scoreAfterRound
+  });
+  const marginLine = input.margin === "decisive" ? "判定为明确优势回合" : input.margin === "narrow" ? "判定为窄胜回合" : "判定为标准优势回合";
+  return `${winnerName} 在 ${input.mapName} 第 ${input.roundNumber} 回合拿分，${input.mvpAgent.displayName} 是本回合 MVP 判定核心；比分 ${formatScore(input.scoreBeforeRound)} -> ${formatScore(scoreAfterRound)}，${pressureLine}，${marginLine}。`;
+}
+
 function buildKeyEvents(input: {
   roundId: string;
+  roundNumber: number;
   winnerTeamId: string;
   loserTeamId: string;
   activeA: Agent[];
   activeB: Agent[];
   agentOutputs: AgentOutput[];
   mvpAgentId: string;
+  economyDelta: RoundReport["economyDelta"];
+  teamABuyType: BuyType;
+  teamBBuyType: BuyType;
 }): RoundKeyEvent[] {
-  const winnerAgents = input.winnerTeamId === input.activeA[0]?.teamId ? input.activeA : input.activeB;
-  const loserAgents = input.loserTeamId === input.activeA[0]?.teamId ? input.activeA : input.activeB;
+  const teamAId = input.activeA[0]?.teamId;
+  const teamBId = input.activeB[0]?.teamId;
+  if (!teamAId || !teamBId) {
+    throw new Error("Cannot build key events without both active teams.");
+  }
+
+  const winnerAgents = input.winnerTeamId === teamAId ? input.activeA : input.activeB;
+  const loserAgents = input.loserTeamId === teamAId ? input.activeA : input.activeB;
   const entryAgent = winnerAgents.find((agent) => agent.role === "entry") ?? winnerAgents[0];
   const mvpAgent = winnerAgents.find((agent) => agent.id === input.mvpAgentId) ?? winnerAgents[0];
   const targetAgent = loserAgents[0];
@@ -1262,7 +1330,8 @@ function buildKeyEvents(input: {
     throw new Error("Cannot build key events without active winner and loser agents.");
   }
 
-  return [
+  const lateEventType: RoundKeyEvent["type"] = input.roundNumber > mr6MapRules.regularRounds || input.roundNumber % 3 === 0 ? "clutch" : "conversion";
+  const events: RoundKeyEvent[] = [
     {
       id: `ke_${input.roundId}_entry`,
       type: "entry",
@@ -1271,21 +1340,106 @@ function buildKeyEvents(input: {
       targetAgentId: targetAgent.id,
       targetTeamId: input.loserTeamId,
       zoneId: "buyer_mid",
-      impact: `${entryAgent.displayName} opens Buyer Mid control.`,
+      impact: `${entryAgent.displayName} 在 Buyer Mid 打开入口控制，迫使 ${targetAgent.displayName} 所在防线提前回收。`,
       sourceAgentOutputIds: sourceOutputIds(input.agentOutputs, entryAgent.id)
     },
     {
-      id: `ke_${input.roundId}_clutch`,
-      type: "clutch",
+      id: `ke_${input.roundId}_${lateEventType}`,
+      type: lateEventType,
       actorAgentId: mvpAgent.id,
       actorTeamId: input.winnerTeamId,
       targetAgentId: targetAgent.id,
       targetTeamId: input.loserTeamId,
       zoneId: "conversion_site_a",
-      impact: `${mvpAgent.displayName} converts the late round at Site A.`,
+      impact: `${mvpAgent.displayName} 在 Conversion Site A 完成${lateEventType === "clutch" ? "残局收束" : "优势转化"}，把回合推进为有效得分。`,
       sourceAgentOutputIds: sourceOutputIds(input.agentOutputs, mvpAgent.id)
     }
   ];
+
+  const winnerBuyType = buyTypeForTeam(input.winnerTeamId, teamAId, input.teamABuyType, input.teamBBuyType);
+  const loserBuyType = buyTypeForTeam(input.loserTeamId, teamAId, input.teamABuyType, input.teamBBuyType);
+  if (isEconomySwing(input.economyDelta) || winnerBuyType !== loserBuyType) {
+    const winnerEconomyDelta = economyTotalForTeam(input.economyDelta, input.winnerTeamId, teamAId);
+    const loserEconomyDelta = economyTotalForTeam(input.economyDelta, input.loserTeamId, teamAId);
+    events.push({
+      id: `ke_${input.roundId}_economy`,
+      type: "economy_swing",
+      actorAgentId: mvpAgent.id,
+      actorTeamId: input.winnerTeamId,
+      targetTeamId: input.loserTeamId,
+      zoneId: "token_economy",
+      impact: `${mvpAgent.displayName} 带队用 ${formatBuyType(winnerBuyType)} 对抗 ${formatBuyType(loserBuyType)}，回合后相对经济变化 ${formatSignedNumber(winnerEconomyDelta - loserEconomyDelta)}。`,
+      sourceAgentOutputIds: sourceOutputIds(input.agentOutputs, mvpAgent.id)
+    });
+  }
+
+  return events;
+}
+
+function buildHighlightTags(input: {
+  roundNumber: number;
+  winnerTeamId: string;
+  teamAId: string;
+  teamBId: string;
+  scoreBeforeRound: ScorePair;
+  scoreAfterRound: ScorePair;
+  judgeResult: JudgeResult;
+  economyDelta: RoundReport["economyDelta"];
+  teamABuyType: BuyType;
+  teamBBuyType: BuyType;
+}): string[] {
+  const tags = new Set<string>();
+  tags.add(input.judgeResult.margin === "decisive" ? "decisive_round" : input.judgeResult.margin === "narrow" ? "narrow_round" : "round_conversion");
+
+  const targetScore = mapWinTargetForRound(input.roundNumber);
+  const winnerBefore = scoreForTeam(input.scoreBeforeRound, input.winnerTeamId, input.teamAId);
+  const loserBefore = scoreForTeam(input.scoreBeforeRound, input.winnerTeamId === input.teamAId ? input.teamBId : input.teamAId, input.teamAId);
+  const winnerAfter = scoreForTeam(input.scoreAfterRound, input.winnerTeamId, input.teamAId);
+
+  if (input.roundNumber > mr6MapRules.regularRounds) {
+    tags.add("overtime_round");
+  }
+  if (winnerAfter >= targetScore) {
+    tags.add("map_closeout");
+  }
+  if (winnerBefore === targetScore - 1) {
+    tags.add("map_point_conversion");
+  }
+  if (loserBefore >= targetScore - 1) {
+    tags.add("map_point_denial");
+  }
+  if (winnerBefore === loserBefore) {
+    tags.add("lead_take");
+  } else if (winnerBefore < loserBefore && winnerAfter === loserBefore) {
+    tags.add("score_equalizer");
+  } else if (winnerBefore < loserBefore) {
+    tags.add("deficit_reduction");
+  }
+  if (input.roundNumber === mr6MapRules.roundsPerHalf + 1) {
+    tags.add("side_switch_round");
+  }
+  if (isOvertimeEconomyResetRound(input.roundNumber)) {
+    tags.add("overtime_reset");
+  }
+
+  const loserTeamId = input.winnerTeamId === input.teamAId ? input.teamBId : input.teamAId;
+  const winnerBuyType = buyTypeForTeam(input.winnerTeamId, input.teamAId, input.teamABuyType, input.teamBBuyType);
+  const loserBuyType = buyTypeForTeam(loserTeamId, input.teamAId, input.teamABuyType, input.teamBBuyType);
+  if (winnerBuyType === "forceBuy" || winnerBuyType === "eco") {
+    tags.add("force_buy_conversion");
+  } else if (winnerBuyType === "halfBuy") {
+    tags.add("half_buy_conversion");
+  } else if (winnerBuyType === "fullBuy") {
+    tags.add("full_buy_conversion");
+  }
+  if (loserBuyType === "fullBuy" && winnerBuyType !== "fullBuy") {
+    tags.add("buy_disadvantage_win");
+  }
+  if (isEconomySwing(input.economyDelta)) {
+    tags.add("economy_swing");
+  }
+
+  return [...tags];
 }
 
 function buildTimelineEvents(input: {
@@ -1327,8 +1481,14 @@ function buildTimelineEvents(input: {
       payload: {
         roundNumber: input.round.roundNumber,
         mapName: input.mapGame.mapName,
+        headline: buildRoundHeadline(input.mapGame.mapName, input.roundReport),
         scoreBeforeRound: input.roundReport.scoreBeforeRound,
-        sideContext: input.sideContext
+        sideContext: input.sideContext,
+        phaseLabel: formatSidePhase(input.sideContext.phase),
+        buyTypes: {
+          teamA: input.round.teamABuyType,
+          teamB: input.round.teamBBuyType
+        }
       }
     },
     {
@@ -1337,6 +1497,8 @@ function buildTimelineEvents(input: {
       durationMs: 3000,
       sourceEventIds: [input.scoreEvent.id],
       payload: {
+        winnerTeamId: input.roundReport.winnerTeamId,
+        scoreBeforeRound: input.roundReport.scoreBeforeRound,
         scoreAfterRound: input.roundReport.scoreAfterRound
       }
     },
@@ -1346,7 +1508,8 @@ function buildTimelineEvents(input: {
       durationMs: 5000,
       sourceEventIds: [input.economyEvent.id],
       payload: {
-        economyDelta: input.roundReport.economyDelta
+        economyDelta: input.roundReport.economyDelta,
+        economySwing: input.roundReport.economyDelta.teamTotals.teamA - input.roundReport.economyDelta.teamTotals.teamB
       }
     },
     ...input.killFeedEvents.map((event, index) => ({
@@ -1362,7 +1525,9 @@ function buildTimelineEvents(input: {
       durationMs: 7000,
       sourceEventIds: [input.roundReportEvent.id],
       payload: {
-        text: input.roundReport.summary
+        text: input.roundReport.summary,
+        reason: input.roundReport.judgeResult.reason,
+        tags: input.roundReport.highlightTags ?? []
       }
     },
     {
@@ -1372,7 +1537,8 @@ function buildTimelineEvents(input: {
       sourceEventIds: [input.highlightEvent.id],
       payload: {
         tags: input.roundReport.highlightTags ?? [],
-        mvpAgentId: input.roundReport.judgeResult.mvpAgentId
+        mvpAgentId: input.roundReport.judgeResult.mvpAgentId,
+        reason: input.roundReport.judgeResult.reason
       }
     },
     {
@@ -1382,7 +1548,10 @@ function buildTimelineEvents(input: {
       sourceEventIds: [input.roundCompletedEvent.id],
       payload: {
         winnerTeamId: input.roundReport.winnerTeamId,
-        scoreAfterRound: input.roundReport.scoreAfterRound
+        scoreBeforeRound: input.roundReport.scoreBeforeRound,
+        scoreAfterRound: input.roundReport.scoreAfterRound,
+        summary: input.roundReport.summary,
+        highlightTags: input.roundReport.highlightTags ?? []
       }
     },
     {
@@ -1405,18 +1574,26 @@ function buildTimelineEvents(input: {
 }
 
 function buildSummary(input: {
+  roundNumber: number;
   winnerTeamId: string;
   teamA: Team;
   teamB: Team;
   mapName: string;
   keyEvents: RoundKeyEvent[];
+  scoreBeforeRound: ScorePair;
   scoreAfterRound: ScorePair;
   sideContext: SideContext;
+  teamABuyType: BuyType;
+  teamBBuyType: BuyType;
+  highlightTags: string[];
 }): string {
   const winnerName = input.winnerTeamId === input.teamA.id ? input.teamA.displayName : input.teamB.displayName;
-  const keyLine = input.keyEvents.map((event) => event.impact).join(" ");
+  const winnerBuyType = input.winnerTeamId === input.teamA.id ? input.teamABuyType : input.teamBBuyType;
+  const loserBuyType = input.winnerTeamId === input.teamA.id ? input.teamBBuyType : input.teamABuyType;
+  const keyLine = input.keyEvents.slice(0, 2).map((event) => event.impact).join(" ");
   const sideLine = input.sideContext.activeSide === "teamA" ? `${input.teamA.shortName} 主动侧` : `${input.teamB.shortName} 主动侧`;
-  return `${winnerName} 在 ${input.mapName} 完成 Phase 1.2 回合推进。${sideLine}。${keyLine} 当前比分 ${input.scoreAfterRound.teamA}-${input.scoreAfterRound.teamB}。`;
+  const highlightLine = summarizeHighlightTags(input.highlightTags);
+  return `${winnerName} 在 ${input.mapName} 第 ${input.roundNumber} 回合完成收束，比分 ${formatScore(input.scoreBeforeRound)} -> ${formatScore(input.scoreAfterRound)}。${sideLine}，购买对位为 ${formatBuyType(winnerBuyType)} 对 ${formatBuyType(loserBuyType)}。关键事件：${keyLine}${highlightLine}`;
 }
 
 function buildMapSummary(input: {
@@ -1431,17 +1608,16 @@ function buildMapSummary(input: {
 }): Summary {
   const winnerName = input.winnerTeamId === input.teamA.id ? input.teamA.displayName : input.teamB.displayName;
   const mvpAgentId = mostFrequent(input.roundReports.map((report) => report.judgeResult.mvpAgentId));
-  const keyRounds = input.roundReports
-    .filter((report) => report.judgeResult.margin === "decisive" || report.highlightTags?.includes("team_a_round"))
-    .slice(-4)
-    .map((report) => ({
-      roundNumber: report.roundNumber,
-      winnerTeamId: report.winnerTeamId,
-      scoreAfterRound: report.scoreAfterRound,
-      reason: report.judgeResult.reason
-    }));
+  const keyRounds = selectKeyRoundReports(input.roundReports).map((report) => ({
+    roundNumber: report.roundNumber,
+    winnerTeamId: report.winnerTeamId,
+    scoreAfterRound: report.scoreAfterRound,
+    reason: report.judgeResult.reason,
+    highlightTags: report.highlightTags ?? [],
+    summary: report.summary
+  }));
   const economySwingRounds = input.roundReports
-    .filter((report) => Math.abs(report.economyDelta.teamTotals.teamA - report.economyDelta.teamTotals.teamB) >= 2000)
+    .filter((report) => isEconomySwing(report.economyDelta))
     .slice(-3)
     .map((report) => report.roundNumber);
   const finalScore = `${input.mapGame.teamAScore}-${input.mapGame.teamBScore}`;
@@ -1470,6 +1646,151 @@ function buildMapSummary(input: {
     sourceEventIds: [...new Set(input.sourceEventIds)],
     createdAt: input.createdAt
   };
+}
+
+function selectKeyRoundReports(roundReports: RoundReport[]): RoundReport[] {
+  const selected = roundReports
+    .map((report) => ({ report, score: keyRoundScore(report) }))
+    .filter((item) => item.score > 0)
+    .sort((left, right) => right.score - left.score || right.report.roundNumber - left.report.roundNumber)
+    .slice(0, 4)
+    .map((item) => item.report)
+    .sort((left, right) => left.roundNumber - right.roundNumber);
+
+  return selected.length > 0 ? selected : roundReports.slice(-4);
+}
+
+function keyRoundScore(report: RoundReport): number {
+  const tags = new Set(report.highlightTags ?? []);
+  let score = 0;
+  if (tags.has("map_closeout")) score += 10;
+  if (tags.has("map_point_conversion")) score += 7;
+  if (tags.has("map_point_denial")) score += 6;
+  if (tags.has("overtime_round")) score += 5;
+  if (tags.has("decisive_round")) score += 4;
+  if (tags.has("economy_swing")) score += 3;
+  if (tags.has("force_buy_conversion") || tags.has("buy_disadvantage_win")) score += 3;
+  if (tags.has("lead_take") || tags.has("score_equalizer")) score += 2;
+  return score;
+}
+
+function summarizeHighlightTags(tags: string[]): string {
+  if (tags.includes("map_closeout")) {
+    return " 这是本图收官回合。";
+  }
+  if (tags.includes("map_point_denial")) {
+    return " 这一分顶住了对手局点压力。";
+  }
+  if (tags.includes("force_buy_conversion") || tags.includes("buy_disadvantage_win")) {
+    return " 这一分的重点是低配购买打出超额回报。";
+  }
+  if (tags.includes("economy_swing")) {
+    return " 回合结果会明显改变双方经济压力。";
+  }
+  return " 回合结果已写入时间线和地图摘要。";
+}
+
+function buildRoundHeadline(mapName: string, roundReport: RoundReport): string {
+  return `${mapName} R${roundReport.roundNumber}: ${formatScore(roundReport.scoreBeforeRound)} -> ${formatScore(roundReport.scoreAfterRound)}`;
+}
+
+function formatSidePhase(phase: SideContext["phase"]): string {
+  switch (phase) {
+    case "regular_first_half":
+      return "常规上半场";
+    case "regular_second_half":
+      return "常规下半场";
+    case "overtime":
+      return "加时";
+  }
+}
+
+function describeScorePressure(input: {
+  roundNumber: number;
+  winnerTeamId: string;
+  teamAId: string;
+  scoreBeforeRound: ScorePair;
+  scoreAfterRound: ScorePair;
+}): string {
+  const targetScore = mapWinTargetForRound(input.roundNumber);
+  const winnerBefore = scoreForTeam(input.scoreBeforeRound, input.winnerTeamId, input.teamAId);
+  const loserBefore = input.winnerTeamId === input.teamAId ? input.scoreBeforeRound.teamB : input.scoreBeforeRound.teamA;
+  const winnerAfter = scoreForTeam(input.scoreAfterRound, input.winnerTeamId, input.teamAId);
+
+  if (winnerAfter >= targetScore) {
+    return "直接完成地图收官";
+  }
+  if (winnerBefore === targetScore - 1) {
+    return "兑现自己的局点机会";
+  }
+  if (loserBefore >= targetScore - 1) {
+    return "顶住对手局点压力";
+  }
+  if (input.roundNumber > mr6MapRules.regularRounds) {
+    return "加时阶段完成关键交换";
+  }
+  if (winnerBefore < loserBefore && winnerAfter === loserBefore) {
+    return "把比分重新拉平";
+  }
+  if (winnerBefore === loserBefore) {
+    return "从平分局建立领先";
+  }
+  return "延续当前比分压力";
+}
+
+function advanceScore(score: ScorePair, winnerTeamId: string, teamAId: string): ScorePair {
+  return {
+    teamA: score.teamA + (winnerTeamId === teamAId ? 1 : 0),
+    teamB: score.teamB + (winnerTeamId === teamAId ? 0 : 1)
+  };
+}
+
+function scoreForTeam(score: ScorePair, teamId: string, teamAId: string): number {
+  return teamId === teamAId ? score.teamA : score.teamB;
+}
+
+function mapWinTargetForRound(roundNumber: number): number {
+  if (roundNumber <= mr6MapRules.regularRounds) {
+    return mr6MapRules.mapWinScore;
+  }
+
+  const overtimeCycle = Math.floor((roundNumber - mr6MapRules.regularRounds - 1) / mr6MapRules.overtimeMaxRounds);
+  return 6 + overtimeCycle * mr6MapRules.overtimeRoundsPerHalf + mr6MapRules.overtimeWinScore;
+}
+
+function isEconomySwing(economyDelta: RoundReport["economyDelta"]): boolean {
+  return Math.abs(economyDelta.teamTotals.teamA - economyDelta.teamTotals.teamB) >= 2000;
+}
+
+function economyTotalForTeam(economyDelta: RoundReport["economyDelta"], teamId: string, teamAId: string): number {
+  return teamId === teamAId ? economyDelta.teamTotals.teamA : economyDelta.teamTotals.teamB;
+}
+
+function buyTypeForTeam(teamId: string, teamAId: string, teamABuyType: BuyType, teamBBuyType: BuyType): BuyType {
+  return teamId === teamAId ? teamABuyType : teamBBuyType;
+}
+
+function formatBuyType(buyType: BuyType): string {
+  switch (buyType) {
+    case "fullBuy":
+      return "全甲全弹";
+    case "halfBuy":
+      return "半起";
+    case "forceBuy":
+      return "强起";
+    case "save":
+      return "保枪";
+    case "eco":
+      return "经济局";
+  }
+}
+
+function formatScore(score: ScorePair): string {
+  return `${score.teamA}-${score.teamB}`;
+}
+
+function formatSignedNumber(value: number): string {
+  return value >= 0 ? `+${value}` : `${value}`;
 }
 
 function buildMatchSummary(input: {

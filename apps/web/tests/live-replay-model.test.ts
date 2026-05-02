@@ -66,12 +66,16 @@ describe("Phase 1.4 live replay model", () => {
     const semanticTagMap = mapReplay([
       roundItem(1, [timelineEvent({ id: "semantic", kind: "highlight_reveal", payload: { tags: ["force_buy_clutch"] } })])
     ]);
+    const semanticReportRound = roundItem(1, []);
+    semanticReportRound.roundReport.highlightTags = ["map_point_conversion"];
+    const semanticReportMap = mapReplay([semanticReportRound]);
 
     expect(findNextHighlightRoundIndex(keyRoundMap, 0)).toBe(1);
     expect(findNextHighlightRoundIndex(keyRoundMap, 1)).toBe(1);
     expect(findNextHighlightRoundIndex(keyRoundMap, 2)).toBe(1);
     expect(findNextHighlightRoundIndex(genericOnlyMap, 0)).toBeNull();
     expect(findNextHighlightRoundIndex(semanticTagMap, 0)).toBe(0);
+    expect(findNextHighlightRoundIndex(semanticReportMap, 0)).toBe(0);
     expect(getNextRoundIndex(keyRoundMap, 1)).toBe(2);
     expect(getNextRoundIndex(keyRoundMap, 2)).toBeNull();
   });

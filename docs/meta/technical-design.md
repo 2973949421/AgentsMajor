@@ -439,21 +439,16 @@ type RoundReport = {
   };
   keyEvents: Array<{
     type:
-      | "mid_control_breakthrough"
-      | "counter_play"
-      | "clutch_finish"
-      | "coach_adjustment"
-      | "support_repair"
-      | "lurker_steal"
-      | "economy_pressure"
-      | "conversion_breakthrough"
-      | "technical_risk_breakdown"
-      | "growth_backdoor";
+      | "entry"
+      | "trade"
+      | "clutch"
+      | "economy_swing"
+      | "conversion"
+      | "highlight";
     actorAgentId: string;
     targetAgentId?: string;
-    zone: string;
+    zoneId: string;
     impact: string;
-    controlDelta?: number;
   }>;
   economyDelta: {
     teamA: number;
@@ -565,7 +560,7 @@ MR3
 
 ### Token 经济建议
 
-第一版经济系统以 Agent 为主体。团队经济只是队内 Agent `tokenBank` 的加总展示，不是购买主体。完整规则以 `docs/token-economy.md` 为准。
+第一版经济系统以 Agent 为主体。团队经济只是队内 Agent `tokenBank` 的加总展示，不是购买主体。完整规则以 `docs/p1-match-loop/token-economy.md` 为准。
 
 ```text
 agentTokenCap: 16000
@@ -1045,9 +1040,9 @@ Support rate is an entertainment metric, not betting odds.
 
 现在不要先做完整 16 队，也不要先做复杂新闻站。
 
-P / Phase 的具体协作规则以 `docs/p-phase-delivery-framework.md` 为准。P0-P4 是模块契约优先级，Phase 0-4 是工程交付阶段，二者互相勾稽但不一一对应。
+P / Phase 的具体协作规则以 `docs/meta/p-phase-delivery-framework.md` 为准。P0-P4 是模块契约优先级，Phase 0-4 是工程交付阶段，二者互相勾稽但不一一对应。
 
-当前推进状态是：P0 / P1 / P2.1 已完成，Phase 1.0 / 1.1 / 1.2 / 1.3 已完成。项目已经从“工程骨架和单回合 replay”推进到“BO3 match replay”。下一步主线应进入 Phase 1.4：极简伪直播 demo。
+当前推进状态是：P0 / P1 / P2.1 / P2.2 已完成，Phase 1.0 / 1.1 / 1.2 / 1.3 / 1.4 基础版已完成，Phase 1.4 播放结果的内容质量与事件可信度也已完成第一轮收口。项目已经从“工程骨架和单回合 replay”推进到“BO3 match replay + 极简伪直播播放器 + 可消费的赛事语义事件 + 2D 战术地图消费契约”。下一步主线应补 P2.3，明确转播系统如何消费现有事实源。
 
 P2.1 之后的工作模式仍然是“代码主线，文档随行”：只有当实现会改变核心契约时，才先补文档再写代码。核心契约包括 EventType / payload、RoundReport、状态机、Token 经济、DriverModel 接口、SQLite 核心表和 Event -> TimelineEvent 投影。Repository 内部实现、fake provider 样例、CLI 输出、极简页面布局和测试 seed 不应阻塞代码推进。
 
@@ -1061,7 +1056,10 @@ P2.1 之后的工作模式仍然是“代码主线，文档随行”：只有当
 已完成：单回合 replay。
 已完成：单张地图 replay。
 已完成：BO3 fake provider。
-当前：做极简伪直播 demo 消费 timeline events。
+已完成：极简伪直播播放器基础版消费 timeline events。
+已完成：收口 RoundReport / TimelineEvent / keyRounds / highlight 的赛事可信度。
+已完成：P2.2 2D 战术地图说明。
+当前：补 P2.3，定义转播系统边界。
 之后：再接真实 LLM。
 之后：再扩展 16 队 bracket 和外围生态。
 ```

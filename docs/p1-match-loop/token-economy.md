@@ -260,12 +260,12 @@ dropAmount <= agentTokenCap - receiver.tokenBank
 
 | RoundKeyEventType | 赏金 |
 |---|---:|
-| `mid_control_breakthrough` | `+600` |
-| `counter_play` | `+700` |
-| `clutch_finish` | `+1200` |
-| `support_repair` | `+500` |
-| `conversion_breakthrough` | `+900` |
-| `coach_adjustment` | `+1000` |
+| `entry` | `+600` |
+| `trade` | `+700` |
+| `clutch` | `+1200` |
+| `economy_swing` | `+800` |
+| `conversion` | `+900` |
+| `highlight` | `+1000` |
 
 扩展接口：
 
