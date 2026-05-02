@@ -1,0 +1,84 @@
+{
+  "slug": "xielo",
+  "entity_id": "player_parivision_omni_xielo",
+  "entity_type": "player",
+  "team_id": "team_parivision_omni",
+  "real_name": null,
+  "in_game_id": "xiELO",
+  "display_name": "xiELO",
+  "role": "support",
+  "status": "active",
+  "aliases": [
+    "xiELO"
+  ],
+  "meme_tags": [
+    "系统补丁"
+  ],
+  "persona_tags": [
+    "glue-piece",
+    "utility-worker",
+    "structure-piece"
+  ],
+  "playstyle_tags": [
+    "trade-layer",
+    "utility-setup",
+    "utility-net",
+    "hold-line"
+  ],
+  "caster_focus_tags": [
+    "machine_map_point_pressure"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "upset-watch",
+    "research-chaos"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "更像结构补丁的一环，让这支队的慢和稳不至于散。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "research-chaos",
+      "glue-piece",
+      "utility-worker",
+      "structure-piece"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "trade-layer",
+      "utility-setup",
+      "utility-net",
+      "hold-line",
+      "glue-piece",
+      "utility-worker",
+      "structure-piece"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "系统补丁",
+      "upset-watch",
+      "research-chaos"
+    ],
+    "card_priority": 43,
+    "broadcast_entry_points": [
+      "machine_map_point_pressure"
+    ]
+  },
+  "canon_notes": []
+}

@@ -1,0 +1,81 @@
+{
+  "slug": "sycrone",
+  "entity_id": "coach_mouse_sycrone",
+  "entity_type": "coach",
+  "team_id": "team_mouse",
+  "real_name": null,
+  "in_game_id": "sycrone",
+  "display_name": "sycrone",
+  "role": "coach",
+  "status": "active",
+  "aliases": [
+    "sycrone"
+  ],
+  "meme_tags": [
+    "纪律教练"
+  ],
+  "persona_tags": [
+    "system-adult",
+    "reset-point",
+    "identity-maintainer"
+  ],
+  "playstyle_tags": [
+    "prep",
+    "timeout-fix",
+    "structure",
+    "review-loop"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "old_guard"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "负责把这支队的纪律感固定成能长期维护的系统资产。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "system-adult",
+      "reset-point",
+      "identity-maintainer"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "prep",
+      "timeout-fix",
+      "structure",
+      "review-loop",
+      "system-adult",
+      "reset-point",
+      "identity-maintainer"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "纪律教练",
+      "upset-watch"
+    ],
+    "card_priority": 73,
+    "broadcast_entry_points": [
+      "machine_old_guard_command"
+    ]
+  },
+  "canon_notes": []
+}

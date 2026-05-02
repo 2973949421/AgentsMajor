@@ -1,0 +1,17 @@
+{
+  "team_id": "team_furia",
+  "active_players": [
+    "player_furia_fallen",
+    "player_furia_yuurih",
+    "player_furia_yekindar",
+    "player_furia_kscerato",
+    "player_furia_molodoy"
+  ],
+  "head_coach": "coach_furia_sidde",
+  "roster_version": "2026-05-03-canon-v1",
+  "source_snapshot_date": "2026-05-02",
+  "canon_notes": [
+    "这支队既能打热血线，也能打抽象线。",
+    "FalleN 是长期内容资产，不要被短期状态完全覆盖。"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "team_id": "team_futuretoken",
+  "caster_angle_ids": [
+    "machine_force_buy_shock",
+    "machine_map_point_pressure"
+  ],
+  "barrage_angle_ids": [
+    "player_targeting",
+    "research",
+    "plus_one"
+  ],
+  "news_angle_ids": [
+    "upset-watch"
+  ],
+  "cross_circle_angle_ids": [
+    "breakup_to_transfer",
+    "cabinet_to_live_room_chaos"
+  ],
+  "signature_memes": [
+    "Token 冲起来了",
+    "潜力股突然拉涨停",
+    "这队又把比赛打成高波动 K 线"
+  ],
+  "storyline_triggers": [
+    "如果前中期突然连分，解说往潜力股冲顶写。",
+    "如果 demon 或 lauNX 起枪感，弹幕可以走今天真开出来了。",
+    "如果高波动崩盘，允许用 K 线跳水写法。 "
+  ],
+  "matchup_triggers": [
+    "对 AstraLLM 写新队线对历史包袱队。",
+    "对 Prompt Gaming 写中下半区互相争爆冷。"
+  ],
+  "win_state_triggers": [
+    "赢强队时直接上爆冷预警兑现。",
+    "如果是多点开花，新闻写全队一起拉升，而不是某人独秀。"
+  ],
+  "loss_state_triggers": [
+    "如果冲得太散，写参数波动过大。",
+    "如果后程断电，强调潜力股还缺稳定现金流。"
+  ],
+  "highlight_triggers": [
+    "dem0n 正面打穿",
+    "lauNX 多杀开图",
+    "dziugss 收尾残局",
+    "coolio 暂停后追分"
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "slug": "wicadia",
+  "entity_id": "player_aulora_wicadia",
+  "entity_type": "player",
+  "team_id": "team_aulora",
+  "real_name": null,
+  "in_game_id": "Wicadia",
+  "display_name": "Wicadia",
+  "role": "entry",
+  "status": "active",
+  "aliases": [
+    "Wicadia"
+  ],
+  "meme_tags": [
+    "前线点火"
+  ],
+  "persona_tags": [
+    "frontline-instigator",
+    "heat-checker",
+    "young-trigger"
+  ],
+  "playstyle_tags": [
+    "first-contact",
+    "space-creator",
+    "entry-poke",
+    "double-swing"
+  ],
+  "caster_focus_tags": [
+    "machine_force_buy_shock"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "research"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "cabinet_to_live_room_chaos"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "年轻火点位，冲开了就是队伍声浪的第一层放大器。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "frontline-instigator",
+      "heat-checker",
+      "young-trigger"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "first-contact",
+      "space-creator",
+      "entry-poke",
+      "double-swing",
+      "frontline-instigator",
+      "heat-checker",
+      "young-trigger"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "前线点火",
+      "upset-watch"
+    ],
+    "card_priority": 27,
+    "broadcast_entry_points": [
+      "machine_force_buy_shock"
+    ]
+  },
+  "canon_notes": []
+}

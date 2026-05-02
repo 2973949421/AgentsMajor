@@ -1,0 +1,81 @@
+{
+  "slug": "fabre",
+  "entity_id": "coach_aulora_fabre",
+  "entity_type": "coach",
+  "team_id": "team_aulora",
+  "real_name": null,
+  "in_game_id": "Fabre",
+  "display_name": "Fabre",
+  "role": "coach",
+  "status": "active",
+  "aliases": [
+    "Fabre"
+  ],
+  "meme_tags": [
+    "教练组修正"
+  ],
+  "persona_tags": [
+    "system-adult",
+    "reset-point",
+    "reset-coordinator"
+  ],
+  "playstyle_tags": [
+    "prep",
+    "timeout-fix",
+    "review",
+    "timeout-reset"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "old_guard"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "在这支高分贝队里做参数微调的人，主要职责是防止全队一起飘走。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "system-adult",
+      "reset-point",
+      "reset-coordinator"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "prep",
+      "timeout-fix",
+      "review",
+      "timeout-reset",
+      "system-adult",
+      "reset-point",
+      "reset-coordinator"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "教练组修正",
+      "upset-watch"
+    ],
+    "card_priority": 72,
+    "broadcast_entry_points": [
+      "machine_old_guard_command"
+    ]
+  },
+  "canon_notes": []
+}

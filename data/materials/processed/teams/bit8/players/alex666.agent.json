@@ -1,0 +1,82 @@
+{
+  "slug": "alex666",
+  "entity_id": "player_bit8_alex666",
+  "entity_type": "player",
+  "team_id": "team_bit8",
+  "real_name": null,
+  "in_game_id": "alex666",
+  "display_name": "alex666",
+  "role": "igl",
+  "status": "active",
+  "aliases": [
+    "alex666"
+  ],
+  "meme_tags": [
+    "小队指挥"
+  ],
+  "persona_tags": [
+    "shotcaller",
+    "system-brain",
+    "grit-caller"
+  ],
+  "playstyle_tags": [
+    "mid-round-call",
+    "tempo-control",
+    "pace-poke",
+    "mid-round-adjust"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "old_guard"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "小体量队伍的硬骨头指挥，强项不是牌面，而是敢拼。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "shotcaller",
+      "system-brain",
+      "grit-caller"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "mid-round-call",
+      "tempo-control",
+      "pace-poke",
+      "mid-round-adjust",
+      "shotcaller",
+      "system-brain",
+      "grit-caller"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "low",
+    "segment_tags": [
+      "小队指挥",
+      "upset-watch"
+    ],
+    "card_priority": 29,
+    "broadcast_entry_points": [
+      "machine_old_guard_command"
+    ]
+  },
+  "canon_notes": []
+}

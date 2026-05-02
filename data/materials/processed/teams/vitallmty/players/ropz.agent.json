@@ -1,0 +1,87 @@
+{
+  "slug": "ropz",
+  "entity_id": "player_vitallmty_ropz",
+  "entity_type": "player",
+  "team_id": "team_vitallmty",
+  "real_name": null,
+  "in_game_id": "ropz",
+  "display_name": "ropz",
+  "role": "lurker",
+  "status": "active",
+  "aliases": [
+    "ropz",
+    "被偷正面"
+  ],
+  "meme_tags": [
+    "残局味",
+    "被偷正面"
+  ],
+  "persona_tags": [
+    "timing-hunter",
+    "map-reader",
+    "cold-reader",
+    "endgame-accountant"
+  ],
+  "playstyle_tags": [
+    "late-map-control",
+    "timing-punish",
+    "deep-lurk",
+    "late-flank"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "title-favorite"
+  ],
+  "cross_circle_tags": [
+    "lifetime_to_rivalry"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "冷静、干净、后程发力型明星位，是队里最像保险丝的一环。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "title-favorite",
+      "timing-hunter",
+      "map-reader",
+      "cold-reader",
+      "endgame-accountant"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "late-map-control",
+      "timing-punish",
+      "deep-lurk",
+      "late-flank",
+      "timing-hunter",
+      "map-reader",
+      "cold-reader",
+      "endgame-accountant"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "high",
+    "segment_tags": [
+      "残局味",
+      "被偷正面",
+      "title-favorite"
+    ],
+    "card_priority": 10,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

@@ -1,0 +1,17 @@
+{
+  "team_id": "team_falcon_7b",
+  "active_players": [
+    "player_falcon_7b_karrigan",
+    "player_falcon_7b_niko",
+    "player_falcon_7b_teses",
+    "player_falcon_7b_m0nesy",
+    "player_falcon_7b_kyousuke"
+  ],
+  "head_coach": "coach_falcon_7b_zonic",
+  "roster_version": "2026-05-03-canon-v1",
+  "source_snapshot_date": "2026-05-02",
+  "canon_notes": [
+    "这是天然的流量队，不需要额外强行加戏。",
+    "报道里允许同时存在豪阵与遗憾文学。"
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "slug": "bit",
+  "entity_id": "player_neural_vincere_bit",
+  "entity_type": "player",
+  "team_id": "team_neural_vincere",
+  "real_name": null,
+  "in_game_id": "b1t",
+  "display_name": "b1t",
+  "role": "support",
+  "status": "active",
+  "aliases": [
+    "b1t",
+    "bit"
+  ],
+  "meme_tags": [
+    "黄黑老底盘"
+  ],
+  "persona_tags": [
+    "glue-piece",
+    "utility-worker",
+    "anchor-piece"
+  ],
+  "playstyle_tags": [
+    "trade-layer",
+    "utility-setup",
+    "site-hold",
+    "stability"
+  ],
+  "caster_focus_tags": [
+    "machine_map_point_pressure"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "history-burden",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "这支 NaVi 的稳定底盘之一，常常不抢镜但常常不能没有。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "history-burden",
+      "upset-watch",
+      "glue-piece",
+      "utility-worker",
+      "anchor-piece"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "trade-layer",
+      "utility-setup",
+      "site-hold",
+      "stability",
+      "glue-piece",
+      "utility-worker",
+      "anchor-piece"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "黄黑老底盘",
+      "history-burden",
+      "upset-watch"
+    ],
+    "card_priority": 35,
+    "broadcast_entry_points": [
+      "machine_map_point_pressure"
+    ]
+  },
+  "canon_notes": []
+}

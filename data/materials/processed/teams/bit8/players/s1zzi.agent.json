@@ -1,0 +1,81 @@
+{
+  "slug": "s1zzi",
+  "entity_id": "player_bit8_s1zzi",
+  "entity_type": "player",
+  "team_id": "team_bit8",
+  "real_name": null,
+  "in_game_id": "s1zzi",
+  "display_name": "s1zzi",
+  "role": "lurker",
+  "status": "active",
+  "aliases": [
+    "s1zzi"
+  ],
+  "meme_tags": [
+    "后手路线"
+  ],
+  "persona_tags": [
+    "timing-hunter",
+    "map-reader",
+    "late-route"
+  ],
+  "playstyle_tags": [
+    "late-map-control",
+    "timing-punish",
+    "lurking",
+    "flank"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "lifetime_to_rivalry"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "更安静的后手角色，用来给粗粝画风补一点后劲。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "timing-hunter",
+      "map-reader",
+      "late-route"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "late-map-control",
+      "timing-punish",
+      "lurking",
+      "flank",
+      "timing-hunter",
+      "map-reader",
+      "late-route"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "low",
+    "segment_tags": [
+      "后手路线",
+      "upset-watch"
+    ],
+    "card_priority": 48,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

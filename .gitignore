@@ -11,6 +11,8 @@ packages/*/src/*.d.ts
 packages/*/src/*.d.ts.map
 data/*
 !data/.gitkeep
+!data/materials/
+!data/materials/**
 !data/exports/
 !data/exports/.gitkeep
 data/exports/**

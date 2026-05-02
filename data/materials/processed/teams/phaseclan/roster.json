@@ -1,0 +1,17 @@
+{
+  "team_id": "team_phaseclan",
+  "active_players": [
+    "player_phaseclan_broky",
+    "player_phaseclan_twistzz",
+    "player_phaseclan_jcobbb",
+    "player_phaseclan_frozen",
+    "player_phaseclan_neityu"
+  ],
+  "head_coach": null,
+  "roster_version": "2026-05-03-canon-v1",
+  "source_snapshot_date": "2026-05-02",
+  "canon_notes": [
+    "PhaseClan 当前正式教练仍未在 canon 中锁定。",
+    "保留教练资产槽：coach_phaseclan_coach_tbd"
+  ]
+}

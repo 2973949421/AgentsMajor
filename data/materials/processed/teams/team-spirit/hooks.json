@@ -1,0 +1,48 @@
+{
+  "team_id": "team_team_spirit",
+  "caster_angle_ids": [
+    "machine_star_carry",
+    "machine_force_buy_shock"
+  ],
+  "barrage_angle_ids": [
+    "player_targeting",
+    "research",
+    "cross_circle"
+  ],
+  "news_angle_ids": [
+    "title-favorite",
+    "upset-watch"
+  ],
+  "cross_circle_angle_ids": [
+    "band_to_superteam",
+    "cabinet_to_live_room_chaos"
+  ],
+  "signature_memes": [
+    "东子一上强度表就歪了",
+    "研发对象登场",
+    "雪碧压制感"
+  ],
+  "storyline_triggers": [
+    "donk 连续突破时，直接把全场强度表抬到他身上。",
+    "如果 sh1ro 后程锁门，补足不是只有一个人在杀。",
+    "如果对手围绕 donk 成功布置，允许弹幕讨论研发对象终于被研究。 "
+  ],
+  "matchup_triggers": [
+    "对 VitaLLMty 是世界第一候选对世界第一候选。",
+    "对 The MongolZK 是亚洲热度队对顶级火力队。"
+  ],
+  "win_state_triggers": [
+    "如果 donk 主导赢图，新闻允许直接用天才少年继续横推。",
+    "如果全队接力取胜，解说要多给体系压制感。"
+  ],
+  "loss_state_triggers": [
+    "如果 donk 被限制，写研发成果终于落地。",
+    "如果队伍整体断电，写高压火力被强行静音。"
+  ],
+  "highlight_triggers": [
+    "donk 正面三杀",
+    "sh1ro AWP 锁门",
+    "zont1x 暗线补刀",
+    "hally 暂停后回正"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "team_id": "team_bit8",
+  "caster_angle_ids": [
+    "machine_force_buy_shock",
+    "machine_map_point_pressure"
+  ],
+  "barrage_angle_ids": [
+    "player_targeting",
+    "plus_one",
+    "history_burden"
+  ],
+  "news_angle_ids": [
+    "upset-watch"
+  ],
+  "cross_circle_angle_ids": [
+    "cabinet_to_live_room_chaos",
+    "lifetime_to_rivalry"
+  ],
+  "signature_memes": [
+    "8bit 也敢跟你拼",
+    "小队硬骨头",
+    "npl 今天要证明自己"
+  ],
+  "storyline_triggers": [
+    "如果 npl 打出高光，优先写证明线。",
+    "如果 alex666 指挥强起成功，允许低配也敢冲的语气。",
+    "如果全队打成硬泥地，解说可以把粗粝感写足。 "
+  ],
+  "matchup_triggers": [
+    "对 Legacy.v1 写泥地互打。",
+    "对 Neural Vincere 写小队挑战豪门体系。"
+  ],
+  "win_state_triggers": [
+    "爆冷时新闻走硬骨头咬下一块。",
+    "如果是多人接力，不要只写单人奇迹。"
+  ],
+  "loss_state_triggers": [
+    "如果后程断掉，写体量差距终于显现。",
+    "如果强起失败，弹幕可以全屏复读没绷住。"
+  ],
+  "highlight_triggers": [
+    "npl 正面多杀",
+    "alex666 强起指挥",
+    "kensizor 冲点双杀",
+    "esenthial 补枪站住"
+  ]
+}

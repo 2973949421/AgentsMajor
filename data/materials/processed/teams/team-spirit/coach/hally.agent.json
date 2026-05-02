@@ -1,0 +1,79 @@
+{
+  "slug": "hally",
+  "entity_id": "coach_team_spirit_hally",
+  "entity_type": "coach",
+  "team_id": "team_team_spirit",
+  "real_name": null,
+  "in_game_id": "hally",
+  "display_name": "hally",
+  "role": "coach",
+  "status": "active",
+  "aliases": [
+    "hally"
+  ],
+  "meme_tags": [
+    "高压教头"
+  ],
+  "persona_tags": [
+    "system-adult",
+    "reset-point",
+    "young-core-manager"
+  ],
+  "playstyle_tags": [
+    "prep",
+    "timeout-fix",
+    "pressure-balance"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "old_guard"
+  ],
+  "news_focus_tags": [
+    "title-favorite"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "负责把这支高压高天赋队伍维持在冠军线附近的人。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "title-favorite",
+      "system-adult",
+      "reset-point",
+      "young-core-manager"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "prep",
+      "timeout-fix",
+      "pressure-balance",
+      "system-adult",
+      "reset-point",
+      "young-core-manager"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "高压教头",
+      "title-favorite"
+    ],
+    "card_priority": 64,
+    "broadcast_entry_points": [
+      "machine_old_guard_command"
+    ]
+  },
+  "canon_notes": []
+}

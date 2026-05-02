@@ -1,0 +1,81 @@
+{
+  "slug": "cmtry",
+  "entity_id": "player_futuretoken_cmtry",
+  "entity_type": "player",
+  "team_id": "team_futuretoken",
+  "real_name": null,
+  "in_game_id": "cmtry",
+  "display_name": "cmtry",
+  "role": "lurker",
+  "status": "active",
+  "aliases": [
+    "cmtry"
+  ],
+  "meme_tags": [
+    "暗线位"
+  ],
+  "persona_tags": [
+    "timing-hunter",
+    "map-reader",
+    "quiet-route"
+  ],
+  "playstyle_tags": [
+    "late-map-control",
+    "timing-punish",
+    "lurking",
+    "late-pop"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "lifetime_to_rivalry"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "更安静的暗线位，适合给这支波动队补一点后手。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "timing-hunter",
+      "map-reader",
+      "quiet-route"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "late-map-control",
+      "timing-punish",
+      "lurking",
+      "late-pop",
+      "timing-hunter",
+      "map-reader",
+      "quiet-route"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "low",
+    "segment_tags": [
+      "暗线位",
+      "upset-watch"
+    ],
+    "card_priority": 49,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

@@ -1,0 +1,31 @@
+{
+  "style_id": "mygo-core",
+  "scope": "cross-circle",
+  "version": "2026-05-03-canon-v1",
+  "motifs": [
+    {
+      "id": "mygo_band_formation",
+      "label": "组乐队"
+    },
+    {
+      "id": "mygo_band_breakup",
+      "label": "拆团"
+    },
+    {
+      "id": "mygo_lifetime_promise",
+      "label": "一辈子"
+    },
+    {
+      "id": "mygo_customer_service",
+      "label": "客服小祥"
+    },
+    {
+      "id": "cabinet_chaos",
+      "label": "木柜子"
+    },
+    {
+      "id": "decline_drama",
+      "label": "家道中落"
+    }
+  ]
+}

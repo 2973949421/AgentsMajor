@@ -1,0 +1,84 @@
+{
+  "slug": "sh1ro",
+  "entity_id": "player_team_spirit_sh1ro",
+  "entity_type": "player",
+  "team_id": "team_team_spirit",
+  "real_name": null,
+  "in_game_id": "sh1ro",
+  "display_name": "sh1ro",
+  "role": "closer",
+  "status": "active",
+  "aliases": [
+    "sh1ro"
+  ],
+  "meme_tags": [
+    "锁门狙"
+  ],
+  "persona_tags": [
+    "late-round-finisher",
+    "calm-core",
+    "cold-finish"
+  ],
+  "playstyle_tags": [
+    "clutch-finish",
+    "hold-angle",
+    "awp-denial",
+    "late-control"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "title-favorite",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "后程锁门位，是 Team SpirIT 从热血队变成顶队的重要原因之一。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "title-favorite",
+      "upset-watch",
+      "late-round-finisher",
+      "calm-core",
+      "cold-finish"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "clutch-finish",
+      "hold-angle",
+      "awp-denial",
+      "late-control",
+      "late-round-finisher",
+      "calm-core",
+      "cold-finish"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "high",
+    "segment_tags": [
+      "锁门狙",
+      "title-favorite",
+      "upset-watch"
+    ],
+    "card_priority": 26,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

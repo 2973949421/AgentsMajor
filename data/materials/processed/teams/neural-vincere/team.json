@@ -1,0 +1,48 @@
+{
+  "team_id": "team_neural_vincere",
+  "team_slug": "neural-vincere",
+  "agent_team_name": "Neural Vincere",
+  "source_team_name": "NaVi / Natus Vincere",
+  "seed": 2,
+  "status": "confirmed",
+  "canon_role": "legacy-system-contender",
+  "naming_rationale": "保留 Vincere 主体，在前缀上改成 Neural，把天生赢家转成更体系化的神经网络语感。",
+  "worldview_summary": "这支队最强的不是单点爆炸，而是老牌豪门的系统化收束能力。观感常常不是最疯，但稳定给对手上压力。",
+  "team_style_tags": [
+    "legacy-organization",
+    "system-play",
+    "discipline-pressure"
+  ],
+  "storyline_tags": [
+    "aleksib-system",
+    "b1ad3-culture",
+    "new-blood-makazze"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command",
+    "machine_map_point_pressure"
+  ],
+  "barrage_focus_tags": [
+    "history_burden",
+    "player_targeting",
+    "mutual_flame"
+  ],
+  "news_focus_tags": [
+    "history-burden",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "breakup_to_transfer",
+    "lifetime_to_rivalry"
+  ],
+  "processed_paths": {
+    "team": "processed/teams/neural-vincere/team.json",
+    "roster": "processed/teams/neural-vincere/roster.json",
+    "hooks": "processed/teams/neural-vincere/hooks.json"
+  },
+  "version": "2026-05-03-canon-v1",
+  "canon_notes": [
+    "本届不按单核疯队处理，重点是体系感和豪门气压。",
+    "makazze 在项目里视作新血入口，不要只写成普通拼图。"
+  ]
+}

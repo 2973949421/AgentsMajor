@@ -1,0 +1,87 @@
+{
+  "slug": "yuurih",
+  "entity_id": "player_furia_yuurih",
+  "entity_type": "player",
+  "team_id": "team_furia",
+  "real_name": null,
+  "in_game_id": "yuurih",
+  "display_name": "yuurih",
+  "role": "lurker",
+  "status": "active",
+  "aliases": [
+    "yuurih"
+  ],
+  "meme_tags": [
+    "暗线补刀"
+  ],
+  "persona_tags": [
+    "timing-hunter",
+    "map-reader",
+    "quiet-killer"
+  ],
+  "playstyle_tags": [
+    "late-map-control",
+    "timing-punish",
+    "timing-lurk",
+    "late-pop"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "brazil-heat",
+    "old-guard-last-dance",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "lifetime_to_rivalry"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "更偏沉默的暗线处理器，常常负责把前面打出的乱局收成优势。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "brazil-heat",
+      "old-guard-last-dance",
+      "upset-watch",
+      "timing-hunter",
+      "map-reader",
+      "quiet-killer"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "late-map-control",
+      "timing-punish",
+      "timing-lurk",
+      "late-pop",
+      "timing-hunter",
+      "map-reader",
+      "quiet-killer"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "暗线补刀",
+      "brazil-heat",
+      "old-guard-last-dance",
+      "upset-watch"
+    ],
+    "card_priority": 30,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

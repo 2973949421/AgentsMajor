@@ -1,0 +1,17 @@
+{
+  "team_id": "team_team_spirit",
+  "active_players": [
+    "player_team_spirit_donk",
+    "player_team_spirit_magixx",
+    "player_team_spirit_sh1ro",
+    "player_team_spirit_tn1r",
+    "player_team_spirit_zont1x"
+  ],
+  "head_coach": "coach_team_spirit_hally",
+  "roster_version": "2026-05-03-canon-v1",
+  "source_snapshot_date": "2026-05-02",
+  "canon_notes": [
+    "donk 是顶级重点资产，不能降格成普通明星位。",
+    "Team SpirIT 不只是 donk 队，sh1ro 和整体压制也要保留。"
+  ]
+}

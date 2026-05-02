@@ -1,0 +1,17 @@
+{
+  "team_id": "team_g2pt",
+  "active_players": [
+    "player_g2pt_hunter",
+    "player_g2pt_nertz",
+    "player_g2pt_sunpayus",
+    "player_g2pt_heavygod",
+    "player_g2pt_matys"
+  ],
+  "head_coach": "coach_g2pt_saw",
+  "roster_version": "2026-05-03-canon-v1",
+  "source_snapshot_date": "2026-05-02",
+  "canon_notes": [
+    "G2PT 是典型 headline 队。",
+    "不要把它写成纯搞笑队，仍要保留明星火力和阵容想象力。"
+  ]
+}

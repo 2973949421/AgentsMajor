@@ -1,0 +1,52 @@
+{
+  "team_id": "team_phaseclan",
+  "caster_angle_ids": [
+    "machine_special_invite_drama",
+    "machine_star_carry",
+    "machine_old_guard_command"
+  ],
+  "barrage_angle_ids": [
+    "special_invite",
+    "player_targeting",
+    "old_guard",
+    "cross_circle"
+  ],
+  "news_angle_ids": [
+    "special_invite",
+    "money-superteam",
+    "upset-watch"
+  ],
+  "cross_circle_angle_ids": [
+    "band_to_superteam",
+    "breakup_to_transfer",
+    "cabinet_to_live_room_chaos"
+  ],
+  "signature_memes": [
+    "没进也能进",
+    "phase shift 直接切进正赛",
+    "流量队还是来了"
+  ],
+  "storyline_triggers": [
+    "赛前介绍或首图开场时，先把 Special Invite 递补身份打清楚。",
+    "broky 或 Twistzz 站出来时，要把流量队和真火力同时挂上。",
+    "如果输赢都很戏剧，直播间可以直接走相位切换和节目组懂流量。 "
+  ],
+  "matchup_triggers": [
+    "对 Falcon-7B 是流量豪阵对流量豪阵。",
+    "对 VitaLLMty 是特邀队挑战头号种子。"
+  ],
+  "win_state_triggers": [
+    "赢强队时新闻直接写特邀席位把正赛切穿了。",
+    "如果是老将或明星位接管，突出流量队不是白给参赛。"
+  ],
+  "loss_state_triggers": [
+    "如果前中期乱，写相位切换过载。",
+    "如果关键残局没收住，允许弹幕刷特邀通道也有尽头。"
+  ],
+  "highlight_triggers": [
+    "broky 关键残局",
+    "Twistzz 多杀带图",
+    "frozen 正面定点",
+    "相位队逆风连追"
+  ]
+}

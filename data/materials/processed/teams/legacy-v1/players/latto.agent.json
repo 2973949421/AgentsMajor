@@ -1,0 +1,84 @@
+{
+  "slug": "latto",
+  "entity_id": "player_legacy_v1_latto",
+  "entity_type": "player",
+  "team_id": "team_legacy_v1",
+  "real_name": null,
+  "in_game_id": "latto",
+  "display_name": "latto",
+  "role": "support",
+  "status": "active",
+  "aliases": [
+    "latto"
+  ],
+  "meme_tags": [
+    "补位层"
+  ],
+  "persona_tags": [
+    "glue-piece",
+    "utility-worker",
+    "support-frame"
+  ],
+  "playstyle_tags": [
+    "trade-layer",
+    "utility-setup",
+    "anchor",
+    "utility"
+  ],
+  "caster_focus_tags": [
+    "machine_map_point_pressure"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "upset-watch",
+    "brazil-heat"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "祖传版里负责把局势缝起来的人。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "brazil-heat",
+      "glue-piece",
+      "utility-worker",
+      "support-frame"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "trade-layer",
+      "utility-setup",
+      "anchor",
+      "utility",
+      "glue-piece",
+      "utility-worker",
+      "support-frame"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "low",
+    "segment_tags": [
+      "补位层",
+      "upset-watch",
+      "brazil-heat"
+    ],
+    "card_priority": 43,
+    "broadcast_entry_points": [
+      "machine_map_point_pressure"
+    ]
+  },
+  "canon_notes": []
+}

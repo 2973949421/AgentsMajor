@@ -1,0 +1,81 @@
+{
+  "slug": "coolio",
+  "entity_id": "coach_futuretoken_coolio",
+  "entity_type": "coach",
+  "team_id": "team_futuretoken",
+  "real_name": null,
+  "in_game_id": "coolio",
+  "display_name": "coolio",
+  "role": "coach",
+  "status": "active",
+  "aliases": [
+    "coolio"
+  ],
+  "meme_tags": [
+    "冷却教练"
+  ],
+  "persona_tags": [
+    "system-adult",
+    "reset-point",
+    "variance-manager"
+  ],
+  "playstyle_tags": [
+    "prep",
+    "timeout-fix",
+    "timeout-balance",
+    "review"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "old_guard"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "给高波动队降噪的人，负责让冲劲不完全变成乱流。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "system-adult",
+      "reset-point",
+      "variance-manager"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "prep",
+      "timeout-fix",
+      "timeout-balance",
+      "review",
+      "system-adult",
+      "reset-point",
+      "variance-manager"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "low",
+    "segment_tags": [
+      "冷却教练",
+      "upset-watch"
+    ],
+    "card_priority": 75,
+    "broadcast_entry_points": [
+      "machine_old_guard_command"
+    ]
+  },
+  "canon_notes": []
+}

@@ -1,0 +1,87 @@
+{
+  "slug": "teses",
+  "entity_id": "player_falcon_7b_teses",
+  "entity_type": "player",
+  "team_id": "team_falcon_7b",
+  "real_name": null,
+  "in_game_id": "TeSeS",
+  "display_name": "TeSeS",
+  "role": "support",
+  "status": "active",
+  "aliases": [
+    "TeSeS"
+  ],
+  "meme_tags": [
+    "补枪块"
+  ],
+  "persona_tags": [
+    "glue-piece",
+    "utility-worker",
+    "glue-fragger"
+  ],
+  "playstyle_tags": [
+    "trade-layer",
+    "utility-setup",
+    "trade-pack",
+    "anchor-cover"
+  ],
+  "caster_focus_tags": [
+    "machine_map_point_pressure"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "money-superteam",
+    "old-guard-last-dance",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "这支豪阵里最容易被忽略，但一旦站不住就会显得整艘船都松动。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "money-superteam",
+      "old-guard-last-dance",
+      "upset-watch",
+      "glue-piece",
+      "utility-worker",
+      "glue-fragger"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "trade-layer",
+      "utility-setup",
+      "trade-pack",
+      "anchor-cover",
+      "glue-piece",
+      "utility-worker",
+      "glue-fragger"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "补枪块",
+      "money-superteam",
+      "old-guard-last-dance",
+      "upset-watch"
+    ],
+    "card_priority": 38,
+    "broadcast_entry_points": [
+      "machine_map_point_pressure"
+    ]
+  },
+  "canon_notes": []
+}

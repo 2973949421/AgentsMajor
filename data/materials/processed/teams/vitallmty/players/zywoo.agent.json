@@ -1,0 +1,90 @@
+{
+  "slug": "zywoo",
+  "entity_id": "player_vitallmty_zywoo",
+  "entity_type": "player",
+  "team_id": "team_vitallmty",
+  "real_name": null,
+  "in_game_id": "ZywOo",
+  "display_name": "ZywOo",
+  "role": "closer",
+  "status": "active",
+  "aliases": [
+    "ZywOo",
+    "载物",
+    "大爹",
+    "薯片"
+  ],
+  "meme_tags": [
+    "大爹兜底",
+    "残局保险"
+  ],
+  "persona_tags": [
+    "late-round-finisher",
+    "calm-core",
+    "mvp-engine",
+    "soft-spoken-hammer"
+  ],
+  "playstyle_tags": [
+    "clutch-finish",
+    "hold-angle",
+    "multikill-anchor",
+    "late-clutch"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "big_dad"
+  ],
+  "news_focus_tags": [
+    "title-favorite"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "默认兜底位，也是官方新闻最容易直接抬成 MVP 头条的人。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "title-favorite",
+      "late-round-finisher",
+      "calm-core",
+      "mvp-engine",
+      "soft-spoken-hammer"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "clutch-finish",
+      "hold-angle",
+      "multikill-anchor",
+      "late-clutch",
+      "late-round-finisher",
+      "calm-core",
+      "mvp-engine",
+      "soft-spoken-hammer"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "high",
+    "segment_tags": [
+      "大爹兜底",
+      "残局保险",
+      "title-favorite"
+    ],
+    "card_priority": 1,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

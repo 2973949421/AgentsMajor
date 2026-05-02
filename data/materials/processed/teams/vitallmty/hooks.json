@@ -1,0 +1,49 @@
+{
+  "team_id": "team_vitallmty",
+  "caster_angle_ids": [
+    "machine_star_carry",
+    "machine_force_buy_shock",
+    "machine_map_point_pressure"
+  ],
+  "barrage_angle_ids": [
+    "research",
+    "big_dad",
+    "player_targeting"
+  ],
+  "news_angle_ids": [
+    "title-favorite",
+    "research-chaos"
+  ],
+  "cross_circle_angle_ids": [
+    "customer_service_to_cleanup",
+    "band_to_superteam"
+  ],
+  "signature_memes": [
+    "载物兜底",
+    "火÷影响研发",
+    "apEX 红温之后强起翻盘"
+  ],
+  "storyline_triggers": [
+    "ZywOo 连续救残局时，切入大爹兜底叙事。",
+    "flameZ 首死或关键击杀时，优先挂研发梗。",
+    "apEX 连续暂停后翻盘时，走红线指挥回正路线。 "
+  ],
+  "matchup_triggers": [
+    "对 Team SpirIT 时，主打 ZywOo 与 donk 的世界第一正面话题。",
+    "对 Falcon-7B 时，主打双核豪阵谁更像真银河战舰。"
+  ],
+  "win_state_triggers": [
+    "如果是 ZywOo 终结系列赛，新闻标题直接上头号热门兑现。",
+    "如果 flameZ 打出突破局，弹幕允许研发成功量产化。"
+  ],
+  "loss_state_triggers": [
+    "如果输给下位种子，优先写研发失控，不写单纯冷门。",
+    "如果 ZywOo 高击杀仍输，突出只剩大爹一个人在补售后。"
+  ],
+  "highlight_triggers": [
+    "残局 1vX 兜底",
+    "强起翻盘",
+    "火÷先手双杀",
+    "apEX 暂停后连拿三分"
+  ]
+}

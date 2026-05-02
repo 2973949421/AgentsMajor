@@ -1,0 +1,48 @@
+{
+  "team_id": "team_astrallm",
+  "team_slug": "astrallm",
+  "agent_team_name": "AstraLLM",
+  "source_team_name": "Astralis",
+  "seed": 11,
+  "status": "confirmed",
+  "canon_role": "history-burden-rebuild",
+  "naming_rationale": "Astralis 和 LLM 融合，保留星体感和老牌豪门气质，同时把项目化 AI 味自然注入。",
+  "worldview_summary": "历史豪门、王朝尾韵、重建压力。这支队的每一次赢球都像在证明自己还没有彻底掉出历史叙事。",
+  "team_style_tags": [
+    "history-burden",
+    "rebuild",
+    "legacy-logo"
+  ],
+  "storyline_tags": [
+    "hooxi-command",
+    "danish-echo",
+    "rebuild-pressure"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command",
+    "machine_map_point_pressure"
+  ],
+  "barrage_focus_tags": [
+    "history_burden",
+    "player_targeting",
+    "old_guard"
+  ],
+  "news_focus_tags": [
+    "history-burden",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup",
+    "breakup_to_transfer"
+  ],
+  "processed_paths": {
+    "team": "processed/teams/astrallm/team.json",
+    "roster": "processed/teams/astrallm/roster.json",
+    "hooks": "processed/teams/astrallm/hooks.json"
+  },
+  "version": "2026-05-03-canon-v1",
+  "canon_notes": [
+    "这是历史负担队，不是纯 nostalgia 队。",
+    "新闻和解说都要保留王朝阴影仍在的味道。"
+  ]
+}

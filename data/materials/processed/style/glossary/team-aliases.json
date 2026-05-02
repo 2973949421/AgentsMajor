@@ -1,0 +1,168 @@
+{
+  "glossary_id": "team-aliases",
+  "scope": "glossary",
+  "version": "2026-05-03-canon-v1",
+  "entries": [
+    {
+      "team_id": "team_vitallmty",
+      "agent_team_name": "VitaLLMty",
+      "aliases": [
+        "VitaLLMty",
+        "Vitality",
+        "小蜜蜂",
+        "蜜蜂",
+        "V队",
+        "大蜜蜂"
+      ]
+    },
+    {
+      "team_id": "team_neural_vincere",
+      "agent_team_name": "Neural Vincere",
+      "aliases": [
+        "Neural Vincere",
+        "NaVi",
+        "NAVI",
+        "黄黑",
+        "天生赢家"
+      ]
+    },
+    {
+      "team_id": "team_furia",
+      "agent_team_name": "FurIA",
+      "aliases": [
+        "FurIA",
+        "FURIA",
+        "黑豹",
+        "巴西黑豹",
+        "老登巴西"
+      ]
+    },
+    {
+      "team_id": "team_falcon_7b",
+      "agent_team_name": "Falcon-7B",
+      "aliases": [
+        "Falcon-7B",
+        "Falcons",
+        "猎鹰",
+        "银河战舰",
+        "老登队",
+        "钱队"
+      ]
+    },
+    {
+      "team_id": "team_parivision_omni",
+      "agent_team_name": "PariVision-Omni",
+      "aliases": [
+        "PariVision-Omni",
+        "PARIVISION",
+        "PariVision",
+        "全模态队"
+      ]
+    },
+    {
+      "team_id": "team_aulora",
+      "agent_team_name": "AuLoRA",
+      "aliases": [
+        "AuLoRA",
+        "Aurora",
+        "LoRA队"
+      ]
+    },
+    {
+      "team_id": "team_mouse",
+      "agent_team_name": "Mouse",
+      "aliases": [
+        "Mouse",
+        "MOUZ",
+        "老鼠",
+        "鼠队"
+      ]
+    },
+    {
+      "team_id": "team_the_mongolzk",
+      "agent_team_name": "The MongolZK",
+      "aliases": [
+        "The MongolZK",
+        "The MongolZ",
+        "蒙古",
+        "蒙古铁骑",
+        "铁骑"
+      ]
+    },
+    {
+      "team_id": "team_team_spirit",
+      "agent_team_name": "Team SpirIT",
+      "aliases": [
+        "Team SpirIT",
+        "Team Spirit",
+        "Spirit",
+        "雪碧"
+      ]
+    },
+    {
+      "team_id": "team_futuretoken",
+      "agent_team_name": "FUtureToken",
+      "aliases": [
+        "FUtureToken",
+        "FUT",
+        "FUT队"
+      ]
+    },
+    {
+      "team_id": "team_astrallm",
+      "agent_team_name": "AstraLLM",
+      "aliases": [
+        "AstraLLM",
+        "Astralis",
+        "A队"
+      ]
+    },
+    {
+      "team_id": "team_g2pt",
+      "agent_team_name": "G2PT",
+      "aliases": [
+        "G2PT",
+        "G2",
+        "整活队"
+      ]
+    },
+    {
+      "team_id": "team_legacy_v1",
+      "agent_team_name": "Legacy.v1",
+      "aliases": [
+        "Legacy.v1",
+        "Legacy",
+        "祖传版"
+      ]
+    },
+    {
+      "team_id": "team_bit8",
+      "agent_team_name": "Bit8",
+      "aliases": [
+        "Bit8",
+        "B8",
+        "8bit队"
+      ]
+    },
+    {
+      "team_id": "team_prompt_gaming",
+      "agent_team_name": "Prompt Gaming",
+      "aliases": [
+        "Prompt Gaming",
+        "paiN",
+        "提示词队"
+      ]
+    },
+    {
+      "team_id": "team_phaseclan",
+      "agent_team_name": "PhaseClan",
+      "aliases": [
+        "PhaseClan",
+        "FaZe",
+        "相位队",
+        "流量队",
+        "特邀队"
+      ]
+    }
+  ]
+}

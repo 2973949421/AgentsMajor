@@ -1,0 +1,82 @@
+{
+  "slug": "zonic",
+  "entity_id": "coach_falcon_7b_zonic",
+  "entity_type": "coach",
+  "team_id": "team_falcon_7b",
+  "real_name": null,
+  "in_game_id": "zonic",
+  "display_name": "zonic",
+  "role": "coach",
+  "status": "active",
+  "aliases": [
+    "zonic"
+  ],
+  "meme_tags": [
+    "冠军教头"
+  ],
+  "persona_tags": [
+    "system-adult",
+    "reset-point",
+    "ring-holder"
+  ],
+  "playstyle_tags": [
+    "prep",
+    "timeout-fix",
+    "legacy-maintenance"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "old_guard"
+  ],
+  "news_focus_tags": [
+    "money-superteam",
+    "old-guard-last-dance"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "豪阵背后的冠军教头符号，天然适合被写成参数总工程师。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "money-superteam",
+      "old-guard-last-dance",
+      "system-adult",
+      "reset-point",
+      "ring-holder"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "prep",
+      "timeout-fix",
+      "legacy-maintenance",
+      "system-adult",
+      "reset-point",
+      "ring-holder"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "high",
+    "segment_tags": [
+      "冠军教头",
+      "money-superteam",
+      "old-guard-last-dance"
+    ],
+    "card_priority": 55,
+    "broadcast_entry_points": [
+      "machine_old_guard_command"
+    ]
+  },
+  "canon_notes": []
+}

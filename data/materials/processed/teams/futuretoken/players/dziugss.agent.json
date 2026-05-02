@@ -1,0 +1,81 @@
+{
+  "slug": "dziugss",
+  "entity_id": "player_futuretoken_dziugss",
+  "entity_type": "player",
+  "team_id": "team_futuretoken",
+  "real_name": null,
+  "in_game_id": "dziugss",
+  "display_name": "dziugss",
+  "role": "closer",
+  "status": "active",
+  "aliases": [
+    "dziugss"
+  ],
+  "meme_tags": [
+    "后程终结"
+  ],
+  "persona_tags": [
+    "late-round-finisher",
+    "calm-core",
+    "cleanup-piece"
+  ],
+  "playstyle_tags": [
+    "clutch-finish",
+    "hold-angle",
+    "awp-or-rifle-end",
+    "late-round"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "后程终结位，决定这支队的高波动能否真正落成地图比分。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "late-round-finisher",
+      "calm-core",
+      "cleanup-piece"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "clutch-finish",
+      "hold-angle",
+      "awp-or-rifle-end",
+      "late-round",
+      "late-round-finisher",
+      "calm-core",
+      "cleanup-piece"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "low",
+    "segment_tags": [
+      "后程终结",
+      "upset-watch"
+    ],
+    "card_priority": 39,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

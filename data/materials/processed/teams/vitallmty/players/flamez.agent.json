@@ -1,0 +1,91 @@
+{
+  "slug": "flamez",
+  "entity_id": "player_vitallmty_flamez",
+  "entity_type": "player",
+  "team_id": "team_vitallmty",
+  "real_name": null,
+  "in_game_id": "flameZ",
+  "display_name": "flameZ",
+  "role": "entry",
+  "status": "active",
+  "aliases": [
+    "flameZ",
+    "火",
+    "火÷"
+  ],
+  "meme_tags": [
+    "研发样本",
+    "火÷",
+    "影响研发"
+  ],
+  "persona_tags": [
+    "frontline-instigator",
+    "heat-checker",
+    "chaos-trigger",
+    "research-prototype"
+  ],
+  "playstyle_tags": [
+    "first-contact",
+    "space-creator",
+    "entry-burst",
+    "confidence-peek"
+  ],
+  "caster_focus_tags": [
+    "machine_force_buy_shock"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "research"
+  ],
+  "news_focus_tags": [
+    "research-chaos"
+  ],
+  "cross_circle_tags": [
+    "cabinet_to_live_room_chaos"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "最容易把比赛打成课题现场的人。打顺了是研发成功，打崩了就是火÷影响研发。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "research-chaos",
+      "frontline-instigator",
+      "heat-checker",
+      "chaos-trigger",
+      "research-prototype"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "first-contact",
+      "space-creator",
+      "entry-burst",
+      "confidence-peek",
+      "frontline-instigator",
+      "heat-checker",
+      "chaos-trigger",
+      "research-prototype"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "high",
+    "segment_tags": [
+      "研发样本",
+      "火÷",
+      "影响研发",
+      "research-chaos"
+    ],
+    "card_priority": 2,
+    "broadcast_entry_points": [
+      "machine_force_buy_shock"
+    ]
+  },
+  "canon_notes": []
+}

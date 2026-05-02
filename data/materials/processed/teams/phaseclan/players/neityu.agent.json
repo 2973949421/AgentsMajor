@@ -1,0 +1,87 @@
+{
+  "slug": "neityu",
+  "entity_id": "player_phaseclan_neityu",
+  "entity_type": "player",
+  "team_id": "team_phaseclan",
+  "real_name": null,
+  "in_game_id": "Neityu",
+  "display_name": "Neityu",
+  "role": "support",
+  "status": "active",
+  "aliases": [
+    "Neityu"
+  ],
+  "meme_tags": [
+    "补位槽"
+  ],
+  "persona_tags": [
+    "glue-piece",
+    "utility-worker",
+    "future-interface"
+  ],
+  "playstyle_tags": [
+    "trade-layer",
+    "utility-setup",
+    "support",
+    "utility"
+  ],
+  "caster_focus_tags": [
+    "machine_map_point_pressure"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "special_invite",
+    "money-superteam",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "当前更偏未来接口位，适合作为后续继续补完人物层的一块空白板。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "special_invite",
+      "money-superteam",
+      "upset-watch",
+      "glue-piece",
+      "utility-worker",
+      "future-interface"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "trade-layer",
+      "utility-setup",
+      "support",
+      "utility",
+      "glue-piece",
+      "utility-worker",
+      "future-interface"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "low",
+    "segment_tags": [
+      "补位槽",
+      "special_invite",
+      "money-superteam",
+      "upset-watch"
+    ],
+    "card_priority": 46,
+    "broadcast_entry_points": [
+      "machine_map_point_pressure"
+    ]
+  },
+  "canon_notes": []
+}

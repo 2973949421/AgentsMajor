@@ -1,0 +1,84 @@
+{
+  "slug": "saffee",
+  "entity_id": "player_prompt_gaming_saffee",
+  "entity_type": "player",
+  "team_id": "team_prompt_gaming",
+  "real_name": null,
+  "in_game_id": "saffee",
+  "display_name": "saffee",
+  "role": "closer",
+  "status": "active",
+  "aliases": [
+    "saffee"
+  ],
+  "meme_tags": [
+    "后程狙"
+  ],
+  "persona_tags": [
+    "late-round-finisher",
+    "calm-core",
+    "steady-scope"
+  ],
+  "playstyle_tags": [
+    "clutch-finish",
+    "hold-angle",
+    "awp-hold",
+    "late-close"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "brazil-heat",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "偏稳的终结位，给这支高热度队补一个能真正锁门的人。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "brazil-heat",
+      "upset-watch",
+      "late-round-finisher",
+      "calm-core",
+      "steady-scope"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "clutch-finish",
+      "hold-angle",
+      "awp-hold",
+      "late-close",
+      "late-round-finisher",
+      "calm-core",
+      "steady-scope"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "后程狙",
+      "brazil-heat",
+      "upset-watch"
+    ],
+    "card_priority": 27,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

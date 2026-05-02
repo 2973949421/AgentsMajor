@@ -1,0 +1,17 @@
+{
+  "team_id": "team_prompt_gaming",
+  "active_players": [
+    "player_prompt_gaming_vsm",
+    "player_prompt_gaming_biguzera",
+    "player_prompt_gaming_piriajr",
+    "player_prompt_gaming_saffee",
+    "player_prompt_gaming_snow"
+  ],
+  "head_coach": "coach_prompt_gaming_rikz",
+  "roster_version": "2026-05-03-canon-v1",
+  "source_snapshot_date": "2026-05-02",
+  "canon_notes": [
+    "Prompt Gaming 保留巴西热度和节目效果双属性。",
+    "它是正赛 16 队正式成员，不是为 PhaseClan 让位的边角料。"
+  ]
+}

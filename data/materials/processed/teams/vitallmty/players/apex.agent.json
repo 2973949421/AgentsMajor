@@ -1,0 +1,95 @@
+{
+  "slug": "apex",
+  "entity_id": "player_vitallmty_apex",
+  "entity_type": "player",
+  "team_id": "team_vitallmty",
+  "real_name": null,
+  "in_game_id": "apEX",
+  "display_name": "apEX",
+  "role": "igl",
+  "status": "active",
+  "aliases": [
+    "apEX",
+    "apex",
+    "A队长"
+  ],
+  "meme_tags": [
+    "红温",
+    "表情包",
+    "指挥交通"
+  ],
+  "persona_tags": [
+    "shotcaller",
+    "system-brain",
+    "redline-igl",
+    "emotional-driver"
+  ],
+  "playstyle_tags": [
+    "mid-round-call",
+    "tempo-control",
+    "front-space",
+    "mid-round-bark"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "old_guard",
+    "research"
+  ],
+  "news_focus_tags": [
+    "title-favorite",
+    "research-chaos"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "情绪外放型指挥，强项是把节奏和舞台气压一起拉满，弱项是红温镜头永远比战术板先出圈。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "title-favorite",
+      "research-chaos",
+      "shotcaller",
+      "system-brain",
+      "redline-igl",
+      "emotional-driver"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "mid-round-call",
+      "tempo-control",
+      "front-space",
+      "mid-round-bark",
+      "shotcaller",
+      "system-brain",
+      "redline-igl",
+      "emotional-driver"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "high",
+    "segment_tags": [
+      "红温",
+      "表情包",
+      "指挥交通",
+      "title-favorite",
+      "research-chaos"
+    ],
+    "card_priority": 5,
+    "broadcast_entry_points": [
+      "machine_old_guard_command"
+    ]
+  },
+  "canon_notes": []
+}

@@ -1,0 +1,17 @@
+{
+  "team_id": "team_legacy_v1",
+  "active_players": [
+    "player_legacy_v1_art",
+    "player_legacy_v1_dumau",
+    "player_legacy_v1_latto",
+    "player_legacy_v1_n1ssim",
+    "player_legacy_v1_saadzin"
+  ],
+  "head_coach": "coach_legacy_v1_adrrr",
+  "roster_version": "2026-05-03-canon-v1",
+  "source_snapshot_date": "2026-05-02",
+  "canon_notes": [
+    "Legacy.v1 的重点是祖传味和 grind 感。",
+    "不是每次都要写成笑点，也可以写成顽强。"
+  ]
+}

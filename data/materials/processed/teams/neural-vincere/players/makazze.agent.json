@@ -1,0 +1,83 @@
+{
+  "slug": "makazze",
+  "entity_id": "player_neural_vincere_makazze",
+  "entity_type": "player",
+  "team_id": "team_neural_vincere",
+  "real_name": null,
+  "in_game_id": "makazze",
+  "display_name": "makazze",
+  "role": "star",
+  "status": "active",
+  "aliases": [
+    "makazze"
+  ],
+  "meme_tags": [
+    "新血",
+    "新窗口"
+  ],
+  "persona_tags": [
+    "headline-core",
+    "win-condition",
+    "rookie-spotlight"
+  ],
+  "playstyle_tags": [
+    "high-impact",
+    "space-winning",
+    "confidence-peek",
+    "swingy-impact"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "band_to_superteam"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "项目世界观里的新血窗口。只要关键图爆一场，就很适合被写成豪门下一块新砖。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "headline-core",
+      "win-condition",
+      "rookie-spotlight"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "high-impact",
+      "space-winning",
+      "confidence-peek",
+      "swingy-impact",
+      "headline-core",
+      "win-condition",
+      "rookie-spotlight"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "新血",
+      "新窗口",
+      "upset-watch"
+    ],
+    "card_priority": 15,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

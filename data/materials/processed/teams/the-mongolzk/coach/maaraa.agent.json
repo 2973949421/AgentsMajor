@@ -1,0 +1,81 @@
+{
+  "slug": "maaraa",
+  "entity_id": "coach_the_mongolzk_maaraa",
+  "entity_type": "coach",
+  "team_id": "team_the_mongolzk",
+  "real_name": null,
+  "in_game_id": "maaRaa",
+  "display_name": "maaRaa",
+  "role": "coach",
+  "status": "active",
+  "aliases": [
+    "maaRaa"
+  ],
+  "meme_tags": [
+    "铁骑教头"
+  ],
+  "persona_tags": [
+    "system-adult",
+    "reset-point",
+    "hard-fight-manager"
+  ],
+  "playstyle_tags": [
+    "prep",
+    "timeout-fix",
+    "review",
+    "stability-patch"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "old_guard"
+  ],
+  "news_focus_tags": [
+    "asia-rise"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "负责在高速度、高冲劲之外，给铁骑补上稳定层的人。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "asia-rise",
+      "system-adult",
+      "reset-point",
+      "hard-fight-manager"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "prep",
+      "timeout-fix",
+      "review",
+      "stability-patch",
+      "system-adult",
+      "reset-point",
+      "hard-fight-manager"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "铁骑教头",
+      "asia-rise"
+    ],
+    "card_priority": 69,
+    "broadcast_entry_points": [
+      "machine_old_guard_command"
+    ]
+  },
+  "canon_notes": []
+}

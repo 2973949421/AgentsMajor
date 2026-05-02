@@ -1,0 +1,83 @@
+{
+  "slug": "cobrazera",
+  "entity_id": "player_the_mongolzk_cobrazera",
+  "entity_type": "player",
+  "team_id": "team_the_mongolzk",
+  "real_name": null,
+  "in_game_id": "cobrazera",
+  "display_name": "cobrazera",
+  "role": "entry",
+  "status": "active",
+  "aliases": [
+    "cobrazera"
+  ],
+  "meme_tags": [
+    "前顶位"
+  ],
+  "persona_tags": [
+    "frontline-instigator",
+    "heat-checker",
+    "charge-piece"
+  ],
+  "playstyle_tags": [
+    "first-contact",
+    "space-creator",
+    "entry-heat"
+  ],
+  "caster_focus_tags": [
+    "machine_force_buy_shock"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "research"
+  ],
+  "news_focus_tags": [
+    "asia-rise",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "cabinet_to_live_room_chaos"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "前顶位，只要冲开一两个关键回合，就能让全队情绪瞬间再上一个台阶。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "asia-rise",
+      "upset-watch",
+      "frontline-instigator",
+      "heat-checker",
+      "charge-piece"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "first-contact",
+      "space-creator",
+      "entry-heat",
+      "frontline-instigator",
+      "heat-checker",
+      "charge-piece"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "前顶位",
+      "asia-rise",
+      "upset-watch"
+    ],
+    "card_priority": 31,
+    "broadcast_entry_points": [
+      "machine_force_buy_shock"
+    ]
+  },
+  "canon_notes": []
+}

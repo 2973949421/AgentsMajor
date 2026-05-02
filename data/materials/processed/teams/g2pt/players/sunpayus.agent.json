@@ -1,0 +1,84 @@
+{
+  "slug": "sunpayus",
+  "entity_id": "player_g2pt_sunpayus",
+  "entity_type": "player",
+  "team_id": "team_g2pt",
+  "real_name": null,
+  "in_game_id": "SunPayus",
+  "display_name": "SunPayus",
+  "role": "closer",
+  "status": "active",
+  "aliases": [
+    "SunPayus"
+  ],
+  "meme_tags": [
+    "狙位稳定器"
+  ],
+  "persona_tags": [
+    "late-round-finisher",
+    "calm-core",
+    "scope-anchor"
+  ],
+  "playstyle_tags": [
+    "clutch-finish",
+    "hold-angle",
+    "awp-hold",
+    "late-finish"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "upset-watch",
+    "money-superteam"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "偏稳定器属性的狙位，越乱越需要他把画面拉直。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "money-superteam",
+      "late-round-finisher",
+      "calm-core",
+      "scope-anchor"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "clutch-finish",
+      "hold-angle",
+      "awp-hold",
+      "late-finish",
+      "late-round-finisher",
+      "calm-core",
+      "scope-anchor"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "狙位稳定器",
+      "upset-watch",
+      "money-superteam"
+    ],
+    "card_priority": 25,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

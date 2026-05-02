@@ -1,0 +1,49 @@
+{
+  "team_id": "team_g2pt",
+  "team_slug": "g2pt",
+  "agent_team_name": "G2PT",
+  "source_team_name": "G2",
+  "seed": 12,
+  "status": "confirmed",
+  "canon_role": "volatile-star-team",
+  "naming_rationale": "G2 和 GPT 的极短融合，既像原队名，也天然适合弹幕传播。",
+  "worldview_summary": "短、响、话题多。G2PT 的核心观感是明星、整活、波动和随时可能被写成长文。",
+  "team_style_tags": [
+    "star-team",
+    "volatile",
+    "headline-heavy"
+  ],
+  "storyline_tags": [
+    "hunter-lead",
+    "sunpayus-scope",
+    "heavygod-fire"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry",
+    "machine_force_buy_shock"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "history_burden",
+    "plus_one"
+  ],
+  "news_focus_tags": [
+    "upset-watch",
+    "money-superteam"
+  ],
+  "cross_circle_tags": [
+    "band_to_superteam",
+    "breakup_to_transfer",
+    "cabinet_to_live_room_chaos"
+  ],
+  "processed_paths": {
+    "team": "processed/teams/g2pt/team.json",
+    "roster": "processed/teams/g2pt/roster.json",
+    "hooks": "processed/teams/g2pt/hooks.json"
+  },
+  "version": "2026-05-03-canon-v1",
+  "canon_notes": [
+    "G2PT 是典型 headline 队。",
+    "不要把它写成纯搞笑队，仍要保留明星火力和阵容想象力。"
+  ]
+}

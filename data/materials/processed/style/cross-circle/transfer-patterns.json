@@ -1,0 +1,32 @@
+{
+  "style_id": "cross-circle-transfer-patterns",
+  "scope": "cross-circle",
+  "version": "2026-05-03-canon-v1",
+  "patterns": [
+    {
+      "id": "band_to_superteam",
+      "source_motif": "mygo_band_formation",
+      "target_usage": "组银河战舰、组豪阵、组临时豪华五人组"
+    },
+    {
+      "id": "breakup_to_transfer",
+      "source_motif": "mygo_band_breakup",
+      "target_usage": "转会风波、双核裂开、体系崩盘"
+    },
+    {
+      "id": "lifetime_to_rivalry",
+      "source_motif": "mygo_lifetime_promise",
+      "target_usage": "宿命对位、老搭档复见、再打一辈子"
+    },
+    {
+      "id": "customer_service_to_cleanup",
+      "source_motif": "mygo_customer_service",
+      "target_usage": "收拾烂摊子、补售后、兜底救火"
+    },
+    {
+      "id": "cabinet_to_live_room_chaos",
+      "source_motif": "cabinet_chaos",
+      "target_usage": "直播间抽象集体发病、群魔乱舞、气氛失控"
+    }
+  ]
+}

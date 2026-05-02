@@ -1,0 +1,81 @@
+{
+  "slug": "esenthial",
+  "entity_id": "player_bit8_esenthial",
+  "entity_type": "player",
+  "team_id": "team_bit8",
+  "real_name": null,
+  "in_game_id": "esenthial",
+  "display_name": "esenthial",
+  "role": "support",
+  "status": "active",
+  "aliases": [
+    "esenthial"
+  ],
+  "meme_tags": [
+    "补位位"
+  ],
+  "persona_tags": [
+    "glue-piece",
+    "utility-worker",
+    "support-glue"
+  ],
+  "playstyle_tags": [
+    "trade-layer",
+    "utility-setup",
+    "utility",
+    "anchor"
+  ],
+  "caster_focus_tags": [
+    "machine_map_point_pressure"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "负责让 Bit8 的硬拼不至于完全失去回合结构。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "glue-piece",
+      "utility-worker",
+      "support-glue"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "trade-layer",
+      "utility-setup",
+      "utility",
+      "anchor",
+      "glue-piece",
+      "utility-worker",
+      "support-glue"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "low",
+    "segment_tags": [
+      "补位位",
+      "upset-watch"
+    ],
+    "card_priority": 45,
+    "broadcast_entry_points": [
+      "machine_map_point_pressure"
+    ]
+  },
+  "canon_notes": []
+}

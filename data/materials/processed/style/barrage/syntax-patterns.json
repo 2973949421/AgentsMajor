@@ -1,0 +1,47 @@
+{
+  "style_id": "6657-syntax-patterns",
+  "scope": "barrage",
+  "version": "2026-05-03-canon-v1",
+  "patterns": [
+    {
+      "id": "research_end",
+      "label": "研发结束体",
+      "template_summary": "关键人物倒下或实验失败后，直接宣告研发结束。"
+    },
+    {
+      "id": "world_view_shock",
+      "label": "世界观冲击体",
+      "template_summary": "把比赛现象上升成价值观或世界观崩塌。"
+    },
+    {
+      "id": "true_dynasty",
+      "label": "真王朝体",
+      "template_summary": "用王朝话术夸张描述短期强势对象。"
+    },
+    {
+      "id": "stole_front",
+      "label": "被偷正面体",
+      "template_summary": "把正面对枪失败反写成荒唐受害叙事。"
+    },
+    {
+      "id": "rebirth_title",
+      "label": "重生体",
+      "template_summary": "把选手、队伍或回合写成网文标题。"
+    },
+    {
+      "id": "good_person",
+      "label": "有没有好心人体",
+      "template_summary": "把缺资源、缺冠军、缺发挥写成求助句。"
+    },
+    {
+      "id": "nothing_except",
+      "label": "没有什么都没有体",
+      "template_summary": "通过列举缺失项，最后压到唯一荒唐结论。"
+    },
+    {
+      "id": "understand_x",
+      "label": "懂 XX 的都知道体",
+      "template_summary": "用伪权威口吻加固反串判断。"
+    }
+  ]
+}

@@ -10,6 +10,8 @@
     "build:web": "pnpm --filter @agent-major/web... --workspace-concurrency=1 build",
     "data:init": "pnpm --filter @agent-major/cli data:init",
     "dev": "pnpm --filter @agent-major/web dev",
+    "materials:build": "node data/materials/scripts/build-assets.mjs",
+    "materials:validate": "node data/materials/scripts/validate-assets.mjs",
     "phase11:demo": "pnpm --filter @agent-major/cli phase11:demo",
     "phase11:round": "pnpm --filter @agent-major/cli phase11:round",
     "phase11:replay": "pnpm --filter @agent-major/cli phase11:replay",

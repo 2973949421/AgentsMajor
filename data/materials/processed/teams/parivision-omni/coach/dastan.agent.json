@@ -1,0 +1,81 @@
+{
+  "slug": "dastan",
+  "entity_id": "coach_parivision_omni_dastan",
+  "entity_type": "coach",
+  "team_id": "team_parivision_omni",
+  "real_name": null,
+  "in_game_id": "dastan",
+  "display_name": "dastan",
+  "role": "coach",
+  "status": "active",
+  "aliases": [
+    "dastan"
+  ],
+  "meme_tags": [
+    "老牌教头"
+  ],
+  "persona_tags": [
+    "system-adult",
+    "reset-point",
+    "macro-prep"
+  ],
+  "playstyle_tags": [
+    "prep",
+    "timeout-fix",
+    "read-heavy-prep",
+    "discipline"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "old_guard"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "负责把黑马气质固定成体系，而不是只靠一两次偶发爆冷。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "system-adult",
+      "reset-point",
+      "macro-prep"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "prep",
+      "timeout-fix",
+      "read-heavy-prep",
+      "discipline",
+      "system-adult",
+      "reset-point",
+      "macro-prep"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "老牌教头",
+      "upset-watch"
+    ],
+    "card_priority": 66,
+    "broadcast_entry_points": [
+      "machine_old_guard_command"
+    ]
+  },
+  "canon_notes": []
+}

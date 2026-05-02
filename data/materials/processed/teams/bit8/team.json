@@ -1,0 +1,47 @@
+{
+  "team_id": "team_bit8",
+  "team_slug": "bit8",
+  "agent_team_name": "Bit8",
+  "source_team_name": "B8",
+  "seed": 14,
+  "status": "confirmed",
+  "canon_role": "cisdog-underdog",
+  "naming_rationale": "B8 转成 Bit8，让 8-bit 计算机感和小体量硬拼感一起保留下来。",
+  "worldview_summary": "更偏硬拼、朴素、下半区带点粗粝感的队。不是最花哨的，但很适合拿来写苦战和顽强。",
+  "team_style_tags": [
+    "cis-underdog",
+    "rough-fight",
+    "8bit-grit"
+  ],
+  "storyline_tags": [
+    "npl-redemption",
+    "alex666-call",
+    "small-team-grit"
+  ],
+  "caster_focus_tags": [
+    "machine_force_buy_shock",
+    "machine_map_point_pressure"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "plus_one",
+    "history_burden"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "cabinet_to_live_room_chaos",
+    "lifetime_to_rivalry"
+  ],
+  "processed_paths": {
+    "team": "processed/teams/bit8/team.json",
+    "roster": "processed/teams/bit8/roster.json",
+    "hooks": "processed/teams/bit8/hooks.json"
+  },
+  "version": "2026-05-03-canon-v1",
+  "canon_notes": [
+    "Bit8 的价值在于朴素硬拼感。",
+    "不是 headline 主队，但在淘汰赛叙事里很好用。"
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "slug": "heavygod",
+  "entity_id": "player_g2pt_heavygod",
+  "entity_type": "player",
+  "team_id": "team_g2pt",
+  "real_name": null,
+  "in_game_id": "HeavyGod",
+  "display_name": "HeavyGod",
+  "role": "star",
+  "status": "active",
+  "aliases": [
+    "HeavyGod"
+  ],
+  "meme_tags": [
+    "火力神"
+  ],
+  "persona_tags": [
+    "headline-core",
+    "win-condition",
+    "headline-rifle"
+  ],
+  "playstyle_tags": [
+    "high-impact",
+    "space-winning",
+    "explosive-rifle"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "upset-watch",
+    "money-superteam"
+  ],
+  "cross_circle_tags": [
+    "band_to_superteam"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "最容易把一整图音量拉起来的火力位，适合玩机器式解说直接抬成节目效果中心。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "money-superteam",
+      "headline-core",
+      "win-condition",
+      "headline-rifle"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "high-impact",
+      "space-winning",
+      "explosive-rifle",
+      "headline-core",
+      "win-condition",
+      "headline-rifle"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "火力神",
+      "upset-watch",
+      "money-superteam"
+    ],
+    "card_priority": 15,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

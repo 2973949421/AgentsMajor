@@ -1,0 +1,47 @@
+{
+  "team_id": "team_the_mongolzk",
+  "team_slug": "the-mongolzk",
+  "agent_team_name": "The MongolZK",
+  "source_team_name": "The MongolZ",
+  "seed": 8,
+  "status": "confirmed",
+  "canon_role": "asia-charge",
+  "naming_rationale": "MongolZ 上补一个 ZK，既保留蒙古铁骑识别度，也带一点零知识推理的硬核味。",
+  "worldview_summary": "亚洲冲锋队。正面狠、硬仗多、观众情绪好带，是最适合写成铁骑风暴的一支队。",
+  "team_style_tags": [
+    "asia-rise",
+    "hard-fight",
+    "momentum-team"
+  ],
+  "storyline_tags": [
+    "910-scope",
+    "blitz-call",
+    "mzinho-growth"
+  ],
+  "caster_focus_tags": [
+    "machine_asia_charge",
+    "machine_force_buy_shock"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "cross_circle"
+  ],
+  "news_focus_tags": [
+    "asia-rise",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "band_to_superteam",
+    "cabinet_to_live_room_chaos"
+  ],
+  "processed_paths": {
+    "team": "processed/teams/the-mongolzk/team.json",
+    "roster": "processed/teams/the-mongolzk/roster.json",
+    "hooks": "processed/teams/the-mongolzk/hooks.json"
+  },
+  "version": "2026-05-03-canon-v1",
+  "canon_notes": [
+    "The MongolZK 是全局重点热队之一。",
+    "不要只写亚洲之光，也要写他们真的敢正面对冲。"
+  ]
+}

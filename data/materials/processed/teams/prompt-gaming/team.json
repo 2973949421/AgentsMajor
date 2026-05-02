@@ -1,0 +1,48 @@
+{
+  "team_id": "team_prompt_gaming",
+  "team_slug": "prompt-gaming",
+  "agent_team_name": "Prompt Gaming",
+  "source_team_name": "paiN Gaming",
+  "seed": 15,
+  "status": "confirmed",
+  "canon_role": "brazil-upset-machine",
+  "naming_rationale": "用 Prompt 替换 paiN，结构接近、传播性强，也天然贴到 AI 世界观里。",
+  "worldview_summary": "巴西线的另一支重点队，更偏强度和节奏双波动。写得好时既可以热血，也可以直接节目效果化。",
+  "team_style_tags": [
+    "brazil-heat",
+    "upset-machine",
+    "momentum-team"
+  ],
+  "storyline_tags": [
+    "biguzera-core",
+    "saffee-lock",
+    "vsm-energy"
+  ],
+  "caster_focus_tags": [
+    "machine_force_buy_shock",
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "research",
+    "cross_circle"
+  ],
+  "news_focus_tags": [
+    "brazil-heat",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "cabinet_to_live_room_chaos",
+    "band_to_superteam"
+  ],
+  "processed_paths": {
+    "team": "processed/teams/prompt-gaming/team.json",
+    "roster": "processed/teams/prompt-gaming/roster.json",
+    "hooks": "processed/teams/prompt-gaming/hooks.json"
+  },
+  "version": "2026-05-03-canon-v1",
+  "canon_notes": [
+    "Prompt Gaming 保留巴西热度和节目效果双属性。",
+    "它是正赛 16 队正式成员，不是为 PhaseClan 让位的边角料。"
+  ]
+}

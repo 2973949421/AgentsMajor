@@ -1,0 +1,46 @@
+{
+  "team_id": "team_aulora",
+  "team_slug": "aulora",
+  "agent_team_name": "AuLoRA",
+  "source_team_name": "Aurora",
+  "seed": 6,
+  "status": "confirmed",
+  "canon_role": "turkish-firepower",
+  "naming_rationale": "把 Aurora 和 LoRA 融合，既有自然名词感，也有参数微调的 AI 味道。",
+  "worldview_summary": "偏枪感、偏冲脸、偏手感曲线。只要气势打起来，AuLoRA 很容易把比赛变成一段持续高分贝输出。",
+  "team_style_tags": [
+    "turkish-firepower",
+    "hand-feel-team",
+    "punch-first"
+  ],
+  "storyline_tags": [
+    "xantares-power",
+    "woxic-swing",
+    "maj3r-command"
+  ],
+  "caster_focus_tags": [
+    "machine_force_buy_shock",
+    "machine_map_point_pressure"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "research"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "cabinet_to_live_room_chaos",
+    "band_to_superteam"
+  ],
+  "processed_paths": {
+    "team": "processed/teams/aulora/team.json",
+    "roster": "processed/teams/aulora/roster.json",
+    "hooks": "processed/teams/aulora/hooks.json"
+  },
+  "version": "2026-05-03-canon-v1",
+  "canon_notes": [
+    "这支队优先突出手感曲线。",
+    "不要把土耳其线写成纯抽象，仍要保留硬实力火力。"
+  ]
+}

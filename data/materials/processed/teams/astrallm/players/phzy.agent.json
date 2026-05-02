@@ -1,0 +1,84 @@
+{
+  "slug": "phzy",
+  "entity_id": "player_astrallm_phzy",
+  "entity_type": "player",
+  "team_id": "team_astrallm",
+  "real_name": null,
+  "in_game_id": "phzy",
+  "display_name": "phzy",
+  "role": "closer",
+  "status": "active",
+  "aliases": [
+    "phzy"
+  ],
+  "meme_tags": [
+    "新狙线"
+  ],
+  "persona_tags": [
+    "late-round-finisher",
+    "calm-core",
+    "reset-sniper"
+  ],
+  "playstyle_tags": [
+    "clutch-finish",
+    "hold-angle",
+    "awp-hold",
+    "late-round-pick"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "history-burden",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "更像重建线的新狙接口，只要站出来就会被立刻写成新阶段证据。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "history-burden",
+      "upset-watch",
+      "late-round-finisher",
+      "calm-core",
+      "reset-sniper"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "clutch-finish",
+      "hold-angle",
+      "awp-hold",
+      "late-round-pick",
+      "late-round-finisher",
+      "calm-core",
+      "reset-sniper"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "新狙线",
+      "history-burden",
+      "upset-watch"
+    ],
+    "card_priority": 18,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

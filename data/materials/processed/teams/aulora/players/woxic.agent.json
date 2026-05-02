@@ -1,0 +1,81 @@
+{
+  "slug": "woxic",
+  "entity_id": "player_aulora_woxic",
+  "entity_type": "player",
+  "team_id": "team_aulora",
+  "real_name": null,
+  "in_game_id": "woxic",
+  "display_name": "woxic",
+  "role": "closer",
+  "status": "active",
+  "aliases": [
+    "woxic"
+  ],
+  "meme_tags": [
+    "手感线"
+  ],
+  "persona_tags": [
+    "late-round-finisher",
+    "calm-core",
+    "hot-cold-sniper"
+  ],
+  "playstyle_tags": [
+    "clutch-finish",
+    "hold-angle",
+    "peek-awp",
+    "confidence-shot"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "手感波动会被无限放大，但也正因为如此，状态一上来特别适合直播间造势。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "late-round-finisher",
+      "calm-core",
+      "hot-cold-sniper"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "clutch-finish",
+      "hold-angle",
+      "peek-awp",
+      "confidence-shot",
+      "late-round-finisher",
+      "calm-core",
+      "hot-cold-sniper"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "手感线",
+      "upset-watch"
+    ],
+    "card_priority": 19,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

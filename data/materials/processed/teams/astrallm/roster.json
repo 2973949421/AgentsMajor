@@ -1,0 +1,17 @@
+{
+  "team_id": "team_astrallm",
+  "active_players": [
+    "player_astrallm_hooxi",
+    "player_astrallm_phzy",
+    "player_astrallm_jabbi",
+    "player_astrallm_staehr",
+    "player_astrallm_ryu"
+  ],
+  "head_coach": "coach_astrallm_ruggah",
+  "roster_version": "2026-05-03-canon-v1",
+  "source_snapshot_date": "2026-05-02",
+  "canon_notes": [
+    "这是历史负担队，不是纯 nostalgia 队。",
+    "新闻和解说都要保留王朝阴影仍在的味道。"
+  ]
+}

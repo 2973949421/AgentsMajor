@@ -1,0 +1,85 @@
+{
+  "slug": "jabbi",
+  "entity_id": "player_astrallm_jabbi",
+  "entity_type": "player",
+  "team_id": "team_astrallm",
+  "real_name": null,
+  "in_game_id": "jabbi",
+  "display_name": "jabbi",
+  "role": "entry",
+  "status": "active",
+  "aliases": [
+    "jabbi"
+  ],
+  "meme_tags": [
+    "前线试错"
+  ],
+  "persona_tags": [
+    "frontline-instigator",
+    "heat-checker",
+    "risk-opener"
+  ],
+  "playstyle_tags": [
+    "first-contact",
+    "space-creator",
+    "first-hit",
+    "burst-commit"
+  ],
+  "caster_focus_tags": [
+    "machine_force_buy_shock"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "research"
+  ],
+  "news_focus_tags": [
+    "history-burden",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "cabinet_to_live_room_chaos"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "前线承担试错的人，决定 A 队是不是只有旧名片，没有新冲劲。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "history-burden",
+      "upset-watch",
+      "frontline-instigator",
+      "heat-checker",
+      "risk-opener"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "first-contact",
+      "space-creator",
+      "first-hit",
+      "burst-commit",
+      "frontline-instigator",
+      "heat-checker",
+      "risk-opener"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "前线试错",
+      "history-burden",
+      "upset-watch"
+    ],
+    "card_priority": 34,
+    "broadcast_entry_points": [
+      "machine_force_buy_shock"
+    ]
+  },
+  "canon_notes": []
+}

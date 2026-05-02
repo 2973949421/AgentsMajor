@@ -1,0 +1,17 @@
+{
+  "team_id": "team_mouse",
+  "active_players": [
+    "player_mouse_torzsi",
+    "player_mouse_spinx",
+    "player_mouse_jl",
+    "player_mouse_xertion",
+    "player_mouse_xelex"
+  ],
+  "head_coach": "coach_mouse_sycrone",
+  "roster_version": "2026-05-03-canon-v1",
+  "source_snapshot_date": "2026-05-02",
+  "canon_notes": [
+    "Mouse 是纪律线，不是纯整活队。",
+    "ropz 已在 VitaLLMty，Mouse 现在的内容重点转向新阵稳定性。"
+  ]
+}

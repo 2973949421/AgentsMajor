@@ -1,0 +1,81 @@
+{
+  "slug": "npl",
+  "entity_id": "player_bit8_npl",
+  "entity_type": "player",
+  "team_id": "team_bit8",
+  "real_name": null,
+  "in_game_id": "npl",
+  "display_name": "npl",
+  "role": "star",
+  "status": "active",
+  "aliases": [
+    "npl"
+  ],
+  "meme_tags": [
+    "证明线"
+  ],
+  "persona_tags": [
+    "headline-core",
+    "win-condition",
+    "redemption-candidate"
+  ],
+  "playstyle_tags": [
+    "high-impact",
+    "space-winning",
+    "rifle-impact",
+    "confidence-duel"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "band_to_superteam"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "最容易被写成证明线的人，只要打一场硬仗就会立刻有故事。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "headline-core",
+      "win-condition",
+      "redemption-candidate"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "high-impact",
+      "space-winning",
+      "rifle-impact",
+      "confidence-duel",
+      "headline-core",
+      "win-condition",
+      "redemption-candidate"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "证明线",
+      "upset-watch"
+    ],
+    "card_priority": 22,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

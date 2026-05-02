@@ -1,0 +1,37 @@
+{
+  "style_id": "news-headline-patterns",
+  "scope": "news",
+  "version": "2026-05-03-canon-v1",
+  "patterns": [
+    {
+      "id": "official_notice_line",
+      "label": "官方公告式",
+      "summary": "官方确认 + 原因 + 处理结果。"
+    },
+    {
+      "id": "hltv_result_line",
+      "label": "HLTV 风结果式",
+      "summary": "事件结果前置，主体和影响随后跟上。"
+    },
+    {
+      "id": "special_invite_line",
+      "label": "特邀递补式",
+      "summary": "先写缺席者，再写火线补位者。"
+    },
+    {
+      "id": "favorite_upset_line",
+      "label": "争冠与爆冷对撞式",
+      "summary": "热门和黑马同框，突出落差。"
+    },
+    {
+      "id": "last_dance_line",
+      "label": "老将命运式",
+      "summary": "突出老将、最后一舞、名场面或遗憾。"
+    },
+    {
+      "id": "research_accident_line",
+      "label": "研发事故式",
+      "summary": "把离谱比赛结果包装成实验事故。"
+    }
+  ]
+}

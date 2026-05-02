@@ -1,0 +1,85 @@
+{
+  "slug": "coach-tbd",
+  "entity_id": "coach_phaseclan_coach_tbd",
+  "entity_type": "coach",
+  "team_id": "team_phaseclan",
+  "real_name": null,
+  "in_game_id": "TBD",
+  "display_name": "TBD",
+  "role": "coach",
+  "status": "tbd",
+  "aliases": [
+    "TBD",
+    "Coach TBD",
+    "PhaseCoach TBD"
+  ],
+  "meme_tags": [
+    "教练待定",
+    "保留接口"
+  ],
+  "persona_tags": [
+    "system-adult",
+    "reset-point",
+    "reserved-slot"
+  ],
+  "playstyle_tags": [
+    "prep",
+    "timeout-fix",
+    "future-binding"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "old_guard"
+  ],
+  "news_focus_tags": [
+    "special_invite"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "PhaseClan 当前未锁定正式教练人选。该资产文件仅用于预留教练 agent、模型绑定和运营卡位接口。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "special_invite",
+      "system-adult",
+      "reset-point",
+      "reserved-slot"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "prep",
+      "timeout-fix",
+      "future-binding",
+      "system-adult",
+      "reset-point",
+      "reserved-slot"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "low",
+    "segment_tags": [
+      "教练待定",
+      "保留接口",
+      "special_invite"
+    ],
+    "card_priority": 90,
+    "broadcast_entry_points": [
+      "machine_old_guard_command"
+    ]
+  },
+  "canon_notes": [
+    "当前不是正式确认教练，只是资产保留槽。"
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "slug": "fallen",
+  "entity_id": "player_furia_fallen",
+  "entity_type": "player",
+  "team_id": "team_furia",
+  "real_name": null,
+  "in_game_id": "FalleN",
+  "display_name": "FalleN",
+  "role": "igl",
+  "status": "active",
+  "aliases": [
+    "FalleN",
+    "巴西教父",
+    "老将"
+  ],
+  "meme_tags": [
+    "巴西教父",
+    "老将拨钟"
+  ],
+  "persona_tags": [
+    "shotcaller",
+    "system-brain",
+    "mentor-core",
+    "legacy-leader"
+  ],
+  "playstyle_tags": [
+    "mid-round-call",
+    "tempo-control",
+    "awp-calling",
+    "slow-control"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "old_guard"
+  ],
+  "news_focus_tags": [
+    "old-guard-last-dance",
+    "brazil-heat"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "巴西老将话事人，最适合被写成把时间往回拨的人。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "old-guard-last-dance",
+      "brazil-heat",
+      "shotcaller",
+      "system-brain",
+      "mentor-core",
+      "legacy-leader"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "mid-round-call",
+      "tempo-control",
+      "awp-calling",
+      "slow-control",
+      "shotcaller",
+      "system-brain",
+      "mentor-core",
+      "legacy-leader"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "high",
+    "segment_tags": [
+      "巴西教父",
+      "老将拨钟",
+      "old-guard-last-dance",
+      "brazil-heat"
+    ],
+    "card_priority": 8,
+    "broadcast_entry_points": [
+      "machine_old_guard_command"
+    ]
+  },
+  "canon_notes": []
+}

@@ -1,0 +1,85 @@
+{
+  "slug": "belchonokk",
+  "entity_id": "player_parivision_omni_belchonokk",
+  "entity_type": "player",
+  "team_id": "team_parivision_omni",
+  "real_name": null,
+  "in_game_id": "BELCHONOKK",
+  "display_name": "BELCHONOKK",
+  "role": "entry",
+  "status": "active",
+  "aliases": [
+    "BELCHONOKK"
+  ],
+  "meme_tags": [
+    "前线点火"
+  ],
+  "persona_tags": [
+    "frontline-instigator",
+    "heat-checker",
+    "pace-opener"
+  ],
+  "playstyle_tags": [
+    "first-contact",
+    "space-creator",
+    "entry-path",
+    "contact-burst"
+  ],
+  "caster_focus_tags": [
+    "machine_force_buy_shock"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "research"
+  ],
+  "news_focus_tags": [
+    "upset-watch",
+    "research-chaos"
+  ],
+  "cross_circle_tags": [
+    "cabinet_to_live_room_chaos"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "前线点火位，决定这支慢队是不是能突然拔刀。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "research-chaos",
+      "frontline-instigator",
+      "heat-checker",
+      "pace-opener"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "first-contact",
+      "space-creator",
+      "entry-path",
+      "contact-burst",
+      "frontline-instigator",
+      "heat-checker",
+      "pace-opener"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "前线点火",
+      "upset-watch",
+      "research-chaos"
+    ],
+    "card_priority": 46,
+    "broadcast_entry_points": [
+      "machine_force_buy_shock"
+    ]
+  },
+  "canon_notes": []
+}

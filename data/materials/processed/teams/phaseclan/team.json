@@ -1,0 +1,53 @@
+{
+  "team_id": "team_phaseclan",
+  "team_slug": "phaseclan",
+  "agent_team_name": "PhaseClan",
+  "source_team_name": "FaZe Clan",
+  "seed": 16,
+  "status": "special-invite",
+  "canon_role": "special-invite-flow-team",
+  "naming_rationale": "把 FaZe 改成 Phase，既保留语音影子，也让 inference phase、phase shift 等世界观梗天然成立。",
+  "worldview_summary": "官方特邀递补队，也是天然流量队。不是最稳定的一队，但一定是最容易把直播间音量打满的一队之一。",
+  "team_style_tags": [
+    "special-invite",
+    "flow-team",
+    "high-variance"
+  ],
+  "storyline_tags": [
+    "phase-shift",
+    "twistzz-office",
+    "broky-clutch",
+    "special-invite-drama"
+  ],
+  "caster_focus_tags": [
+    "machine_special_invite_drama",
+    "machine_star_carry",
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "special_invite",
+    "player_targeting",
+    "old_guard",
+    "cross_circle"
+  ],
+  "news_focus_tags": [
+    "special_invite",
+    "money-superteam",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "band_to_superteam",
+    "breakup_to_transfer",
+    "cabinet_to_live_room_chaos"
+  ],
+  "processed_paths": {
+    "team": "processed/teams/phaseclan/team.json",
+    "roster": "processed/teams/phaseclan/roster.json",
+    "hooks": "processed/teams/phaseclan/hooks.json"
+  },
+  "version": "2026-05-03-canon-v1",
+  "canon_notes": [
+    "PhaseClan 以 Special Invite 递补正赛。",
+    "当前教练位仍为项目保留槽，不写成已正式确认。"
+  ]
+}

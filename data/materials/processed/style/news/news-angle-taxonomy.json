@@ -1,0 +1,47 @@
+{
+  "style_id": "news-angle-taxonomy",
+  "scope": "news",
+  "version": "2026-05-03-canon-v1",
+  "angles": [
+    {
+      "id": "official_notice",
+      "label": "官方公告"
+    },
+    {
+      "id": "special_invite",
+      "label": "特邀递补"
+    },
+    {
+      "id": "title-favorite",
+      "label": "争冠热门"
+    },
+    {
+      "id": "upset-watch",
+      "label": "爆冷预警"
+    },
+    {
+      "id": "old-guard-last-dance",
+      "label": "老登最后一舞"
+    },
+    {
+      "id": "asia-rise",
+      "label": "亚洲冲锋"
+    },
+    {
+      "id": "brazil-heat",
+      "label": "巴西热度"
+    },
+    {
+      "id": "money-superteam",
+      "label": "银河战舰"
+    },
+    {
+      "id": "history-burden",
+      "label": "历史包袱"
+    },
+    {
+      "id": "research-chaos",
+      "label": "研发失控"
+    }
+  ]
+}

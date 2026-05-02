@@ -1,0 +1,46 @@
+{
+  "team_id": "team_mouse",
+  "caster_angle_ids": [
+    "machine_map_point_pressure",
+    "machine_star_carry"
+  ],
+  "barrage_angle_ids": [
+    "player_targeting",
+    "history_burden"
+  ],
+  "news_angle_ids": [
+    "upset-watch"
+  ],
+  "cross_circle_angle_ids": [
+    "breakup_to_transfer",
+    "customer_service_to_cleanup"
+  ],
+  "signature_memes": [
+    "鼠队纪律课",
+    "被偷正面反噬",
+    "jL 一点火全队都醒了"
+  ],
+  "storyline_triggers": [
+    "如果 default 打得很干净，解说要强调纪律队教科书。",
+    "如果 xertioN 或 jL 强行撕开正面，直播间可以把鼠队从理工男写成突然热血。",
+    "如果 torzsi 连续收尾，允许把 Mouse 写成稳得像系统默认值。 "
+  ],
+  "matchup_triggers": [
+    "对 Neural Vincere 是纪律互读。",
+    "对 Falcon-7B 是纪律工程对豪阵天赋。"
+  ],
+  "win_state_triggers": [
+    "赢强队时用试金石变成真刀。",
+    "如果全队均衡开火，新闻避免只追一个头牌。"
+  ],
+  "loss_state_triggers": [
+    "如果正面被冲碎，主写纪律线顶不住纯火力。",
+    "如果 default 执行太慢，弹幕允许懂哥互喷。"
+  ],
+  "highlight_triggers": [
+    "torzsi AWP 终结",
+    "jL 突破双杀",
+    "xertioN 正面开图",
+    "Spinx 后程补刀"
+  ]
+}

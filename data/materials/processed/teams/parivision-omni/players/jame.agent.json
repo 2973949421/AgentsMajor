@@ -1,0 +1,88 @@
+{
+  "slug": "jame",
+  "entity_id": "player_parivision_omni_jame",
+  "entity_type": "player",
+  "team_id": "team_parivision_omni",
+  "real_name": null,
+  "in_game_id": "Jame",
+  "display_name": "Jame",
+  "role": "igl",
+  "status": "active",
+  "aliases": [
+    "Jame",
+    "Jame Time"
+  ],
+  "meme_tags": [
+    "Jame Time",
+    "保枪大师"
+  ],
+  "persona_tags": [
+    "shotcaller",
+    "system-brain",
+    "economy-reader",
+    "slow-tempo-caller"
+  ],
+  "playstyle_tags": [
+    "mid-round-call",
+    "tempo-control",
+    "economy-control",
+    "awp-call"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "old_guard"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "自带时间感的指挥位。观众先想到的可能是保枪梗，但项目内要同时保留他的节奏阅读感。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "shotcaller",
+      "system-brain",
+      "economy-reader",
+      "slow-tempo-caller"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "mid-round-call",
+      "tempo-control",
+      "economy-control",
+      "awp-call",
+      "shotcaller",
+      "system-brain",
+      "economy-reader",
+      "slow-tempo-caller"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "high",
+    "segment_tags": [
+      "Jame Time",
+      "保枪大师",
+      "upset-watch"
+    ],
+    "card_priority": 11,
+    "broadcast_entry_points": [
+      "machine_old_guard_command"
+    ]
+  },
+  "canon_notes": []
+}

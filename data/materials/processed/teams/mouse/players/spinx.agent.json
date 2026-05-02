@@ -1,0 +1,81 @@
+{
+  "slug": "spinx",
+  "entity_id": "player_mouse_spinx",
+  "entity_type": "player",
+  "team_id": "team_mouse",
+  "real_name": null,
+  "in_game_id": "Spinx",
+  "display_name": "Spinx",
+  "role": "lurker",
+  "status": "active",
+  "aliases": [
+    "Spinx"
+  ],
+  "meme_tags": [
+    "静音刀"
+  ],
+  "persona_tags": [
+    "timing-hunter",
+    "map-reader",
+    "shadow-rifler"
+  ],
+  "playstyle_tags": [
+    "late-map-control",
+    "timing-punish",
+    "back-half-pressure",
+    "timing-cut"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "lifetime_to_rivalry"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "偏静音的刀口位，不一定最吵，但很容易在真正要命的时候出现。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "timing-hunter",
+      "map-reader",
+      "shadow-rifler"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "late-map-control",
+      "timing-punish",
+      "back-half-pressure",
+      "timing-cut",
+      "timing-hunter",
+      "map-reader",
+      "shadow-rifler"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "静音刀",
+      "upset-watch"
+    ],
+    "card_priority": 29,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

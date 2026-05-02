@@ -1,0 +1,82 @@
+{
+  "slug": "rikz",
+  "entity_id": "coach_prompt_gaming_rikz",
+  "entity_type": "coach",
+  "team_id": "team_prompt_gaming",
+  "real_name": null,
+  "in_game_id": "rikz",
+  "display_name": "rikz",
+  "role": "coach",
+  "status": "active",
+  "aliases": [
+    "rikz"
+  ],
+  "meme_tags": [
+    "巴西教练线"
+  ],
+  "persona_tags": [
+    "system-adult",
+    "reset-point",
+    "heat-manager"
+  ],
+  "playstyle_tags": [
+    "prep",
+    "timeout-fix",
+    "reset"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "old_guard"
+  ],
+  "news_focus_tags": [
+    "brazil-heat",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "给巴西高热度队兜底的教练角色，适合在新闻里长期挂一条幕后线。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "brazil-heat",
+      "upset-watch",
+      "system-adult",
+      "reset-point",
+      "heat-manager"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "prep",
+      "timeout-fix",
+      "reset",
+      "system-adult",
+      "reset-point",
+      "heat-manager"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "low",
+    "segment_tags": [
+      "巴西教练线",
+      "brazil-heat",
+      "upset-watch"
+    ],
+    "card_priority": 77,
+    "broadcast_entry_points": [
+      "machine_old_guard_command"
+    ]
+  },
+  "canon_notes": []
+}

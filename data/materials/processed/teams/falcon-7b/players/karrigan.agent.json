@@ -1,0 +1,92 @@
+{
+  "slug": "karrigan",
+  "entity_id": "player_falcon_7b_karrigan",
+  "entity_type": "player",
+  "team_id": "team_falcon_7b",
+  "real_name": null,
+  "in_game_id": "karrigan",
+  "display_name": "karrigan",
+  "role": "igl",
+  "status": "active",
+  "aliases": [
+    "karrigan",
+    "大表哥",
+    "老登"
+  ],
+  "meme_tags": [
+    "老登",
+    "最后一舞"
+  ],
+  "persona_tags": [
+    "shotcaller",
+    "system-brain",
+    "aging-captain",
+    "speech-driver"
+  ],
+  "playstyle_tags": [
+    "mid-round-call",
+    "tempo-control",
+    "mid-round-voice",
+    "hero-call"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "old_guard"
+  ],
+  "news_focus_tags": [
+    "old-guard-last-dance",
+    "money-superteam"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "老将指挥位，越是乱战越像要靠他发言把全船拉回正轨。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "old-guard-last-dance",
+      "money-superteam",
+      "shotcaller",
+      "system-brain",
+      "aging-captain",
+      "speech-driver"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "mid-round-call",
+      "tempo-control",
+      "mid-round-voice",
+      "hero-call",
+      "shotcaller",
+      "system-brain",
+      "aging-captain",
+      "speech-driver"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "high",
+    "segment_tags": [
+      "老登",
+      "最后一舞",
+      "old-guard-last-dance",
+      "money-superteam"
+    ],
+    "card_priority": 7,
+    "broadcast_entry_points": [
+      "machine_old_guard_command"
+    ]
+  },
+  "canon_notes": []
+}

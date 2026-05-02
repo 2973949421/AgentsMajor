@@ -1,0 +1,90 @@
+{
+  "slug": "twistzz",
+  "entity_id": "player_phaseclan_twistzz",
+  "entity_type": "player",
+  "team_id": "team_phaseclan",
+  "real_name": null,
+  "in_game_id": "Twistzz",
+  "display_name": "Twistzz",
+  "role": "igl",
+  "status": "active",
+  "aliases": [
+    "Twistzz",
+    "总监",
+    "披肩"
+  ],
+  "meme_tags": [
+    "总监",
+    "披肩"
+  ],
+  "persona_tags": [
+    "shotcaller",
+    "system-brain",
+    "office-face",
+    "style-caller"
+  ],
+  "playstyle_tags": [
+    "mid-round-call",
+    "tempo-control",
+    "rifle-finish"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "old_guard"
+  ],
+  "news_focus_tags": [
+    "special_invite",
+    "money-superteam"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "天然有牌面的指挥位，也是 PhaseClan 把流量感转成正式赛事叙事的第一张脸。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "special_invite",
+      "money-superteam",
+      "shotcaller",
+      "system-brain",
+      "office-face",
+      "style-caller"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "mid-round-call",
+      "tempo-control",
+      "rifle-finish",
+      "shotcaller",
+      "system-brain",
+      "office-face",
+      "style-caller"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "high",
+    "segment_tags": [
+      "总监",
+      "披肩",
+      "special_invite",
+      "money-superteam"
+    ],
+    "card_priority": 10,
+    "broadcast_entry_points": [
+      "machine_old_guard_command"
+    ]
+  },
+  "canon_notes": []
+}

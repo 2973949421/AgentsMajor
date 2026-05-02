@@ -1,0 +1,48 @@
+{
+  "team_id": "team_prompt_gaming",
+  "caster_angle_ids": [
+    "machine_force_buy_shock",
+    "machine_star_carry"
+  ],
+  "barrage_angle_ids": [
+    "player_targeting",
+    "research",
+    "cross_circle"
+  ],
+  "news_angle_ids": [
+    "brazil-heat",
+    "upset-watch"
+  ],
+  "cross_circle_angle_ids": [
+    "cabinet_to_live_room_chaos",
+    "band_to_superteam"
+  ],
+  "signature_memes": [
+    "提示词队又写出新句子了",
+    "biguzera 开始接管",
+    "巴西气压拉满"
+  ],
+  "storyline_triggers": [
+    "biguzera 带起节奏时，优先往队伍核心和情绪发动机写。",
+    "如果 saffee 后程稳定开火，补足这队不是只有气势。",
+    "如果巴西热度滚起来，弹幕可直接群魔乱舞。 "
+  ],
+  "matchup_triggers": [
+    "对 FurIA 是巴西热度内战。",
+    "对 FUtureToken 是中后段爆冷权争夺。"
+  ],
+  "win_state_triggers": [
+    "如果爆冷强队，新闻按巴西热度点燃全场。",
+    "如果全队高压进攻成片，解说要强调队伍不是一两个人在抡。"
+  ],
+  "loss_state_triggers": [
+    "如果枪感掉线，写提示词没调对。",
+    "如果回合太碎，允许研发失败和巴西热度塌了并行。"
+  ],
+  "highlight_triggers": [
+    "biguzera 多杀指挥",
+    "saffee 关键狙",
+    "vsm 正面破点",
+    "snow 补枪连锁"
+  ]
+}

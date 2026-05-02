@@ -1,0 +1,51 @@
+{
+  "team_id": "team_falcon_7b",
+  "team_slug": "falcon-7b",
+  "agent_team_name": "Falcon-7B",
+  "source_team_name": "Falcons",
+  "seed": 4,
+  "status": "confirmed",
+  "canon_role": "money-superteam",
+  "naming_rationale": "把 Falcons 和 7B 参数模型梗直接焊在一起，既有豪阵气质，也保留一点小模型荒谬感。",
+  "worldview_summary": "本届最像银河战舰的队。明星位过于密集，任何一场输赢都天然带剧情，天然带长文。",
+  "team_style_tags": [
+    "money-superteam",
+    "star-density",
+    "old-guard-and-kids"
+  ],
+  "storyline_tags": [
+    "niko-regret",
+    "m0nesy-child-genius",
+    "karrigan-last-dance"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry",
+    "machine_old_guard_command",
+    "machine_force_buy_shock"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "old_guard",
+    "history_burden"
+  ],
+  "news_focus_tags": [
+    "money-superteam",
+    "old-guard-last-dance",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "band_to_superteam",
+    "breakup_to_transfer",
+    "lifetime_to_rivalry"
+  ],
+  "processed_paths": {
+    "team": "processed/teams/falcon-7b/team.json",
+    "roster": "processed/teams/falcon-7b/roster.json",
+    "hooks": "processed/teams/falcon-7b/hooks.json"
+  },
+  "version": "2026-05-03-canon-v1",
+  "canon_notes": [
+    "这是天然的流量队，不需要额外强行加戏。",
+    "报道里允许同时存在豪阵与遗憾文学。"
+  ]
+}

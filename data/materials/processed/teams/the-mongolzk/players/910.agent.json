@@ -1,0 +1,84 @@
+{
+  "slug": "910",
+  "entity_id": "player_the_mongolzk_910",
+  "entity_type": "player",
+  "team_id": "team_the_mongolzk",
+  "real_name": null,
+  "in_game_id": "910",
+  "display_name": "910",
+  "role": "closer",
+  "status": "active",
+  "aliases": [
+    "910",
+    "蒙古狙"
+  ],
+  "meme_tags": [
+    "蒙古狙",
+    "镜子亮了"
+  ],
+  "persona_tags": [
+    "late-round-finisher",
+    "calm-core",
+    "sniper-signal"
+  ],
+  "playstyle_tags": [
+    "clutch-finish",
+    "hold-angle",
+    "awp-entry-denial",
+    "late-clean"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "asia-rise"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "镜头感极强的狙位，是这支队最容易被直播间一眼记住的人之一。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "asia-rise",
+      "late-round-finisher",
+      "calm-core",
+      "sniper-signal"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "clutch-finish",
+      "hold-angle",
+      "awp-entry-denial",
+      "late-clean",
+      "late-round-finisher",
+      "calm-core",
+      "sniper-signal"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "high",
+    "segment_tags": [
+      "蒙古狙",
+      "镜子亮了",
+      "asia-rise"
+    ],
+    "card_priority": 13,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

@@ -1,0 +1,37 @@
+{
+  "style_id": "machine-reaction-patterns",
+  "scope": "caster",
+  "version": "2026-05-03-canon-v1",
+  "patterns": [
+    {
+      "id": "machine_force_buy_shock",
+      "label": "强起震动",
+      "trigger": "force-buy-or-budget-disadvantage-win"
+    },
+    {
+      "id": "machine_map_point_pressure",
+      "label": "图点压强",
+      "trigger": "map-point-or-series-point"
+    },
+    {
+      "id": "machine_star_carry",
+      "label": "明星位兜底",
+      "trigger": "star-player-clutch-or-high-impact-round"
+    },
+    {
+      "id": "machine_old_guard_command",
+      "label": "老将开会",
+      "trigger": "igl-or-veteran-control-round"
+    },
+    {
+      "id": "machine_special_invite_drama",
+      "label": "特邀流量戏剧",
+      "trigger": "phaseclan-or-special-invite-storyline"
+    },
+    {
+      "id": "machine_asia_charge",
+      "label": "亚洲冲锋",
+      "trigger": "mongolz-style-hard-fight-momentum"
+    }
+  ]
+}

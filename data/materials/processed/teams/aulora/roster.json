@@ -1,0 +1,17 @@
+{
+  "team_id": "team_aulora",
+  "active_players": [
+    "player_aulora_maj3r",
+    "player_aulora_xantares",
+    "player_aulora_woxic",
+    "player_aulora_soulfly",
+    "player_aulora_wicadia"
+  ],
+  "head_coach": "coach_aulora_fabre",
+  "roster_version": "2026-05-03-canon-v1",
+  "source_snapshot_date": "2026-05-02",
+  "canon_notes": [
+    "这支队优先突出手感曲线。",
+    "不要把土耳其线写成纯抽象，仍要保留硬实力火力。"
+  ]
+}

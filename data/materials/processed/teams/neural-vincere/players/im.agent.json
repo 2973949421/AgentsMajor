@@ -1,0 +1,87 @@
+{
+  "slug": "im",
+  "entity_id": "player_neural_vincere_im",
+  "entity_type": "player",
+  "team_id": "team_neural_vincere",
+  "real_name": null,
+  "in_game_id": "iM",
+  "display_name": "iM",
+  "role": "entry",
+  "status": "active",
+  "aliases": [
+    "iM"
+  ],
+  "meme_tags": [
+    "抢前点",
+    "打头阵"
+  ],
+  "persona_tags": [
+    "frontline-instigator",
+    "heat-checker",
+    "front-push"
+  ],
+  "playstyle_tags": [
+    "first-contact",
+    "space-creator",
+    "wide-swing",
+    "entry-contact"
+  ],
+  "caster_focus_tags": [
+    "machine_force_buy_shock"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "research"
+  ],
+  "news_focus_tags": [
+    "history-burden",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "cabinet_to_live_room_chaos"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "把前线打穿时很像点火器，没点燃就会被弹幕拿来拷打执行质量。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "history-burden",
+      "upset-watch",
+      "frontline-instigator",
+      "heat-checker",
+      "front-push"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "first-contact",
+      "space-creator",
+      "wide-swing",
+      "entry-contact",
+      "frontline-instigator",
+      "heat-checker",
+      "front-push"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "抢前点",
+      "打头阵",
+      "history-burden",
+      "upset-watch"
+    ],
+    "card_priority": 45,
+    "broadcast_entry_points": [
+      "machine_force_buy_shock"
+    ]
+  },
+  "canon_notes": []
+}

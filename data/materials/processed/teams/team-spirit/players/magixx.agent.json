@@ -1,0 +1,84 @@
+{
+  "slug": "magixx",
+  "entity_id": "player_team_spirit_magixx",
+  "entity_type": "player",
+  "team_id": "team_team_spirit",
+  "real_name": null,
+  "in_game_id": "magixx",
+  "display_name": "magixx",
+  "role": "support",
+  "status": "active",
+  "aliases": [
+    "magixx"
+  ],
+  "meme_tags": [
+    "雪碧拼图"
+  ],
+  "persona_tags": [
+    "glue-piece",
+    "utility-worker",
+    "line-support"
+  ],
+  "playstyle_tags": [
+    "trade-layer",
+    "utility-setup",
+    "support-angles",
+    "trade-cover"
+  ],
+  "caster_focus_tags": [
+    "machine_map_point_pressure"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "title-favorite",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "更偏隐形拼图，负责让高压火力不是一波流。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "title-favorite",
+      "upset-watch",
+      "glue-piece",
+      "utility-worker",
+      "line-support"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "trade-layer",
+      "utility-setup",
+      "support-angles",
+      "trade-cover",
+      "glue-piece",
+      "utility-worker",
+      "line-support"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "雪碧拼图",
+      "title-favorite",
+      "upset-watch"
+    ],
+    "card_priority": 41,
+    "broadcast_entry_points": [
+      "machine_map_point_pressure"
+    ]
+  },
+  "canon_notes": []
+}

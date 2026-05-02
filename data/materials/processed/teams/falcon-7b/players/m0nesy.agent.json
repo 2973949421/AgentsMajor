@@ -1,0 +1,87 @@
+{
+  "slug": "m0nesy",
+  "entity_id": "player_falcon_7b_m0nesy",
+  "entity_type": "player",
+  "team_id": "team_falcon_7b",
+  "real_name": null,
+  "in_game_id": "m0NESY",
+  "display_name": "m0NESY",
+  "role": "closer",
+  "status": "active",
+  "aliases": [
+    "m0NESY",
+    "小孩"
+  ],
+  "meme_tags": [
+    "小孩",
+    "狙击天才"
+  ],
+  "persona_tags": [
+    "late-round-finisher",
+    "calm-core",
+    "child-prodigy",
+    "highlight-sniper"
+  ],
+  "playstyle_tags": [
+    "clutch-finish",
+    "hold-angle",
+    "awp-first-pick",
+    "clutch-swing"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "money-superteam"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "豪阵里的天才位，最适合被玩机器式解说直接拉成不讲道理的镜头中心。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "money-superteam",
+      "late-round-finisher",
+      "calm-core",
+      "child-prodigy",
+      "highlight-sniper"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "clutch-finish",
+      "hold-angle",
+      "awp-first-pick",
+      "clutch-swing",
+      "late-round-finisher",
+      "calm-core",
+      "child-prodigy",
+      "highlight-sniper"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "high",
+    "segment_tags": [
+      "小孩",
+      "狙击天才",
+      "money-superteam"
+    ],
+    "card_priority": 4,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

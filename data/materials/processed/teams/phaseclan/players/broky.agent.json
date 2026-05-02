@@ -1,0 +1,81 @@
+{
+  "slug": "broky",
+  "entity_id": "player_phaseclan_broky",
+  "entity_type": "player",
+  "team_id": "team_phaseclan",
+  "real_name": null,
+  "in_game_id": "broky",
+  "display_name": "broky",
+  "role": "closer",
+  "status": "active",
+  "aliases": [
+    "broky"
+  ],
+  "meme_tags": [
+    "残局位",
+    "流量队终结点"
+  ],
+  "persona_tags": [
+    "late-round-finisher",
+    "calm-core",
+    "special-invite-finisher"
+  ],
+  "playstyle_tags": [
+    "clutch-finish",
+    "hold-angle",
+    "awp-late"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "special_invite"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "特邀流量队里的后程终结点，最适合在关键图里给 PhaseClan 正名。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "special_invite",
+      "late-round-finisher",
+      "calm-core",
+      "special-invite-finisher"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "clutch-finish",
+      "hold-angle",
+      "awp-late",
+      "late-round-finisher",
+      "calm-core",
+      "special-invite-finisher"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "high",
+    "segment_tags": [
+      "残局位",
+      "流量队终结点",
+      "special_invite"
+    ],
+    "card_priority": 16,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

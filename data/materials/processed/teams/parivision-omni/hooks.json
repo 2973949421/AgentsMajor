@@ -1,0 +1,47 @@
+{
+  "team_id": "team_parivision_omni",
+  "caster_angle_ids": [
+    "machine_map_point_pressure",
+    "machine_old_guard_command"
+  ],
+  "barrage_angle_ids": [
+    "player_targeting",
+    "history_burden"
+  ],
+  "news_angle_ids": [
+    "upset-watch",
+    "research-chaos"
+  ],
+  "cross_circle_angle_ids": [
+    "customer_service_to_cleanup",
+    "lifetime_to_rivalry"
+  ],
+  "signature_memes": [
+    "Jame Time",
+    "全模态慢刀",
+    "不是慢，是在让你窒息"
+  ],
+  "storyline_triggers": [
+    "Jame 把比赛拖慢时，直接写黑马把桌面调成自己的刷新率。",
+    "年轻位补枪成形时，强调 Omni 真正接上了多点输入。",
+    "如果对手开始急，说明 PariVision-Omni 的节奏已经写进对方脑子里。 "
+  ],
+  "matchup_triggers": [
+    "对 Falcon-7B 时写慢刀砍银河战舰。",
+    "对 Neural Vincere 时写系统队互读。"
+  ],
+  "win_state_triggers": [
+    "爆冷强队时用黑马视角，不要硬写偶然。",
+    "如果 Jame 做成经济压制，新闻角度可直接上研究型反杀。"
+  ],
+  "loss_state_triggers": [
+    "如果慢节奏被冲烂，写黑马阅读没来得及落地。",
+    "如果被观众嫌慢，弹幕允许懂哥互喷。"
+  ],
+  "highlight_triggers": [
+    "Jame 关键残局",
+    "慢节奏 default 拖垮对手",
+    "zweih 双杀守点",
+    "nota 后程收掉残局"
+  ]
+}

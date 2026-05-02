@@ -1,0 +1,81 @@
+{
+  "slug": "dem0n",
+  "entity_id": "player_futuretoken_dem0n",
+  "entity_type": "player",
+  "team_id": "team_futuretoken",
+  "real_name": null,
+  "in_game_id": "dem0n",
+  "display_name": "dem0n",
+  "role": "star",
+  "status": "active",
+  "aliases": [
+    "dem0n"
+  ],
+  "meme_tags": [
+    "潜力股核心"
+  ],
+  "persona_tags": [
+    "headline-core",
+    "win-condition",
+    "swing-star"
+  ],
+  "playstyle_tags": [
+    "high-impact",
+    "space-winning",
+    "impact-rifle",
+    "burst-rounds"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "band_to_superteam"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "最像高波动核心的人，站起来时最适合把整队写成突然拉升。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "headline-core",
+      "win-condition",
+      "swing-star"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "high-impact",
+      "space-winning",
+      "impact-rifle",
+      "burst-rounds",
+      "headline-core",
+      "win-condition",
+      "swing-star"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "潜力股核心",
+      "upset-watch"
+    ],
+    "card_priority": 30,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

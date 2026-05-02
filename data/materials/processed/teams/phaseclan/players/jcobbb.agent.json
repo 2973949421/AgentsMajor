@@ -1,0 +1,88 @@
+{
+  "slug": "jcobbb",
+  "entity_id": "player_phaseclan_jcobbb",
+  "entity_type": "player",
+  "team_id": "team_phaseclan",
+  "real_name": null,
+  "in_game_id": "jcobbb",
+  "display_name": "jcobbb",
+  "role": "entry",
+  "status": "active",
+  "aliases": [
+    "jcobbb"
+  ],
+  "meme_tags": [
+    "新前线"
+  ],
+  "persona_tags": [
+    "frontline-instigator",
+    "heat-checker",
+    "fresh-opener"
+  ],
+  "playstyle_tags": [
+    "first-contact",
+    "space-creator",
+    "entry",
+    "chaos-open"
+  ],
+  "caster_focus_tags": [
+    "machine_force_buy_shock"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "research"
+  ],
+  "news_focus_tags": [
+    "special_invite",
+    "money-superteam",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "cabinet_to_live_room_chaos"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "更年轻的新前线位，适合在 PhaseClan 里承担新鲜冲击点的职责。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "special_invite",
+      "money-superteam",
+      "upset-watch",
+      "frontline-instigator",
+      "heat-checker",
+      "fresh-opener"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "first-contact",
+      "space-creator",
+      "entry",
+      "chaos-open",
+      "frontline-instigator",
+      "heat-checker",
+      "fresh-opener"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "新前线",
+      "special_invite",
+      "money-superteam",
+      "upset-watch"
+    ],
+    "card_priority": 34,
+    "broadcast_entry_points": [
+      "machine_force_buy_shock"
+    ]
+  },
+  "canon_notes": []
+}

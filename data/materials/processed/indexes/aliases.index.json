@@ -1,0 +1,1502 @@
+{
+  "index_id": "aliases-index",
+  "version": "2026-05-03-canon-v1",
+  "entries": [
+    {
+      "alias": "8bit队",
+      "normalized_alias": "8bit队",
+      "target_type": "team",
+      "target_ids": [
+        "team_bit8"
+      ]
+    },
+    {
+      "alias": "910",
+      "normalized_alias": "910",
+      "target_type": "entity",
+      "target_ids": [
+        "player_the_mongolzk_910"
+      ]
+    },
+    {
+      "alias": "巴西黑豹",
+      "normalized_alias": "巴西黑豹",
+      "target_type": "team",
+      "target_ids": [
+        "team_furia"
+      ]
+    },
+    {
+      "alias": "巴西教父",
+      "normalized_alias": "巴西教父",
+      "target_type": "entity",
+      "target_ids": [
+        "player_furia_fallen"
+      ]
+    },
+    {
+      "alias": "被偷正面",
+      "normalized_alias": "被偷正面",
+      "target_type": "entity",
+      "target_ids": [
+        "player_vitallmty_ropz"
+      ]
+    },
+    {
+      "alias": "大表哥",
+      "normalized_alias": "大表哥",
+      "target_type": "entity",
+      "target_ids": [
+        "player_falcon_7b_karrigan"
+      ]
+    },
+    {
+      "alias": "大爹",
+      "normalized_alias": "大爹",
+      "target_type": "entity",
+      "target_ids": [
+        "player_vitallmty_zywoo"
+      ]
+    },
+    {
+      "alias": "大蜜蜂",
+      "normalized_alias": "大蜜蜂",
+      "target_type": "team",
+      "target_ids": [
+        "team_vitallmty"
+      ]
+    },
+    {
+      "alias": "东",
+      "normalized_alias": "东",
+      "target_type": "entity",
+      "target_ids": [
+        "player_team_spirit_donk"
+      ]
+    },
+    {
+      "alias": "东子",
+      "normalized_alias": "东子",
+      "target_type": "entity",
+      "target_ids": [
+        "player_team_spirit_donk"
+      ]
+    },
+    {
+      "alias": "黑豹",
+      "normalized_alias": "黑豹",
+      "target_type": "team",
+      "target_ids": [
+        "team_furia"
+      ]
+    },
+    {
+      "alias": "黄黑",
+      "normalized_alias": "黄黑",
+      "target_type": "team",
+      "target_ids": [
+        "team_neural_vincere"
+      ]
+    },
+    {
+      "alias": "火",
+      "normalized_alias": "火",
+      "target_type": "entity",
+      "target_ids": [
+        "player_vitallmty_flamez"
+      ]
+    },
+    {
+      "alias": "火÷",
+      "normalized_alias": "火÷",
+      "target_type": "entity",
+      "target_ids": [
+        "player_vitallmty_flamez"
+      ]
+    },
+    {
+      "alias": "老登",
+      "normalized_alias": "老登",
+      "target_type": "entity",
+      "target_ids": [
+        "player_falcon_7b_karrigan"
+      ]
+    },
+    {
+      "alias": "老登巴西",
+      "normalized_alias": "老登巴西",
+      "target_type": "team",
+      "target_ids": [
+        "team_furia"
+      ]
+    },
+    {
+      "alias": "老登队",
+      "normalized_alias": "老登队",
+      "target_type": "team",
+      "target_ids": [
+        "team_falcon_7b"
+      ]
+    },
+    {
+      "alias": "老将",
+      "normalized_alias": "老将",
+      "target_type": "entity",
+      "target_ids": [
+        "player_furia_fallen"
+      ]
+    },
+    {
+      "alias": "老鼠",
+      "normalized_alias": "老鼠",
+      "target_type": "team",
+      "target_ids": [
+        "team_mouse"
+      ]
+    },
+    {
+      "alias": "猎鹰",
+      "normalized_alias": "猎鹰",
+      "target_type": "team",
+      "target_ids": [
+        "team_falcon_7b"
+      ]
+    },
+    {
+      "alias": "流量队",
+      "normalized_alias": "流量队",
+      "target_type": "team",
+      "target_ids": [
+        "team_phaseclan"
+      ]
+    },
+    {
+      "alias": "蒙古",
+      "normalized_alias": "蒙古",
+      "target_type": "team",
+      "target_ids": [
+        "team_the_mongolzk"
+      ]
+    },
+    {
+      "alias": "蒙古狙",
+      "normalized_alias": "蒙古狙",
+      "target_type": "entity",
+      "target_ids": [
+        "player_the_mongolzk_910"
+      ]
+    },
+    {
+      "alias": "蒙古铁骑",
+      "normalized_alias": "蒙古铁骑",
+      "target_type": "team",
+      "target_ids": [
+        "team_the_mongolzk"
+      ]
+    },
+    {
+      "alias": "蜜蜂",
+      "normalized_alias": "蜜蜂",
+      "target_type": "team",
+      "target_ids": [
+        "team_vitallmty"
+      ]
+    },
+    {
+      "alias": "尼公子",
+      "normalized_alias": "尼公子",
+      "target_type": "entity",
+      "target_ids": [
+        "player_falcon_7b_niko"
+      ]
+    },
+    {
+      "alias": "披肩",
+      "normalized_alias": "披肩",
+      "target_type": "entity",
+      "target_ids": [
+        "player_phaseclan_twistzz"
+      ]
+    },
+    {
+      "alias": "钱队",
+      "normalized_alias": "钱队",
+      "target_type": "team",
+      "target_ids": [
+        "team_falcon_7b"
+      ]
+    },
+    {
+      "alias": "全模态队",
+      "normalized_alias": "全模态队",
+      "target_type": "team",
+      "target_ids": [
+        "team_parivision_omni"
+      ]
+    },
+    {
+      "alias": "鼠队",
+      "normalized_alias": "鼠队",
+      "target_type": "team",
+      "target_ids": [
+        "team_mouse"
+      ]
+    },
+    {
+      "alias": "薯片",
+      "normalized_alias": "薯片",
+      "target_type": "entity",
+      "target_ids": [
+        "player_vitallmty_zywoo"
+      ]
+    },
+    {
+      "alias": "特邀队",
+      "normalized_alias": "特邀队",
+      "target_type": "team",
+      "target_ids": [
+        "team_phaseclan"
+      ]
+    },
+    {
+      "alias": "提示词队",
+      "normalized_alias": "提示词队",
+      "target_type": "team",
+      "target_ids": [
+        "team_prompt_gaming"
+      ]
+    },
+    {
+      "alias": "天生赢家",
+      "normalized_alias": "天生赢家",
+      "target_type": "team",
+      "target_ids": [
+        "team_neural_vincere"
+      ]
+    },
+    {
+      "alias": "铁骑",
+      "normalized_alias": "铁骑",
+      "target_type": "team",
+      "target_ids": [
+        "team_the_mongolzk"
+      ]
+    },
+    {
+      "alias": "虾",
+      "normalized_alias": "虾",
+      "target_type": "entity",
+      "target_ids": [
+        "player_falcon_7b_niko"
+      ]
+    },
+    {
+      "alias": "相位队",
+      "normalized_alias": "相位队",
+      "target_type": "team",
+      "target_ids": [
+        "team_phaseclan"
+      ]
+    },
+    {
+      "alias": "小孩",
+      "normalized_alias": "小孩",
+      "target_type": "entity",
+      "target_ids": [
+        "player_falcon_7b_m0nesy"
+      ]
+    },
+    {
+      "alias": "小蜜蜂",
+      "normalized_alias": "小蜜蜂",
+      "target_type": "team",
+      "target_ids": [
+        "team_vitallmty"
+      ]
+    },
+    {
+      "alias": "雪碧",
+      "normalized_alias": "雪碧",
+      "target_type": "team",
+      "target_ids": [
+        "team_team_spirit"
+      ]
+    },
+    {
+      "alias": "叶总",
+      "normalized_alias": "叶总",
+      "target_type": "entity",
+      "target_ids": [
+        "player_furia_yekindar"
+      ]
+    },
+    {
+      "alias": "银河战舰",
+      "normalized_alias": "银河战舰",
+      "target_type": "team",
+      "target_ids": [
+        "team_falcon_7b"
+      ]
+    },
+    {
+      "alias": "载物",
+      "normalized_alias": "载物",
+      "target_type": "entity",
+      "target_ids": [
+        "player_vitallmty_zywoo"
+      ]
+    },
+    {
+      "alias": "整活队",
+      "normalized_alias": "整活队",
+      "target_type": "team",
+      "target_ids": [
+        "team_g2pt"
+      ]
+    },
+    {
+      "alias": "总监",
+      "normalized_alias": "总监",
+      "target_type": "entity",
+      "target_ids": [
+        "player_phaseclan_twistzz"
+      ]
+    },
+    {
+      "alias": "祖传版",
+      "normalized_alias": "祖传版",
+      "target_type": "team",
+      "target_ids": [
+        "team_legacy_v1"
+      ]
+    },
+    {
+      "alias": "A队",
+      "normalized_alias": "a队",
+      "target_type": "team",
+      "target_ids": [
+        "team_astrallm"
+      ]
+    },
+    {
+      "alias": "A队长",
+      "normalized_alias": "a队长",
+      "target_type": "entity",
+      "target_ids": [
+        "player_vitallmty_apex"
+      ]
+    },
+    {
+      "alias": "adrrr",
+      "normalized_alias": "adrrr",
+      "target_type": "entity",
+      "target_ids": [
+        "coach_legacy_v1_adrrr"
+      ]
+    },
+    {
+      "alias": "aleksi",
+      "normalized_alias": "aleksi",
+      "target_type": "entity",
+      "target_ids": [
+        "player_neural_vincere_aleksib"
+      ]
+    },
+    {
+      "alias": "Aleksib",
+      "normalized_alias": "aleksib",
+      "target_type": "entity",
+      "target_ids": [
+        "player_neural_vincere_aleksib"
+      ]
+    },
+    {
+      "alias": "alex666",
+      "normalized_alias": "alex666",
+      "target_type": "entity",
+      "target_ids": [
+        "player_bit8_alex666"
+      ]
+    },
+    {
+      "alias": "apEX",
+      "normalized_alias": "apex",
+      "target_type": "entity",
+      "target_ids": [
+        "player_vitallmty_apex"
+      ]
+    },
+    {
+      "alias": "arT",
+      "normalized_alias": "art",
+      "target_type": "entity",
+      "target_ids": [
+        "player_legacy_v1_art"
+      ]
+    },
+    {
+      "alias": "Astralis",
+      "normalized_alias": "astralis",
+      "target_type": "team",
+      "target_ids": [
+        "team_astrallm"
+      ]
+    },
+    {
+      "alias": "AstraLLM",
+      "normalized_alias": "astrallm",
+      "target_type": "team",
+      "target_ids": [
+        "team_astrallm"
+      ]
+    },
+    {
+      "alias": "AuLoRA",
+      "normalized_alias": "aulora",
+      "target_type": "team",
+      "target_ids": [
+        "team_aulora"
+      ]
+    },
+    {
+      "alias": "Aurora",
+      "normalized_alias": "aurora",
+      "target_type": "team",
+      "target_ids": [
+        "team_aulora"
+      ]
+    },
+    {
+      "alias": "B1ad3",
+      "normalized_alias": "b1ad3",
+      "target_type": "entity",
+      "target_ids": [
+        "coach_neural_vincere_b1ad3"
+      ]
+    },
+    {
+      "alias": "b1t",
+      "normalized_alias": "b1t",
+      "target_type": "entity",
+      "target_ids": [
+        "player_neural_vincere_bit"
+      ]
+    },
+    {
+      "alias": "B8",
+      "normalized_alias": "b8",
+      "target_type": "team",
+      "target_ids": [
+        "team_bit8"
+      ]
+    },
+    {
+      "alias": "BELCHONOKK",
+      "normalized_alias": "belchonokk",
+      "target_type": "entity",
+      "target_ids": [
+        "player_parivision_omni_belchonokk"
+      ]
+    },
+    {
+      "alias": "biguzera",
+      "normalized_alias": "biguzera",
+      "target_type": "entity",
+      "target_ids": [
+        "player_prompt_gaming_biguzera"
+      ]
+    },
+    {
+      "alias": "bit",
+      "normalized_alias": "bit",
+      "target_type": "entity",
+      "target_ids": [
+        "player_neural_vincere_bit"
+      ]
+    },
+    {
+      "alias": "Bit8",
+      "normalized_alias": "bit8",
+      "target_type": "team",
+      "target_ids": [
+        "team_bit8"
+      ]
+    },
+    {
+      "alias": "blad3",
+      "normalized_alias": "blad3",
+      "target_type": "entity",
+      "target_ids": [
+        "coach_neural_vincere_b1ad3"
+      ]
+    },
+    {
+      "alias": "bLitz",
+      "normalized_alias": "blitz",
+      "target_type": "entity",
+      "target_ids": [
+        "player_the_mongolzk_blitz"
+      ]
+    },
+    {
+      "alias": "broky",
+      "normalized_alias": "broky",
+      "target_type": "entity",
+      "target_ids": [
+        "player_phaseclan_broky"
+      ]
+    },
+    {
+      "alias": "cmtry",
+      "normalized_alias": "cmtry",
+      "target_type": "entity",
+      "target_ids": [
+        "player_futuretoken_cmtry"
+      ]
+    },
+    {
+      "alias": "Coach TBD",
+      "normalized_alias": "coach tbd",
+      "target_type": "entity",
+      "target_ids": [
+        "coach_phaseclan_coach_tbd"
+      ]
+    },
+    {
+      "alias": "cobrazera",
+      "normalized_alias": "cobrazera",
+      "target_type": "entity",
+      "target_ids": [
+        "player_the_mongolzk_cobrazera"
+      ]
+    },
+    {
+      "alias": "coolio",
+      "normalized_alias": "coolio",
+      "target_type": "entity",
+      "target_ids": [
+        "coach_futuretoken_coolio"
+      ]
+    },
+    {
+      "alias": "dastan",
+      "normalized_alias": "dastan",
+      "target_type": "entity",
+      "target_ids": [
+        "coach_parivision_omni_dastan"
+      ]
+    },
+    {
+      "alias": "dem0n",
+      "normalized_alias": "dem0n",
+      "target_type": "entity",
+      "target_ids": [
+        "player_futuretoken_dem0n"
+      ]
+    },
+    {
+      "alias": "donk",
+      "normalized_alias": "donk",
+      "target_type": "entity",
+      "target_ids": [
+        "player_team_spirit_donk"
+      ]
+    },
+    {
+      "alias": "dumau",
+      "normalized_alias": "dumau",
+      "target_type": "entity",
+      "target_ids": [
+        "player_legacy_v1_dumau"
+      ]
+    },
+    {
+      "alias": "dziugss",
+      "normalized_alias": "dziugss",
+      "target_type": "entity",
+      "target_ids": [
+        "player_futuretoken_dziugss"
+      ]
+    },
+    {
+      "alias": "esenthial",
+      "normalized_alias": "esenthial",
+      "target_type": "entity",
+      "target_ids": [
+        "player_bit8_esenthial"
+      ]
+    },
+    {
+      "alias": "Fabre",
+      "normalized_alias": "fabre",
+      "target_type": "entity",
+      "target_ids": [
+        "coach_aulora_fabre"
+      ]
+    },
+    {
+      "alias": "Falcon-7B",
+      "normalized_alias": "falcon-7b",
+      "target_type": "team",
+      "target_ids": [
+        "team_falcon_7b"
+      ]
+    },
+    {
+      "alias": "Falcons",
+      "normalized_alias": "falcons",
+      "target_type": "team",
+      "target_ids": [
+        "team_falcon_7b"
+      ]
+    },
+    {
+      "alias": "FalleN",
+      "normalized_alias": "fallen",
+      "target_type": "entity",
+      "target_ids": [
+        "player_furia_fallen"
+      ]
+    },
+    {
+      "alias": "FaZe",
+      "normalized_alias": "faze",
+      "target_type": "team",
+      "target_ids": [
+        "team_phaseclan"
+      ]
+    },
+    {
+      "alias": "flameZ",
+      "normalized_alias": "flamez",
+      "target_type": "entity",
+      "target_ids": [
+        "player_vitallmty_flamez"
+      ]
+    },
+    {
+      "alias": "frozen",
+      "normalized_alias": "frozen",
+      "target_type": "entity",
+      "target_ids": [
+        "player_phaseclan_frozen"
+      ]
+    },
+    {
+      "alias": "FurIA",
+      "normalized_alias": "furia",
+      "target_type": "team",
+      "target_ids": [
+        "team_furia"
+      ]
+    },
+    {
+      "alias": "FUT",
+      "normalized_alias": "fut",
+      "target_type": "team",
+      "target_ids": [
+        "team_futuretoken"
+      ]
+    },
+    {
+      "alias": "FUT队",
+      "normalized_alias": "fut队",
+      "target_type": "team",
+      "target_ids": [
+        "team_futuretoken"
+      ]
+    },
+    {
+      "alias": "FUtureToken",
+      "normalized_alias": "futuretoken",
+      "target_type": "team",
+      "target_ids": [
+        "team_futuretoken"
+      ]
+    },
+    {
+      "alias": "G2",
+      "normalized_alias": "g2",
+      "target_type": "team",
+      "target_ids": [
+        "team_g2pt"
+      ]
+    },
+    {
+      "alias": "G2PT",
+      "normalized_alias": "g2pt",
+      "target_type": "team",
+      "target_ids": [
+        "team_g2pt"
+      ]
+    },
+    {
+      "alias": "hally",
+      "normalized_alias": "hally",
+      "target_type": "entity",
+      "target_ids": [
+        "coach_team_spirit_hally"
+      ]
+    },
+    {
+      "alias": "HeavyGod",
+      "normalized_alias": "heavygod",
+      "target_type": "entity",
+      "target_ids": [
+        "player_g2pt_heavygod"
+      ]
+    },
+    {
+      "alias": "HooXi",
+      "normalized_alias": "hooxi",
+      "target_type": "entity",
+      "target_ids": [
+        "player_astrallm_hooxi"
+      ]
+    },
+    {
+      "alias": "hunter",
+      "normalized_alias": "hunter",
+      "target_type": "entity",
+      "target_ids": [
+        "player_g2pt_hunter"
+      ]
+    },
+    {
+      "alias": "huNter-",
+      "normalized_alias": "hunter-",
+      "target_type": "entity",
+      "target_ids": [
+        "player_g2pt_hunter"
+      ]
+    },
+    {
+      "alias": "iM",
+      "normalized_alias": "im",
+      "target_type": "entity",
+      "target_ids": [
+        "player_neural_vincere_im"
+      ]
+    },
+    {
+      "alias": "jabbi",
+      "normalized_alias": "jabbi",
+      "target_type": "entity",
+      "target_ids": [
+        "player_astrallm_jabbi"
+      ]
+    },
+    {
+      "alias": "Jame",
+      "normalized_alias": "jame",
+      "target_type": "entity",
+      "target_ids": [
+        "player_parivision_omni_jame"
+      ]
+    },
+    {
+      "alias": "Jame Time",
+      "normalized_alias": "jame time",
+      "target_type": "entity",
+      "target_ids": [
+        "player_parivision_omni_jame"
+      ]
+    },
+    {
+      "alias": "jcobbb",
+      "normalized_alias": "jcobbb",
+      "target_type": "entity",
+      "target_ids": [
+        "player_phaseclan_jcobbb"
+      ]
+    },
+    {
+      "alias": "jL",
+      "normalized_alias": "jl",
+      "target_type": "entity",
+      "target_ids": [
+        "player_mouse_jl"
+      ]
+    },
+    {
+      "alias": "K神",
+      "normalized_alias": "k神",
+      "target_type": "entity",
+      "target_ids": [
+        "player_furia_kscerato"
+      ]
+    },
+    {
+      "alias": "karrigan",
+      "normalized_alias": "karrigan",
+      "target_type": "entity",
+      "target_ids": [
+        "player_falcon_7b_karrigan"
+      ]
+    },
+    {
+      "alias": "kensizor",
+      "normalized_alias": "kensizor",
+      "target_type": "entity",
+      "target_ids": [
+        "player_bit8_kensizor"
+      ]
+    },
+    {
+      "alias": "Krabeni",
+      "normalized_alias": "krabeni",
+      "target_type": "entity",
+      "target_ids": [
+        "player_futuretoken_krabeni"
+      ]
+    },
+    {
+      "alias": "KSCERATO",
+      "normalized_alias": "kscerato",
+      "target_type": "entity",
+      "target_ids": [
+        "player_furia_kscerato"
+      ]
+    },
+    {
+      "alias": "kyousuke",
+      "normalized_alias": "kyousuke",
+      "target_type": "entity",
+      "target_ids": [
+        "player_falcon_7b_kyousuke"
+      ]
+    },
+    {
+      "alias": "latto",
+      "normalized_alias": "latto",
+      "target_type": "entity",
+      "target_ids": [
+        "player_legacy_v1_latto"
+      ]
+    },
+    {
+      "alias": "lauNX",
+      "normalized_alias": "launx",
+      "target_type": "entity",
+      "target_ids": [
+        "player_futuretoken_launx"
+      ]
+    },
+    {
+      "alias": "Legacy",
+      "normalized_alias": "legacy",
+      "target_type": "team",
+      "target_ids": [
+        "team_legacy_v1"
+      ]
+    },
+    {
+      "alias": "Legacy.v1",
+      "normalized_alias": "legacy.v1",
+      "target_type": "team",
+      "target_ids": [
+        "team_legacy_v1"
+      ]
+    },
+    {
+      "alias": "LoRA队",
+      "normalized_alias": "lora队",
+      "target_type": "team",
+      "target_ids": [
+        "team_aulora"
+      ]
+    },
+    {
+      "alias": "m0NESY",
+      "normalized_alias": "m0nesy",
+      "target_type": "entity",
+      "target_ids": [
+        "player_falcon_7b_m0nesy"
+      ]
+    },
+    {
+      "alias": "maaRaa",
+      "normalized_alias": "maaraa",
+      "target_type": "entity",
+      "target_ids": [
+        "coach_the_mongolzk_maaraa"
+      ]
+    },
+    {
+      "alias": "maddened",
+      "normalized_alias": "maddened",
+      "target_type": "entity",
+      "target_ids": [
+        "coach_bit8_maddened"
+      ]
+    },
+    {
+      "alias": "magixx",
+      "normalized_alias": "magixx",
+      "target_type": "entity",
+      "target_ids": [
+        "player_team_spirit_magixx"
+      ]
+    },
+    {
+      "alias": "MAJ3R",
+      "normalized_alias": "maj3r",
+      "target_type": "entity",
+      "target_ids": [
+        "player_aulora_maj3r"
+      ]
+    },
+    {
+      "alias": "makazze",
+      "normalized_alias": "makazze",
+      "target_type": "entity",
+      "target_ids": [
+        "player_neural_vincere_makazze"
+      ]
+    },
+    {
+      "alias": "MATYS",
+      "normalized_alias": "matys",
+      "target_type": "entity",
+      "target_ids": [
+        "player_g2pt_matys"
+      ]
+    },
+    {
+      "alias": "mezii",
+      "normalized_alias": "mezii",
+      "target_type": "entity",
+      "target_ids": [
+        "player_vitallmty_mezii"
+      ]
+    },
+    {
+      "alias": "molodoy",
+      "normalized_alias": "molodoy",
+      "target_type": "entity",
+      "target_ids": [
+        "player_furia_molodoy"
+      ]
+    },
+    {
+      "alias": "Mouse",
+      "normalized_alias": "mouse",
+      "target_type": "team",
+      "target_ids": [
+        "team_mouse"
+      ]
+    },
+    {
+      "alias": "MOUZ",
+      "normalized_alias": "mouz",
+      "target_type": "team",
+      "target_ids": [
+        "team_mouse"
+      ]
+    },
+    {
+      "alias": "mzinho",
+      "normalized_alias": "mzinho",
+      "target_type": "entity",
+      "target_ids": [
+        "player_the_mongolzk_mzinho"
+      ]
+    },
+    {
+      "alias": "n1ssim",
+      "normalized_alias": "n1ssim",
+      "target_type": "entity",
+      "target_ids": [
+        "player_legacy_v1_n1ssim"
+      ]
+    },
+    {
+      "alias": "NaVi",
+      "normalized_alias": "navi",
+      "target_type": "team",
+      "target_ids": [
+        "team_neural_vincere"
+      ]
+    },
+    {
+      "alias": "Neityu",
+      "normalized_alias": "neityu",
+      "target_type": "entity",
+      "target_ids": [
+        "player_phaseclan_neityu"
+      ]
+    },
+    {
+      "alias": "NertZ",
+      "normalized_alias": "nertz",
+      "target_type": "entity",
+      "target_ids": [
+        "player_g2pt_nertz"
+      ]
+    },
+    {
+      "alias": "Neural Vincere",
+      "normalized_alias": "neural vincere",
+      "target_type": "team",
+      "target_ids": [
+        "team_neural_vincere"
+      ]
+    },
+    {
+      "alias": "NiKo",
+      "normalized_alias": "niko",
+      "target_type": "entity",
+      "target_ids": [
+        "player_falcon_7b_niko"
+      ]
+    },
+    {
+      "alias": "nota",
+      "normalized_alias": "nota",
+      "target_type": "entity",
+      "target_ids": [
+        "player_parivision_omni_nota"
+      ]
+    },
+    {
+      "alias": "npl",
+      "normalized_alias": "npl",
+      "target_type": "entity",
+      "target_ids": [
+        "player_bit8_npl"
+      ]
+    },
+    {
+      "alias": "paiN",
+      "normalized_alias": "pain",
+      "target_type": "team",
+      "target_ids": [
+        "team_prompt_gaming"
+      ]
+    },
+    {
+      "alias": "PARIVISION",
+      "normalized_alias": "parivision",
+      "target_type": "team",
+      "target_ids": [
+        "team_parivision_omni"
+      ]
+    },
+    {
+      "alias": "PariVision-Omni",
+      "normalized_alias": "parivision-omni",
+      "target_type": "team",
+      "target_ids": [
+        "team_parivision_omni"
+      ]
+    },
+    {
+      "alias": "PhaseClan",
+      "normalized_alias": "phaseclan",
+      "target_type": "team",
+      "target_ids": [
+        "team_phaseclan"
+      ]
+    },
+    {
+      "alias": "PhaseCoach TBD",
+      "normalized_alias": "phasecoach tbd",
+      "target_type": "entity",
+      "target_ids": [
+        "coach_phaseclan_coach_tbd"
+      ]
+    },
+    {
+      "alias": "phzy",
+      "normalized_alias": "phzy",
+      "target_type": "entity",
+      "target_ids": [
+        "player_astrallm_phzy"
+      ]
+    },
+    {
+      "alias": "piriajr",
+      "normalized_alias": "piriajr",
+      "target_type": "entity",
+      "target_ids": [
+        "player_prompt_gaming_piriajr"
+      ]
+    },
+    {
+      "alias": "Prompt Gaming",
+      "normalized_alias": "prompt gaming",
+      "target_type": "team",
+      "target_ids": [
+        "team_prompt_gaming"
+      ]
+    },
+    {
+      "alias": "rikz",
+      "normalized_alias": "rikz",
+      "target_type": "entity",
+      "target_ids": [
+        "coach_prompt_gaming_rikz"
+      ]
+    },
+    {
+      "alias": "ropz",
+      "normalized_alias": "ropz",
+      "target_type": "entity",
+      "target_ids": [
+        "player_vitallmty_ropz"
+      ]
+    },
+    {
+      "alias": "ruggah",
+      "normalized_alias": "ruggah",
+      "target_type": "entity",
+      "target_ids": [
+        "coach_astrallm_ruggah"
+      ]
+    },
+    {
+      "alias": "ryu",
+      "normalized_alias": "ryu",
+      "target_type": "entity",
+      "target_ids": [
+        "player_astrallm_ryu"
+      ]
+    },
+    {
+      "alias": "s1zzi",
+      "normalized_alias": "s1zzi",
+      "target_type": "entity",
+      "target_ids": [
+        "player_bit8_s1zzi"
+      ]
+    },
+    {
+      "alias": "saadzin",
+      "normalized_alias": "saadzin",
+      "target_type": "entity",
+      "target_ids": [
+        "player_legacy_v1_saadzin"
+      ]
+    },
+    {
+      "alias": "saffee",
+      "normalized_alias": "saffee",
+      "target_type": "entity",
+      "target_ids": [
+        "player_prompt_gaming_saffee"
+      ]
+    },
+    {
+      "alias": "sAw",
+      "normalized_alias": "saw",
+      "target_type": "entity",
+      "target_ids": [
+        "coach_g2pt_saw"
+      ]
+    },
+    {
+      "alias": "sh1ro",
+      "normalized_alias": "sh1ro",
+      "target_type": "entity",
+      "target_ids": [
+        "player_team_spirit_sh1ro"
+      ]
+    },
+    {
+      "alias": "sidde",
+      "normalized_alias": "sidde",
+      "target_type": "entity",
+      "target_ids": [
+        "coach_furia_sidde"
+      ]
+    },
+    {
+      "alias": "snow",
+      "normalized_alias": "snow",
+      "target_type": "entity",
+      "target_ids": [
+        "player_prompt_gaming_snow"
+      ]
+    },
+    {
+      "alias": "soulfly",
+      "normalized_alias": "soulfly",
+      "target_type": "entity",
+      "target_ids": [
+        "player_aulora_soulfly"
+      ]
+    },
+    {
+      "alias": "Spinx",
+      "normalized_alias": "spinx",
+      "target_type": "entity",
+      "target_ids": [
+        "player_mouse_spinx"
+      ]
+    },
+    {
+      "alias": "Spirit",
+      "normalized_alias": "spirit",
+      "target_type": "team",
+      "target_ids": [
+        "team_team_spirit"
+      ]
+    },
+    {
+      "alias": "Staehr",
+      "normalized_alias": "staehr",
+      "target_type": "entity",
+      "target_ids": [
+        "player_astrallm_staehr"
+      ]
+    },
+    {
+      "alias": "SunPayus",
+      "normalized_alias": "sunpayus",
+      "target_type": "entity",
+      "target_ids": [
+        "player_g2pt_sunpayus"
+      ]
+    },
+    {
+      "alias": "sycrone",
+      "normalized_alias": "sycrone",
+      "target_type": "entity",
+      "target_ids": [
+        "coach_mouse_sycrone"
+      ]
+    },
+    {
+      "alias": "TBD",
+      "normalized_alias": "tbd",
+      "target_type": "entity",
+      "target_ids": [
+        "coach_phaseclan_coach_tbd"
+      ]
+    },
+    {
+      "alias": "Team SpirIT",
+      "normalized_alias": "team spirit",
+      "target_type": "team",
+      "target_ids": [
+        "team_team_spirit"
+      ]
+    },
+    {
+      "alias": "Techno",
+      "normalized_alias": "techno",
+      "target_type": "entity",
+      "target_ids": [
+        "player_the_mongolzk_techno"
+      ]
+    },
+    {
+      "alias": "TeSeS",
+      "normalized_alias": "teses",
+      "target_type": "entity",
+      "target_ids": [
+        "player_falcon_7b_teses"
+      ]
+    },
+    {
+      "alias": "The MongolZ",
+      "normalized_alias": "the mongolz",
+      "target_type": "team",
+      "target_ids": [
+        "team_the_mongolzk"
+      ]
+    },
+    {
+      "alias": "The MongolZK",
+      "normalized_alias": "the mongolzk",
+      "target_type": "team",
+      "target_ids": [
+        "team_the_mongolzk"
+      ]
+    },
+    {
+      "alias": "tN1R",
+      "normalized_alias": "tn1r",
+      "target_type": "entity",
+      "target_ids": [
+        "player_team_spirit_tn1r"
+      ]
+    },
+    {
+      "alias": "torzsi",
+      "normalized_alias": "torzsi",
+      "target_type": "entity",
+      "target_ids": [
+        "player_mouse_torzsi"
+      ]
+    },
+    {
+      "alias": "Twistzz",
+      "normalized_alias": "twistzz",
+      "target_type": "entity",
+      "target_ids": [
+        "player_phaseclan_twistzz"
+      ]
+    },
+    {
+      "alias": "V队",
+      "normalized_alias": "v队",
+      "target_type": "team",
+      "target_ids": [
+        "team_vitallmty"
+      ]
+    },
+    {
+      "alias": "Vitality",
+      "normalized_alias": "vitality",
+      "target_type": "team",
+      "target_ids": [
+        "team_vitallmty"
+      ]
+    },
+    {
+      "alias": "VitaLLMty",
+      "normalized_alias": "vitallmty",
+      "target_type": "team",
+      "target_ids": [
+        "team_vitallmty"
+      ]
+    },
+    {
+      "alias": "vsm",
+      "normalized_alias": "vsm",
+      "target_type": "entity",
+      "target_ids": [
+        "player_prompt_gaming_vsm"
+      ]
+    },
+    {
+      "alias": "w0nderful",
+      "normalized_alias": "w0nderful",
+      "target_type": "entity",
+      "target_ids": [
+        "player_neural_vincere_w0nderful"
+      ]
+    },
+    {
+      "alias": "Wicadia",
+      "normalized_alias": "wicadia",
+      "target_type": "entity",
+      "target_ids": [
+        "player_aulora_wicadia"
+      ]
+    },
+    {
+      "alias": "wonderful",
+      "normalized_alias": "wonderful",
+      "target_type": "entity",
+      "target_ids": [
+        "player_neural_vincere_w0nderful"
+      ]
+    },
+    {
+      "alias": "woxic",
+      "normalized_alias": "woxic",
+      "target_type": "entity",
+      "target_ids": [
+        "player_aulora_woxic"
+      ]
+    },
+    {
+      "alias": "XANTARES",
+      "normalized_alias": "xantares",
+      "target_type": "entity",
+      "target_ids": [
+        "player_aulora_xantares"
+      ]
+    },
+    {
+      "alias": "xelex",
+      "normalized_alias": "xelex",
+      "target_type": "entity",
+      "target_ids": [
+        "player_mouse_xelex"
+      ]
+    },
+    {
+      "alias": "xertioN",
+      "normalized_alias": "xertion",
+      "target_type": "entity",
+      "target_ids": [
+        "player_mouse_xertion"
+      ]
+    },
+    {
+      "alias": "xiELO",
+      "normalized_alias": "xielo",
+      "target_type": "entity",
+      "target_ids": [
+        "player_parivision_omni_xielo"
+      ]
+    },
+    {
+      "alias": "XTQ三Z",
+      "normalized_alias": "xtq三z",
+      "target_type": "entity",
+      "target_ids": [
+        "coach_vitallmty_xtqzzz"
+      ]
+    },
+    {
+      "alias": "XTQZZZ",
+      "normalized_alias": "xtqzzz",
+      "target_type": "entity",
+      "target_ids": [
+        "coach_vitallmty_xtqzzz"
+      ]
+    },
+    {
+      "alias": "YEKINDAR",
+      "normalized_alias": "yekindar",
+      "target_type": "entity",
+      "target_ids": [
+        "player_furia_yekindar"
+      ]
+    },
+    {
+      "alias": "yuurih",
+      "normalized_alias": "yuurih",
+      "target_type": "entity",
+      "target_ids": [
+        "player_furia_yuurih"
+      ]
+    },
+    {
+      "alias": "zonic",
+      "normalized_alias": "zonic",
+      "target_type": "entity",
+      "target_ids": [
+        "coach_falcon_7b_zonic"
+      ]
+    },
+    {
+      "alias": "zont1x",
+      "normalized_alias": "zont1x",
+      "target_type": "entity",
+      "target_ids": [
+        "player_team_spirit_zont1x"
+      ]
+    },
+    {
+      "alias": "zweih",
+      "normalized_alias": "zweih",
+      "target_type": "entity",
+      "target_ids": [
+        "player_parivision_omni_zweih"
+      ]
+    },
+    {
+      "alias": "ZywOo",
+      "normalized_alias": "zywoo",
+      "target_type": "entity",
+      "target_ids": [
+        "player_vitallmty_zywoo"
+      ]
+    }
+  ]
+}

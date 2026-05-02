@@ -1,0 +1,48 @@
+{
+  "team_id": "team_team_spirit",
+  "team_slug": "team-spirit",
+  "agent_team_name": "Team SpirIT",
+  "source_team_name": "Team Spirit",
+  "seed": 9,
+  "status": "confirmed",
+  "canon_role": "teen-supercore",
+  "naming_rationale": "把 Spirit 中的 IT 抬出来，既保留雪碧识别度，也让技术魂像自然变体。",
+  "worldview_summary": "天赋密度拉满、强压制、观众情绪极易被点燃。只要 donk 在场，整支队的气压就自动更高一档。",
+  "team_style_tags": [
+    "title-threat",
+    "donk-core",
+    "high-pressure-firepower"
+  ],
+  "storyline_tags": [
+    "donk-meter",
+    "sh1ro-lock",
+    "young-core-wave"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry",
+    "machine_force_buy_shock"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "research",
+    "cross_circle"
+  ],
+  "news_focus_tags": [
+    "title-favorite",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "band_to_superteam",
+    "cabinet_to_live_room_chaos"
+  ],
+  "processed_paths": {
+    "team": "processed/teams/team-spirit/team.json",
+    "roster": "processed/teams/team-spirit/roster.json",
+    "hooks": "processed/teams/team-spirit/hooks.json"
+  },
+  "version": "2026-05-03-canon-v1",
+  "canon_notes": [
+    "donk 是顶级重点资产，不能降格成普通明星位。",
+    "Team SpirIT 不只是 donk 队，sh1ro 和整体压制也要保留。"
+  ]
+}

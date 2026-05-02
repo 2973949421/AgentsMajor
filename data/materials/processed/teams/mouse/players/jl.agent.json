@@ -1,0 +1,84 @@
+{
+  "slug": "jl",
+  "entity_id": "player_mouse_jl",
+  "entity_type": "player",
+  "team_id": "team_mouse",
+  "real_name": null,
+  "in_game_id": "jL",
+  "display_name": "jL",
+  "role": "entry",
+  "status": "active",
+  "aliases": [
+    "jL"
+  ],
+  "meme_tags": [
+    "点火",
+    "激情位"
+  ],
+  "persona_tags": [
+    "frontline-instigator",
+    "heat-checker",
+    "spark-plug"
+  ],
+  "playstyle_tags": [
+    "first-contact",
+    "space-creator",
+    "wide-swing",
+    "tempo-break"
+  ],
+  "caster_focus_tags": [
+    "machine_force_buy_shock"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "research"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "cabinet_to_live_room_chaos"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "纪律队里最带火的一位。只要 jL 打穿，整支 Mouse 的情绪线就会立刻抬起来。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "frontline-instigator",
+      "heat-checker",
+      "spark-plug"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "first-contact",
+      "space-creator",
+      "wide-swing",
+      "tempo-break",
+      "frontline-instigator",
+      "heat-checker",
+      "spark-plug"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "点火",
+      "激情位",
+      "upset-watch"
+    ],
+    "card_priority": 17,
+    "broadcast_entry_points": [
+      "machine_force_buy_shock"
+    ]
+  },
+  "canon_notes": []
+}

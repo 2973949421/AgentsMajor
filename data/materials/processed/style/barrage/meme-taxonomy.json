@@ -1,0 +1,47 @@
+{
+  "style_id": "6657-meme-taxonomy",
+  "scope": "barrage",
+  "version": "2026-05-03-canon-v1",
+  "taxonomy": [
+    {
+      "id": "streamer_targeting",
+      "label": "主播迫害"
+    },
+    {
+      "id": "player_targeting",
+      "label": "选手迫害"
+    },
+    {
+      "id": "mutual_flame",
+      "label": "水友互喷"
+    },
+    {
+      "id": "plus_one",
+      "label": "+1 复读"
+    },
+    {
+      "id": "research",
+      "label": "研发梗"
+    },
+    {
+      "id": "history_burden",
+      "label": "历史包袱"
+    },
+    {
+      "id": "old_guard",
+      "label": "老登叙事"
+    },
+    {
+      "id": "big_dad",
+      "label": "大爹兜底"
+    },
+    {
+      "id": "special_invite",
+      "label": "特邀流量戏剧"
+    },
+    {
+      "id": "cross_circle",
+      "label": "跨圈梗"
+    }
+  ]
+}

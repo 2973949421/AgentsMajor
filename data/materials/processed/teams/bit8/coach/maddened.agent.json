@@ -1,0 +1,81 @@
+{
+  "slug": "maddened",
+  "entity_id": "coach_bit8_maddened",
+  "entity_type": "coach",
+  "team_id": "team_bit8",
+  "real_name": null,
+  "in_game_id": "maddened",
+  "display_name": "maddened",
+  "role": "coach",
+  "status": "active",
+  "aliases": [
+    "maddened"
+  ],
+  "meme_tags": [
+    "小队教头"
+  ],
+  "persona_tags": [
+    "system-adult",
+    "reset-point",
+    "underdog-manager"
+  ],
+  "playstyle_tags": [
+    "prep",
+    "timeout-fix",
+    "review",
+    "simplify"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "old_guard"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "更像硬拼队的维稳器，确保这支队至少能把自己最擅长的东西打出来。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "system-adult",
+      "reset-point",
+      "underdog-manager"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "prep",
+      "timeout-fix",
+      "review",
+      "simplify",
+      "system-adult",
+      "reset-point",
+      "underdog-manager"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "low",
+    "segment_tags": [
+      "小队教头",
+      "upset-watch"
+    ],
+    "card_priority": 79,
+    "broadcast_entry_points": [
+      "machine_old_guard_command"
+    ]
+  },
+  "canon_notes": []
+}

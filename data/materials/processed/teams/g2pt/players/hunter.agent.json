@@ -1,0 +1,83 @@
+{
+  "slug": "hunter",
+  "entity_id": "player_g2pt_hunter",
+  "entity_type": "player",
+  "team_id": "team_g2pt",
+  "real_name": null,
+  "in_game_id": "huNter-",
+  "display_name": "huNter-",
+  "role": "igl",
+  "status": "active",
+  "aliases": [
+    "huNter-",
+    "hunter"
+  ],
+  "meme_tags": [
+    "老牌核心"
+  ],
+  "persona_tags": [
+    "shotcaller",
+    "system-brain",
+    "headline-caller"
+  ],
+  "playstyle_tags": [
+    "mid-round-call",
+    "tempo-control",
+    "rifle-call",
+    "pace-switch"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "old_guard"
+  ],
+  "news_focus_tags": [
+    "money-superteam"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "有老牌核心气质的指挥位，打顺时像明星队真正串起来的轴心。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "money-superteam",
+      "shotcaller",
+      "system-brain",
+      "headline-caller"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "mid-round-call",
+      "tempo-control",
+      "rifle-call",
+      "pace-switch",
+      "shotcaller",
+      "system-brain",
+      "headline-caller"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "老牌核心",
+      "money-superteam"
+    ],
+    "card_priority": 19,
+    "broadcast_entry_points": [
+      "machine_old_guard_command"
+    ]
+  },
+  "canon_notes": []
+}

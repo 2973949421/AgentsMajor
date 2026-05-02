@@ -1,0 +1,81 @@
+{
+  "slug": "soulfly",
+  "entity_id": "player_aulora_soulfly",
+  "entity_type": "player",
+  "team_id": "team_aulora",
+  "real_name": null,
+  "in_game_id": "soulfly",
+  "display_name": "soulfly",
+  "role": "support",
+  "status": "active",
+  "aliases": [
+    "soulfly"
+  ],
+  "meme_tags": [
+    "工兵位"
+  ],
+  "persona_tags": [
+    "glue-piece",
+    "utility-worker",
+    "silent-worker"
+  ],
+  "playstyle_tags": [
+    "trade-layer",
+    "utility-setup",
+    "utility-cover",
+    "retrade"
+  ],
+  "caster_focus_tags": [
+    "machine_map_point_pressure"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "更偏工兵型拼图，负责让高音量输出不至于只剩空响。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "glue-piece",
+      "utility-worker",
+      "silent-worker"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "trade-layer",
+      "utility-setup",
+      "utility-cover",
+      "retrade",
+      "glue-piece",
+      "utility-worker",
+      "silent-worker"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "工兵位",
+      "upset-watch"
+    ],
+    "card_priority": 44,
+    "broadcast_entry_points": [
+      "machine_map_point_pressure"
+    ]
+  },
+  "canon_notes": []
+}

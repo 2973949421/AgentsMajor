@@ -1,0 +1,81 @@
+{
+  "slug": "krabeni",
+  "entity_id": "player_futuretoken_krabeni",
+  "entity_type": "player",
+  "team_id": "team_futuretoken",
+  "real_name": null,
+  "in_game_id": "Krabeni",
+  "display_name": "Krabeni",
+  "role": "support",
+  "status": "active",
+  "aliases": [
+    "Krabeni"
+  ],
+  "meme_tags": [
+    "拼图支持"
+  ],
+  "persona_tags": [
+    "glue-piece",
+    "utility-worker",
+    "mid-pack-worker"
+  ],
+  "playstyle_tags": [
+    "trade-layer",
+    "utility-setup",
+    "utility",
+    "trade"
+  ],
+  "caster_focus_tags": [
+    "machine_map_point_pressure"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "偏中段拼图位，负责让高波动队不是只有火没有骨架。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "glue-piece",
+      "utility-worker",
+      "mid-pack-worker"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "trade-layer",
+      "utility-setup",
+      "utility",
+      "trade",
+      "glue-piece",
+      "utility-worker",
+      "mid-pack-worker"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "low",
+    "segment_tags": [
+      "拼图支持",
+      "upset-watch"
+    ],
+    "card_priority": 47,
+    "broadcast_entry_points": [
+      "machine_map_point_pressure"
+    ]
+  },
+  "canon_notes": []
+}

@@ -1,0 +1,48 @@
+{
+  "team_id": "team_legacy_v1",
+  "team_slug": "legacy-v1",
+  "agent_team_name": "Legacy.v1",
+  "source_team_name": "Legacy",
+  "seed": 13,
+  "status": "confirmed",
+  "canon_role": "grind-underdog",
+  "naming_rationale": "Legacy 和 v1 组合，直接把老版本、祖传代码和旧系统气味带进世界观。",
+  "worldview_summary": "更偏老派 grind 队。不是牌面最大的队，但很适合做硬仗、泥地和老版本气味的内容资产。",
+  "team_style_tags": [
+    "legacy-code",
+    "grind",
+    "brazil-underdog"
+  ],
+  "storyline_tags": [
+    "art-chaos",
+    "dumau-carry",
+    "old-version-survival"
+  ],
+  "caster_focus_tags": [
+    "machine_force_buy_shock",
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "research",
+    "history_burden"
+  ],
+  "news_focus_tags": [
+    "upset-watch",
+    "brazil-heat"
+  ],
+  "cross_circle_tags": [
+    "cabinet_to_live_room_chaos",
+    "lifetime_to_rivalry"
+  ],
+  "processed_paths": {
+    "team": "processed/teams/legacy-v1/team.json",
+    "roster": "processed/teams/legacy-v1/roster.json",
+    "hooks": "processed/teams/legacy-v1/hooks.json"
+  },
+  "version": "2026-05-03-canon-v1",
+  "canon_notes": [
+    "Legacy.v1 的重点是祖传味和 grind 感。",
+    "不是每次都要写成笑点，也可以写成顽强。"
+  ]
+}

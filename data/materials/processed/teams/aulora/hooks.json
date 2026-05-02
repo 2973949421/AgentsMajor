@@ -1,0 +1,46 @@
+{
+  "team_id": "team_aulora",
+  "caster_angle_ids": [
+    "machine_force_buy_shock",
+    "machine_map_point_pressure"
+  ],
+  "barrage_angle_ids": [
+    "player_targeting",
+    "research"
+  ],
+  "news_angle_ids": [
+    "upset-watch"
+  ],
+  "cross_circle_angle_ids": [
+    "cabinet_to_live_room_chaos",
+    "band_to_superteam"
+  ],
+  "signature_memes": [
+    "XANTARES 开脸",
+    "woxic 手感线",
+    "土耳其火力一来全场起风"
+  ],
+  "storyline_triggers": [
+    "XANTARES 正面连发时，直接走火力横推叙事。",
+    "woxic 如果高波动，允许手感曲线话题上桌。",
+    "MAJ3R 叫暂停回正时，把这支高分贝队写成终于重新对焦。 "
+  ],
+  "matchup_triggers": [
+    "对 The MongolZK 时写硬仗队互撞。",
+    "对 Neural Vincere 时写枪感对体系。"
+  ],
+  "win_state_triggers": [
+    "如果正面打穿强队，新闻按爆冷硬解写。",
+    "如果双狙或双核起手感，弹幕可以直接刷今天真开了。"
+  ],
+  "loss_state_triggers": [
+    "如果冲脸回合频繁白给，写实验失败比写失误更合适。",
+    "如果手感断电，突出这支队最怕的是自己把自己打静音。"
+  ],
+  "highlight_triggers": [
+    "XANTARES 四杀正面",
+    "woxic 连续首杀",
+    "Wicadia 开门双杀",
+    "MAJ3R 暂停后反扑"
+  ]
+}

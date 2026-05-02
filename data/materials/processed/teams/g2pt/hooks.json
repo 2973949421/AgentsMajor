@@ -1,0 +1,49 @@
+{
+  "team_id": "team_g2pt",
+  "caster_angle_ids": [
+    "machine_star_carry",
+    "machine_force_buy_shock"
+  ],
+  "barrage_angle_ids": [
+    "player_targeting",
+    "history_burden",
+    "plus_one"
+  ],
+  "news_angle_ids": [
+    "upset-watch",
+    "money-superteam"
+  ],
+  "cross_circle_angle_ids": [
+    "band_to_superteam",
+    "breakup_to_transfer",
+    "cabinet_to_live_room_chaos"
+  ],
+  "signature_memes": [
+    "G2 又开始整活",
+    "今天谁来写长文",
+    "HeavyGod 一上头全队开始响"
+  ],
+  "storyline_triggers": [
+    "如果 huNter- 和 NertZ 同时起势，写双核正面压过去。",
+    "如果 SunPayus 连续开图，给狙位稳定器口径。",
+    "如果整队大起大落，允许弹幕直接复读又来了。 "
+  ],
+  "matchup_triggers": [
+    "对 AstraLLM 写老牌 logo 对老牌 logo。",
+    "对 Falcon-7B 写明星阵互比天花板。"
+  ],
+  "win_state_triggers": [
+    "如果明星位高光兑现，新闻可以偏银河战舰副线。",
+    "如果是下半场突然回魂，解说突出整活队终于把活整对了。"
+  ],
+  "loss_state_triggers": [
+    "如果进攻端散，写整活整到自己身上。",
+    "如果关键图又掉，弹幕允许长文和复读共存。"
+  ],
+  "highlight_triggers": [
+    "SunPayus 狙开图",
+    "NertZ 正面串烧",
+    "huNter- 中期带转点",
+    "HeavyGod 暴力补枪"
+  ]
+}

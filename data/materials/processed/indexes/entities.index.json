@@ -1,0 +1,871 @@
+{
+  "index_id": "entities-index",
+  "version": "2026-05-03-canon-v1",
+  "source_snapshot_date": "2026-05-02",
+  "entities": [
+    {
+      "entity_id": "player_vitallmty_apex",
+      "entity_type": "player",
+      "team_id": "team_vitallmty",
+      "display_name": "apEX",
+      "in_game_id": "apEX",
+      "status": "active",
+      "json_path": "processed/teams/vitallmty/players/apex.agent.json"
+    },
+    {
+      "entity_id": "player_vitallmty_ropz",
+      "entity_type": "player",
+      "team_id": "team_vitallmty",
+      "display_name": "ropz",
+      "in_game_id": "ropz",
+      "status": "active",
+      "json_path": "processed/teams/vitallmty/players/ropz.agent.json"
+    },
+    {
+      "entity_id": "player_vitallmty_zywoo",
+      "entity_type": "player",
+      "team_id": "team_vitallmty",
+      "display_name": "ZywOo",
+      "in_game_id": "ZywOo",
+      "status": "active",
+      "json_path": "processed/teams/vitallmty/players/zywoo.agent.json"
+    },
+    {
+      "entity_id": "player_vitallmty_flamez",
+      "entity_type": "player",
+      "team_id": "team_vitallmty",
+      "display_name": "flameZ",
+      "in_game_id": "flameZ",
+      "status": "active",
+      "json_path": "processed/teams/vitallmty/players/flamez.agent.json"
+    },
+    {
+      "entity_id": "player_vitallmty_mezii",
+      "entity_type": "player",
+      "team_id": "team_vitallmty",
+      "display_name": "mezii",
+      "in_game_id": "mezii",
+      "status": "active",
+      "json_path": "processed/teams/vitallmty/players/mezii.agent.json"
+    },
+    {
+      "entity_id": "coach_vitallmty_xtqzzz",
+      "entity_type": "coach",
+      "team_id": "team_vitallmty",
+      "display_name": "XTQZZZ",
+      "in_game_id": "XTQZZZ",
+      "status": "active",
+      "json_path": "processed/teams/vitallmty/coach/xtqzzz.agent.json"
+    },
+    {
+      "entity_id": "player_neural_vincere_aleksib",
+      "entity_type": "player",
+      "team_id": "team_neural_vincere",
+      "display_name": "Aleksib",
+      "in_game_id": "Aleksib",
+      "status": "active",
+      "json_path": "processed/teams/neural-vincere/players/aleksib.agent.json"
+    },
+    {
+      "entity_id": "player_neural_vincere_im",
+      "entity_type": "player",
+      "team_id": "team_neural_vincere",
+      "display_name": "iM",
+      "in_game_id": "iM",
+      "status": "active",
+      "json_path": "processed/teams/neural-vincere/players/im.agent.json"
+    },
+    {
+      "entity_id": "player_neural_vincere_bit",
+      "entity_type": "player",
+      "team_id": "team_neural_vincere",
+      "display_name": "b1t",
+      "in_game_id": "b1t",
+      "status": "active",
+      "json_path": "processed/teams/neural-vincere/players/b1t.agent.json"
+    },
+    {
+      "entity_id": "player_neural_vincere_w0nderful",
+      "entity_type": "player",
+      "team_id": "team_neural_vincere",
+      "display_name": "w0nderful",
+      "in_game_id": "w0nderful",
+      "status": "active",
+      "json_path": "processed/teams/neural-vincere/players/w0nderful.agent.json"
+    },
+    {
+      "entity_id": "player_neural_vincere_makazze",
+      "entity_type": "player",
+      "team_id": "team_neural_vincere",
+      "display_name": "makazze",
+      "in_game_id": "makazze",
+      "status": "active",
+      "json_path": "processed/teams/neural-vincere/players/makazze.agent.json"
+    },
+    {
+      "entity_id": "coach_neural_vincere_b1ad3",
+      "entity_type": "coach",
+      "team_id": "team_neural_vincere",
+      "display_name": "B1ad3",
+      "in_game_id": "B1ad3",
+      "status": "active",
+      "json_path": "processed/teams/neural-vincere/coach/b1ad3.agent.json"
+    },
+    {
+      "entity_id": "player_furia_fallen",
+      "entity_type": "player",
+      "team_id": "team_furia",
+      "display_name": "FalleN",
+      "in_game_id": "FalleN",
+      "status": "active",
+      "json_path": "processed/teams/furia/players/fallen.agent.json"
+    },
+    {
+      "entity_id": "player_furia_yuurih",
+      "entity_type": "player",
+      "team_id": "team_furia",
+      "display_name": "yuurih",
+      "in_game_id": "yuurih",
+      "status": "active",
+      "json_path": "processed/teams/furia/players/yuurih.agent.json"
+    },
+    {
+      "entity_id": "player_furia_yekindar",
+      "entity_type": "player",
+      "team_id": "team_furia",
+      "display_name": "YEKINDAR",
+      "in_game_id": "YEKINDAR",
+      "status": "active",
+      "json_path": "processed/teams/furia/players/yekindar.agent.json"
+    },
+    {
+      "entity_id": "player_furia_kscerato",
+      "entity_type": "player",
+      "team_id": "team_furia",
+      "display_name": "KSCERATO",
+      "in_game_id": "KSCERATO",
+      "status": "active",
+      "json_path": "processed/teams/furia/players/kscerato.agent.json"
+    },
+    {
+      "entity_id": "player_furia_molodoy",
+      "entity_type": "player",
+      "team_id": "team_furia",
+      "display_name": "molodoy",
+      "in_game_id": "molodoy",
+      "status": "active",
+      "json_path": "processed/teams/furia/players/molodoy.agent.json"
+    },
+    {
+      "entity_id": "coach_furia_sidde",
+      "entity_type": "coach",
+      "team_id": "team_furia",
+      "display_name": "sidde",
+      "in_game_id": "sidde",
+      "status": "active",
+      "json_path": "processed/teams/furia/coach/sidde.agent.json"
+    },
+    {
+      "entity_id": "player_falcon_7b_karrigan",
+      "entity_type": "player",
+      "team_id": "team_falcon_7b",
+      "display_name": "karrigan",
+      "in_game_id": "karrigan",
+      "status": "active",
+      "json_path": "processed/teams/falcon-7b/players/karrigan.agent.json"
+    },
+    {
+      "entity_id": "player_falcon_7b_niko",
+      "entity_type": "player",
+      "team_id": "team_falcon_7b",
+      "display_name": "NiKo",
+      "in_game_id": "NiKo",
+      "status": "active",
+      "json_path": "processed/teams/falcon-7b/players/niko.agent.json"
+    },
+    {
+      "entity_id": "player_falcon_7b_teses",
+      "entity_type": "player",
+      "team_id": "team_falcon_7b",
+      "display_name": "TeSeS",
+      "in_game_id": "TeSeS",
+      "status": "active",
+      "json_path": "processed/teams/falcon-7b/players/teses.agent.json"
+    },
+    {
+      "entity_id": "player_falcon_7b_m0nesy",
+      "entity_type": "player",
+      "team_id": "team_falcon_7b",
+      "display_name": "m0NESY",
+      "in_game_id": "m0NESY",
+      "status": "active",
+      "json_path": "processed/teams/falcon-7b/players/m0nesy.agent.json"
+    },
+    {
+      "entity_id": "player_falcon_7b_kyousuke",
+      "entity_type": "player",
+      "team_id": "team_falcon_7b",
+      "display_name": "kyousuke",
+      "in_game_id": "kyousuke",
+      "status": "active",
+      "json_path": "processed/teams/falcon-7b/players/kyousuke.agent.json"
+    },
+    {
+      "entity_id": "coach_falcon_7b_zonic",
+      "entity_type": "coach",
+      "team_id": "team_falcon_7b",
+      "display_name": "zonic",
+      "in_game_id": "zonic",
+      "status": "active",
+      "json_path": "processed/teams/falcon-7b/coach/zonic.agent.json"
+    },
+    {
+      "entity_id": "player_parivision_omni_jame",
+      "entity_type": "player",
+      "team_id": "team_parivision_omni",
+      "display_name": "Jame",
+      "in_game_id": "Jame",
+      "status": "active",
+      "json_path": "processed/teams/parivision-omni/players/jame.agent.json"
+    },
+    {
+      "entity_id": "player_parivision_omni_belchonokk",
+      "entity_type": "player",
+      "team_id": "team_parivision_omni",
+      "display_name": "BELCHONOKK",
+      "in_game_id": "BELCHONOKK",
+      "status": "active",
+      "json_path": "processed/teams/parivision-omni/players/belchonokk.agent.json"
+    },
+    {
+      "entity_id": "player_parivision_omni_xielo",
+      "entity_type": "player",
+      "team_id": "team_parivision_omni",
+      "display_name": "xiELO",
+      "in_game_id": "xiELO",
+      "status": "active",
+      "json_path": "processed/teams/parivision-omni/players/xielo.agent.json"
+    },
+    {
+      "entity_id": "player_parivision_omni_nota",
+      "entity_type": "player",
+      "team_id": "team_parivision_omni",
+      "display_name": "nota",
+      "in_game_id": "nota",
+      "status": "active",
+      "json_path": "processed/teams/parivision-omni/players/nota.agent.json"
+    },
+    {
+      "entity_id": "player_parivision_omni_zweih",
+      "entity_type": "player",
+      "team_id": "team_parivision_omni",
+      "display_name": "zweih",
+      "in_game_id": "zweih",
+      "status": "active",
+      "json_path": "processed/teams/parivision-omni/players/zweih.agent.json"
+    },
+    {
+      "entity_id": "coach_parivision_omni_dastan",
+      "entity_type": "coach",
+      "team_id": "team_parivision_omni",
+      "display_name": "dastan",
+      "in_game_id": "dastan",
+      "status": "active",
+      "json_path": "processed/teams/parivision-omni/coach/dastan.agent.json"
+    },
+    {
+      "entity_id": "player_aulora_maj3r",
+      "entity_type": "player",
+      "team_id": "team_aulora",
+      "display_name": "MAJ3R",
+      "in_game_id": "MAJ3R",
+      "status": "active",
+      "json_path": "processed/teams/aulora/players/maj3r.agent.json"
+    },
+    {
+      "entity_id": "player_aulora_xantares",
+      "entity_type": "player",
+      "team_id": "team_aulora",
+      "display_name": "XANTARES",
+      "in_game_id": "XANTARES",
+      "status": "active",
+      "json_path": "processed/teams/aulora/players/xantares.agent.json"
+    },
+    {
+      "entity_id": "player_aulora_woxic",
+      "entity_type": "player",
+      "team_id": "team_aulora",
+      "display_name": "woxic",
+      "in_game_id": "woxic",
+      "status": "active",
+      "json_path": "processed/teams/aulora/players/woxic.agent.json"
+    },
+    {
+      "entity_id": "player_aulora_soulfly",
+      "entity_type": "player",
+      "team_id": "team_aulora",
+      "display_name": "soulfly",
+      "in_game_id": "soulfly",
+      "status": "active",
+      "json_path": "processed/teams/aulora/players/soulfly.agent.json"
+    },
+    {
+      "entity_id": "player_aulora_wicadia",
+      "entity_type": "player",
+      "team_id": "team_aulora",
+      "display_name": "Wicadia",
+      "in_game_id": "Wicadia",
+      "status": "active",
+      "json_path": "processed/teams/aulora/players/wicadia.agent.json"
+    },
+    {
+      "entity_id": "coach_aulora_fabre",
+      "entity_type": "coach",
+      "team_id": "team_aulora",
+      "display_name": "Fabre",
+      "in_game_id": "Fabre",
+      "status": "active",
+      "json_path": "processed/teams/aulora/coach/fabre.agent.json"
+    },
+    {
+      "entity_id": "player_mouse_torzsi",
+      "entity_type": "player",
+      "team_id": "team_mouse",
+      "display_name": "torzsi",
+      "in_game_id": "torzsi",
+      "status": "active",
+      "json_path": "processed/teams/mouse/players/torzsi.agent.json"
+    },
+    {
+      "entity_id": "player_mouse_spinx",
+      "entity_type": "player",
+      "team_id": "team_mouse",
+      "display_name": "Spinx",
+      "in_game_id": "Spinx",
+      "status": "active",
+      "json_path": "processed/teams/mouse/players/spinx.agent.json"
+    },
+    {
+      "entity_id": "player_mouse_jl",
+      "entity_type": "player",
+      "team_id": "team_mouse",
+      "display_name": "jL",
+      "in_game_id": "jL",
+      "status": "active",
+      "json_path": "processed/teams/mouse/players/jl.agent.json"
+    },
+    {
+      "entity_id": "player_mouse_xertion",
+      "entity_type": "player",
+      "team_id": "team_mouse",
+      "display_name": "xertioN",
+      "in_game_id": "xertioN",
+      "status": "active",
+      "json_path": "processed/teams/mouse/players/xertion.agent.json"
+    },
+    {
+      "entity_id": "player_mouse_xelex",
+      "entity_type": "player",
+      "team_id": "team_mouse",
+      "display_name": "xelex",
+      "in_game_id": "xelex",
+      "status": "active",
+      "json_path": "processed/teams/mouse/players/xelex.agent.json"
+    },
+    {
+      "entity_id": "coach_mouse_sycrone",
+      "entity_type": "coach",
+      "team_id": "team_mouse",
+      "display_name": "sycrone",
+      "in_game_id": "sycrone",
+      "status": "active",
+      "json_path": "processed/teams/mouse/coach/sycrone.agent.json"
+    },
+    {
+      "entity_id": "player_the_mongolzk_blitz",
+      "entity_type": "player",
+      "team_id": "team_the_mongolzk",
+      "display_name": "bLitz",
+      "in_game_id": "bLitz",
+      "status": "active",
+      "json_path": "processed/teams/the-mongolzk/players/blitz.agent.json"
+    },
+    {
+      "entity_id": "player_the_mongolzk_techno",
+      "entity_type": "player",
+      "team_id": "team_the_mongolzk",
+      "display_name": "Techno",
+      "in_game_id": "Techno",
+      "status": "active",
+      "json_path": "processed/teams/the-mongolzk/players/techno.agent.json"
+    },
+    {
+      "entity_id": "player_the_mongolzk_mzinho",
+      "entity_type": "player",
+      "team_id": "team_the_mongolzk",
+      "display_name": "mzinho",
+      "in_game_id": "mzinho",
+      "status": "active",
+      "json_path": "processed/teams/the-mongolzk/players/mzinho.agent.json"
+    },
+    {
+      "entity_id": "player_the_mongolzk_910",
+      "entity_type": "player",
+      "team_id": "team_the_mongolzk",
+      "display_name": "910",
+      "in_game_id": "910",
+      "status": "active",
+      "json_path": "processed/teams/the-mongolzk/players/910.agent.json"
+    },
+    {
+      "entity_id": "player_the_mongolzk_cobrazera",
+      "entity_type": "player",
+      "team_id": "team_the_mongolzk",
+      "display_name": "cobrazera",
+      "in_game_id": "cobrazera",
+      "status": "active",
+      "json_path": "processed/teams/the-mongolzk/players/cobrazera.agent.json"
+    },
+    {
+      "entity_id": "coach_the_mongolzk_maaraa",
+      "entity_type": "coach",
+      "team_id": "team_the_mongolzk",
+      "display_name": "maaRaa",
+      "in_game_id": "maaRaa",
+      "status": "active",
+      "json_path": "processed/teams/the-mongolzk/coach/maaraa.agent.json"
+    },
+    {
+      "entity_id": "player_team_spirit_donk",
+      "entity_type": "player",
+      "team_id": "team_team_spirit",
+      "display_name": "donk",
+      "in_game_id": "donk",
+      "status": "active",
+      "json_path": "processed/teams/team-spirit/players/donk.agent.json"
+    },
+    {
+      "entity_id": "player_team_spirit_magixx",
+      "entity_type": "player",
+      "team_id": "team_team_spirit",
+      "display_name": "magixx",
+      "in_game_id": "magixx",
+      "status": "active",
+      "json_path": "processed/teams/team-spirit/players/magixx.agent.json"
+    },
+    {
+      "entity_id": "player_team_spirit_sh1ro",
+      "entity_type": "player",
+      "team_id": "team_team_spirit",
+      "display_name": "sh1ro",
+      "in_game_id": "sh1ro",
+      "status": "active",
+      "json_path": "processed/teams/team-spirit/players/sh1ro.agent.json"
+    },
+    {
+      "entity_id": "player_team_spirit_tn1r",
+      "entity_type": "player",
+      "team_id": "team_team_spirit",
+      "display_name": "tN1R",
+      "in_game_id": "tN1R",
+      "status": "active",
+      "json_path": "processed/teams/team-spirit/players/tn1r.agent.json"
+    },
+    {
+      "entity_id": "player_team_spirit_zont1x",
+      "entity_type": "player",
+      "team_id": "team_team_spirit",
+      "display_name": "zont1x",
+      "in_game_id": "zont1x",
+      "status": "active",
+      "json_path": "processed/teams/team-spirit/players/zont1x.agent.json"
+    },
+    {
+      "entity_id": "coach_team_spirit_hally",
+      "entity_type": "coach",
+      "team_id": "team_team_spirit",
+      "display_name": "hally",
+      "in_game_id": "hally",
+      "status": "active",
+      "json_path": "processed/teams/team-spirit/coach/hally.agent.json"
+    },
+    {
+      "entity_id": "player_futuretoken_dem0n",
+      "entity_type": "player",
+      "team_id": "team_futuretoken",
+      "display_name": "dem0n",
+      "in_game_id": "dem0n",
+      "status": "active",
+      "json_path": "processed/teams/futuretoken/players/dem0n.agent.json"
+    },
+    {
+      "entity_id": "player_futuretoken_launx",
+      "entity_type": "player",
+      "team_id": "team_futuretoken",
+      "display_name": "lauNX",
+      "in_game_id": "lauNX",
+      "status": "active",
+      "json_path": "processed/teams/futuretoken/players/launx.agent.json"
+    },
+    {
+      "entity_id": "player_futuretoken_krabeni",
+      "entity_type": "player",
+      "team_id": "team_futuretoken",
+      "display_name": "Krabeni",
+      "in_game_id": "Krabeni",
+      "status": "active",
+      "json_path": "processed/teams/futuretoken/players/krabeni.agent.json"
+    },
+    {
+      "entity_id": "player_futuretoken_cmtry",
+      "entity_type": "player",
+      "team_id": "team_futuretoken",
+      "display_name": "cmtry",
+      "in_game_id": "cmtry",
+      "status": "active",
+      "json_path": "processed/teams/futuretoken/players/cmtry.agent.json"
+    },
+    {
+      "entity_id": "player_futuretoken_dziugss",
+      "entity_type": "player",
+      "team_id": "team_futuretoken",
+      "display_name": "dziugss",
+      "in_game_id": "dziugss",
+      "status": "active",
+      "json_path": "processed/teams/futuretoken/players/dziugss.agent.json"
+    },
+    {
+      "entity_id": "coach_futuretoken_coolio",
+      "entity_type": "coach",
+      "team_id": "team_futuretoken",
+      "display_name": "coolio",
+      "in_game_id": "coolio",
+      "status": "active",
+      "json_path": "processed/teams/futuretoken/coach/coolio.agent.json"
+    },
+    {
+      "entity_id": "player_astrallm_hooxi",
+      "entity_type": "player",
+      "team_id": "team_astrallm",
+      "display_name": "HooXi",
+      "in_game_id": "HooXi",
+      "status": "active",
+      "json_path": "processed/teams/astrallm/players/hooxi.agent.json"
+    },
+    {
+      "entity_id": "player_astrallm_phzy",
+      "entity_type": "player",
+      "team_id": "team_astrallm",
+      "display_name": "phzy",
+      "in_game_id": "phzy",
+      "status": "active",
+      "json_path": "processed/teams/astrallm/players/phzy.agent.json"
+    },
+    {
+      "entity_id": "player_astrallm_jabbi",
+      "entity_type": "player",
+      "team_id": "team_astrallm",
+      "display_name": "jabbi",
+      "in_game_id": "jabbi",
+      "status": "active",
+      "json_path": "processed/teams/astrallm/players/jabbi.agent.json"
+    },
+    {
+      "entity_id": "player_astrallm_staehr",
+      "entity_type": "player",
+      "team_id": "team_astrallm",
+      "display_name": "Staehr",
+      "in_game_id": "Staehr",
+      "status": "active",
+      "json_path": "processed/teams/astrallm/players/staehr.agent.json"
+    },
+    {
+      "entity_id": "player_astrallm_ryu",
+      "entity_type": "player",
+      "team_id": "team_astrallm",
+      "display_name": "ryu",
+      "in_game_id": "ryu",
+      "status": "active",
+      "json_path": "processed/teams/astrallm/players/ryu.agent.json"
+    },
+    {
+      "entity_id": "coach_astrallm_ruggah",
+      "entity_type": "coach",
+      "team_id": "team_astrallm",
+      "display_name": "ruggah",
+      "in_game_id": "ruggah",
+      "status": "active",
+      "json_path": "processed/teams/astrallm/coach/ruggah.agent.json"
+    },
+    {
+      "entity_id": "player_g2pt_hunter",
+      "entity_type": "player",
+      "team_id": "team_g2pt",
+      "display_name": "huNter-",
+      "in_game_id": "huNter-",
+      "status": "active",
+      "json_path": "processed/teams/g2pt/players/hunter.agent.json"
+    },
+    {
+      "entity_id": "player_g2pt_nertz",
+      "entity_type": "player",
+      "team_id": "team_g2pt",
+      "display_name": "NertZ",
+      "in_game_id": "NertZ",
+      "status": "active",
+      "json_path": "processed/teams/g2pt/players/nertz.agent.json"
+    },
+    {
+      "entity_id": "player_g2pt_sunpayus",
+      "entity_type": "player",
+      "team_id": "team_g2pt",
+      "display_name": "SunPayus",
+      "in_game_id": "SunPayus",
+      "status": "active",
+      "json_path": "processed/teams/g2pt/players/sunpayus.agent.json"
+    },
+    {
+      "entity_id": "player_g2pt_heavygod",
+      "entity_type": "player",
+      "team_id": "team_g2pt",
+      "display_name": "HeavyGod",
+      "in_game_id": "HeavyGod",
+      "status": "active",
+      "json_path": "processed/teams/g2pt/players/heavygod.agent.json"
+    },
+    {
+      "entity_id": "player_g2pt_matys",
+      "entity_type": "player",
+      "team_id": "team_g2pt",
+      "display_name": "MATYS",
+      "in_game_id": "MATYS",
+      "status": "active",
+      "json_path": "processed/teams/g2pt/players/matys.agent.json"
+    },
+    {
+      "entity_id": "coach_g2pt_saw",
+      "entity_type": "coach",
+      "team_id": "team_g2pt",
+      "display_name": "sAw",
+      "in_game_id": "sAw",
+      "status": "active",
+      "json_path": "processed/teams/g2pt/coach/saw.agent.json"
+    },
+    {
+      "entity_id": "player_legacy_v1_art",
+      "entity_type": "player",
+      "team_id": "team_legacy_v1",
+      "display_name": "arT",
+      "in_game_id": "arT",
+      "status": "active",
+      "json_path": "processed/teams/legacy-v1/players/art.agent.json"
+    },
+    {
+      "entity_id": "player_legacy_v1_dumau",
+      "entity_type": "player",
+      "team_id": "team_legacy_v1",
+      "display_name": "dumau",
+      "in_game_id": "dumau",
+      "status": "active",
+      "json_path": "processed/teams/legacy-v1/players/dumau.agent.json"
+    },
+    {
+      "entity_id": "player_legacy_v1_latto",
+      "entity_type": "player",
+      "team_id": "team_legacy_v1",
+      "display_name": "latto",
+      "in_game_id": "latto",
+      "status": "active",
+      "json_path": "processed/teams/legacy-v1/players/latto.agent.json"
+    },
+    {
+      "entity_id": "player_legacy_v1_n1ssim",
+      "entity_type": "player",
+      "team_id": "team_legacy_v1",
+      "display_name": "n1ssim",
+      "in_game_id": "n1ssim",
+      "status": "active",
+      "json_path": "processed/teams/legacy-v1/players/n1ssim.agent.json"
+    },
+    {
+      "entity_id": "player_legacy_v1_saadzin",
+      "entity_type": "player",
+      "team_id": "team_legacy_v1",
+      "display_name": "saadzin",
+      "in_game_id": "saadzin",
+      "status": "active",
+      "json_path": "processed/teams/legacy-v1/players/saadzin.agent.json"
+    },
+    {
+      "entity_id": "coach_legacy_v1_adrrr",
+      "entity_type": "coach",
+      "team_id": "team_legacy_v1",
+      "display_name": "adrrr",
+      "in_game_id": "adrrr",
+      "status": "active",
+      "json_path": "processed/teams/legacy-v1/coach/adrrr.agent.json"
+    },
+    {
+      "entity_id": "player_bit8_alex666",
+      "entity_type": "player",
+      "team_id": "team_bit8",
+      "display_name": "alex666",
+      "in_game_id": "alex666",
+      "status": "active",
+      "json_path": "processed/teams/bit8/players/alex666.agent.json"
+    },
+    {
+      "entity_id": "player_bit8_npl",
+      "entity_type": "player",
+      "team_id": "team_bit8",
+      "display_name": "npl",
+      "in_game_id": "npl",
+      "status": "active",
+      "json_path": "processed/teams/bit8/players/npl.agent.json"
+    },
+    {
+      "entity_id": "player_bit8_kensizor",
+      "entity_type": "player",
+      "team_id": "team_bit8",
+      "display_name": "kensizor",
+      "in_game_id": "kensizor",
+      "status": "active",
+      "json_path": "processed/teams/bit8/players/kensizor.agent.json"
+    },
+    {
+      "entity_id": "player_bit8_esenthial",
+      "entity_type": "player",
+      "team_id": "team_bit8",
+      "display_name": "esenthial",
+      "in_game_id": "esenthial",
+      "status": "active",
+      "json_path": "processed/teams/bit8/players/esenthial.agent.json"
+    },
+    {
+      "entity_id": "player_bit8_s1zzi",
+      "entity_type": "player",
+      "team_id": "team_bit8",
+      "display_name": "s1zzi",
+      "in_game_id": "s1zzi",
+      "status": "active",
+      "json_path": "processed/teams/bit8/players/s1zzi.agent.json"
+    },
+    {
+      "entity_id": "coach_bit8_maddened",
+      "entity_type": "coach",
+      "team_id": "team_bit8",
+      "display_name": "maddened",
+      "in_game_id": "maddened",
+      "status": "active",
+      "json_path": "processed/teams/bit8/coach/maddened.agent.json"
+    },
+    {
+      "entity_id": "player_prompt_gaming_vsm",
+      "entity_type": "player",
+      "team_id": "team_prompt_gaming",
+      "display_name": "vsm",
+      "in_game_id": "vsm",
+      "status": "active",
+      "json_path": "processed/teams/prompt-gaming/players/vsm.agent.json"
+    },
+    {
+      "entity_id": "player_prompt_gaming_biguzera",
+      "entity_type": "player",
+      "team_id": "team_prompt_gaming",
+      "display_name": "biguzera",
+      "in_game_id": "biguzera",
+      "status": "active",
+      "json_path": "processed/teams/prompt-gaming/players/biguzera.agent.json"
+    },
+    {
+      "entity_id": "player_prompt_gaming_piriajr",
+      "entity_type": "player",
+      "team_id": "team_prompt_gaming",
+      "display_name": "piriajr",
+      "in_game_id": "piriajr",
+      "status": "active",
+      "json_path": "processed/teams/prompt-gaming/players/piriajr.agent.json"
+    },
+    {
+      "entity_id": "player_prompt_gaming_saffee",
+      "entity_type": "player",
+      "team_id": "team_prompt_gaming",
+      "display_name": "saffee",
+      "in_game_id": "saffee",
+      "status": "active",
+      "json_path": "processed/teams/prompt-gaming/players/saffee.agent.json"
+    },
+    {
+      "entity_id": "player_prompt_gaming_snow",
+      "entity_type": "player",
+      "team_id": "team_prompt_gaming",
+      "display_name": "snow",
+      "in_game_id": "snow",
+      "status": "active",
+      "json_path": "processed/teams/prompt-gaming/players/snow.agent.json"
+    },
+    {
+      "entity_id": "coach_prompt_gaming_rikz",
+      "entity_type": "coach",
+      "team_id": "team_prompt_gaming",
+      "display_name": "rikz",
+      "in_game_id": "rikz",
+      "status": "active",
+      "json_path": "processed/teams/prompt-gaming/coach/rikz.agent.json"
+    },
+    {
+      "entity_id": "player_phaseclan_broky",
+      "entity_type": "player",
+      "team_id": "team_phaseclan",
+      "display_name": "broky",
+      "in_game_id": "broky",
+      "status": "active",
+      "json_path": "processed/teams/phaseclan/players/broky.agent.json"
+    },
+    {
+      "entity_id": "player_phaseclan_twistzz",
+      "entity_type": "player",
+      "team_id": "team_phaseclan",
+      "display_name": "Twistzz",
+      "in_game_id": "Twistzz",
+      "status": "active",
+      "json_path": "processed/teams/phaseclan/players/twistzz.agent.json"
+    },
+    {
+      "entity_id": "player_phaseclan_jcobbb",
+      "entity_type": "player",
+      "team_id": "team_phaseclan",
+      "display_name": "jcobbb",
+      "in_game_id": "jcobbb",
+      "status": "active",
+      "json_path": "processed/teams/phaseclan/players/jcobbb.agent.json"
+    },
+    {
+      "entity_id": "player_phaseclan_frozen",
+      "entity_type": "player",
+      "team_id": "team_phaseclan",
+      "display_name": "frozen",
+      "in_game_id": "frozen",
+      "status": "active",
+      "json_path": "processed/teams/phaseclan/players/frozen.agent.json"
+    },
+    {
+      "entity_id": "player_phaseclan_neityu",
+      "entity_type": "player",
+      "team_id": "team_phaseclan",
+      "display_name": "Neityu",
+      "in_game_id": "Neityu",
+      "status": "active",
+      "json_path": "processed/teams/phaseclan/players/neityu.agent.json"
+    },
+    {
+      "entity_id": "coach_phaseclan_coach_tbd",
+      "entity_type": "coach",
+      "team_id": "team_phaseclan",
+      "display_name": "TBD",
+      "in_game_id": "TBD",
+      "status": "tbd",
+      "json_path": "processed/teams/phaseclan/coach/coach-tbd.agent.json"
+    }
+  ]
+}

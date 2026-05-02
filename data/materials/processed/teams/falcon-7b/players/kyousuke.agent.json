@@ -1,0 +1,82 @@
+{
+  "slug": "kyousuke",
+  "entity_id": "player_falcon_7b_kyousuke",
+  "entity_type": "player",
+  "team_id": "team_falcon_7b",
+  "real_name": null,
+  "in_game_id": "kyousuke",
+  "display_name": "kyousuke",
+  "role": "entry",
+  "status": "active",
+  "aliases": [
+    "kyousuke"
+  ],
+  "meme_tags": [
+    "新刃口"
+  ],
+  "persona_tags": [
+    "frontline-instigator",
+    "heat-checker",
+    "fresh-edge"
+  ],
+  "playstyle_tags": [
+    "first-contact",
+    "space-creator",
+    "entry-burst",
+    "follow-up-space"
+  ],
+  "caster_focus_tags": [
+    "machine_force_buy_shock"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "research"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "cabinet_to_live_room_chaos"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "新刃口位，打出来就是豪阵年轻血，不行就会被反问为什么豪阵还缺最后一块。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "frontline-instigator",
+      "heat-checker",
+      "fresh-edge"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "first-contact",
+      "space-creator",
+      "entry-burst",
+      "follow-up-space",
+      "frontline-instigator",
+      "heat-checker",
+      "fresh-edge"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "新刃口",
+      "upset-watch"
+    ],
+    "card_priority": 22,
+    "broadcast_entry_points": [
+      "machine_force_buy_shock"
+    ]
+  },
+  "canon_notes": []
+}

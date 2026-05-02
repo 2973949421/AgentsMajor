@@ -1,0 +1,49 @@
+{
+  "team_id": "team_furia",
+  "team_slug": "furia",
+  "agent_team_name": "FurIA",
+  "source_team_name": "FURIA",
+  "seed": 3,
+  "status": "confirmed",
+  "canon_role": "brazilian-chaos-contender",
+  "naming_rationale": "直接把 IA / AI 自然嵌进 FURIA，本身就自带黑豹、激情和失控感。",
+  "worldview_summary": "巴西热度、老将老脸、激情和失控并存。FurIA 的好看点在于它永远像要把比赛打成情绪剧。",
+  "team_style_tags": [
+    "brazil-heat",
+    "veteran-core",
+    "swingy-chaos"
+  ],
+  "storyline_tags": [
+    "fallen-clock",
+    "kscerato-spine",
+    "yekindar-gamble"
+  ],
+  "caster_focus_tags": [
+    "machine_force_buy_shock",
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "old_guard",
+    "research"
+  ],
+  "news_focus_tags": [
+    "brazil-heat",
+    "old-guard-last-dance",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "cabinet_to_live_room_chaos",
+    "customer_service_to_cleanup"
+  ],
+  "processed_paths": {
+    "team": "processed/teams/furia/team.json",
+    "roster": "processed/teams/furia/roster.json",
+    "hooks": "processed/teams/furia/hooks.json"
+  },
+  "version": "2026-05-03-canon-v1",
+  "canon_notes": [
+    "这支队既能打热血线，也能打抽象线。",
+    "FalleN 是长期内容资产，不要被短期状态完全覆盖。"
+  ]
+}

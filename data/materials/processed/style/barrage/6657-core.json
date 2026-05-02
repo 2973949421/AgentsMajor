@@ -1,0 +1,35 @@
+{
+  "style_id": "6657-core",
+  "scope": "barrage",
+  "version": "2026-05-03-canon-v1",
+  "core_traits": [
+    {
+      "id": "6657_repeat",
+      "label": "复读扩散"
+    },
+    {
+      "id": "6657_irony",
+      "label": "阴阳反串"
+    },
+    {
+      "id": "6657_conclusion_first",
+      "label": "结论先行"
+    },
+    {
+      "id": "6657_symbolic_alias",
+      "label": "符号化别称"
+    },
+    {
+      "id": "6657_research",
+      "label": "研发宇宙"
+    },
+    {
+      "id": "6657_group_chaos",
+      "label": "群魔乱舞"
+    },
+    {
+      "id": "6657_cross_circle",
+      "label": "跨圈模板"
+    }
+  ]
+}

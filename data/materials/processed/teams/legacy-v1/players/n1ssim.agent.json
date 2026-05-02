@@ -1,0 +1,84 @@
+{
+  "slug": "n1ssim",
+  "entity_id": "player_legacy_v1_n1ssim",
+  "entity_type": "player",
+  "team_id": "team_legacy_v1",
+  "real_name": null,
+  "in_game_id": "n1ssim",
+  "display_name": "n1ssim",
+  "role": "lurker",
+  "status": "active",
+  "aliases": [
+    "n1ssim"
+  ],
+  "meme_tags": [
+    "后手拼图"
+  ],
+  "persona_tags": [
+    "timing-hunter",
+    "map-reader",
+    "quiet-wrap"
+  ],
+  "playstyle_tags": [
+    "late-map-control",
+    "timing-punish",
+    "late-route",
+    "lurking"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "upset-watch",
+    "brazil-heat"
+  ],
+  "cross_circle_tags": [
+    "lifetime_to_rivalry"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "偏安静的后手拼图，让队伍不至于只剩一股冲劲。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "brazil-heat",
+      "timing-hunter",
+      "map-reader",
+      "quiet-wrap"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "late-map-control",
+      "timing-punish",
+      "late-route",
+      "lurking",
+      "timing-hunter",
+      "map-reader",
+      "quiet-wrap"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "low",
+    "segment_tags": [
+      "后手拼图",
+      "upset-watch",
+      "brazil-heat"
+    ],
+    "card_priority": 49,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

@@ -1,0 +1,99 @@
+{
+  "version": "2026-05-03-canon-v1",
+  "files": {
+    "caster": [
+      "processed/style/caster/machine-voice-core.json",
+      "processed/style/caster/reaction-patterns.json"
+    ],
+    "barrage": [
+      "processed/style/barrage/6657-core.json",
+      "processed/style/barrage/meme-taxonomy.json",
+      "processed/style/barrage/syntax-patterns.json"
+    ],
+    "cross_circle": [
+      "processed/style/cross-circle/mygo-core.json",
+      "processed/style/cross-circle/transfer-patterns.json"
+    ],
+    "news": [
+      "processed/style/news/news-angle-taxonomy.json",
+      "processed/style/news/headline-patterns.json"
+    ],
+    "glossary": [
+      "processed/style/glossary/team-aliases.json",
+      "processed/style/glossary/player-aliases.json"
+    ]
+  },
+  "angle_ids": {
+    "caster": [
+      "machine_result_forward",
+      "machine_rhetorical_snap",
+      "machine_showmanship_first",
+      "machine_character_lock",
+      "machine_redline_swing",
+      "machine_research_frame",
+      "machine_force_buy_shock",
+      "machine_map_point_pressure",
+      "machine_star_carry",
+      "machine_old_guard_command",
+      "machine_special_invite_drama",
+      "machine_asia_charge"
+    ],
+    "barrage": [
+      "6657_repeat",
+      "6657_irony",
+      "6657_conclusion_first",
+      "6657_symbolic_alias",
+      "6657_research",
+      "6657_group_chaos",
+      "6657_cross_circle",
+      "streamer_targeting",
+      "player_targeting",
+      "mutual_flame",
+      "plus_one",
+      "history_burden",
+      "old_guard",
+      "big_dad",
+      "special_invite",
+      "cross_circle",
+      "research_end",
+      "world_view_shock",
+      "true_dynasty",
+      "stole_front",
+      "rebirth_title",
+      "good_person",
+      "nothing_except",
+      "understand_x"
+    ],
+    "cross_circle": [
+      "mygo_band_formation",
+      "mygo_band_breakup",
+      "mygo_lifetime_promise",
+      "mygo_customer_service",
+      "cabinet_chaos",
+      "decline_drama",
+      "band_to_superteam",
+      "breakup_to_transfer",
+      "lifetime_to_rivalry",
+      "customer_service_to_cleanup",
+      "cabinet_to_live_room_chaos"
+    ],
+    "news": [
+      "official_notice",
+      "special_invite",
+      "title-favorite",
+      "upset-watch",
+      "old-guard-last-dance",
+      "asia-rise",
+      "brazil-heat",
+      "money-superteam",
+      "history-burden",
+      "research-chaos",
+      "official_notice_line",
+      "hltv_result_line",
+      "special_invite_line",
+      "favorite_upset_line",
+      "last_dance_line",
+      "research_accident_line"
+    ]
+  }
+}

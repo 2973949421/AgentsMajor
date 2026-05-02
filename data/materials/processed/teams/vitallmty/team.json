@@ -1,0 +1,49 @@
+{
+  "team_id": "team_vitallmty",
+  "team_slug": "vitallmty",
+  "agent_team_name": "VitaLLMty",
+  "source_team_name": "Vitality",
+  "seed": 1,
+  "status": "confirmed",
+  "canon_role": "title-favorite",
+  "naming_rationale": "在 Vitality 中嵌入 LLM，保留小蜜蜂识别度，同时把大模型感做成自然内嵌词。",
+  "worldview_summary": "本届默认头号种子。核心叙事是 ZywOo 的大爹兜底、apEX 的红温指挥，以及 flameZ 是否又把比赛打成研发现场。",
+  "team_style_tags": [
+    "title-favorite",
+    "research-pressure",
+    "late-round-insurance"
+  ],
+  "storyline_tags": [
+    "zywoo-big-dad",
+    "flamez-research",
+    "apex-redline"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry",
+    "machine_force_buy_shock",
+    "machine_map_point_pressure"
+  ],
+  "barrage_focus_tags": [
+    "research",
+    "big_dad",
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "title-favorite",
+    "research-chaos"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup",
+    "band_to_superteam"
+  ],
+  "processed_paths": {
+    "team": "processed/teams/vitallmty/team.json",
+    "roster": "processed/teams/vitallmty/roster.json",
+    "hooks": "processed/teams/vitallmty/hooks.json"
+  },
+  "version": "2026-05-03-canon-v1",
+  "canon_notes": [
+    "当前视作 Agent Major 一号种子。",
+    "解说和弹幕都应优先保留 ZywOo 兜底与 flameZ 研发线。"
+  ]
+}

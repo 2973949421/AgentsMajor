@@ -1,0 +1,84 @@
+{
+  "slug": "dumau",
+  "entity_id": "player_legacy_v1_dumau",
+  "entity_type": "player",
+  "team_id": "team_legacy_v1",
+  "real_name": null,
+  "in_game_id": "dumau",
+  "display_name": "dumau",
+  "role": "star",
+  "status": "active",
+  "aliases": [
+    "dumau"
+  ],
+  "meme_tags": [
+    "巴西火力点"
+  ],
+  "persona_tags": [
+    "headline-core",
+    "win-condition",
+    "carry-engine"
+  ],
+  "playstyle_tags": [
+    "high-impact",
+    "space-winning",
+    "rifle-pop",
+    "clutch-impact"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "upset-watch",
+    "brazil-heat"
+  ],
+  "cross_circle_tags": [
+    "band_to_superteam"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "最适合从 grind 队里被抬成 headline 的火力点。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "brazil-heat",
+      "headline-core",
+      "win-condition",
+      "carry-engine"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "high-impact",
+      "space-winning",
+      "rifle-pop",
+      "clutch-impact",
+      "headline-core",
+      "win-condition",
+      "carry-engine"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "巴西火力点",
+      "upset-watch",
+      "brazil-heat"
+    ],
+    "card_priority": 21,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}

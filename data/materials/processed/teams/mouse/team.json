@@ -1,0 +1,46 @@
+{
+  "team_id": "team_mouse",
+  "team_slug": "mouse",
+  "agent_team_name": "Mouse",
+  "source_team_name": "MOUZ",
+  "seed": 7,
+  "status": "confirmed",
+  "canon_role": "disciplined-young-core",
+  "naming_rationale": "MOUZ 和 mouse 天然贴合，简洁、好记，也很适合弹幕直接叫老鼠。",
+  "worldview_summary": "年轻、干净、纪律感强，是很多强队的标准试金石。打顺时像流水线，打不顺时就会被问是不是被偷正面。",
+  "team_style_tags": [
+    "young-core",
+    "discipline",
+    "test-stone"
+  ],
+  "storyline_tags": [
+    "spinx-quiet-knife",
+    "jl-fire",
+    "torzsi-closing"
+  ],
+  "caster_focus_tags": [
+    "machine_map_point_pressure",
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "history_burden"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "breakup_to_transfer",
+    "customer_service_to_cleanup"
+  ],
+  "processed_paths": {
+    "team": "processed/teams/mouse/team.json",
+    "roster": "processed/teams/mouse/roster.json",
+    "hooks": "processed/teams/mouse/hooks.json"
+  },
+  "version": "2026-05-03-canon-v1",
+  "canon_notes": [
+    "Mouse 是纪律线，不是纯整活队。",
+    "ropz 已在 VitaLLMty，Mouse 现在的内容重点转向新阵稳定性。"
+  ]
+}

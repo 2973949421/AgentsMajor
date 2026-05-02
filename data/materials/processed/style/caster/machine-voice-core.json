@@ -1,0 +1,38 @@
+{
+  "style_id": "machine-voice-core",
+  "scope": "caster",
+  "version": "2026-05-03-canon-v1",
+  "voice_goal": "closer-to-machine-live-room-tone",
+  "core_traits": [
+    {
+      "id": "machine_result_forward",
+      "label": "结果先行",
+      "summary": "先给结论，再补过程。"
+    },
+    {
+      "id": "machine_rhetorical_snap",
+      "label": "反问推进",
+      "summary": "用反问句抬高语气密度。"
+    },
+    {
+      "id": "machine_showmanship_first",
+      "label": "节目效果优先",
+      "summary": "把比赛瞬间转写成可传播节目句。"
+    },
+    {
+      "id": "machine_character_lock",
+      "label": "人物标签化",
+      "summary": "把选手和队伍稳定压缩成角色标签。"
+    },
+    {
+      "id": "machine_redline_swing",
+      "label": "情绪摆幅快",
+      "summary": "情绪从惊讶到阴阳的切换要短。"
+    },
+    {
+      "id": "machine_research_frame",
+      "label": "研发化叙事",
+      "summary": "离谱回合优先进入研发、实验、课题话语。"
+    }
+  ]
+}

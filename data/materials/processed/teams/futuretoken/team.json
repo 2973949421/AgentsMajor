@@ -1,0 +1,47 @@
+{
+  "team_id": "team_futuretoken",
+  "team_slug": "futuretoken",
+  "agent_team_name": "FUtureToken",
+  "source_team_name": "FUT",
+  "seed": 10,
+  "status": "confirmed",
+  "canon_role": "volatile-underdog",
+  "naming_rationale": "从 FUT 自然长到 FUtureToken，把 token 和未来感焊进去，同时保留原始发音识别。",
+  "worldview_summary": "更像高波动潜力股。观感不一定最稳，但很适合当下克上和中盘突然加速的剧情工具队。",
+  "team_style_tags": [
+    "underdog",
+    "volatile",
+    "swing-team"
+  ],
+  "storyline_tags": [
+    "demon-flash",
+    "lauNX-hit",
+    "wild-token-run"
+  ],
+  "caster_focus_tags": [
+    "machine_force_buy_shock",
+    "machine_map_point_pressure"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "research",
+    "plus_one"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "breakup_to_transfer",
+    "cabinet_to_live_room_chaos"
+  ],
+  "processed_paths": {
+    "team": "processed/teams/futuretoken/team.json",
+    "roster": "processed/teams/futuretoken/roster.json",
+    "hooks": "processed/teams/futuretoken/hooks.json"
+  },
+  "version": "2026-05-03-canon-v1",
+  "canon_notes": [
+    "这支队是后续 P3 新闻生态里的好冷门样本。",
+    "先保留潜力股口径，不强抬成豪门。"
+  ]
+}

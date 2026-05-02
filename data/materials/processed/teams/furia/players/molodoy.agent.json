@@ -1,0 +1,81 @@
+{
+  "slug": "molodoy",
+  "entity_id": "player_furia_molodoy",
+  "entity_type": "player",
+  "team_id": "team_furia",
+  "real_name": null,
+  "in_game_id": "molodoy",
+  "display_name": "molodoy",
+  "role": "support",
+  "status": "active",
+  "aliases": [
+    "molodoy"
+  ],
+  "meme_tags": [
+    "新拼图"
+  ],
+  "persona_tags": [
+    "glue-piece",
+    "utility-worker",
+    "new-piece"
+  ],
+  "playstyle_tags": [
+    "trade-layer",
+    "utility-setup",
+    "support-spacing",
+    "rotate-cover"
+  ],
+  "caster_focus_tags": [
+    "machine_map_point_pressure"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "新拼图位，适合写成是否真的补齐黑豹阵容最后一块的问题。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "glue-piece",
+      "utility-worker",
+      "new-piece"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "trade-layer",
+      "utility-setup",
+      "support-spacing",
+      "rotate-cover",
+      "glue-piece",
+      "utility-worker",
+      "new-piece"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "新拼图",
+      "upset-watch"
+    ],
+    "card_priority": 42,
+    "broadcast_entry_points": [
+      "machine_map_point_pressure"
+    ]
+  },
+  "canon_notes": []
+}

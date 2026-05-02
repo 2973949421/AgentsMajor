@@ -1,0 +1,85 @@
+{
+  "slug": "piriajr",
+  "entity_id": "player_prompt_gaming_piriajr",
+  "entity_type": "player",
+  "team_id": "team_prompt_gaming",
+  "real_name": null,
+  "in_game_id": "piriajr",
+  "display_name": "piriajr",
+  "role": "entry",
+  "status": "active",
+  "aliases": [
+    "piriajr"
+  ],
+  "meme_tags": [
+    "前顶火点"
+  ],
+  "persona_tags": [
+    "frontline-instigator",
+    "heat-checker",
+    "front-pressure"
+  ],
+  "playstyle_tags": [
+    "first-contact",
+    "space-creator",
+    "entry",
+    "burst"
+  ],
+  "caster_focus_tags": [
+    "machine_force_buy_shock"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "research"
+  ],
+  "news_focus_tags": [
+    "brazil-heat",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "cabinet_to_live_room_chaos"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "把 Prompt 的热度转成真正破点回合的火点位。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "brazil-heat",
+      "upset-watch",
+      "frontline-instigator",
+      "heat-checker",
+      "front-pressure"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "first-contact",
+      "space-creator",
+      "entry",
+      "burst",
+      "frontline-instigator",
+      "heat-checker",
+      "front-pressure"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "low",
+    "segment_tags": [
+      "前顶火点",
+      "brazil-heat",
+      "upset-watch"
+    ],
+    "card_priority": 35,
+    "broadcast_entry_points": [
+      "machine_force_buy_shock"
+    ]
+  },
+  "canon_notes": []
+}

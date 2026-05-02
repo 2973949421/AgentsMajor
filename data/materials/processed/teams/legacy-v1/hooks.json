@@ -1,0 +1,48 @@
+{
+  "team_id": "team_legacy_v1",
+  "caster_angle_ids": [
+    "machine_force_buy_shock",
+    "machine_old_guard_command"
+  ],
+  "barrage_angle_ids": [
+    "player_targeting",
+    "research",
+    "history_burden"
+  ],
+  "news_angle_ids": [
+    "upset-watch",
+    "brazil-heat"
+  ],
+  "cross_circle_angle_ids": [
+    "cabinet_to_live_room_chaos",
+    "lifetime_to_rivalry"
+  ],
+  "signature_memes": [
+    "祖传版还在跑",
+    "arT 又带人冲沟里去了",
+    "泥地硬仗味出来了"
+  ],
+  "storyline_triggers": [
+    "arT 带快节奏时，写祖传老版本代码仍然敢跑。",
+    "dumau 如果接管输出，新闻转到老派队也有真核心。",
+    "如果比赛打成泥地，解说允许故意加重 grind 感。 "
+  ],
+  "matchup_triggers": [
+    "对 Prompt Gaming 是巴西线内部对冲。",
+    "对 Bit8 写中后段种子泥地混战。"
+  ],
+  "win_state_triggers": [
+    "如果赢强队，新闻直接走祖传代码仍能跑通。",
+    "如果靠硬仗回合拿图，弹幕可以刷今天这版本真没白维护。"
+  ],
+  "loss_state_triggers": [
+    "如果快节奏自爆，写祖传代码报错。",
+    "如果残局太碎，允许研发失败口径。"
+  ],
+  "highlight_triggers": [
+    "arT 冲锋连开",
+    "dumau 多杀翻图",
+    "latto 补枪站住",
+    "saadzin 收尾残局"
+  ]
+}

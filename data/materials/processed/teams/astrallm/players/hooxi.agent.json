@@ -1,0 +1,85 @@
+{
+  "slug": "hooxi",
+  "entity_id": "player_astrallm_hooxi",
+  "entity_type": "player",
+  "team_id": "team_astrallm",
+  "real_name": null,
+  "in_game_id": "HooXi",
+  "display_name": "HooXi",
+  "role": "igl",
+  "status": "active",
+  "aliases": [
+    "HooXi",
+    "hooxi"
+  ],
+  "meme_tags": [
+    "指挥位",
+    "重建话事人"
+  ],
+  "persona_tags": [
+    "shotcaller",
+    "system-brain",
+    "rebuild-caller"
+  ],
+  "playstyle_tags": [
+    "mid-round-call",
+    "tempo-control",
+    "pace-manage",
+    "mid-round-fix"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "old_guard"
+  ],
+  "news_focus_tags": [
+    "history-burden"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "重建阶段的话事人，赢时被写成架构回正，输时很容易成为包袱承载点。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "history-burden",
+      "shotcaller",
+      "system-brain",
+      "rebuild-caller"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "mid-round-call",
+      "tempo-control",
+      "pace-manage",
+      "mid-round-fix",
+      "shotcaller",
+      "system-brain",
+      "rebuild-caller"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "指挥位",
+      "重建话事人",
+      "history-burden"
+    ],
+    "card_priority": 20,
+    "broadcast_entry_points": [
+      "machine_old_guard_command"
+    ]
+  },
+  "canon_notes": []
+}

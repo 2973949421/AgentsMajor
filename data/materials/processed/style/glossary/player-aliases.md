@@ -1,0 +1,82 @@
+# Player Aliases
+
+- apEX (player_vitallmty_apex)：apEX / apex / A队长
+- ropz (player_vitallmty_ropz)：ropz / 被偷正面
+- ZywOo (player_vitallmty_zywoo)：ZywOo / 载物 / 大爹 / 薯片
+- flameZ (player_vitallmty_flamez)：flameZ / 火 / 火÷
+- mezii (player_vitallmty_mezii)：mezii
+- Aleksib (player_neural_vincere_aleksib)：Aleksib / aleksi
+- iM (player_neural_vincere_im)：iM
+- b1t (player_neural_vincere_bit)：b1t / bit
+- w0nderful (player_neural_vincere_w0nderful)：w0nderful / wonderful
+- makazze (player_neural_vincere_makazze)：makazze
+- FalleN (player_furia_fallen)：FalleN / 巴西教父 / 老将
+- yuurih (player_furia_yuurih)：yuurih
+- YEKINDAR (player_furia_yekindar)：YEKINDAR / 叶总
+- KSCERATO (player_furia_kscerato)：KSCERATO / K神
+- molodoy (player_furia_molodoy)：molodoy
+- karrigan (player_falcon_7b_karrigan)：karrigan / 大表哥 / 老登
+- NiKo (player_falcon_7b_niko)：NiKo / 尼公子 / 虾
+- TeSeS (player_falcon_7b_teses)：TeSeS
+- m0NESY (player_falcon_7b_m0nesy)：m0NESY / 小孩
+- kyousuke (player_falcon_7b_kyousuke)：kyousuke
+- Jame (player_parivision_omni_jame)：Jame / Jame Time
+- BELCHONOKK (player_parivision_omni_belchonokk)：BELCHONOKK
+- xiELO (player_parivision_omni_xielo)：xiELO
+- nota (player_parivision_omni_nota)：nota
+- zweih (player_parivision_omni_zweih)：zweih
+- MAJ3R (player_aulora_maj3r)：MAJ3R
+- XANTARES (player_aulora_xantares)：XANTARES
+- woxic (player_aulora_woxic)：woxic
+- soulfly (player_aulora_soulfly)：soulfly
+- Wicadia (player_aulora_wicadia)：Wicadia
+- torzsi (player_mouse_torzsi)：torzsi
+- Spinx (player_mouse_spinx)：Spinx
+- jL (player_mouse_jl)：jL
+- xertioN (player_mouse_xertion)：xertioN
+- xelex (player_mouse_xelex)：xelex
+- bLitz (player_the_mongolzk_blitz)：bLitz
+- Techno (player_the_mongolzk_techno)：Techno
+- mzinho (player_the_mongolzk_mzinho)：mzinho
+- 910 (player_the_mongolzk_910)：910 / 蒙古狙
+- cobrazera (player_the_mongolzk_cobrazera)：cobrazera
+- donk (player_team_spirit_donk)：donk / 东 / 东子
+- magixx (player_team_spirit_magixx)：magixx
+- sh1ro (player_team_spirit_sh1ro)：sh1ro
+- tN1R (player_team_spirit_tn1r)：tN1R
+- zont1x (player_team_spirit_zont1x)：zont1x
+- dem0n (player_futuretoken_dem0n)：dem0n
+- lauNX (player_futuretoken_launx)：lauNX
+- Krabeni (player_futuretoken_krabeni)：Krabeni
+- cmtry (player_futuretoken_cmtry)：cmtry
+- dziugss (player_futuretoken_dziugss)：dziugss
+- HooXi (player_astrallm_hooxi)：HooXi / hooxi
+- phzy (player_astrallm_phzy)：phzy
+- jabbi (player_astrallm_jabbi)：jabbi
+- Staehr (player_astrallm_staehr)：Staehr
+- ryu (player_astrallm_ryu)：ryu
+- huNter- (player_g2pt_hunter)：huNter- / hunter
+- NertZ (player_g2pt_nertz)：NertZ
+- SunPayus (player_g2pt_sunpayus)：SunPayus
+- HeavyGod (player_g2pt_heavygod)：HeavyGod
+- MATYS (player_g2pt_matys)：MATYS
+- arT (player_legacy_v1_art)：arT / art
+- dumau (player_legacy_v1_dumau)：dumau
+- latto (player_legacy_v1_latto)：latto
+- n1ssim (player_legacy_v1_n1ssim)：n1ssim
+- saadzin (player_legacy_v1_saadzin)：saadzin
+- alex666 (player_bit8_alex666)：alex666
+- npl (player_bit8_npl)：npl
+- kensizor (player_bit8_kensizor)：kensizor
+- esenthial (player_bit8_esenthial)：esenthial
+- s1zzi (player_bit8_s1zzi)：s1zzi
+- vsm (player_prompt_gaming_vsm)：vsm
+- biguzera (player_prompt_gaming_biguzera)：biguzera
+- piriajr (player_prompt_gaming_piriajr)：piriajr
+- saffee (player_prompt_gaming_saffee)：saffee
+- snow (player_prompt_gaming_snow)：snow
+- broky (player_phaseclan_broky)：broky
+- Twistzz (player_phaseclan_twistzz)：Twistzz / 总监 / 披肩
+- jcobbb (player_phaseclan_jcobbb)：jcobbb
+- frozen (player_phaseclan_frozen)：frozen
+- Neityu (player_phaseclan_neityu)：Neityu

@@ -1,0 +1,85 @@
+{
+  "slug": "saadzin",
+  "entity_id": "player_legacy_v1_saadzin",
+  "entity_type": "player",
+  "team_id": "team_legacy_v1",
+  "real_name": null,
+  "in_game_id": "saadzin",
+  "display_name": "saadzin",
+  "role": "entry",
+  "status": "active",
+  "aliases": [
+    "saadzin"
+  ],
+  "meme_tags": [
+    "前顶位"
+  ],
+  "persona_tags": [
+    "frontline-instigator",
+    "heat-checker",
+    "impact-opener"
+  ],
+  "playstyle_tags": [
+    "first-contact",
+    "space-creator",
+    "entry",
+    "space-take"
+  ],
+  "caster_focus_tags": [
+    "machine_force_buy_shock"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "research"
+  ],
+  "news_focus_tags": [
+    "upset-watch",
+    "brazil-heat"
+  ],
+  "cross_circle_tags": [
+    "cabinet_to_live_room_chaos"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "前顶位，最容易把 Legacy.v1 的泥地味变成真实的回合优势。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "upset-watch",
+      "brazil-heat",
+      "frontline-instigator",
+      "heat-checker",
+      "impact-opener"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "first-contact",
+      "space-creator",
+      "entry",
+      "space-take",
+      "frontline-instigator",
+      "heat-checker",
+      "impact-opener"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "low",
+    "segment_tags": [
+      "前顶位",
+      "upset-watch",
+      "brazil-heat"
+    ],
+    "card_priority": 35,
+    "broadcast_entry_points": [
+      "machine_force_buy_shock"
+    ]
+  },
+  "canon_notes": []
+}

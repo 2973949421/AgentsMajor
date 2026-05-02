@@ -1,0 +1,82 @@
+{
+  "slug": "blitz",
+  "entity_id": "player_the_mongolzk_blitz",
+  "entity_type": "player",
+  "team_id": "team_the_mongolzk",
+  "real_name": null,
+  "in_game_id": "bLitz",
+  "display_name": "bLitz",
+  "role": "igl",
+  "status": "active",
+  "aliases": [
+    "bLitz"
+  ],
+  "meme_tags": [
+    "铁骑指挥"
+  ],
+  "persona_tags": [
+    "shotcaller",
+    "system-brain",
+    "momentum-caller"
+  ],
+  "playstyle_tags": [
+    "mid-round-call",
+    "tempo-control",
+    "pace-push",
+    "courage-call"
+  ],
+  "caster_focus_tags": [
+    "machine_old_guard_command"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting",
+    "old_guard"
+  ],
+  "news_focus_tags": [
+    "asia-rise"
+  ],
+  "cross_circle_tags": [
+    "customer_service_to_cleanup"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "铁骑的节奏发令员，最擅长把全队推入高速度冲锋状态。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "asia-rise",
+      "shotcaller",
+      "system-brain",
+      "momentum-caller"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "mid-round-call",
+      "tempo-control",
+      "pace-push",
+      "courage-call",
+      "shotcaller",
+      "system-brain",
+      "momentum-caller"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "mid",
+    "segment_tags": [
+      "铁骑指挥",
+      "asia-rise"
+    ],
+    "card_priority": 24,
+    "broadcast_entry_points": [
+      "machine_old_guard_command"
+    ]
+  },
+  "canon_notes": []
+}

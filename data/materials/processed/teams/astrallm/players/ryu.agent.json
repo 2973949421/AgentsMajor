@@ -1,0 +1,84 @@
+{
+  "slug": "ryu",
+  "entity_id": "player_astrallm_ryu",
+  "entity_type": "player",
+  "team_id": "team_astrallm",
+  "real_name": null,
+  "in_game_id": "ryu",
+  "display_name": "ryu",
+  "role": "lurker",
+  "status": "active",
+  "aliases": [
+    "ryu"
+  ],
+  "meme_tags": [
+    "新暗线"
+  ],
+  "persona_tags": [
+    "timing-hunter",
+    "map-reader",
+    "quiet-angle"
+  ],
+  "playstyle_tags": [
+    "late-map-control",
+    "timing-punish",
+    "late-route",
+    "lurking"
+  ],
+  "caster_focus_tags": [
+    "machine_star_carry"
+  ],
+  "barrage_focus_tags": [
+    "player_targeting"
+  ],
+  "news_focus_tags": [
+    "history-burden",
+    "upset-watch"
+  ],
+  "cross_circle_tags": [
+    "lifetime_to_rivalry"
+  ],
+  "future_agent_profile": {
+    "persona_summary": "新暗线窗口位，适合在后续运营里继续补人物画像。",
+    "voice_mode": "cn-live-room-competitive",
+    "narrative_axes": [
+      "history-burden",
+      "upset-watch",
+      "timing-hunter",
+      "map-reader",
+      "quiet-angle"
+    ],
+    "reserved_memory_slots": [
+      "career-arc",
+      "role-history",
+      "signature-rounds",
+      "rivalries"
+    ]
+  },
+  "future_driver_binding": {
+    "preferred_driver_model_id": null,
+    "fallback_driver_model_ids": [],
+    "prompt_bias_tags": [
+      "late-map-control",
+      "timing-punish",
+      "late-route",
+      "lurking",
+      "timing-hunter",
+      "map-reader",
+      "quiet-angle"
+    ]
+  },
+  "ops_hooks": {
+    "heat_level": "low",
+    "segment_tags": [
+      "新暗线",
+      "history-burden",
+      "upset-watch"
+    ],
+    "card_priority": 50,
+    "broadcast_entry_points": [
+      "machine_star_carry"
+    ]
+  },
+  "canon_notes": []
+}
