@@ -17,6 +17,7 @@ import type {
   RoundReport,
   ScorePair,
   Summary,
+  TacticalCollision,
   Team,
   TimelineEvent,
   TimelineEventKind
@@ -32,12 +33,22 @@ import {
   type RoundBroadcastItems
 } from "./broadcast.js";
 import { evaluateMapState, getSideContext, mr6MapRules, plannedDemoWinnerSide, type SideContext } from "./map-rules.js";
+import {
+  assertNoForbiddenTacticalFields,
+  buildPublicTacticalContext,
+  buildRuleBasedTacticalPlans,
+  createSideAssignment,
+  getPhase16TacticalMapLayout,
+  resolveTacticalCollision,
+  type TacticalRoundGeneration
+} from "./tactical-protocol.js";
 
 export interface EngineContext {
   repositories: Repositories;
   llmGateway: LlmGateway;
   jobQueue: JobQueue;
   broadcastGenerator?: RoundBroadcastGenerator;
+  tacticalProtocol?: "disabled" | "rule";
 }
 
 export interface StartMatchInput {
@@ -114,6 +125,7 @@ interface RoundGeneration {
   economyDelta: RoundReport["economyDelta"];
   agentOutputs: AgentOutput[];
   judgeResult: JudgeResult;
+  tacticalRound?: TacticalRoundGeneration;
   keyEvents: RoundKeyEvent[];
 }
 
@@ -130,6 +142,10 @@ interface CommittedRoundGeneration {
   economyEvent: Event;
   killFeedEvents: Event[];
   highlightEvent: Event;
+  sideAssignmentEvent?: Event;
+  tacticalPlanEvent?: Event;
+  zoneDeploymentEvent?: Event;
+  siteExecuteEvent?: Event;
   roundReportEvent: Event;
   roundCompletedEvent: Event;
   broadcastBundle: BroadcastSourceBundle;
@@ -182,6 +198,10 @@ export function createPhase12SimulationEngine(context: EngineContext): Simulatio
 
 export function createPhase13SimulationEngine(context: EngineContext): SimulationEngine {
   return new Phase12SimulationEngine(context);
+}
+
+export function createPhase16SimulationEngine(context: EngineContext): SimulationEngine {
+  return new Phase12SimulationEngine({ ...context, tacticalProtocol: "rule" });
 }
 
 class Phase12SimulationEngine implements SimulationEngine {
@@ -523,6 +543,47 @@ class Phase12SimulationEngine implements SimulationEngine {
       teamBActiveAgentIds: activeB.map((agent) => agent.id),
       startedAt: now
     };
+    const buyTypeByTeam = new Map<string, BuyType>([
+      [teamA.id, teamABuyType],
+      [teamB.id, teamBBuyType]
+    ]);
+    const tacticalPlans =
+      this.context.tacticalProtocol === "rule"
+        ? buildRuleBasedTacticalPlans({
+            round,
+            mapGame,
+            teamA,
+            teamB,
+            activeAgentsByTeam: {
+              [teamA.id]: activeA,
+              [teamB.id]: activeB
+            },
+            buyTypeByTeam: Object.fromEntries(buyTypeByTeam),
+            economyByTeam: {
+              [teamA.id]: sumEconomyByTeam(beforeEconomy, teamA.id),
+              [teamB.id]: sumEconomyByTeam(beforeEconomy, teamB.id)
+            },
+            recentPublicRoundSummaries: (await this.context.repositories.roundReports.listByMapGame(mapGame.id)).slice(-3).map((report) => report.summary),
+            tacticalMapLayout: getPhase16TacticalMapLayout(mapGame.mapName),
+            sideAssignment: createSideAssignment({
+              roundId,
+              roundNumber,
+              teamAId: teamA.id,
+              teamBId: teamB.id,
+              sideContext
+            })
+          })
+        : undefined;
+    const sideAssignment =
+      tacticalPlans && this.context.tacticalProtocol === "rule"
+        ? createSideAssignment({
+            roundId,
+            roundNumber,
+            teamAId: teamA.id,
+            teamBId: teamB.id,
+            sideContext
+          })
+        : undefined;
 
     const agentOutputs = await this.generateAgentOutputs({
       agents: allActive,
@@ -531,10 +592,7 @@ class Phase12SimulationEngine implements SimulationEngine {
       sideContext,
       teamA,
       teamB,
-      buyTypeByTeam: new Map<string, BuyType>([
-        [teamA.id, teamABuyType],
-        [teamB.id, teamBBuyType]
-      ])
+      buyTypeByTeam
     });
     const judgeResult = await this.judgeRound({
       mapGame,
@@ -557,12 +615,33 @@ class Phase12SimulationEngine implements SimulationEngine {
       winnerTeamId,
       teamAId: teamA.id,
       teamBId: teamB.id,
-      buyTypeByTeam: new Map<string, BuyType>([
-        [teamA.id, teamABuyType],
-        [teamB.id, teamBBuyType]
-      ])
+      buyTypeByTeam
     });
     const economyStates = (economyDelta.agents as AgentEconomyDelta[]).map((delta) => economyStateFromDelta(delta, mapGame.id, roundId, now));
+    const tacticalRound =
+      tacticalPlans && sideAssignment
+        ? (() => {
+            const collision = resolveTacticalCollision({
+              ...tacticalPlans,
+              sideAssignment,
+              buyTypeByTeam: Object.fromEntries(buyTypeByTeam),
+              scoreBeforeRound,
+              judgeResult,
+              teamAId: teamA.id
+            });
+            const tacticalContext = buildPublicTacticalContext({
+              ...tacticalPlans,
+              sideAssignment,
+              collision
+            });
+            return {
+              ...tacticalPlans,
+              sideAssignment,
+              collision,
+              tacticalContext
+            };
+          })()
+        : undefined;
     const keyEvents = buildKeyEvents({
       roundId,
       roundNumber,
@@ -574,7 +653,8 @@ class Phase12SimulationEngine implements SimulationEngine {
       mvpAgentId: judgeResult.mvpAgentId,
       economyDelta,
       teamABuyType,
-      teamBBuyType
+      teamBBuyType,
+      ...(tacticalRound ? { tacticalCollision: tacticalRound.collision } : {})
     });
 
     return {
@@ -596,6 +676,7 @@ class Phase12SimulationEngine implements SimulationEngine {
       economyDelta,
       agentOutputs,
       judgeResult,
+      ...(tacticalRound ? { tacticalRound } : {}),
       keyEvents
     };
   }
@@ -627,6 +708,90 @@ class Phase12SimulationEngine implements SimulationEngine {
           },
           createdAt: now
         });
+        let sideAssignmentEvent: Event | undefined;
+        let tacticalPlanEvent: Event | undefined;
+        let zoneDeploymentEvent: Event | undefined;
+        if (generation.tacticalRound) {
+          const sidePayload = {
+            schemaVersion: 1,
+            sideAssignment: generation.tacticalRound.sideAssignment,
+            source: "phase16_side_rule" as const
+          };
+          assertNoForbiddenTacticalFields(sidePayload);
+          sideAssignmentEvent = await this.appendEvent({
+            id: `evt_${round.id}_side_assignment`,
+            type: "side_assignment_created",
+            category: "simulation",
+            tournamentId: match.tournamentId,
+            matchId: match.id,
+            mapGameId: mapGame.id,
+            roundId: round.id,
+            scopeType: "round",
+            scopeId: round.id,
+            payload: sidePayload,
+            createdAt: now
+          });
+
+          const tacticalPlanPayload = {
+            schemaVersion: 1,
+            visibility: "restricted" as const,
+            teamId: generation.tacticalRound.attackPlan.teamId,
+            roundId: round.id,
+            publicSummary: generation.tacticalRound.tacticalContext.attackPlan.publicSummary,
+            attackPlanSummary: {
+              primaryTargetZoneId: generation.tacticalRound.attackPlan.primaryTargetZoneId,
+              ...(generation.tacticalRound.attackPlan.secondaryTargetZoneId
+                ? { secondaryTargetZoneId: generation.tacticalRound.attackPlan.secondaryTargetZoneId }
+                : {}),
+              approach: generation.tacticalRound.attackPlan.approach,
+              feintRevealed: false as const
+            },
+            sourceEventIds: [sideAssignmentEvent.id]
+          };
+          assertNoForbiddenTacticalFields(tacticalPlanPayload);
+          tacticalPlanEvent = await this.appendEvent({
+            id: `evt_${round.id}_tactical_plan`,
+            type: "tactical_plan_submitted",
+            category: "simulation",
+            tournamentId: match.tournamentId,
+            matchId: match.id,
+            mapGameId: mapGame.id,
+            roundId: round.id,
+            scopeType: "round",
+            scopeId: round.id,
+            payload: tacticalPlanPayload,
+            createdAt: now
+          });
+
+          const zoneDeploymentPayload = {
+            schemaVersion: 1,
+            visibility: "restricted" as const,
+            teamId: generation.tacticalRound.defenseDeployment.teamId,
+            roundId: round.id,
+            publicSummary: generation.tacticalRound.tacticalContext.defenseDeployment.publicSummary,
+            defenseDeploymentSummary: {
+              setup: generation.tacticalRound.defenseDeployment.setup,
+              ...(generation.tacticalRound.defenseDeployment.heavyZoneId ? { heavyZoneId: generation.tacticalRound.defenseDeployment.heavyZoneId } : {}),
+              weakZoneIds: generation.tacticalRound.defenseDeployment.weakZoneIds,
+              rotatePolicy: generation.tacticalRound.defenseDeployment.rotatePolicy
+            },
+            sourceEventIds: [sideAssignmentEvent.id]
+          };
+          assertNoForbiddenTacticalFields(zoneDeploymentPayload);
+          zoneDeploymentEvent = await this.appendEvent({
+            id: `evt_${round.id}_zone_deployment`,
+            type: "zone_deployment_committed",
+            category: "simulation",
+            tournamentId: match.tournamentId,
+            matchId: match.id,
+            mapGameId: mapGame.id,
+            roundId: round.id,
+            scopeType: "round",
+            scopeId: round.id,
+            payload: zoneDeploymentPayload,
+            createdAt: now
+          });
+        }
 
         for (const output of generation.agentOutputs) {
           await this.appendEvent({
@@ -663,6 +828,32 @@ class Phase12SimulationEngine implements SimulationEngine {
           },
           createdAt: now
         });
+        let siteExecuteEvent: Event | undefined;
+        if (generation.tacticalRound && tacticalPlanEvent && zoneDeploymentEvent) {
+          const siteExecutePayload = {
+            schemaVersion: 1,
+            visibility: "public_after_round" as const,
+            roundId: round.id,
+            collision: generation.tacticalRound.collision,
+            revealedAttackPlan: generation.tacticalRound.tacticalContext.attackPlan,
+            revealedDefenseDeployment: generation.tacticalRound.tacticalContext.defenseDeployment,
+            sourceEventIds: [tacticalPlanEvent.id, zoneDeploymentEvent.id, judgeEvent.id]
+          };
+          assertNoForbiddenTacticalFields(siteExecutePayload);
+          siteExecuteEvent = await this.appendEvent({
+            id: `evt_${round.id}_site_execute`,
+            type: "site_execute_resolved",
+            category: "judge",
+            tournamentId: match.tournamentId,
+            matchId: match.id,
+            mapGameId: mapGame.id,
+            roundId: round.id,
+            scopeType: "round",
+            scopeId: round.id,
+            payload: siteExecutePayload,
+            createdAt: now
+          });
+        }
         const scoreEvent = await this.appendEvent({
           id: `evt_${round.id}_score_updated`,
           type: "score_updated",
@@ -770,6 +961,9 @@ class Phase12SimulationEngine implements SimulationEngine {
         const roundReportEventId = `evt_${round.id}_round_report_created`;
         const roundCompletedEventId = `evt_${round.id}_round_completed`;
         const coreProjection: ProjectedEvent[] = [
+          ...[sideAssignmentEvent, tacticalPlanEvent, zoneDeploymentEvent, siteExecuteEvent]
+            .filter((event): event is Event => Boolean(event))
+            .map((event) => requiredProjection(event)),
           requiredProjection(judgeEvent),
           requiredProjection(scoreEvent),
           requiredProjection(economyEvent),
@@ -812,6 +1006,7 @@ class Phase12SimulationEngine implements SimulationEngine {
             }
           },
           highlightTags,
+          ...(generation.tacticalRound ? { tacticalContext: generation.tacticalRound.tacticalContext } : {}),
           summary: buildSummary({
             roundNumber: round.roundNumber,
             winnerTeamId: generation.judgeResult.winnerTeamId,
@@ -824,7 +1019,8 @@ class Phase12SimulationEngine implements SimulationEngine {
             sideContext: generation.sideContext,
             teamABuyType: generation.teamABuyType,
             teamBBuyType: generation.teamBBuyType,
-            highlightTags
+            highlightTags,
+            tacticalContext: generation.tacticalRound?.tacticalContext
           }),
           eventProjection: {
             coreEventsLinkedByRoundReport: coreProjection,
@@ -849,7 +1045,17 @@ class Phase12SimulationEngine implements SimulationEngine {
             summary: roundReport.summary,
             keyEventCount: roundReport.keyEvents.length,
             highlightTags: roundReport.highlightTags ?? [],
-            judgeReason: roundReport.judgeResult.reason
+            judgeReason: roundReport.judgeResult.reason,
+            ...(roundReport.tacticalContext
+              ? {
+                  tacticalContext: {
+                    sideAssignment: roundReport.tacticalContext.sideAssignment,
+                    attackPlan: roundReport.tacticalContext.attackPlan,
+                    defenseDeployment: roundReport.tacticalContext.defenseDeployment,
+                    collision: roundReport.tacticalContext.collision
+                  }
+                }
+              : {})
           },
           createdAt: now
         });
@@ -936,6 +1142,10 @@ class Phase12SimulationEngine implements SimulationEngine {
           economyEvent,
           killFeedEvents,
           highlightEvent,
+          ...(sideAssignmentEvent ? { sideAssignmentEvent } : {}),
+          ...(tacticalPlanEvent ? { tacticalPlanEvent } : {}),
+          ...(zoneDeploymentEvent ? { zoneDeploymentEvent } : {}),
+          ...(siteExecuteEvent ? { siteExecuteEvent } : {}),
           roundReportEvent,
           roundCompletedEvent,
           broadcastBundle,
@@ -1066,6 +1276,10 @@ class Phase12SimulationEngine implements SimulationEngine {
         economyEvent: committed.economyEvent,
         killFeedEvents: committed.killFeedEvents,
         highlightEvent: committed.highlightEvent,
+        ...(committed.sideAssignmentEvent ? { sideAssignmentEvent: committed.sideAssignmentEvent } : {}),
+        ...(committed.tacticalPlanEvent ? { tacticalPlanEvent: committed.tacticalPlanEvent } : {}),
+        ...(committed.zoneDeploymentEvent ? { zoneDeploymentEvent: committed.zoneDeploymentEvent } : {}),
+        ...(committed.siteExecuteEvent ? { siteExecuteEvent: committed.siteExecuteEvent } : {}),
         broadcastItems,
         casterLineEvent,
         barrageEvent,
@@ -1503,6 +1717,7 @@ function buildKeyEvents(input: {
   economyDelta: RoundReport["economyDelta"];
   teamABuyType: BuyType;
   teamBBuyType: BuyType;
+  tacticalCollision?: TacticalCollision;
 }): RoundKeyEvent[] {
   const teamAId = input.activeA[0]?.teamId;
   const teamBId = input.activeB[0]?.teamId;
@@ -1520,6 +1735,7 @@ function buildKeyEvents(input: {
   }
 
   const lateEventType: RoundKeyEvent["type"] = input.roundNumber > mr6MapRules.regularRounds || input.roundNumber % 3 === 0 ? "clutch" : "conversion";
+  const collisionZoneId = input.tacticalCollision?.primaryZoneId ?? "conversion_site_a";
   const events: RoundKeyEvent[] = [
     {
       id: `ke_${input.roundId}_entry`,
@@ -1539,7 +1755,7 @@ function buildKeyEvents(input: {
       actorTeamId: input.winnerTeamId,
       targetAgentId: targetAgent.id,
       targetTeamId: input.loserTeamId,
-      zoneId: "conversion_site_a",
+      zoneId: collisionZoneId,
       impact: `${mvpAgent.displayName} 在 Conversion Site A 完成${lateEventType === "clutch" ? "残局收束" : "优势转化"}，把回合推进为有效得分。`,
       sourceAgentOutputIds: sourceOutputIds(input.agentOutputs, mvpAgent.id)
     }
@@ -1644,6 +1860,10 @@ function buildTimelineEvents(input: {
   economyEvent: Event;
   killFeedEvents: Event[];
   highlightEvent: Event;
+  sideAssignmentEvent?: Event;
+  tacticalPlanEvent?: Event;
+  zoneDeploymentEvent?: Event;
+  siteExecuteEvent?: Event;
   broadcastItems: RoundBroadcastItems;
   casterLineEvent: Event | undefined;
   barrageEvent: Event | undefined;
@@ -1673,13 +1893,21 @@ function buildTimelineEvents(input: {
       kind: "round_intro",
       atMs: 0,
       durationMs: 4000,
-      sourceEventIds: [input.roundStartedEvent.id],
+      sourceEventIds: [input.roundStartedEvent.id, ...(input.sideAssignmentEvent ? [input.sideAssignmentEvent.id] : [])],
       payload: {
         roundNumber: input.round.roundNumber,
         mapName: input.mapGame.mapName,
         headline: buildRoundHeadline(input.mapGame.mapName, input.roundReport),
         scoreBeforeRound: input.roundReport.scoreBeforeRound,
         sideContext: input.sideContext,
+        tacticalRound: input.roundReport.tacticalContext
+          ? {
+              attackingTeamId: input.roundReport.tacticalContext.sideAssignment.attackingTeamId,
+              defendingTeamId: input.roundReport.tacticalContext.sideAssignment.defendingTeamId,
+              half: input.roundReport.tacticalContext.sideAssignment.half,
+              sideSwitched: input.roundReport.tacticalContext.sideAssignment.sideSwitched
+            }
+          : undefined,
         phaseLabel: formatSidePhase(input.sideContext.phase),
         buyTypes: {
           teamA: input.round.teamABuyType,
@@ -1709,6 +1937,7 @@ function buildTimelineEvents(input: {
         economySwing: input.roundReport.economyDelta.teamTotals.teamA - input.roundReport.economyDelta.teamTotals.teamB
       }
     },
+    ...buildTacticalTimelineItems(input),
     ...input.killFeedEvents.map((event, index) => ({
       kind: "kill_feed_item" as const,
       atMs: 20000 + index * 8000,
@@ -1732,11 +1961,12 @@ function buildTimelineEvents(input: {
       kind: "highlight_reveal",
       atMs: 54000,
       durationMs: 5000,
-      sourceEventIds: [input.highlightEvent.id, ...(input.replayCardEvent ? [input.replayCardEvent.id] : [])],
+      sourceEventIds: [input.highlightEvent.id, ...(input.siteExecuteEvent ? [input.siteExecuteEvent.id] : []), ...(input.replayCardEvent ? [input.replayCardEvent.id] : [])],
       payload: {
         tags: input.roundReport.highlightTags ?? [],
         mvpAgentId: input.roundReport.judgeResult.mvpAgentId,
         reason: input.roundReport.judgeResult.reason,
+        tacticalCollision: input.roundReport.tacticalContext?.collision,
         replayCard: input.broadcastItems.replayCard.payload
       }
     },
@@ -1750,7 +1980,8 @@ function buildTimelineEvents(input: {
         scoreBeforeRound: input.roundReport.scoreBeforeRound,
         scoreAfterRound: input.roundReport.scoreAfterRound,
         summary: input.roundReport.summary,
-        highlightTags: input.roundReport.highlightTags ?? []
+        highlightTags: input.roundReport.highlightTags ?? [],
+        tacticalRound: input.roundReport.tacticalContext
       }
     },
     {
@@ -1770,6 +2001,66 @@ function buildTimelineEvents(input: {
     sequenceIndex: index,
     ...item
   }));
+}
+
+function buildTacticalTimelineItems(input: {
+  roundReport: RoundReport;
+  tacticalPlanEvent?: Event;
+  zoneDeploymentEvent?: Event;
+  siteExecuteEvent?: Event;
+}): Array<{
+  kind: "map_control_update";
+  atMs: number;
+  durationMs: number;
+  sourceEventIds: string[];
+  payload: unknown;
+}> {
+  const tacticalContext = input.roundReport.tacticalContext;
+  if (!tacticalContext) {
+    return [];
+  }
+
+  return [
+    {
+      kind: "map_control_update",
+      atMs: 16000,
+      durationMs: 7000,
+      sourceEventIds: [input.tacticalPlanEvent?.id ?? input.roundReport.id],
+      payload: {
+        tacticalKind: "attack_plan_revealed",
+        attack: tacticalContext.attackPlan,
+        targetZoneIds: [
+          tacticalContext.attackPlan.primaryTargetZoneId,
+          ...(tacticalContext.attackPlan.secondaryTargetZoneId ? [tacticalContext.attackPlan.secondaryTargetZoneId] : [])
+        ],
+        tacticalRound: tacticalContext
+      }
+    },
+    {
+      kind: "map_control_update",
+      atMs: 32000,
+      durationMs: 7000,
+      sourceEventIds: [input.zoneDeploymentEvent?.id ?? input.roundReport.id],
+      payload: {
+        tacticalKind: "defense_deployment_revealed",
+        defense: tacticalContext.defenseDeployment,
+        heavyZoneId: tacticalContext.defenseDeployment.heavyZoneId,
+        weakZoneIds: tacticalContext.defenseDeployment.weakZoneIds,
+        tacticalRound: tacticalContext
+      }
+    },
+    {
+      kind: "map_control_update",
+      atMs: 52000,
+      durationMs: 5000,
+      sourceEventIds: [input.siteExecuteEvent?.id ?? input.roundReport.id],
+      payload: {
+        tacticalKind: "site_execute_resolved",
+        collision: tacticalContext.collision,
+        tacticalRound: tacticalContext
+      }
+    }
+  ];
 }
 
 function buildCasterTimelineItems(input: {
@@ -1890,6 +2181,7 @@ function buildSummary(input: {
   teamABuyType: BuyType;
   teamBBuyType: BuyType;
   highlightTags: string[];
+  tacticalContext?: RoundReport["tacticalContext"];
 }): string {
   const winnerName = input.winnerTeamId === input.teamA.id ? input.teamA.displayName : input.teamB.displayName;
   const winnerBuyType = input.winnerTeamId === input.teamA.id ? input.teamABuyType : input.teamBBuyType;
@@ -1897,7 +2189,10 @@ function buildSummary(input: {
   const keyLine = input.keyEvents.slice(0, 2).map((event) => event.impact).join(" ");
   const sideLine = input.sideContext.activeSide === "teamA" ? `${input.teamA.shortName} 主动侧` : `${input.teamB.shortName} 主动侧`;
   const highlightLine = summarizeHighlightTags(input.highlightTags);
-  return `${winnerName} 在 ${input.mapName} 第 ${input.roundNumber} 回合完成收束，比分 ${formatScore(input.scoreBeforeRound)} -> ${formatScore(input.scoreAfterRound)}。${sideLine}，购买对位为 ${formatBuyType(winnerBuyType)} 对 ${formatBuyType(loserBuyType)}。关键事件：${keyLine}${highlightLine}`;
+  const tacticalLine = input.tacticalContext
+    ? ` Tactical: attack=${input.tacticalContext.attackPlan.approach} primary=${input.tacticalContext.collision.primaryZoneId} defense=${input.tacticalContext.defenseDeployment.setup} result=${input.tacticalContext.collision.result}.`
+    : "";
+  return `${winnerName} 在 ${input.mapName} 第 ${input.roundNumber} 回合完成收束，比分 ${formatScore(input.scoreBeforeRound)} -> ${formatScore(input.scoreAfterRound)}。${sideLine}，购买对位为 ${formatBuyType(winnerBuyType)} 对 ${formatBuyType(loserBuyType)}。关键事件：${keyLine}${highlightLine}${tacticalLine}`;
 }
 
 function buildMapSummary(input: {
@@ -2273,6 +2568,10 @@ function outputBudgetForBuyType(buyType: BuyType): number {
 
 function sumByTeam(items: AgentEconomyDelta[], teamId: string): number {
   return items.filter((item) => item.teamId === teamId).reduce((sum, item) => sum + item.afterTokenBank - item.beforeTokenBank, 0);
+}
+
+function sumEconomyByTeam(items: EconomyState[], teamId: string): number {
+  return items.filter((item) => item.teamId === teamId).reduce((sum, item) => sum + item.tokenBank, 0);
 }
 
 function sourceOutputIds(outputs: AgentOutput[], agentId: string): string[] {

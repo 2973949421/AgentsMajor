@@ -1557,3 +1557,10 @@ Phase 1.6：再实现 SideAssignment、AttackPlan、DefenseDeployment、Tactical
 ```
 
 这样可以避免真实 LLM 接入、经济系统、地图区域和 Judge 判定同时变化，降低调试复杂度。
+## Phase 1.6 增量：区域化攻防协议引擎已落地
+
+Phase 1.6 新增 `createPhase16SimulationEngine`，在原有回合事实链路中插入 deterministic rule-based tactical protocol。它只解释和结构化攻防过程，不替代 Judge，不直接修改比分，不访问真实 LLM。
+
+Phase 1.6 回合顺序固定为：购买判定、攻守方分配、active agents 选择、AttackPlan 生成、DefenseDeployment 生成、既有 fake provider 输出、既有 Judge 判定、TacticalCollision 结算、RoundReport 写入、tactical events 写入、timeline/broadcast 派生。
+
+事务边界保持稳定：战术计划生成不持有长事务；RoundReport 与事实事件在提交阶段写入；转播与时间线仍是派生物。若战术模块输入异常，系统使用 `default_probe`、`default_split`、`trade_even` fallback，不允许整场比赛崩溃。

@@ -39,6 +39,34 @@ export type AgentState = (typeof agentStates)[number];
 export const buyTypes = ["fullBuy", "halfBuy", "eco", "forceBuy", "save"] as const;
 export type BuyType = (typeof buyTypes)[number];
 
+export const sideAssignmentHalves = ["first_half", "second_half", "overtime"] as const;
+export type SideAssignmentHalf = (typeof sideAssignmentHalves)[number];
+
+export const zoneResourceIntents = [
+  "attack_execute",
+  "attack_feint",
+  "info_control",
+  "defense_anchor",
+  "defense_rotate",
+  "economy_pressure"
+] as const;
+export type ZoneResourceIntent = (typeof zoneResourceIntents)[number];
+
+export const attackApproaches = ["fast_execute", "slow_control", "mid_control_then_execute", "fake_then_rotate", "eco_steal", "default_probe"] as const;
+export type AttackApproach = (typeof attackApproaches)[number];
+
+export const defenseSetups = ["heavy_a", "heavy_b", "default_split", "mid_push", "retake_setup", "save_weak_hold"] as const;
+export type DefenseSetup = (typeof defenseSetups)[number];
+
+export const rotatePolicies = ["fast_rotate", "hold_sites", "info_first", "save_first"] as const;
+export type RotatePolicy = (typeof rotatePolicies)[number];
+
+export const tacticalCollisionResults = ["attack_breakthrough", "defense_hold", "trade_even", "fake_success", "rotate_success", "economy_steal"] as const;
+export type TacticalCollisionResult = (typeof tacticalCollisionResults)[number];
+
+export const tacticalEventVisibilities = ["restricted", "public_after_round"] as const;
+export type TacticalEventVisibility = (typeof tacticalEventVisibilities)[number];
+
 export const eventCategories = [
   "simulation",
   "judge",
@@ -60,7 +88,11 @@ export const eventTypes = [
   "map_veto_completed",
   "map_started",
   "round_started",
+  "side_assignment_created",
+  "tactical_plan_submitted",
+  "zone_deployment_committed",
   "agent_output_submitted",
+  "site_execute_resolved",
   "round_completed",
   "map_completed",
   "match_completed",

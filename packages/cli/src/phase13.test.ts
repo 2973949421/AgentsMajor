@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 
@@ -29,6 +29,14 @@ describe("Phase 1.3 CLI commands", () => {
 
     const exportResult = await runPhase13Command("export", projectRoot);
     expect(exportResult.exportPath).toContain("data\\exports\\matches");
+    const exportContent = readFileSync(exportResult.exportPath as string, "utf8");
+    expect(exportContent.includes("driverModelId")).toBe(false);
+    expect(exportContent.includes("providerId")).toBe(false);
+    expect(exportContent.includes("modelName")).toBe(false);
+    expect(exportContent.includes("apiKey")).toBe(false);
+    expect(exportContent.includes("authorization")).toBe(false);
+    expect(exportContent.includes("rawOutput")).toBe(false);
+    expect(exportContent.includes("agentOutputs")).toBe(false);
     expect(await readMatchFingerprint(projectRoot)).toEqual(afterMatch);
   }, 15_000);
 

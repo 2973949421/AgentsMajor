@@ -303,6 +303,7 @@ CREATE TABLE IF NOT EXISTS round_reports (
   economy_delta_json text NOT NULL,
   token_submission_json text NOT NULL,
   highlight_tags_json text,
+  tactical_context_json text,
   summary text NOT NULL,
   event_projection_json text NOT NULL,
   created_at text NOT NULL
@@ -440,6 +441,16 @@ CREATE INDEX IF NOT EXISTS timeline_events_round_idx ON timeline_events(round_id
 CREATE INDEX IF NOT EXISTS economy_states_agent_round_idx ON economy_states(agent_id, round_id);
 CREATE INDEX IF NOT EXISTS summaries_scope_idx ON summaries(scope_type, scope_id, created_at);
 `);
+  ensureSqliteColumn(sqlite, "round_reports", "tactical_context_json", "text");
+}
+
+function ensureSqliteColumn(sqlite: SqliteDatabase, tableName: string, columnName: string, definition: string): void {
+  const columns = sqlite.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{ name: string }>;
+  if (columns.some((column) => column.name === columnName)) {
+    return;
+  }
+
+  sqlite.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
 }
 
 class TournamentSqliteRepository implements TournamentRepository {
@@ -685,8 +696,8 @@ class RoundReportSqliteRepository implements RoundReportRepository {
     const item = roundReportSchema.parse(entity);
     this.sqlite
       .prepare(
-        `INSERT INTO round_reports (id, tournament_id, match_id, map_game_id, round_id, round_number, map_name, winner_team_id, score_before_round_json, score_after_round_json, judge_result_json, agent_outputs_json, key_events_json, economy_delta_json, token_submission_json, highlight_tags_json, summary, event_projection_json, created_at)
-         VALUES (@id, @tournamentId, @matchId, @mapGameId, @roundId, @roundNumber, @mapName, @winnerTeamId, @scoreBeforeRoundJson, @scoreAfterRoundJson, @judgeResultJson, @agentOutputsJson, @keyEventsJson, @economyDeltaJson, @tokenSubmissionJson, @highlightTagsJson, @summary, @eventProjectionJson, @createdAt)
+        `INSERT INTO round_reports (id, tournament_id, match_id, map_game_id, round_id, round_number, map_name, winner_team_id, score_before_round_json, score_after_round_json, judge_result_json, agent_outputs_json, key_events_json, economy_delta_json, token_submission_json, highlight_tags_json, tactical_context_json, summary, event_projection_json, created_at)
+         VALUES (@id, @tournamentId, @matchId, @mapGameId, @roundId, @roundNumber, @mapName, @winnerTeamId, @scoreBeforeRoundJson, @scoreAfterRoundJson, @judgeResultJson, @agentOutputsJson, @keyEventsJson, @economyDeltaJson, @tokenSubmissionJson, @highlightTagsJson, @tacticalContextJson, @summary, @eventProjectionJson, @createdAt)
          ON CONFLICT(id) DO UPDATE SET
          tournament_id = excluded.tournament_id, match_id = excluded.match_id, map_game_id = excluded.map_game_id,
          round_id = excluded.round_id, round_number = excluded.round_number, map_name = excluded.map_name,
@@ -694,7 +705,7 @@ class RoundReportSqliteRepository implements RoundReportRepository {
          score_after_round_json = excluded.score_after_round_json, judge_result_json = excluded.judge_result_json,
          agent_outputs_json = excluded.agent_outputs_json, key_events_json = excluded.key_events_json,
          economy_delta_json = excluded.economy_delta_json, token_submission_json = excluded.token_submission_json,
-         highlight_tags_json = excluded.highlight_tags_json, summary = excluded.summary,
+         highlight_tags_json = excluded.highlight_tags_json, tactical_context_json = excluded.tactical_context_json, summary = excluded.summary,
          event_projection_json = excluded.event_projection_json, created_at = excluded.created_at`
       )
       .run(
@@ -708,6 +719,7 @@ class RoundReportSqliteRepository implements RoundReportRepository {
           economyDeltaJson: JSON.stringify(item.economyDelta),
           tokenSubmissionJson: JSON.stringify(item.tokenSubmission),
           highlightTagsJson: stringifyOptional(item.highlightTags),
+          tacticalContextJson: stringifyOptional(item.tacticalContext),
           eventProjectionJson: JSON.stringify(item.eventProjection)
         })
       );
@@ -1115,6 +1127,7 @@ function mapRoundReport(row: Row) {
     economyDelta: parseJson(row.economy_delta_json),
     tokenSubmission: parseJson(row.token_submission_json),
     ...optionalObject("highlightTags", parseOptionalJson(row.highlight_tags_json)),
+    ...optionalObject("tacticalContext", parseOptionalJson(row.tactical_context_json)),
     summary: asString(row.summary),
     eventProjection: parseJson(row.event_projection_json),
     createdAt: asString(row.created_at)

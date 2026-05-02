@@ -236,3 +236,24 @@ P2.3 能根据事实生成“重防 A”“假打转 B”“B 点空虚被打穿
 ## 10. 当前结论
 
 区域化攻防协议是 Agent Major 从“AI 输出比赛”走向“可解释战术比赛”的关键升级。它应该在 Phase 1.5 验证真实 LLM 接入链路后进入 Phase 1.6，而不是回塞到 Phase 1.45 或阻塞 Phase 1.5。
+## 11. Phase 1.6 落地状态
+
+Phase 1.6 已落地为 deterministic rule-based tactical protocol。
+
+代码边界：
+
+- `phase16:*` 单独启用战术协议，`phase13:*` 和 `phase15:*` 不改变。
+- `AttackPlan`、`DefenseDeployment` 和 `TacticalCollision` 全部由规则生成，不调用真实 LLM。
+- `RoundReport.tacticalContext` 持久化到现有 `round_reports.tactical_context_json`，没有新增 SQLite 表。
+- Web 只读取公开 `tacticalRound`，不暴露 hidden plan、rawOutput、driverModelId、modelName、token、cost、apiKey、authorization。
+
+验收命令：
+
+```text
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm phase16:match
+pnpm phase16:replay
+pnpm phase16:export
+```

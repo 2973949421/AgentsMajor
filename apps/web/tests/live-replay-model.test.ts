@@ -36,8 +36,10 @@ describe("Phase 1.4 live replay model", () => {
 
     expect(getVisibleTimelineEvents(item.timelineEvents, 4999).map((event) => event.id)).toEqual(["intro"]);
     expect(buildRoundFrame(item, 8000).currentScore).toEqual({ teamA: 0, teamB: 0 });
+    expect(buildRoundFrame(item, 8000).roundSummary).toBeNull();
     expect(buildRoundFrame(item, 8000).killFeed).toHaveLength(1);
     expect(buildRoundFrame(item, 62000).currentScore).toEqual({ teamA: 1, teamB: 0 });
+    expect(buildRoundFrame(item, 62000).roundSummary).toBe("test round");
   });
 
   it("computes round duration from atMs plus durationMs and falls back for empty timelines", () => {
@@ -141,6 +143,75 @@ describe("Phase 1.4 live replay model", () => {
     expect(fallbackZone?.active).toBe(true);
     expect(fallbackZone?.weak).toBe(true);
     expect(frame.tacticalMap.connections.some((connection) => connection.active)).toBe(true);
+  });
+
+  it("exposes Phase 1.6 public tactical round data without raw hidden plans", () => {
+    const item = roundItem(1, [
+      timelineEvent({
+        id: "attack",
+        kind: "map_control_update",
+        atMs: 16000,
+        payload: { tacticalKind: "attack_plan_revealed" }
+      }),
+      timelineEvent({
+        id: "defense",
+        kind: "map_control_update",
+        atMs: 32000,
+        payload: { tacticalKind: "defense_deployment_revealed" }
+      }),
+      timelineEvent({
+        id: "collision",
+        kind: "map_control_update",
+        atMs: 52000,
+        payload: { tacticalKind: "site_execute_resolved" }
+      })
+    ]);
+    item.tacticalRound = {
+      sideAssignment: {
+        roundId: "round-1",
+        roundNumber: 1,
+        attackingTeamId: "team-a",
+        defendingTeamId: "team-b",
+        half: "first_half",
+        sideSwitched: false
+      },
+      attackPlan: {
+        teamId: "team-a",
+        primaryTargetZoneId: "conversion_site_a",
+        secondaryTargetZoneId: "conversion_site_b",
+        approach: "fake_then_rotate",
+        feintRevealed: true,
+        publicSummary: "fake A then rotate B"
+      },
+      defenseDeployment: {
+        teamId: "team-b",
+        setup: "heavy_a",
+        heavyZoneId: "conversion_site_a",
+        weakZoneIds: ["conversion_site_b"],
+        rotatePolicy: "hold_sites",
+        publicSummary: "heavy A"
+      },
+      collision: {
+        primaryZoneId: "conversion_site_b",
+        attackApproach: "fake_then_rotate",
+        defenseSetup: "heavy_a",
+        result: "fake_success",
+        attackScore: 72,
+        defenseScore: 70,
+        decisiveReason: "fake condition matched"
+      }
+    };
+
+    const frame = buildRoundFrame(item, 52000);
+    const attackZone = frame.tacticalMap.zones.find((zone) => zone.id === "conversion_site_a");
+    const weakZone = frame.tacticalMap.zones.find((zone) => zone.id === "conversion_site_b");
+
+    expect(frame.tacticalRound?.collision.result).toBe("fake_success");
+    expect(attackZone?.active).toBe(true);
+    expect(weakZone?.active).toBe(true);
+    expect(weakZone?.weak).toBe(true);
+    expect(JSON.stringify(frame)).not.toContain("rawOutput");
+    expect(JSON.stringify(frame)).not.toContain("driverModelId");
   });
 });
 

@@ -2,105 +2,69 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import {
-  createLlmCasterBroadcastGenerator,
-  createPhase13SimulationEngine,
-  phase11DemoIds,
-  readMatchReplay,
-  seedPhase11Demo,
-  type MatchReplay
-} from "@agent-major/core";
+import { createPhase16SimulationEngine, phase11DemoIds, readMatchReplay, seedPhase11Demo, type MatchReplay } from "@agent-major/core";
 import { createSqliteRepositories, defaultSqlitePath } from "@agent-major/db";
-import { DashScopeOpenAiProvider, defaultDriverModels, FakeProvider, loadAgentMajorLlmConfig } from "@agent-major/llm";
+import { FakeProvider } from "@agent-major/llm";
 import { UnconfiguredJobQueue } from "@agent-major/queue";
 
 import { ensureDataDirectories } from "./data-init.js";
 import { exportMatchReplay } from "./export-match-replay.js";
-import { loadLocalEnv, type EnvRecord } from "./local-env.js";
-import { LocalArtifactStore } from "./local-artifact-store.js";
 
-export type Phase15Command = "match" | "replay" | "export";
+export type Phase16Command = "match" | "replay" | "export";
 
-export interface Phase15CommandResult {
-  command: Phase15Command;
+export interface Phase16CommandResult {
+  command: Phase16Command;
   lines: string[];
   exportPath?: string;
 }
 
-const defaultPhase15Maps = ["DUST2", "INFERNO", "MIRAGE"];
+const defaultPhase16Maps = ["DUST2", "INFERNO", "MIRAGE"];
 
-export async function runPhase15Command(
-  command: Phase15Command,
-  projectRoot = findProjectRoot(process.cwd()),
-  env: EnvRecord = process.env
-): Promise<Phase15CommandResult> {
+export async function runPhase16Command(command: Phase16Command, projectRoot = findProjectRoot(process.cwd())): Promise<Phase16CommandResult> {
   ensureDataDirectories(projectRoot);
-  const mergedEnv = loadLocalEnv(projectRoot, ".env.local", env);
-  const llmConfig = loadAgentMajorLlmConfig(mergedEnv);
   const repositories = createSqliteRepositories(resolve(projectRoot, defaultSqlitePath));
   try {
-    const broadcastGenerator = llmConfig.enabled
-      ? createLlmCasterBroadcastGenerator({
-          llmGateway: new DashScopeOpenAiProvider({
-            baseUrl: llmConfig.baseUrl ?? "",
-            apiKey: llmConfig.apiKey ?? "",
-            timeoutMs: llmConfig.timeoutMs,
-            maxRetries: llmConfig.maxRetries
-          }),
-          driverModelId: llmConfig.casterDriverModelId,
-          fallbackDriverModelId: llmConfig.casterFallbackDriverModelId,
-          repositories,
-          artifactStore: new LocalArtifactStore(projectRoot, repositories.artifacts)
-        })
-      : undefined;
-    const engine = createPhase13SimulationEngine({
+    const engine = createPhase16SimulationEngine({
       repositories,
-      llmGateway: new FakeProvider({ providerId: "phase15-fake-match-provider" }),
-      jobQueue: new UnconfiguredJobQueue(),
-      ...(broadcastGenerator ? { broadcastGenerator } : {})
+      llmGateway: new FakeProvider({ providerId: "phase16-fake-provider" }),
+      jobQueue: new UnconfiguredJobQueue()
     });
 
     if (command === "match") {
       await resetDemoFixture(repositories);
       await seedPhase11Demo(repositories);
-      await seedPhase15DriverModels(repositories);
-      await engine.runCurrentMatch({ matchId: phase11DemoIds.matchId, selectedMapIds: defaultPhase15Maps });
+      await engine.runCurrentMatch({ matchId: phase11DemoIds.matchId, selectedMapIds: defaultPhase16Maps });
     }
 
     const replay = await readMatchReplay(repositories, phase11DemoIds.matchId);
-    const llmStatusLine = formatLlmStatusLine(Boolean(broadcastGenerator), llmConfig.disabledReason);
     if (!replay || replay.maps.length === 0) {
       return {
         command,
-        lines: [llmStatusLine, "No Phase 1.5 match replay found. Run `pnpm phase15:match` first."]
+        lines: ["No Phase 1.6 match replay found. Run `pnpm phase16:match` first."]
       };
     }
     if (!isCompletedMatchReplay(replay)) {
       return {
         command,
-        lines: [llmStatusLine, "Phase 1.5 match replay is incomplete. Run `pnpm phase15:match` to complete the BO3 first."]
+        lines: ["Phase 1.6 match replay is incomplete. Run `pnpm phase16:match` to complete the BO3 first."]
       };
     }
 
-    const lines = [llmStatusLine, ...formatMatchReplayLines(replay)];
     if (command === "export") {
       const exportPath = exportMatchReplay(projectRoot, replay);
       return {
         command,
         exportPath,
-        lines: [...lines, `Exported JSON: ${exportPath}`]
+        lines: [...formatMatchReplayLines(replay), `Exported JSON: ${exportPath}`]
       };
     }
 
-    return { command, lines };
+    return {
+      command,
+      lines: formatMatchReplayLines(replay)
+    };
   } finally {
     repositories.close();
-  }
-}
-
-async function seedPhase15DriverModels(repositories: ReturnType<typeof createSqliteRepositories>): Promise<void> {
-  for (const driverModel of defaultDriverModels) {
-    await repositories.driverModels.save(driverModel);
   }
 }
 
@@ -130,18 +94,25 @@ async function resetDemoFixture(repositories: ReturnType<typeof createSqliteRepo
   });
 }
 
-function formatLlmStatusLine(enabled: boolean, disabledReason: string | undefined): string {
-  return enabled ? "Phase 1.5 real caster LLM: enabled" : `Phase 1.5 real caster LLM: disabled (${disabledReason ?? "not_configured"})`;
-}
-
 function formatMatchReplayLines(replay: MatchReplay): string[] {
   const payload = replay.matchSummary?.payload as { mvpAgentId?: string; deciderMapId?: string } | undefined;
+  const tacticalRoundCount = replay.maps.reduce(
+    (sum, mapReplay) => sum + mapReplay.rounds.filter((roundReplay) => Boolean(roundReplay.roundReport.tacticalContext)).length,
+    0
+  );
+  const completedRoundCount = replay.maps.reduce((sum, mapReplay) => sum + mapReplay.rounds.length, 0);
+  const siteExecuteCount = replay.maps.reduce(
+    (sum, mapReplay) => sum + mapReplay.rounds.reduce((roundSum, roundReplay) => roundSum + roundReplay.events.filter((event) => event.type === "site_execute_resolved").length, 0),
+    0
+  );
   return [
+    "Phase 1.6 tactical protocol: enabled (rule, deterministic, fake-only)",
     `Match ${replay.match.id} ${replay.match.status} for ${replay.teams.teamA.displayName} vs ${replay.teams.teamB.displayName}.`,
     `Winner: ${replay.match.winnerTeamId ?? "pending"}`,
     `Maps: ${replay.match.teamAMapsWon}-${replay.match.teamBMapsWon}`,
     `Completed maps: ${replay.maps.length} | Scheduled maps: ${replay.mapGames.length}`,
     `Events: ${replay.eventCounts.match} match | ${replay.eventCounts.map} map | ${replay.eventCounts.round} round | ${replay.eventCounts.timeline} timeline`,
+    `Tactical rounds: ${tacticalRoundCount}/${completedRoundCount} | Site executes: ${siteExecuteCount}`,
     `MVP: ${payload?.mvpAgentId ?? "pending"} | Decider: ${payload?.deciderMapId ?? "pending"}`,
     `Summary: ${replay.matchSummary?.content ?? "Match summary pending."}`,
     "Map ledger:",
@@ -160,13 +131,13 @@ function isCompletedMatchReplay(replay: MatchReplay): boolean {
 
 async function main(): Promise<void> {
   const command = parseCommand(process.argv[2]);
-  const result = await runPhase15Command(command);
+  const result = await runPhase16Command(command);
   for (const line of result.lines) {
     console.log(line);
   }
 }
 
-function parseCommand(value: string | undefined): Phase15Command {
+function parseCommand(value: string | undefined): Phase16Command {
   if (value === "match" || value === "replay" || value === "export") {
     return value;
   }

@@ -278,7 +278,7 @@ export function LiveReplayPlayer({ replay, runnerPolicy }: LiveReplayPlayerProps
               <span>当前回合</span>
               <strong>Round {currentRound.roundNumber}</strong>
             </div>
-            <small>{currentRound.roundReport.summary}</small>
+            <small>{frame.roundSummary ?? "回合战报将在本局结算后揭示。"}</small>
           </div>
 
           <div className={styles.virtualMap}>

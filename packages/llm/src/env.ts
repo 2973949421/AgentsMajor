@@ -18,7 +18,7 @@ export function loadAgentMajorLlmConfig(env: Record<string, string | undefined> 
   const providerId = normalizeProviderId(env.AGENT_MAJOR_LLM_PROVIDER);
   const baseConfig = {
     providerId,
-    casterDriverModelId: env.AGENT_MAJOR_CASTER_DRIVER_MODEL_ID?.trim() || "driver_kimi_k2_5",
+    casterDriverModelId: env.AGENT_MAJOR_CASTER_DRIVER_MODEL_ID?.trim() || "driver_qwen_3_max_2026_01_23",
     casterFallbackDriverModelId: env.AGENT_MAJOR_CASTER_FALLBACK_DRIVER_MODEL_ID?.trim() || "driver_qwen_3_6_plus",
     barrageDriverModelId: env.AGENT_MAJOR_BARRAGE_DRIVER_MODEL_ID?.trim() || "driver_minimax_m2_5",
     barrageFallbackDriverModelId: env.AGENT_MAJOR_BARRAGE_FALLBACK_DRIVER_MODEL_ID?.trim() || "driver_qwen_3_5_plus",

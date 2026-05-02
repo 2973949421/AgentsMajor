@@ -1248,3 +1248,17 @@ extension.fantasy_pick_locked
 - 明确事件允许修改，但必须创建 EventRevision 快照。
 - 明确默认删除策略是软删除，不使用硬删除。
 - 明确未来自定义事件使用 `custom.*` 或 `extension.*` 命名空间。
+## Phase 1.6 增量：区域化攻防事件已落地
+
+Phase 1.6 在不新增 SQLite 表的前提下，补入 4 个稳定战术事实事件：
+
+| 中文名 | EventType | 用途 |
+|---|---|---|
+| 攻守方分配已创建 | `side_assignment_created` | 记录本回合攻方、守方、半场、是否换边 |
+| 进攻计划已提交 | `tactical_plan_submitted` | restricted 事件，只保存公开摘要、主攻点、二攻点、打法，不保存隐藏原文 |
+| 防守部署已提交 | `zone_deployment_committed` | restricted 事件，只保存公开摘要、重防区、弱防区、回防策略，不保存隐藏原文 |
+| 点位执行已结算 | `site_execute_resolved` | public_after_round 事件，公开碰撞区、攻防摘要、TacticalCollision 结果 |
+
+这些事件属于比赛事实链路，但不独立改写胜负、比分或经济。`winnerTeamId`、`scoreBeforeRound`、`scoreAfterRound`、`economyDelta` 仍由既有 Judge、Engine、Economy 模块负责。
+
+所有 Phase 1.6 tactical event payload 禁止出现以下字段：`rawOutput`、`driverModelId`、`providerId`、`modelName`、`token`、`cost`、`apiKey`、`authorization`。受限事件允许保存 `artifactId` 引用，但当前 Phase 1.6 v1 不要求写隐藏 artifact 原文。

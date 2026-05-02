@@ -14,7 +14,7 @@ describe("Phase 1.5 DashScope OpenAI provider", () => {
         DASHSCOPE_BASE_URL: "https://example.test/v1",
         DASHSCOPE_API_KEY: "local-secret"
       })
-    ).toMatchObject({ enabled: true, casterDriverModelId: "driver_kimi_k2_5" });
+    ).toMatchObject({ enabled: true, casterDriverModelId: "driver_qwen_3_max_2026_01_23" });
     expect(
       loadAgentMajorLlmConfig({
         AGENT_MAJOR_REAL_LLM_ENABLED: "true",

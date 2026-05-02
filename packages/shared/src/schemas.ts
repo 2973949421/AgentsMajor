@@ -2,7 +2,9 @@ import { z } from "zod";
 import {
   agentRoles,
   agentStates,
+  attackApproaches,
   buyTypes,
+  defenseSetups,
   eventCategories,
   eventScopeTypes,
   eventTypes,
@@ -12,10 +14,15 @@ import {
   playbackScopes,
   roundPhases,
   roundStatuses,
+  rotatePolicies,
   runControlStates,
+  sideAssignmentHalves,
+  tacticalCollisionResults,
+  tacticalEventVisibilities,
   timelineEventKinds,
   tournamentFormats,
-  tournamentStatuses
+  tournamentStatuses,
+  zoneResourceIntents
 } from "./enums.js";
 
 const isoDateString = z.string().min(1);
@@ -183,6 +190,147 @@ export const judgeResultSchema = z.object({
 });
 export type JudgeResult = z.infer<typeof judgeResultSchema>;
 
+export const sideAssignmentSchema = z.object({
+  roundId: z.string().min(1),
+  roundNumber: z.number().int().positive(),
+  attackingTeamId: z.string().min(1),
+  defendingTeamId: z.string().min(1),
+  half: z.enum(sideAssignmentHalves),
+  sideSwitched: z.boolean()
+});
+export type SideAssignment = z.infer<typeof sideAssignmentSchema>;
+
+export const zoneResourceAllocationSchema = z.object({
+  zoneId: z.string().min(1),
+  weight: z.number().int().min(0).max(100),
+  activeAgentIds: stringArray,
+  intent: z.enum(zoneResourceIntents)
+});
+export type ZoneResourceAllocation = z.infer<typeof zoneResourceAllocationSchema>;
+
+const normalizedZoneResourceAllocationsSchema = z.array(zoneResourceAllocationSchema).min(1).refine(
+  (items) => {
+    const total = items.reduce((sum, item) => sum + item.weight, 0);
+    return Math.abs(total - 100) <= 1;
+  },
+  { message: "zone resource allocation weights must sum to 100 +/- 1" }
+);
+
+export const attackPlanSchema = z.object({
+  teamId: z.string().min(1),
+  primaryTargetZoneId: z.string().min(1),
+  secondaryTargetZoneId: z.string().min(1).optional(),
+  approach: z.enum(attackApproaches),
+  feintZoneId: z.string().min(1).optional(),
+  resourceAllocationByZone: normalizedZoneResourceAllocationsSchema,
+  activeAgentIds: stringArray,
+  intentSummary: z.string().min(1)
+});
+export type AttackPlan = z.infer<typeof attackPlanSchema>;
+
+export const defenseDeploymentSchema = z.object({
+  teamId: z.string().min(1),
+  setup: z.enum(defenseSetups),
+  heavyZoneId: z.string().min(1).optional(),
+  weakZoneIds: stringArray,
+  resourceAllocationByZone: normalizedZoneResourceAllocationsSchema,
+  anchorAgentIds: stringArray,
+  rotatePolicy: z.enum(rotatePolicies),
+  deploymentSummary: z.string().min(1)
+});
+export type DefenseDeployment = z.infer<typeof defenseDeploymentSchema>;
+
+export const tacticalCollisionSchema = z.object({
+  primaryZoneId: z.string().min(1),
+  attackApproach: z.enum(attackApproaches),
+  defenseSetup: z.enum(defenseSetups),
+  result: z.enum(tacticalCollisionResults),
+  attackScore: z.number().int(),
+  defenseScore: z.number().int(),
+  decisiveReason: z.string().min(1)
+});
+export type TacticalCollision = z.infer<typeof tacticalCollisionSchema>;
+
+export const publicAttackPlanSummarySchema = z.object({
+  teamId: z.string().min(1),
+  primaryTargetZoneId: z.string().min(1),
+  secondaryTargetZoneId: z.string().min(1).optional(),
+  approach: z.enum(attackApproaches),
+  feintRevealed: z.boolean(),
+  publicSummary: z.string().min(1)
+});
+export type PublicAttackPlanSummary = z.infer<typeof publicAttackPlanSummarySchema>;
+
+export const publicDefenseDeploymentSummarySchema = z.object({
+  teamId: z.string().min(1),
+  setup: z.enum(defenseSetups),
+  heavyZoneId: z.string().min(1).optional(),
+  weakZoneIds: stringArray,
+  rotatePolicy: z.enum(rotatePolicies),
+  publicSummary: z.string().min(1)
+});
+export type PublicDefenseDeploymentSummary = z.infer<typeof publicDefenseDeploymentSummarySchema>;
+
+export const tacticalRoundContextSchema = z.object({
+  sideAssignment: sideAssignmentSchema,
+  attackPlan: publicAttackPlanSummarySchema,
+  defenseDeployment: publicDefenseDeploymentSummarySchema,
+  collision: tacticalCollisionSchema
+});
+export type TacticalRoundContext = z.infer<typeof tacticalRoundContextSchema>;
+
+export const sideAssignmentCreatedPayloadSchema = z.object({
+  schemaVersion: z.literal(1),
+  sideAssignment: sideAssignmentSchema,
+  source: z.literal("phase16_side_rule")
+});
+export type SideAssignmentCreatedPayload = z.infer<typeof sideAssignmentCreatedPayloadSchema>;
+
+export const tacticalPlanSubmittedPayloadSchema = z.object({
+  schemaVersion: z.literal(1),
+  visibility: z.literal("restricted"),
+  teamId: z.string().min(1),
+  roundId: z.string().min(1),
+  publicSummary: z.string().min(1),
+  attackPlanSummary: z.object({
+    primaryTargetZoneId: z.string().min(1),
+    secondaryTargetZoneId: z.string().min(1).optional(),
+    approach: z.enum(attackApproaches),
+    feintRevealed: z.literal(false)
+  }),
+  artifactId: z.string().min(1).optional(),
+  sourceEventIds: stringArray.min(1)
+});
+export type TacticalPlanSubmittedPayload = z.infer<typeof tacticalPlanSubmittedPayloadSchema>;
+
+export const zoneDeploymentCommittedPayloadSchema = z.object({
+  schemaVersion: z.literal(1),
+  visibility: z.literal("restricted"),
+  teamId: z.string().min(1),
+  roundId: z.string().min(1),
+  publicSummary: z.string().min(1),
+  defenseDeploymentSummary: z.object({
+    setup: z.enum(defenseSetups),
+    heavyZoneId: z.string().min(1).optional(),
+    weakZoneIds: stringArray,
+    rotatePolicy: z.enum(rotatePolicies)
+  }),
+  artifactId: z.string().min(1).optional(),
+  sourceEventIds: stringArray.min(1)
+});
+export type ZoneDeploymentCommittedPayload = z.infer<typeof zoneDeploymentCommittedPayloadSchema>;
+
+export const siteExecuteResolvedPayloadSchema = z.object({
+  schemaVersion: z.literal(1),
+  visibility: z.literal("public_after_round"),
+  roundId: z.string().min(1),
+  collision: tacticalCollisionSchema,
+  revealedAttackPlan: publicAttackPlanSummarySchema,
+  revealedDefenseDeployment: publicDefenseDeploymentSummarySchema,
+  sourceEventIds: stringArray.min(1)
+});
+export type SiteExecuteResolvedPayload = z.infer<typeof siteExecuteResolvedPayloadSchema>;
+
 export const roundKeyEventSchema = z.object({
   id: z.string().min(1),
   type: z.enum(["entry", "trade", "clutch", "economy_swing", "conversion", "highlight"]),
@@ -258,6 +406,7 @@ export const roundReportSchema = z.object({
   economyDelta: economyDeltaSchema,
   tokenSubmission: tokenSubmissionSchema,
   highlightTags: z.array(z.string()).optional(),
+  tacticalContext: tacticalRoundContextSchema.optional(),
   summary: z.string().min(1),
   eventProjection: eventProjectionSchema,
   createdAt: isoDateString

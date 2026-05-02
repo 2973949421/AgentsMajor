@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server.js";
 
-import { runPhase15SingleMapFromWeb } from "../../../../server-runner";
+import { hasActiveWebRun, readWebRunProgress, sanitizeRunError, startPhase15SingleMapWebRun } from "../../../../server-run-progress";
 import { validateWebRunnerRequest, type WebRunnerRequestBody } from "../../../../server-web-runner-policy";
 
 export const runtime = "nodejs";
@@ -12,8 +12,6 @@ interface RouteContext {
   }>;
 }
 
-let activeRun: Promise<unknown> | null = null;
-
 export async function POST(request: Request, context: RouteContext) {
   const { matchId } = await context.params;
   const body = (await request.json().catch(() => ({}))) as WebRunnerRequestBody;
@@ -22,30 +20,31 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: validation.error }, { status: validation.status });
   }
 
-  if (activeRun) {
-    return NextResponse.json({ error: "A local match run is already in progress." }, { status: 409 });
+  if (hasActiveWebRun()) {
+    return NextResponse.json({ error: "A local match run is already in progress.", progress: readWebRunProgress() }, { status: 409 });
   }
 
-  const runPromise = runPhase15SingleMapFromWeb(matchId);
-  activeRun = runPromise;
   try {
-    const result = await runPromise;
-    return NextResponse.json({
-      summary: `DUST2 单图生成完成：${result.status}，比分 ${result.score}，LLM 调用 ${result.llmCalls.count} 次。`,
-      result
-    });
+    const progress = startPhase15SingleMapWebRun(matchId);
+    return NextResponse.json(
+      {
+        summary: "DUST2 single-map real LLM generation started.",
+        progress
+      },
+      { status: 202 }
+    );
   } catch (error) {
     return NextResponse.json({ error: sanitizeRunError(error) }, { status: 500 });
-  } finally {
-    activeRun = null;
   }
 }
 
-function sanitizeRunError(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-  return message
-    .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]")
-    .replace(/sk-[A-Za-z0-9_-]{8,}/gi, "sk-[redacted]")
-    .replace(/(api[_ -]?key["'\s:=]+)([^"',}\s]+)/gi, "$1[redacted]")
-    .replace(/(authorization["'\s:=]+)(Bearer\s+)?([^"',}\s]+)/gi, "$1[redacted]");
+export async function GET(request: Request, context: RouteContext) {
+  const { matchId } = await context.params;
+  const url = new URL(request.url);
+  const progress = readWebRunProgress(url.searchParams.get("runId") ?? undefined);
+  if (!progress || progress.matchId !== matchId) {
+    return NextResponse.json({ error: "No local match run progress found." }, { status: 404 });
+  }
+
+  return NextResponse.json({ progress });
 }

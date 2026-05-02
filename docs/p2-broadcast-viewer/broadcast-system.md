@@ -1868,3 +1868,10 @@ Highlight 是独立派生实体，BroadcastItem 只保存转播包装内容。
 先用规则 / fake provider 落地攻防事实链。
 不要在 Phase 1.6 直接替换核心裁判路径为真实 LLM。
 ```
+## Phase 1.6 增量：转播消费战术事实的边界
+
+Phase 1.6 后，Broadcast System 可以读取公开的 `RoundReport.tacticalContext`、`site_execute_resolved` 和 timeline tactical projection，用于解释主攻区、重防区、弱防区、假打转点、突破、防守成功或回防成功。
+
+转播层仍遵守 `Fact First, Broadcast Second`：解说、弹幕、支持率、回放卡只能包装 tactical facts，不能发明新的 AttackPlan、DefenseDeployment、TacticalCollision，也不能改写 Judge winner、比分或经济。
+
+真实 LLM 在 Phase 1.6 中仍只允许影响 `caster_line` 文本表达；不允许真实 LLM 参与攻方计划生成、防守部署生成、碰撞结算或胜负判定。

@@ -422,3 +422,19 @@ P2.2 的第一版边界已经清晰：
 ```
 
 P2.2 完成后，下一步应进入 P2.3 转播系统说明，定义 Caster、Barrage、Highlight、Replay Clip 如何消费同一套事实源。
+## Phase 1.6 增量：攻防协议地图展示已落地
+
+Phase 1.6 后，2D Tactical Map 除继续消费 `RoundReport.keyEvents` 和 timeline 外，还消费公开的 `RoundReport.tacticalContext` 与 `map_control_update` 投影。
+
+地图展示规则：
+
+| 状态 | 展示含义 |
+|---|---|
+| 主攻区 | 攻方本回合主要进攻点 |
+| 二攻/转点区 | 攻方备用目标或转点目标 |
+| 重防区 | 守方资源集中区域 |
+| 弱防区 | 守方资源薄弱区域 |
+| 碰撞区 | TacticalCollision 的主要结算区域 |
+| fallback zone | 未知 zone 降级后的弱提示区 |
+
+地图仍然只是表现层：它不生成 AttackPlan，不生成 DefenseDeployment，不判定 TacticalCollision，也不反写 RoundReport、Event Log、比分或经济。

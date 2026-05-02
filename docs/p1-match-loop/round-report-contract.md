@@ -1220,3 +1220,21 @@ type ProjectedEvent = {
 | P1.4 比赛模拟引擎 | P1.1 为回合完成后的输出契约。 |
 | P2.2 2D 战术地图说明 | P1.1 提供 zone 引用和 keyEvents。 |
 | P2.3 转播系统说明 | P1.1 提供解说、弹幕、击杀播报、高光依据。 |
+## Phase 1.6 增量：tacticalContext 已落地
+
+`RoundReport` 已新增可选 `tacticalContext`，用于承载回合完成后的公开攻防事实：
+
+```ts
+tacticalContext?: {
+  sideAssignment: SideAssignment;
+  attackPlan: PublicAttackPlanSummary;
+  defenseDeployment: PublicDefenseDeploymentSummary;
+  collision: TacticalCollision;
+};
+```
+
+约束：
+
+- `tacticalContext` 不能覆盖 `winnerTeamId`、`scoreBeforeRound`、`scoreAfterRound`、`judgeResult` 或 `economyDelta`。
+- `tacticalContext` 是赛后公开事实摘要，不是赛前隐藏计划原文。
+- 当前持久化方式是现有 `round_reports.tactical_context_json` 列，不新增 SQLite 表。

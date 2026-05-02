@@ -126,6 +126,63 @@
   color: #ffca7a;
 }
 
+.runProgress {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid rgba(244, 184, 70, 0.24);
+  background: rgba(7, 18, 21, 0.5);
+}
+
+.runProgressMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  color: var(--paper, #fff7dc);
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+}
+
+.runProgressTrack {
+  display: grid;
+  grid-template-columns: repeat(18, minmax(4px, 1fr));
+  gap: 3px;
+}
+
+.runProgressSegment {
+  height: 8px;
+  border: 1px solid rgba(255, 247, 220, 0.16);
+  background: rgba(255, 247, 220, 0.08);
+}
+
+.runProgressSegmentDone {
+  border-color: rgba(244, 184, 70, 0.9);
+  background: #f4b846;
+  box-shadow: 0 0 12px rgba(244, 184, 70, 0.28);
+}
+
+.runProgressSegmentCurrent {
+  border-color: #fff7dc;
+  background: #ffca7a;
+  animation: progressPulse 1s ease-in-out infinite alternate;
+}
+
+.runProgress small {
+  color: var(--muted, #cabf9f);
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+}
+
+@keyframes progressPulse {
+  from {
+    opacity: 0.56;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .mapTabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

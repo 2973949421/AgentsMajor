@@ -45,6 +45,7 @@ export interface LiveReplayRound {
   id: string;
   roundNumber: number;
   roundReport: LiveReplayRoundReport;
+  tacticalRound?: LiveTacticalRound;
   timelineEvents: LiveReplayTimelineEvent[];
 }
 
@@ -192,6 +193,8 @@ export interface LiveReplayCard {
   };
 }
 
+export type LiveTacticalRound = NonNullable<SourceRoundReport["tacticalContext"]>;
+
 export interface LiveRoundFrame {
   roundDurationMs: number;
   progress: number;
@@ -207,6 +210,8 @@ export interface LiveRoundFrame {
   highlightMvpAgentId: string | null;
   replayCard: LiveReplayCard | null;
   resultWinnerTeamId: string | null;
+  roundSummary: string | null;
+  tacticalRound: LiveTacticalRound | null;
   tacticalMap: LiveTacticalMapFrame;
   zones: VirtualZone[];
 }
@@ -305,6 +310,8 @@ export function buildRoundFrame(roundItem: LiveReplayRound, currentAtMs: number)
     highlightMvpAgentId: readOptionalString(asRecord(highlightEvent?.payload)?.mvpAgentId) ?? null,
     replayCard: readReplayCard(asRecord(highlightEvent?.payload)?.replayCard),
     resultWinnerTeamId: readOptionalString(asRecord(resultEvent?.payload)?.winnerTeamId) ?? null,
+    roundSummary: resultEvent ? roundItem.roundReport.summary : null,
+    tacticalRound: roundItem.tacticalRound ?? null,
     tacticalMap,
     zones: tacticalMap.zones.map((zone) => ({
       id: zone.id,
@@ -386,6 +393,7 @@ function toLiveRound(item: RoundReplayItem): LiveReplayRound {
       highlightTags: item.roundReport.highlightTags ?? [],
       summary: item.roundReport.summary
     },
+    ...(item.roundReport.tacticalContext ? { tacticalRound: item.roundReport.tacticalContext } : {}),
     timelineEvents: sortTimelineEvents(item.timelineEvents.map(toLiveTimelineEvent))
   };
 }
@@ -536,6 +544,7 @@ function buildTacticalMapFrame(
       ...(highlightVisible && tags.length > 0 ? { badge: formatBadge(tags[0] ?? "") } : {})
     });
   }
+  applyTacticalControlState(zoneState, layout, roundItem, visibleEvents);
 
   const zones: LiveTacticalZoneFrame[] = layout.zones.map((zone) => {
     const state = zoneState.get(zone.zoneId);
@@ -577,6 +586,89 @@ function buildTacticalMapFrame(
       };
     })
   };
+}
+
+function applyTacticalControlState(
+  zoneState: Map<string, Partial<LiveTacticalZoneFrame>>,
+  layout: TacticalMapLayout,
+  roundItem: LiveReplayRound,
+  visibleEvents: LiveReplayTimelineEvent[]
+): void {
+  const visibleControlEvents = visibleEvents.filter((event) => event.kind === "map_control_update");
+  if (visibleControlEvents.length === 0 || !roundItem.tacticalRound) {
+    return;
+  }
+
+  for (const event of visibleControlEvents) {
+    const payload = asRecord(event.payload);
+    const tacticalKind = readOptionalString(payload?.tacticalKind);
+    if (tacticalKind === "attack_plan_revealed") {
+      markTacticalZone(zoneState, layout, roundItem.tacticalRound.attackPlan.primaryTargetZoneId, {
+        active: true,
+        badge: "ATK",
+        actorTeamId: roundItem.tacticalRound.attackPlan.teamId,
+        eventType: roundItem.tacticalRound.attackPlan.approach,
+        impact: roundItem.tacticalRound.attackPlan.publicSummary
+      });
+      if (roundItem.tacticalRound.attackPlan.secondaryTargetZoneId) {
+        markTacticalZone(zoneState, layout, roundItem.tacticalRound.attackPlan.secondaryTargetZoneId, {
+          active: true,
+          badge: "ROT",
+          actorTeamId: roundItem.tacticalRound.attackPlan.teamId,
+          eventType: "secondary_target",
+          impact: roundItem.tacticalRound.attackPlan.publicSummary
+        });
+      }
+    }
+
+    if (tacticalKind === "defense_deployment_revealed") {
+      if (roundItem.tacticalRound.defenseDeployment.heavyZoneId) {
+        markTacticalZone(zoneState, layout, roundItem.tacticalRound.defenseDeployment.heavyZoneId, {
+          active: true,
+          badge: "DEF",
+          actorTeamId: roundItem.tacticalRound.defenseDeployment.teamId,
+          eventType: roundItem.tacticalRound.defenseDeployment.setup,
+          impact: roundItem.tacticalRound.defenseDeployment.publicSummary
+        });
+      }
+      for (const weakZoneId of roundItem.tacticalRound.defenseDeployment.weakZoneIds) {
+        markTacticalZone(zoneState, layout, weakZoneId, {
+          active: true,
+          weak: true,
+          badge: "WEAK",
+          actorTeamId: roundItem.tacticalRound.defenseDeployment.teamId,
+          eventType: "weak_zone",
+          impact: roundItem.tacticalRound.defenseDeployment.publicSummary
+        });
+      }
+    }
+
+    if (tacticalKind === "site_execute_resolved") {
+      markTacticalZone(zoneState, layout, roundItem.tacticalRound.collision.primaryZoneId, {
+        active: true,
+        badge: "COLL",
+        eventType: roundItem.tacticalRound.collision.result,
+        impact: roundItem.tacticalRound.collision.decisiveReason
+      });
+    }
+  }
+}
+
+function markTacticalZone(
+  zoneState: Map<string, Partial<LiveTacticalZoneFrame>>,
+  layout: TacticalMapLayout,
+  zoneId: string,
+  state: Partial<LiveTacticalZoneFrame>
+): void {
+  const resolved = resolveTacticalZone(layout, zoneId);
+  const previous = zoneState.get(resolved.zone.zoneId);
+  zoneState.set(resolved.zone.zoneId, {
+    ...previous,
+    ...state,
+    active: Boolean(previous?.active) || Boolean(state.active),
+    weak: Boolean(previous?.weak) || Boolean(state.weak) || resolved.weak,
+    ...(resolved.weak ? { requestedZoneId: resolved.requestedZoneId } : {})
+  });
 }
 
 function isHighlightRound(mapReplay: LiveReplayMap, roundItem: LiveReplayRound | undefined): boolean {

@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { agentSchema, economyStateSchema, eventSchema, summarySchema, timelineEventSchema, tournamentSchema } from "./schemas.js";
+import {
+  attackPlanSchema,
+  defenseDeploymentSchema,
+  economyStateSchema,
+  eventSchema,
+  roundReportSchema,
+  sideAssignmentCreatedPayloadSchema,
+  sideAssignmentSchema,
+  siteExecuteResolvedPayloadSchema,
+  summarySchema,
+  tacticalCollisionSchema,
+  tacticalPlanSubmittedPayloadSchema,
+  timelineEventSchema,
+  tournamentSchema,
+  zoneDeploymentCommittedPayloadSchema,
+  agentSchema
+} from "./schemas.js";
 
 const now = "2026-05-01T00:00:00.000Z";
 
@@ -97,5 +113,116 @@ describe("shared contracts", () => {
         createdAt: now
       })
     ).toMatchObject({ id: "sum_map_001", summaryType: "map" });
+  });
+
+  it("parses Phase 1.6 tactical contracts and event payloads", () => {
+    const sideAssignment = sideAssignmentSchema.parse({
+      roundId: "round_001",
+      roundNumber: 1,
+      attackingTeamId: "team_a",
+      defendingTeamId: "team_b",
+      half: "first_half",
+      sideSwitched: false
+    });
+    const attackPlan = attackPlanSchema.parse({
+      teamId: "team_a",
+      primaryTargetZoneId: "conversion_site_a",
+      secondaryTargetZoneId: "conversion_site_b",
+      approach: "fake_then_rotate",
+      feintZoneId: "conversion_site_a",
+      resourceAllocationByZone: [{ zoneId: "conversion_site_b", weight: 100, activeAgentIds: ["agent_a"], intent: "attack_execute" }],
+      activeAgentIds: ["agent_a"],
+      intentSummary: "fake A then rotate B"
+    });
+    const defenseDeployment = defenseDeploymentSchema.parse({
+      teamId: "team_b",
+      setup: "heavy_a",
+      heavyZoneId: "conversion_site_a",
+      weakZoneIds: ["conversion_site_b"],
+      resourceAllocationByZone: [{ zoneId: "conversion_site_a", weight: 100, activeAgentIds: ["agent_b"], intent: "defense_anchor" }],
+      anchorAgentIds: ["agent_b"],
+      rotatePolicy: "hold_sites",
+      deploymentSummary: "heavy A"
+    });
+    const collision = tacticalCollisionSchema.parse({
+      primaryZoneId: "conversion_site_b",
+      attackApproach: "fake_then_rotate",
+      defenseSetup: "heavy_a",
+      result: "fake_success",
+      attackScore: 72,
+      defenseScore: 70,
+      decisiveReason: "fake condition matched"
+    });
+
+    expect(sideAssignmentCreatedPayloadSchema.parse({ schemaVersion: 1, sideAssignment, source: "phase16_side_rule" })).toMatchObject({
+      source: "phase16_side_rule"
+    });
+    expect(
+      tacticalPlanSubmittedPayloadSchema.parse({
+        schemaVersion: 1,
+        visibility: "restricted",
+        teamId: attackPlan.teamId,
+        roundId: sideAssignment.roundId,
+        publicSummary: attackPlan.intentSummary,
+        attackPlanSummary: {
+          primaryTargetZoneId: attackPlan.primaryTargetZoneId,
+          secondaryTargetZoneId: attackPlan.secondaryTargetZoneId,
+          approach: attackPlan.approach,
+          feintRevealed: false
+        },
+        sourceEventIds: ["evt_side"]
+      })
+    ).toMatchObject({ visibility: "restricted" });
+    expect(
+      zoneDeploymentCommittedPayloadSchema.parse({
+        schemaVersion: 1,
+        visibility: "restricted",
+        teamId: defenseDeployment.teamId,
+        roundId: sideAssignment.roundId,
+        publicSummary: defenseDeployment.deploymentSummary,
+        defenseDeploymentSummary: {
+          setup: defenseDeployment.setup,
+          heavyZoneId: defenseDeployment.heavyZoneId,
+          weakZoneIds: defenseDeployment.weakZoneIds,
+          rotatePolicy: defenseDeployment.rotatePolicy
+        },
+        sourceEventIds: ["evt_side"]
+      })
+    ).toMatchObject({ visibility: "restricted" });
+    expect(
+      siteExecuteResolvedPayloadSchema.parse({
+        schemaVersion: 1,
+        visibility: "public_after_round",
+        roundId: sideAssignment.roundId,
+        collision,
+        revealedAttackPlan: {
+          teamId: attackPlan.teamId,
+          primaryTargetZoneId: attackPlan.primaryTargetZoneId,
+          secondaryTargetZoneId: attackPlan.secondaryTargetZoneId,
+          approach: attackPlan.approach,
+          feintRevealed: true,
+          publicSummary: attackPlan.intentSummary
+        },
+        revealedDefenseDeployment: {
+          teamId: defenseDeployment.teamId,
+          setup: defenseDeployment.setup,
+          heavyZoneId: defenseDeployment.heavyZoneId,
+          weakZoneIds: defenseDeployment.weakZoneIds,
+          rotatePolicy: defenseDeployment.rotatePolicy,
+          publicSummary: defenseDeployment.deploymentSummary
+        },
+        sourceEventIds: ["evt_plan", "evt_deploy", "evt_judge"]
+      })
+    ).toMatchObject({ visibility: "public_after_round" });
+
+    expect(() =>
+      attackPlanSchema.parse({
+        ...attackPlan,
+        resourceAllocationByZone: [
+          { zoneId: "conversion_site_a", weight: 40, activeAgentIds: ["agent_a"], intent: "attack_execute" },
+          { zoneId: "buyer_mid", weight: 40, activeAgentIds: ["agent_a"], intent: "info_control" }
+        ]
+      })
+    ).toThrow();
   });
 });

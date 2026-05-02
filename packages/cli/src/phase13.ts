@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,6 +8,7 @@ import { FakeProvider } from "@agent-major/llm";
 import { UnconfiguredJobQueue } from "@agent-major/queue";
 
 import { ensureDataDirectories } from "./data-init.js";
+import { exportMatchReplay } from "./export-match-replay.js";
 
 export type Phase13Command = "match" | "replay" | "export";
 
@@ -115,17 +116,6 @@ function formatMatchReplayLines(replay: MatchReplay): string[] {
 
 function isCompletedMatchReplay(replay: MatchReplay): boolean {
   return replay.match.status === "completed" && replay.matchSummary !== null && replay.maps.length === replay.match.teamAMapsWon + replay.match.teamBMapsWon;
-}
-
-function exportMatchReplay(projectRoot: string, replay: MatchReplay): string {
-  const exportDirectory = resolve(projectRoot, "data", "exports", "matches");
-  if (!existsSync(exportDirectory)) {
-    mkdirSync(exportDirectory, { recursive: true });
-  }
-
-  const exportPath = resolve(exportDirectory, `${replay.match.id}.json`);
-  writeFileSync(exportPath, `${JSON.stringify(replay, null, 2)}\n`, "utf8");
-  return exportPath;
 }
 
 async function main(): Promise<void> {

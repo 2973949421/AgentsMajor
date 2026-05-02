@@ -148,6 +148,7 @@ export const roundReports = sqliteTable("round_reports", {
   economyDeltaJson: text("economy_delta_json", { mode: "json" }).notNull(),
   tokenSubmissionJson: text("token_submission_json", { mode: "json" }).notNull(),
   highlightTagsJson: text("highlight_tags_json", { mode: "json" }),
+  tacticalContextJson: text("tactical_context_json", { mode: "json" }),
   summary: text("summary").notNull(),
   eventProjectionJson: text("event_projection_json", { mode: "json" }).notNull(),
   createdAt: text("created_at").notNull()

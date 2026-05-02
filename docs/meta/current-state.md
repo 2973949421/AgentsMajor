@@ -405,3 +405,10 @@ Phase 4：Web 化、队列、可观测性、部署。
 ```
 
 这份长期路线图应该只定义边界、依赖和不可逆决策，不应该替代当前 Phase 1.4 的工程推进。
+## Phase 1.6 当前落地状态
+
+Phase 1.6 已作为独立工程阶段落地：`phase16:*` 命令启用 deterministic rule-based 区域化攻防协议，`phase13:*` 与 `phase15:*` 保持隔离。当前版本不访问真实网络、不需要 API Key、不新增 SQLite 表，只在既有事件、回合战报、时间线和 Web ViewModel 上扩展公开战术事实。
+
+已完成的核心能力包括：攻守方分配、AttackPlan、DefenseDeployment、TacticalCollision、`RoundReport.tacticalContext` 持久化、4 个 tactical events、timeline tactical projection、Web `tacticalRound` 与 tactical map 高亮。
+
+下一阶段若进入 Phase 1.7 或 Phase 2，应优先评估战术协议的数据观察面、更多地图区域、真实 LLM 战术生成的安全边界，以及是否需要 tactical 专表；不应在 Phase 1.6 v1 中让真实 LLM 影响胜负判定。
