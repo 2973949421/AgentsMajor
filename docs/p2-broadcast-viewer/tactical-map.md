@@ -122,6 +122,29 @@ type TacticalZoneConnection = {
 | `pricing_ramp` | 定价斜坡 | `utility` | 战术准备、压力堆叠、价值锚点。 |
 | `token_economy` | Token 经济区 | `economy` | 经济波动、购买态势、资源压力。 |
 
+### 5.1.1 区域战术语义（Phase 1.6 预留）
+
+Phase 1.45 中，区域只负责展示：不是每个回合、每个区域都会被点亮，只有被 `RoundReport.keyEvents`、`TimelineEvent` 或高光揭示命中的区域才会激活。
+
+Phase 1.6 后，区域会进一步成为攻防回合协议的战术词汇：
+
+| zoneId | 攻方语义 | 守方语义 | 转播语义 |
+|---|---|---|---|
+| `conversion_site_a` | 主攻 A 点，集中完成商业闭环或核心转化论证。 | 重防 A，用产品壁垒、技术论证、运营数据或商业防线顶住强攻。 | A 点爆破、A 点重防、A 点被打穿。 |
+| `conversion_site_b` | 主攻 B 点，作为备用得分点、转点目标或差异化增长入口。 | 重防 B，防止对手绕过 A 点主防线。 | B 点偷袭、转 B、B 点空虚。 |
+| `buyer_mid` | 控中路，争夺 buyer 定义、市场切入点和信息优势。 | 中路前压，提前识破对手主攻方向。 | 中路控制、信息压制、提前读到战术。 |
+| `retention_connector` | 转点、残局收束、打连接区形成回防压力。 | 回防、转线、保留二次防守能力。 | 转点成功、回防迟缓、连接区残局。 |
+| `pricing_ramp` | 用定价、价值锚点、技术门槛堆叠进攻压力。 | 用价格反制、壁垒证明或方案复杂度拖慢进攻。 | 价值坡道、价格压力、壁垒交火。 |
+| `token_economy` | 利用 force buy / eco / save 制造低预算突破。 | 根据预算选择重防、弱防或保存资源。 | 经济局、强起、保经济、低配翻盘。 |
+
+边界：
+
+```text
+P2.2 只定义 zone 的展示和语义映射。
+攻方 AttackPlan、守方 DefenseDeployment 和 TacticalCollision 由 P1.4 / Phase 1.6 负责。
+P2.2 不根据 UI 反推攻防计划，也不决定 Judge 结果。
+```
+
 ### 5.2 DUST2 布局草案
 
 ```ts

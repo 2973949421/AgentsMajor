@@ -1,4 +1,5 @@
 export type LlmModelTier = "cheap" | "standard" | "strong";
+export type LlmResponseFormat = "text" | "json_object";
 
 export type LlmTaskType =
   | "agent_action"
@@ -8,11 +9,18 @@ export type LlmTaskType =
   | "event_builder"
   | "broadcast";
 
+export interface LlmMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
 export interface LlmRequest<TInput = unknown> {
   task: LlmTaskType;
   driverModelId: string;
   input: TInput;
   schemaName: string;
+  messages?: LlmMessage[];
+  responseFormat?: LlmResponseFormat;
   seed?: string;
   modelTier?: LlmModelTier;
   maxOutputTokens?: number;

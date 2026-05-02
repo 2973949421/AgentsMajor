@@ -261,6 +261,75 @@ type RoundReport = {
 - `tokenSubmission.mode` 第一版固定为 `output_submission_budget`。
 - `eventProjection` 只声明可投影事件，不替代真正 Event 实例。
 
+### 4.4 战术上下文扩展（Phase 1.6 预留）
+
+区域化攻防协议落地后，RoundReport 需要保存“攻守双方为什么在某个区域发生碰撞”的结构化事实。该字段不进入 Phase 1.45 当前代码，也不阻塞 Phase 1.5；真正实现前必须同步更新 schema、事件投影和测试。
+
+推荐扩展：
+
+```ts
+type RoundReport = {
+  // existing fields...
+  tacticalContext?: TacticalRoundSnapshot;
+};
+
+type TacticalRoundSnapshot = {
+  sideAssignment: SideAssignment;
+  attackPlan: PublicAttackPlanSummary;
+  defenseDeployment: PublicDefenseDeploymentSummary;
+  collision: TacticalCollision;
+};
+
+type PublicAttackPlanSummary = {
+  teamId: string;
+  primaryTargetZoneId: string;
+  secondaryTargetZoneId?: string;
+  approach:
+    | "fast_execute"
+    | "slow_control"
+    | "mid_control_then_execute"
+    | "fake_then_rotate"
+    | "eco_steal"
+    | "default_probe";
+  revealedAfterRound: true;
+};
+
+type PublicDefenseDeploymentSummary = {
+  teamId: string;
+  setup:
+    | "heavy_a"
+    | "heavy_b"
+    | "default_split"
+    | "mid_push"
+    | "retake_setup"
+    | "save_weak_hold";
+  heavyZoneId?: string;
+  weakZoneIds: string[];
+  revealedAfterRound: true;
+};
+
+type TacticalCollision = {
+  primaryZoneId: string;
+  result:
+    | "attack_breakthrough"
+    | "defense_hold"
+    | "trade_even"
+    | "fake_success"
+    | "rotate_success"
+    | "economy_steal";
+  decisiveReason: string;
+};
+```
+
+边界：
+
+```text
+tacticalContext 是回合结束后的公开事实摘要，不是赛前隐藏计划原文。
+隐藏计划原文如果需要保存，应进入 Artifact 或受限 Event，不默认下发给观众页面。
+keyEvents[].zoneId 仍然是 2D 地图的主入口。
+tacticalContext 只能解释 keyEvents 和 JudgeResult，不能覆盖 winnerTeamId 或 scoreAfterRound。
+```
+
 ## 5. 裁判结果（JudgeResult）
 
 ### 5.1 字段表
@@ -1126,6 +1195,7 @@ type ProjectedEvent = {
 - P2.2 中每张地图的具体 zone 列表和 2D 坐标。
 - P2.3 中解说、弹幕、支持率变化的生成策略。
 - P1.4 中模拟引擎如何选择 active agents 和 actionPhase。
+- Phase 1.6 区域化攻防协议落地时，是否把 `tacticalContext` 作为 RoundReport 正式可选字段。
 
 ## 17. 人工验收标准
 

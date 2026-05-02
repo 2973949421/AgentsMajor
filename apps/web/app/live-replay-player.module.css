@@ -72,6 +72,60 @@
   color: var(--muted);
 }
 
+.runControls,
+.runControlsCompact {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.runControlsCompact {
+  margin-top: 12px;
+}
+
+.runControls button,
+.runControlsCompact button {
+  min-height: 42px;
+  padding: 0 14px;
+  color: #071215;
+  border: 1px solid var(--gold, #f4b846);
+  background: var(--gold, #f4b846);
+  cursor: pointer;
+  font: inherit;
+}
+
+.runControls button:hover,
+.runControlsCompact button:hover {
+  background: #ffe49b;
+}
+
+.runControlsInput {
+  min-height: 38px;
+  padding: 0 12px;
+  color: var(--paper, #fff7dc);
+  border: 1px solid rgba(244, 184, 70, 0.34);
+  background: rgba(7, 18, 21, 0.72);
+  font: inherit;
+}
+
+.runControls button:disabled,
+.runControlsCompact button:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.runControlsMessage,
+.runControlsError {
+  color: var(--muted, #cabf9f);
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.runControlsError {
+  color: #ffca7a;
+}
+
 .mapTabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -240,16 +294,115 @@
 }
 
 .virtualMap {
+  position: relative;
   min-height: 440px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  overflow: hidden;
   padding: 18px;
   background:
     linear-gradient(90deg, rgba(244, 184, 70, 0.08) 1px, transparent 1px),
     linear-gradient(rgba(244, 184, 70, 0.08) 1px, transparent 1px),
     rgba(0, 0, 0, 0.22);
   background-size: 34px 34px;
+}
+
+.tacticalLines {
+  position: absolute;
+  inset: 18px;
+  width: calc(100% - 36px);
+  height: calc(100% - 36px);
+  opacity: 0.86;
+}
+
+.tacticalLine {
+  stroke: rgba(255, 248, 223, 0.22);
+  stroke-width: 5;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.tacticalLineActive {
+  stroke: var(--gold);
+  filter: drop-shadow(0 0 8px rgba(244, 184, 70, 0.48));
+}
+
+.tacticalZone {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  gap: 4px;
+  width: min(168px, 24vw);
+  min-height: 96px;
+  padding: 12px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(7, 18, 21, 0.86);
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.18);
+}
+
+.tacticalZone span,
+.tacticalZone small,
+.tacticalZone em,
+.barrageItem span,
+.supportRate span,
+.replayCard small {
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+}
+
+.tacticalZone span {
+  color: var(--gold);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tacticalZone strong {
+  font-size: 18px;
+  text-transform: capitalize;
+}
+
+.tacticalZone small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.tacticalZone b {
+  position: absolute;
+  right: -10px;
+  top: -10px;
+  display: grid;
+  min-width: 32px;
+  height: 32px;
+  place-items: center;
+  color: #071215;
+  border-radius: 999px;
+  background: var(--teal);
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+}
+
+.tacticalZone em {
+  color: #ffca7a;
+  font-size: 10px;
+  font-style: normal;
+}
+
+.tacticalZoneActive {
+  color: #071215;
+  border-color: var(--gold);
+  background: linear-gradient(135deg, var(--gold), #ffe49b);
+  box-shadow: 0 0 28px rgba(244, 184, 70, 0.28);
+}
+
+.tacticalZoneActive span,
+.tacticalZoneActive small,
+.tacticalZoneActive em {
+  color: #253035;
+}
+
+.tacticalZoneWeak {
+  outline: 2px dashed rgba(47, 209, 191, 0.72);
+  outline-offset: 3px;
 }
 
 .zone {
@@ -290,6 +443,32 @@
   color: #253035;
 }
 
+.supportRate {
+  display: grid;
+  gap: 10px;
+}
+
+.supportRate > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.supportRate strong {
+  font-size: 28px;
+}
+
+.supportRate meter {
+  width: 100%;
+  height: 14px;
+  accent-color: var(--gold);
+}
+
+.supportRate small {
+  color: var(--muted);
+}
+
 .sideStack {
   display: grid;
   gap: 14px;
@@ -313,14 +492,16 @@
 .feedList,
 .timelineList,
 .economyGrid,
-.roundGrid {
+.roundGrid,
+.barrageList {
   display: grid;
   gap: 10px;
 }
 
 .feedItem,
 .timelineItem,
-.economyRow {
+.economyRow,
+.barrageItem {
   display: grid;
   gap: 4px;
   padding: 12px;
@@ -331,7 +512,8 @@
 .feedItem span,
 .timelineItem span,
 .economyRow span,
-.roundButton span {
+.roundButton span,
+.barrageItem span {
   color: var(--gold);
   font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   font-size: 12px;
@@ -339,7 +521,8 @@
 
 .feedItem small,
 .timelineItem small,
-.economyRow small {
+.economyRow small,
+.barrageItem small {
   color: var(--muted);
 }
 
@@ -349,6 +532,24 @@
   padding: 16px;
   color: #071215;
   background: var(--gold);
+}
+
+.replayCard {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+  padding: 12px;
+  color: var(--ink);
+  background: rgba(7, 18, 21, 0.88);
+}
+
+.replayCard b {
+  color: var(--gold);
+}
+
+.replayCard span {
+  color: #fff0bd;
+  line-height: 1.45;
 }
 
 .detailGrid {
@@ -431,5 +632,11 @@
   .economyGrid,
   .roundGrid {
     grid-template-columns: 1fr;
+  }
+
+  .tacticalZone {
+    width: min(136px, 38vw);
+    min-height: 84px;
+    padding: 10px;
   }
 }

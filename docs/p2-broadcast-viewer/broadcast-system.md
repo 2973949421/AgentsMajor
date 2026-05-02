@@ -5,7 +5,7 @@
 ```text
 P 编号：P2.3
 模块：M09 转播与伪直播（Broadcast & Pseudo Live）
-当前状态：Review-ready Draft，Phase 1.5 结束后再评估是否 Frozen
+当前状态：Frozen for Phase 1，已通过 Phase 1.45 与 Phase 1.5 实现验证
 首版日期：2026-05-02
 覆盖范围：击杀播报、主解说接口、弹幕接口、支持率、高光、回放卡片
 ```
@@ -125,6 +125,7 @@ TimelineEvent 可以基于新的 BroadcastItem 重建。
 - 不定义奖项评分公式。
 - 不实现真实视频剪辑，只预留接口。
 - 不公开展示真实 `driverModelId` 或 `modelName`。
+- 不决定攻方进攻方案、守方区域部署或区域碰撞结果。
 
 ## 5. 已确认产品决策
 
@@ -244,6 +245,36 @@ clipRenderJobId
 ```
 
 后续真正视频剪辑不应改变 P2.3 的事实边界。
+
+### 5.6 攻防战术事实消费边界（Phase 1.6 预留）
+
+区域化攻防协议落地后，P2.3 可以消费以下事实来增强解说、弹幕和回放卡片：
+
+```text
+SideAssignment：本回合谁攻、谁守、是否换边。
+AttackPlan 摘要：攻方主攻 A / B、中路控制、假打转点或经济偷点。
+DefenseDeployment 摘要：守方重防 A / B、默认分散、中路前压或保守回防。
+TacticalCollision：突破、防守站住、转点成功、假打成功或经济偷点。
+```
+
+但 P2.3 只能在这些事实已经由 RoundReport / Event Log 写入后使用它们。转播系统不能：
+
+```text
+提前剧透隐藏战术。
+自行发明攻方主攻点。
+自行发明守方重防区。
+修改 TacticalCollision。
+用解说文本覆盖比分、胜者、经济或 JudgeResult。
+```
+
+可生成的话术类型：
+
+```text
+“攻方这一回合选择强打 A 点。”
+“守方重防 A，但 B 点出现弱防窗口。”
+“这波假打 A 转 B 成功骗走了连接区资源。”
+“中路前压提前读到了主攻方向。”
+```
 
 ## 6. 总体数据流
 
@@ -1351,7 +1382,7 @@ Phase 1.4 现有代码已经会写入 highlight_detected，但 payload 是最小
   reason
 
 P2.3 中的 HighlightDetectedPayload 是后续实现目标。
-Phase 1.5 前置评审期间，不要求立刻破坏旧 replay。
+Phase 1.5 已完成，当前不要求为了升级 highlight payload 破坏旧 replay。
 后续实现时可以通过兼容解析器把旧 payload 归一化为 HighlightPayload。
 ```
 
@@ -1774,7 +1805,7 @@ pnpm phase13:export
 
 ## 28. 待确认问题（Open Questions）
 
-这些问题不阻塞 P2.3 评审稿，也不阻塞 Phase 1.5 前置评审，但会影响后续实现细节。
+这些问题不阻塞 P2.3 在 Phase 1 范围内按 Frozen 执行，但会影响后续实现细节。
 
 ### 28.1 已确认但后续可调
 
@@ -1785,18 +1816,20 @@ pnpm phase13:export
 解说和弹幕保留开放接口，后续由专门语料库和风格库补齐。
 观众页不公开真实 driverModelId / providerId / modelName。
 回放卡片第一版文本化，后续预留真正视频剪辑。
-P2.3 当前不标记 Frozen，等 Phase 1.5 结束后再评估冻结。
+P2.3 在 Phase 1 范围内标记 Frozen；后续 P3 / P4 可扩展媒体生态和 Web 任务系统，但不能破坏 Fact First, Broadcast Second。
 ```
 
-### 28.2 Phase 1.5 前置评审需要确认
+### 28.2 Phase 1.5 收口结果
 
 ```text
-1. 真实 LLM 第一个接入任务是 caster_line、barrage，还是 replay_card 文案增强。
-2. BroadcastItem 是否在 Phase 1.5 直接落表，还是先继续由 broadcast events 和 Timeline payload 承载。
-3. 现有 highlight_detected 最小 payload 何时升级到 P2.3 目标 payload。
-4. 支持率 UI 在底侧底部的具体布局，是横向条、双柱条，还是小型趋势条。
-5. 普通弹幕 fallback 是否需要进入快照测试和 golden sample。
-6. 后续 CasterProfile / BarrageLibrary 属于 P3.3 素材库，还是在 Phase 1.5 先建立最小本地 JSON。
+1. 真实 LLM 第一个接入任务已确定为 caster_line。
+2. barrage / replay_card 在 Phase 1.5 不接真实 LLM。
+3. 真实 LLM 失败时必须 fallback_template。
+4. 观众侧不公开 raw LLM、driverModelId、providerId、modelName、llm_calls 或 Artifact 原文。
+5. Web runner 只是本地 smoke 工具，不作为生产任务系统。
+6. BroadcastItem 在 Phase 1.5 不直接落表，继续由 broadcast events 和 Timeline payload 承载。
+7. CasterProfile / BarrageLibrary 后置到 P3.3 素材库，不进入 Phase 1.5。
+8. highlight_detected 目标 payload、支持率 UI 细节和弹幕 golden sample 后续按独立任务评估。
 ```
 
 ### 28.3 暂不处理
@@ -1826,12 +1859,12 @@ Highlight 是独立派生实体，BroadcastItem 只保存转播包装内容。
 所有包装内容都必须可追溯、可降级、可重建。
 ```
 
-完成 P2.3 评审稿后，Agent Major 的 Phase 1 fake provider MVP 已具备进入真实 LLM 小范围接入前的主要观看层边界。
+完成 P2.3 与 Phase 1.5 后，Agent Major 的 Phase 1 fake provider MVP 已具备进入区域化攻防协议前的主要观看层边界和真实 caster_line 降级链路。
 
 下一步建议：
 
 ```text
-先做 Phase 1.5 前置评审。
-选择最小真实 LLM 接入点。
-优先接入可失败降级的包装任务，而不是直接替换核心裁判路径。
+进入 Phase 1.6 区域化攻防回合协议。
+先用规则 / fake provider 落地攻防事实链。
+不要在 Phase 1.6 直接替换核心裁判路径为真实 LLM。
 ```

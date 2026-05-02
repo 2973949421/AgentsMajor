@@ -48,14 +48,14 @@ export async function readMapReplay(repositories: Repositories, mapGameId: strin
   }
 
   const match = await required(repositories.matches.getById(mapGame.matchId), `Match not found: ${mapGame.matchId}`);
-  const [teamA, teamB, rounds, roundReports, mapEvents, mapTimelineEvents] = await Promise.all([
+  const [teamA, teamB, rounds, roundReports, mapEvents, mapTimelineEvents] = (await Promise.all([
     required(repositories.teams.getById(match.teamAId), `Team not found: ${match.teamAId}`),
     required(repositories.teams.getById(match.teamBId), `Team not found: ${match.teamBId}`),
     repositories.rounds.listByMapGame(mapGame.id),
     repositories.roundReports.listByMapGame(mapGame.id),
     repositories.events.listByMapGame(mapGame.id),
     repositories.timelineEvents.listByMapGame(mapGame.id)
-  ]);
+  ])) as [Team, Team, Round[], RoundReport[], Event[], TimelineEvent[]];
 
   const reportsByRoundId = new Map(roundReports.map((report) => [report.roundId, report]));
   const eventsByRoundId = groupByRoundId(mapEvents, (event) => event.roundId);
@@ -88,12 +88,12 @@ export async function readMatchReplay(repositories: Repositories, matchId: strin
     return null;
   }
 
-  const [teamA, teamB, mapGames, matchEvents] = await Promise.all([
+  const [teamA, teamB, mapGames, matchEvents] = (await Promise.all([
     required(repositories.teams.getById(match.teamAId), `Team not found: ${match.teamAId}`),
     required(repositories.teams.getById(match.teamBId), `Team not found: ${match.teamBId}`),
     repositories.mapGames.listByMatch(match.id),
     repositories.events.listByMatch(match.id)
-  ]);
+  ])) as [Team, Team, MapGame[], Event[]];
   const maps = (
     await Promise.all(
       [...mapGames]

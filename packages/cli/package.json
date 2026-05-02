@@ -29,7 +29,10 @@
     "phase12:export": "tsx src/phase12.ts export",
     "phase13:match": "tsx src/phase13.ts match",
     "phase13:replay": "tsx src/phase13.ts replay",
-    "phase13:export": "tsx src/phase13.ts export"
+    "phase13:export": "tsx src/phase13.ts export",
+    "phase15:match": "tsx src/phase15.ts match",
+    "phase15:replay": "tsx src/phase15.ts replay",
+    "phase15:export": "tsx src/phase15.ts export"
   },
   "dependencies": {
     "@agent-major/core": "workspace:*",

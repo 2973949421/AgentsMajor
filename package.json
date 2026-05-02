@@ -20,6 +20,9 @@
     "phase13:match": "pnpm build:cli && node packages/cli/dist/phase13.js match",
     "phase13:replay": "pnpm build:cli && node packages/cli/dist/phase13.js replay",
     "phase13:export": "pnpm build:cli && node packages/cli/dist/phase13.js export",
+    "phase15:match": "pnpm build:cli && node packages/cli/dist/phase15.js match",
+    "phase15:replay": "pnpm build:cli && node packages/cli/dist/phase15.js replay",
+    "phase15:export": "pnpm build:cli && node packages/cli/dist/phase15.js export",
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --sort typecheck"
   },

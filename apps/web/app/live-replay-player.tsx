@@ -21,13 +21,16 @@ import {
   type PlayerStatus,
   type ScorePair
 } from "./live-replay-model";
+import type { PublicWebRunnerPolicy } from "./server-web-runner-policy";
+import { RunMatchControls } from "./run-match-controls";
 import styles from "./live-replay-player.module.css";
 
 interface LiveReplayPlayerProps {
   replay: LiveReplayData;
+  runnerPolicy: PublicWebRunnerPolicy;
 }
 
-export function LiveReplayPlayer({ replay }: LiveReplayPlayerProps) {
+export function LiveReplayPlayer({ replay, runnerPolicy }: LiveReplayPlayerProps) {
   const maps = useMemo(() => [...replay.maps].sort((left, right) => left.order - right.order), [replay.maps]);
   const [selectedMapId, setSelectedMapId] = useState(maps[0]?.id ?? "");
   const [selectedRoundIndex, setSelectedRoundIndex] = useState(0);
@@ -182,6 +185,7 @@ export function LiveReplayPlayer({ replay }: LiveReplayPlayerProps) {
             {revealedMatchScore.teamA}-{revealedMatchScore.teamB}
           </strong>
           <small>胜者：{matchWinnerName}</small>
+          <RunMatchControls matchId={replay.matchId} runnerPolicy={runnerPolicy} compact />
         </aside>
       </section>
 
@@ -278,27 +282,64 @@ export function LiveReplayPlayer({ replay }: LiveReplayPlayerProps) {
           </div>
 
           <div className={styles.virtualMap}>
-            {frame.zones.length > 0 ? (
-              frame.zones.map((zone) => (
-                <div key={`${zone.id}-${zone.type}`} className={`${styles.zone} ${zone.active ? styles.zoneActive : ""}`}>
-                  <span>{zone.name}</span>
-                  <strong>{zone.type}</strong>
-                  <small>{zone.active ? zone.impact : "等待时间线触发"}</small>
-                </div>
-              ))
-            ) : (
-              <div className={styles.zone}>
-                <span>Virtual Map</span>
-                <strong>等待控制区事件</strong>
-                <small>后续 P2.2 会替换为完整 2D 战术地图。</small>
+            <svg
+              className={styles.tacticalLines}
+              viewBox={`0 0 ${frame.tacticalMap.canvas.width} ${frame.tacticalMap.canvas.height}`}
+              aria-hidden="true"
+              preserveAspectRatio="none"
+            >
+              {frame.tacticalMap.connections.map((connection) => (
+                <line
+                  key={`${connection.fromZoneId}-${connection.toZoneId}`}
+                  x1={connection.from.x}
+                  y1={connection.from.y}
+                  x2={connection.to.x}
+                  y2={connection.to.y}
+                  className={`${styles.tacticalLine} ${connection.active ? styles.tacticalLineActive : ""}`}
+                />
+              ))}
+            </svg>
+            {frame.tacticalMap.zones.map((zone) => (
+              <div
+                key={zone.id}
+                className={`${styles.tacticalZone} ${zone.active ? styles.tacticalZoneActive : ""} ${zone.weak ? styles.tacticalZoneWeak : ""}`}
+                style={{
+                  left: `${(zone.position.x / frame.tacticalMap.canvas.width) * 100}%`,
+                  top: `${(zone.position.y / frame.tacticalMap.canvas.height) * 100}%`
+                }}
+              >
+                <span>{zone.displayName}</span>
+                <strong>{zone.eventType ?? zone.role}</strong>
+                <small>{zone.active ? zone.impact ?? "控制区已激活" : "等待时间线触发"}</small>
+                {zone.badge ? <b>{zone.badge}</b> : null}
+                {zone.weak ? <em>fallback: {zone.requestedZoneId}</em> : null}
               </div>
-            )}
+            ))}
           </div>
         </article>
 
         <aside className={styles.sideStack}>
           <Panel title="主解说">
             <p className={styles.casterLine}>{frame.casterLine ?? "解说席等待时间线信号。"}</p>
+          </Panel>
+
+          <Panel title="支持率">
+            {frame.supportRate ? (
+              <div className={styles.supportRate}>
+                <div>
+                  <span>{replay.teams.teamA.shortName}</span>
+                  <strong>{frame.supportRate.teamA}%</strong>
+                </div>
+                <meter min={0} max={100} value={frame.supportRate.teamA} />
+                <div>
+                  <span>{replay.teams.teamB.shortName}</span>
+                  <strong>{frame.supportRate.teamB}%</strong>
+                </div>
+                <small>{frame.supportRate.label}</small>
+              </div>
+            ) : (
+              <span className={styles.muted}>支持率会随比分和经济信号更新。</span>
+            )}
           </Panel>
 
           <Panel title="Kill Feed">
@@ -317,11 +358,34 @@ export function LiveReplayPlayer({ replay }: LiveReplayPlayerProps) {
             </div>
           </Panel>
 
+          <Panel title="弹幕池">
+            <div className={styles.barrageList}>
+              {frame.barrageMessages.length > 0 ? (
+                frame.barrageMessages.map((message) => (
+                  <div key={message.id} className={styles.barrageItem}>
+                    <span>{formatClock(message.atMs)}</span>
+                    <strong>{message.text}</strong>
+                    <small>{message.intensity}</small>
+                  </div>
+                ))
+              ) : (
+                <span className={styles.muted}>弹幕池等待 fallback 生成。</span>
+              )}
+            </div>
+          </Panel>
+
           <Panel title="高光揭示">
             {frame.highlightTags.length > 0 ? (
               <div className={styles.highlightBox}>
                 <strong>{frame.highlightTags.join(" / ")}</strong>
                 <span>MVP 候选：{frame.highlightMvpAgentId ?? "pending"}</span>
+                {frame.replayCard ? (
+                  <div className={styles.replayCard}>
+                    <small>Replay Card</small>
+                    <b>{frame.replayCard.title}</b>
+                    <span>{frame.replayCard.summary}</span>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <span className={styles.muted}>高光会在回合后段揭示。</span>

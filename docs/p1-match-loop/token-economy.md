@@ -210,6 +210,52 @@ Agent 主动低消耗，保留经济到后续回合
 
 Coach 默认不常驻整理输出。只有触发战术暂停或 Coach 行为时，Coach Agent 才工作，并写入对应事件。第一版默认从 Coach Agent 的 `tokenBank` 扣除 `coachTimeoutCost`。
 
+### 6.1 区域资源分配（Phase 1.6 预留）
+
+区域资源分配用于解释“本回合有效输出重点打哪里”，它从 Agent 级经济派生，不是新的经济主体。
+
+```text
+Agent.tokenBank 仍然是唯一经济主体。
+buyType / spendBudget / outputBudget 仍然按 Agent 计算。
+ZoneResourceAllocation 只说明这些预算在 A 点、B 点、中路、连接区、经济区之间如何分配。
+```
+
+类型草案：
+
+```ts
+type ZoneResourceAllocation = {
+  zoneId: string;
+  weight: number;
+  activeAgentIds: string[];
+  intent:
+    | "attack_execute"
+    | "attack_feint"
+    | "info_control"
+    | "defense_anchor"
+    | "defense_rotate"
+    | "economy_pressure";
+};
+```
+
+约束：
+
+```text
+同一队伍同一回合的 weight 建议合计为 100。
+weight 不等于真实 API token，也不等于新增预算。
+区域分配不能让 Agent 绕过 Output Gate。
+区域分配不能改变 buyType、tokenBank、真实 provider 成本或 driverModelId。
+```
+
+示例：
+
+```text
+攻方强打 A：conversion_site_a 70，buyer_mid 20，pricing_ramp 10。
+守方默认分散：conversion_site_a 35，conversion_site_b 35，buyer_mid 15，retention_connector 15。
+守方重防 A：conversion_site_a 60，retention_connector 20，buyer_mid 10，conversion_site_b 10。
+```
+
+RoundReport 和 Judge 可以消费区域资源分配摘要，但经济结算仍以 Agent 级 `EconomyState` 为准。
+
 ## 7. Drop 规则
 
 Drop 是 Agent 之间的 token 转移，只能发生在购买阶段。

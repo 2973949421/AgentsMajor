@@ -166,7 +166,7 @@ Reserved：
 P0 / P1：Frozen。
 P2.1：完成后进入 Frozen。
 P2.2：Frozen。
-P2.3：Review-ready Draft，Phase 1.5 结束后再评估是否 Frozen。
+P2.3：Frozen for Phase 1。
 P3：Reserved。
 P4：Reserved，但接口意识必须保留。
 ```
@@ -187,12 +187,20 @@ Phase 1.2：单张地图 replay。
 Phase 1.3：BO3 fake provider。
 Phase 1.4：极简伪直播播放器基础版。
 Phase 1.4 内容质量与事件可信度收口。
+Phase 1.45：P2.2 / P2.3 契约代码落地。
+Phase 1.5：真实 LLM 小范围接入。
 ```
 
 当前必须先做：
 
 ```text
-Phase 1.5 前置评审：真实 LLM 小范围接入。
+Phase 1.6：区域化攻防回合协议。
+```
+
+已预留并进入下一步：
+
+```text
+Phase 1.6：区域化攻防回合协议，用 A / B 点、中路、连接区和 Token 资源分配承载 CS 式攻防博弈。
 ```
 
 当前进入：
@@ -298,7 +306,9 @@ Phase 1.1 单回合 replay
 Phase 1.2 单张地图
 Phase 1.3 BO3 fake provider
 Phase 1.4 极简伪直播 demo
+Phase 1.45 契约代码落地
 Phase 1.5 真实 LLM 小范围接入
+Phase 1.6 区域化攻防回合协议
 ```
 
 ### Phase 1.0 工程骨架
@@ -442,21 +452,56 @@ kill feed。
 不反写比赛事实。
 ```
 
-### Phase 1.5 真实 LLM 小范围接入
+### Phase 1.45 契约代码落地
 
 目标：
 
 ```text
-在 fake provider 稳定后，用真实 provider 替换部分 driver。
+把 P2.2 2D 战术地图和 P2.3 转播系统的关键契约落到可测试代码。
 ```
 
 输出：
 
 ```text
-真实 agent_action 或 judge 调用。
+TacticalMapLayout。
+BroadcastItem。
+Broadcast Quality Gate。
+caster / barrage / support_rate / replay_card 规则或 fallback 生成。
+最小可见 2D 战术地图 UI。
+```
+
+验收：
+
+```text
+不新增 SQLite 表。
+不接真实 LLM。
+包装内容不反写比赛事实。
+失败可降级。
+```
+
+### Phase 1.5 真实 LLM 小范围接入
+
+状态：
+
+```text
+已完成并收口。
+```
+
+目标：
+
+```text
+在 Phase 1.45 的转播包装锚点稳定后，用真实 provider 替换部分包装任务。
+```
+
+输出：
+
+```text
+真实 caster_line 调用。
 llm_calls 记录。
 Artifact 保存。
 fallback 验证。
+CLI phase15:*。
+Web 本地 smoke runner。
 ```
 
 验收：
@@ -465,6 +510,39 @@ fallback 验证。
 真实 API token / cost 只进入 llm_calls。
 不进入 Token 经济。
 失败可 fallback。
+观众侧不暴露 raw LLM、模型字段、Artifact 原文或 API Key。
+Web runner 默认关闭，不作为生产任务系统。
+```
+
+### Phase 1.6 区域化攻防回合协议
+
+目标：
+
+```text
+把 P2.2 的区域从展示节点升级为回合模拟输入，让攻方进攻方案、守方区域部署和 Token 资源分配进入 Judge 可解释上下文。
+```
+
+输出：
+
+```text
+SideAssignment。
+AttackPlan。
+DefenseDeployment。
+ZoneResourceAllocation。
+TacticalCollision。
+RoundReport tacticalContext 扩展。
+攻防相关 EventType / payload。
+```
+
+验收：
+
+```text
+MR6 第 7 回合能换边。
+每回合能确定攻方和守方。
+攻方能选择主攻 A / B / 中路控制 / 假打转点。
+守方能选择重防 A / B / 默认分散 / 中路前压。
+Judge 能解释区域碰撞如何影响胜负。
+P2.2 和 P2.3 只消费攻防事实，不反写比赛事实。
 ```
 
 ### Phase 2：完整赛事雏形
@@ -586,7 +664,7 @@ BullMQ 或等价队列。
 | P1.5 本地持久化 | Frozen | Phase 1+ | 是 |
 | P2.1 直播时间线 | Frozen | Phase 1.1+ | 是 |
 | P2.2 2D 战术地图 | Frozen | Phase 1.4 / Phase 2 | 否 |
-| P2.3 转播系统 | Review-ready Draft | Phase 1.4 / Phase 2 | 否 |
+| P2.3 转播系统 | Frozen for Phase 1 | Phase 1.4 / Phase 1.5 / Phase 2 | 否 |
 | P3.1 数据统计与奖项 | Reserved | Phase 3 | 否 |
 | P3.2 新闻与媒体 | Reserved | Phase 3 | 否 |
 | P3.3 素材库 | Reserved | Phase 3 | 否 |
@@ -712,7 +790,12 @@ Phase 4 不需要重写核心引擎。
 6. Phase 1.4 播放结果的内容质量与事件可信度收口。
 7. P2.2：2D 战术地图说明。
 8. P2.3：转播系统说明。
+9. Phase 1.45：P2.2 / P2.3 契约代码落地。
+10. Phase 1.5：真实 LLM 小范围接入。
 
 当前下一步：
-9. Phase 1.5 前置评审，判断真实 LLM 小范围接入的最小安全切入点。
+11. Phase 1.6：区域化攻防回合协议。
+
+后续预留：
+12. Phase 2：完整赛事雏形。
 ```

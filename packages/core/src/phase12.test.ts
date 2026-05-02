@@ -35,7 +35,7 @@ describe("Phase 1.2 single-map chain", () => {
     expect(events.some((event) => event.type === "map_completed")).toBe(true);
     expect(events.some((event) => event.type === "map_review_window_started")).toBe(true);
     const eventIds = new Set(events.map((event) => event.id));
-    expect(replay.mapSummary?.sourceEventIds.every((id) => eventIds.has(id))).toBe(true);
+    expect(replay.mapSummary?.sourceEventIds.every((id: string) => eventIds.has(id))).toBe(true);
 
     const rerun = await engine.runCurrentMap({ mapGameId: phase11DemoIds.mapGameId });
     expect(rerun.mapGame.status).toBe("completed");

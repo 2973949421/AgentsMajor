@@ -1,4 +1,5 @@
-import type { MatchReplay, RoundReplayItem } from "@agent-major/core";
+import { getTacticalMapLayout, resolveTacticalZone } from "@agent-major/core";
+import type { MatchReplay, RoundReplayItem, TacticalMapLayout, TacticalPathType, TacticalZoneRole } from "@agent-major/core";
 
 type SourceTimelineEvent = RoundReplayItem["timelineEvents"][number];
 type SourceRoundReport = RoundReplayItem["roundReport"];
@@ -33,6 +34,7 @@ export interface LiveReplayMap {
   id: string;
   order: number;
   mapName: string;
+  tacticalMap: LiveTacticalMapLayout;
   finalScore: ScorePair;
   winnerTeamId?: string;
   keyRoundNumbers: number[];
@@ -47,6 +49,7 @@ export interface LiveReplayRound {
 }
 
 export interface LiveReplayRoundReport {
+  mapName: string;
   winnerTeamId: string;
   scoreBeforeRound: ScorePair;
   scoreAfterRound: ScorePair;
@@ -111,6 +114,84 @@ export interface VirtualZone {
   active: boolean;
 }
 
+export interface LiveTacticalMapLayout {
+  mapName: TacticalMapLayout["mapName"];
+  canvas: TacticalMapLayout["canvas"];
+  fallbackZoneId: string;
+  zones: LiveTacticalLayoutZone[];
+  connections: LiveTacticalConnection[];
+}
+
+export interface LiveTacticalLayoutZone {
+  id: string;
+  displayName: string;
+  role: TacticalZoneRole;
+  position: {
+    x: number;
+    y: number;
+  };
+  radius: number;
+}
+
+export interface LiveTacticalConnection {
+  fromZoneId: string;
+  toZoneId: string;
+  pathType: TacticalPathType;
+}
+
+export interface LiveTacticalMapFrame extends LiveTacticalMapLayout {
+  zones: LiveTacticalZoneFrame[];
+  connections: LiveTacticalConnectionFrame[];
+}
+
+export interface LiveTacticalZoneFrame extends LiveTacticalLayoutZone {
+  active: boolean;
+  weak: boolean;
+  requestedZoneId?: string;
+  actorTeamId?: string;
+  impact?: string;
+  eventType?: string;
+  badge?: string;
+}
+
+export interface LiveTacticalConnectionFrame extends LiveTacticalConnection {
+  active: boolean;
+  from: {
+    x: number;
+    y: number;
+  };
+  to: {
+    x: number;
+    y: number;
+  };
+}
+
+export interface LiveBarrageMessage {
+  id: string;
+  atMs: number;
+  text: string;
+  intensity: "low" | "medium" | "high";
+}
+
+export interface LiveSupportRate {
+  teamA: number;
+  teamB: number;
+  leaderTeamId: string;
+  trend: string;
+  label: string;
+}
+
+export interface LiveReplayCard {
+  title: string;
+  summary: string;
+  highlightTags: string[];
+  jumpTarget: {
+    type: "highlight_reveal";
+    roundId: string;
+    atMs: number;
+  };
+}
+
 export interface LiveRoundFrame {
   roundDurationMs: number;
   progress: number;
@@ -120,9 +201,13 @@ export interface LiveRoundFrame {
   economyRows: EconomyRow[];
   killFeed: KillFeedEntry[];
   casterLine: string | null;
+  barrageMessages: LiveBarrageMessage[];
+  supportRate: LiveSupportRate | null;
   highlightTags: string[];
   highlightMvpAgentId: string | null;
+  replayCard: LiveReplayCard | null;
   resultWinnerTeamId: string | null;
+  tacticalMap: LiveTacticalMapFrame;
   zones: VirtualZone[];
 }
 
@@ -141,6 +226,7 @@ export function toLiveReplayData(replay: MatchReplay): LiveReplayData {
           id: mapReplay.mapGame.id,
           order: mapReplay.mapGame.order,
           mapName: mapReplay.mapGame.mapName,
+          tacticalMap: toLiveTacticalMapLayout(getTacticalMapLayout(mapReplay.mapGame.mapName)),
           finalScore: {
             teamA: mapReplay.mapGame.teamAScore,
             teamB: mapReplay.mapGame.teamBScore
@@ -202,6 +288,7 @@ export function buildRoundFrame(roundItem: LiveReplayRound, currentAtMs: number)
   const highlightEvent = findLatestByKind(visibleEvents, "highlight_reveal");
   const resultEvent = findLatestByKind(visibleEvents, "round_result");
   const economyVisible = visibleEvents.some((event) => event.kind === "economy_panel_update");
+  const tacticalMap = buildTacticalMapFrame(roundItem, killFeed, visibleEvents);
 
   return {
     roundDurationMs,
@@ -212,10 +299,21 @@ export function buildRoundFrame(roundItem: LiveReplayRound, currentAtMs: number)
     economyRows: economyVisible ? roundItem.roundReport.economyDelta.agents : [],
     killFeed,
     casterLine: readTextPayload(findLatestByKind(visibleEvents, "caster_line")),
+    barrageMessages: buildBarrageMessages(visibleEvents),
+    supportRate: readSupportRate(visibleEvents),
     highlightTags: readStringArray(asRecord(highlightEvent?.payload)?.tags),
     highlightMvpAgentId: readOptionalString(asRecord(highlightEvent?.payload)?.mvpAgentId) ?? null,
+    replayCard: readReplayCard(asRecord(highlightEvent?.payload)?.replayCard),
     resultWinnerTeamId: readOptionalString(asRecord(resultEvent?.payload)?.winnerTeamId) ?? null,
-    zones: buildVirtualZones(roundItem, killFeed)
+    tacticalMap,
+    zones: tacticalMap.zones.map((zone) => ({
+      id: zone.id,
+      name: zone.displayName,
+      actorTeamId: zone.actorTeamId ?? "",
+      impact: zone.impact ?? "",
+      type: zone.eventType ?? zone.role,
+      active: zone.active
+    }))
   };
 }
 
@@ -270,10 +368,11 @@ function toLiveRound(item: RoundReplayItem): LiveReplayRound {
     id: item.round.id,
     roundNumber: item.round.roundNumber,
     roundReport: {
+      mapName: item.roundReport.mapName,
       winnerTeamId: item.roundReport.winnerTeamId,
       scoreBeforeRound: item.roundReport.scoreBeforeRound,
       scoreAfterRound: item.roundReport.scoreAfterRound,
-      keyEvents: item.roundReport.keyEvents.map((event) => ({
+      keyEvents: item.roundReport.keyEvents.map((event: LiveReplayRound["roundReport"]["keyEvents"][number]) => ({
         id: event.id,
         type: event.type,
         actorTeamId: event.actorTeamId,
@@ -301,6 +400,26 @@ function toLiveTimelineEvent(event: SourceTimelineEvent): LiveReplayTimelineEven
     ...(event.roundId ? { roundId: event.roundId } : {}),
     ...(event.sourceEventIds.length > 0 ? { sourceEventIds: event.sourceEventIds } : {}),
     sequenceIndex: event.sequenceIndex
+  };
+}
+
+function toLiveTacticalMapLayout(layout: TacticalMapLayout): LiveTacticalMapLayout {
+  return {
+    mapName: layout.mapName,
+    canvas: layout.canvas,
+    fallbackZoneId: layout.fallbackZoneId,
+    zones: layout.zones.map((zone) => ({
+      id: zone.zoneId,
+      displayName: zone.displayName,
+      role: zone.role,
+      position: zone.position,
+      radius: zone.radius
+    })),
+    connections: layout.connections.map((connection) => ({
+      fromZoneId: connection.fromZoneId,
+      toZoneId: connection.toZoneId,
+      pathType: connection.pathType
+    }))
   };
 }
 
@@ -346,6 +465,37 @@ function buildKillFeed(events: LiveReplayTimelineEvent[]): KillFeedEntry[] {
     });
 }
 
+function buildBarrageMessages(events: LiveReplayTimelineEvent[]): LiveBarrageMessage[] {
+  return events
+    .filter((event) => event.kind === "barrage_stream")
+    .flatMap((event) => readBarrageMessages(asRecord(event.payload)?.messages));
+}
+
+function readBarrageMessages(value: unknown): LiveBarrageMessage[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      const record = asRecord(item);
+      const id = readOptionalString(record?.id);
+      const text = readOptionalString(record?.text);
+      const atMs = record?.atMs;
+      const intensity = readOptionalString(record?.intensity);
+      if (!id || !text || typeof atMs !== "number") {
+        return null;
+      }
+      return {
+        id,
+        text,
+        atMs,
+        intensity: intensity === "high" || intensity === "medium" || intensity === "low" ? intensity : "low"
+      };
+    })
+    .filter((item): item is LiveBarrageMessage => item !== null);
+}
+
 function buildVirtualZones(roundItem: LiveReplayRound, killFeed: KillFeedEntry[]): VirtualZone[] {
   const visibleKeyEventIds = new Set(killFeed.map((entry) => entry.keyEventId).filter((id): id is string => typeof id === "string"));
   return roundItem.roundReport.keyEvents.map((event) => ({
@@ -356,6 +506,77 @@ function buildVirtualZones(roundItem: LiveReplayRound, killFeed: KillFeedEntry[]
     type: event.type,
     active: visibleKeyEventIds.has(event.id)
   }));
+}
+
+function buildTacticalMapFrame(
+  roundItem: LiveReplayRound,
+  killFeed: KillFeedEntry[],
+  visibleEvents: LiveReplayTimelineEvent[]
+): LiveTacticalMapFrame {
+  const layout = getTacticalMapLayout(roundItem.roundReport.mapName);
+  const baseLayout = toLiveTacticalMapLayout(layout);
+  const visibleKeyEventIds = new Set(killFeed.map((entry) => entry.keyEventId).filter((id): id is string => typeof id === "string"));
+  const highlightVisible = visibleEvents.some((event) => event.kind === "highlight_reveal");
+  const tags = roundItem.roundReport.highlightTags;
+  const zoneState = new Map<string, Partial<LiveTacticalZoneFrame>>();
+
+  for (const event of roundItem.roundReport.keyEvents) {
+    const zoneId = event.type === "economy_swing" ? "token_economy" : event.zoneId;
+    const resolved = resolveTacticalZone(layout, zoneId);
+    const active = visibleKeyEventIds.has(event.id) || highlightVisible;
+    const previous = zoneState.get(resolved.zone.zoneId);
+    zoneState.set(resolved.zone.zoneId, {
+      ...previous,
+      active: Boolean(previous?.active) || active,
+      weak: Boolean(previous?.weak) || resolved.weak,
+      ...(resolved.weak ? { requestedZoneId: resolved.requestedZoneId } : {}),
+      actorTeamId: event.actorTeamId,
+      impact: event.impact,
+      eventType: event.type,
+      ...(highlightVisible && tags.length > 0 ? { badge: formatBadge(tags[0] ?? "") } : {})
+    });
+  }
+
+  const zones: LiveTacticalZoneFrame[] = layout.zones.map((zone) => {
+    const state = zoneState.get(zone.zoneId);
+    return {
+      id: zone.zoneId,
+      displayName: zone.displayName,
+      role: zone.role,
+      position: zone.position,
+      radius: zone.radius,
+      active: Boolean(state?.active),
+      weak: Boolean(state?.weak),
+      ...(typeof state?.requestedZoneId === "string" ? { requestedZoneId: state.requestedZoneId } : {}),
+      ...(typeof state?.actorTeamId === "string" ? { actorTeamId: state.actorTeamId } : {}),
+      ...(typeof state?.impact === "string" ? { impact: state.impact } : {}),
+      ...(typeof state?.eventType === "string" ? { eventType: state.eventType } : {}),
+      ...(typeof state?.badge === "string" ? { badge: state.badge } : {})
+    };
+  });
+  const activeZoneIds = new Set(zones.filter((zone) => zone.active).map((zone) => zone.id));
+  const zoneById = new Map(layout.zones.map((zone) => [zone.zoneId, zone]));
+
+  return {
+    ...baseLayout,
+    zones,
+    connections: layout.connections.map((connection) => {
+      const from = zoneById.get(connection.fromZoneId);
+      const to = zoneById.get(connection.toZoneId);
+      if (!from || !to) {
+        throw new Error(`Invalid tactical connection: ${connection.fromZoneId} -> ${connection.toZoneId}`);
+      }
+
+      return {
+        fromZoneId: connection.fromZoneId,
+        toZoneId: connection.toZoneId,
+        pathType: connection.pathType,
+        active: activeZoneIds.has(connection.fromZoneId) || activeZoneIds.has(connection.toZoneId),
+        from: from.position,
+        to: to.position
+      };
+    })
+  };
 }
 
 function isHighlightRound(mapReplay: LiveReplayMap, roundItem: LiveReplayRound | undefined): boolean {
@@ -386,6 +607,61 @@ function hasSemanticHighlightTags(tags: string[]): boolean {
 function readTextPayload(event: LiveReplayTimelineEvent | undefined): string | null {
   const payload = asRecord(event?.payload);
   return readOptionalString(payload?.text) ?? readOptionalString(payload?.line) ?? null;
+}
+
+function readSupportRate(events: LiveReplayTimelineEvent[]): LiveSupportRate | null {
+  for (const event of [...events].reverse()) {
+    const supportRate = readSupportRatePayload(asRecord(event.payload)?.supportRate);
+    if (supportRate) {
+      return supportRate;
+    }
+  }
+  return null;
+}
+
+function readSupportRatePayload(value: unknown): LiveSupportRate | null {
+  const record = asRecord(value);
+  if (
+    typeof record?.teamA === "number" &&
+    typeof record.teamB === "number" &&
+    typeof record.leaderTeamId === "string" &&
+    typeof record.trend === "string" &&
+    typeof record.label === "string"
+  ) {
+    return {
+      teamA: record.teamA,
+      teamB: record.teamB,
+      leaderTeamId: record.leaderTeamId,
+      trend: record.trend,
+      label: record.label
+    };
+  }
+  return null;
+}
+
+function readReplayCard(value: unknown): LiveReplayCard | null {
+  const record = asRecord(value);
+  const jumpTarget = asRecord(record?.jumpTarget);
+  if (
+    typeof record?.title === "string" &&
+    typeof record.summary === "string" &&
+    Array.isArray(record.highlightTags) &&
+    jumpTarget?.type === "highlight_reveal" &&
+    typeof jumpTarget.roundId === "string" &&
+    typeof jumpTarget.atMs === "number"
+  ) {
+    return {
+      title: record.title,
+      summary: record.summary,
+      highlightTags: readStringArray(record.highlightTags),
+      jumpTarget: {
+        type: "highlight_reveal",
+        roundId: jumpTarget.roundId,
+        atMs: jumpTarget.atMs
+      }
+    };
+  }
+  return null;
 }
 
 function readScorePair(value: unknown): ScorePair | null {
@@ -441,6 +717,15 @@ function formatZoneName(zoneId: string): string {
     .split("_")
     .map((part) => (part.length > 0 ? `${part[0]?.toUpperCase() ?? ""}${part.slice(1)}` : part))
     .join(" ");
+}
+
+function formatBadge(tag: string): string {
+  return tag
+    .split("_")
+    .filter((part) => part.length > 0)
+    .map((part) => part.slice(0, 1).toUpperCase())
+    .join("")
+    .slice(0, 4);
 }
 
 function clamp(value: number, min: number, max: number): number {

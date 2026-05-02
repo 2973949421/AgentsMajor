@@ -22,12 +22,22 @@ import type {
   TimelineEventKind
 } from "@agent-major/shared";
 
+import {
+  buildBroadcastSourceBundle,
+  buildRoundBroadcastItems,
+  isDisplayableBroadcastItem,
+  toBroadcastEventPayload,
+  type BroadcastSourceBundle,
+  type RoundBroadcastGenerator,
+  type RoundBroadcastItems
+} from "./broadcast.js";
 import { evaluateMapState, getSideContext, mr6MapRules, plannedDemoWinnerSide, type SideContext } from "./map-rules.js";
 
 export interface EngineContext {
   repositories: Repositories;
   llmGateway: LlmGateway;
   jobQueue: JobQueue;
+  broadcastGenerator?: RoundBroadcastGenerator;
 }
 
 export interface StartMatchInput {
@@ -105,6 +115,31 @@ interface RoundGeneration {
   agentOutputs: AgentOutput[];
   judgeResult: JudgeResult;
   keyEvents: RoundKeyEvent[];
+}
+
+interface CommittedRoundGeneration {
+  match: Match;
+  mapGame: MapGame;
+  teamA: Team;
+  teamB: Team;
+  completedRound: Round;
+  roundReport: RoundReport;
+  sideContext: SideContext;
+  roundStartedEvent: Event;
+  scoreEvent: Event;
+  economyEvent: Event;
+  killFeedEvents: Event[];
+  highlightEvent: Event;
+  roundReportEvent: Event;
+  roundCompletedEvent: Event;
+  broadcastBundle: BroadcastSourceBundle;
+  plannedBroadcastEventIds: {
+    casterLine: string;
+    barrage: string;
+    supportRate: string;
+    replayCard: string;
+  };
+  createdAt: string;
 }
 
 export class Phase10NotImplementedError extends Error {
@@ -465,7 +500,7 @@ class Phase12SimulationEngine implements SimulationEngine {
     const sideContext = getSideContext(roundNumber);
     const scoreBeforeRound: ScorePair = { teamA: mapGame.teamAScore, teamB: mapGame.teamBScore };
     const allActive = [...activeA, ...activeB];
-    const beforeEconomy = await Promise.all(
+    const beforeEconomy: EconomyState[] = await Promise.all(
       allActive.map(async (agent) => {
         if (isOvertimeEconomyResetRound(roundNumber)) {
           return initialEconomy(agent, mapGame.id, now);
@@ -527,7 +562,7 @@ class Phase12SimulationEngine implements SimulationEngine {
         [teamB.id, teamBBuyType]
       ])
     });
-    const economyStates = economyDelta.agents.map((delta) => economyStateFromDelta(delta, mapGame.id, roundId, now));
+    const economyStates = (economyDelta.agents as AgentEconomyDelta[]).map((delta) => economyStateFromDelta(delta, mapGame.id, roundId, now));
     const keyEvents = buildKeyEvents({
       roundId,
       roundNumber,
@@ -567,7 +602,8 @@ class Phase12SimulationEngine implements SimulationEngine {
 
   private async commitRoundGeneration(generation: RoundGeneration): Promise<Round> {
     try {
-      return await runInTransaction(this.context.repositories, async () => {
+      let committed: CommittedRoundGeneration | undefined;
+      const completedRound = await runInTransaction(this.context.repositories, async () => {
         const now = timestamp();
         const { match, mapGame, round, teamA, teamB } = generation;
         await this.context.repositories.rounds.save(round);
@@ -725,6 +761,12 @@ class Phase12SimulationEngine implements SimulationEngine {
           createdAt: now
         });
 
+        const plannedBroadcastEventIds = {
+          casterLine: `evt_${round.id}_caster_line`,
+          barrage: `evt_${round.id}_barrage`,
+          supportRate: `evt_${round.id}_support_rate`,
+          replayCard: `evt_${round.id}_replay_card`
+        };
         const roundReportEventId = `evt_${round.id}_round_report_created`;
         const roundCompletedEventId = `evt_${round.id}_round_completed`;
         const coreProjection: ProjectedEvent[] = [
@@ -734,11 +776,17 @@ class Phase12SimulationEngine implements SimulationEngine {
           { type: "round_report_created", eventId: roundReportEventId, required: true },
           { type: "round_completed", eventId: roundCompletedEventId, required: true }
         ];
-        const broadcastProjection: ProjectedEvent[] = [...killFeedEvents, highlightEvent].map((event) => ({
-          type: event.type,
-          eventId: event.id,
-          required: false
-        }));
+        const broadcastProjection: ProjectedEvent[] = [
+          ...[...killFeedEvents, highlightEvent].map((event) => ({
+            type: event.type,
+            eventId: event.id,
+            required: false
+          })),
+          { type: "caster_line_created", eventId: plannedBroadcastEventIds.casterLine, required: false },
+          { type: "barrage_created", eventId: plannedBroadcastEventIds.barrage, required: false },
+          { type: "support_rate_updated", eventId: plannedBroadcastEventIds.supportRate, required: false },
+          { type: "replay_card_created", eventId: plannedBroadcastEventIds.replayCard, required: false }
+        ];
         const roundReport: RoundReport = {
           id: `rr_${round.id}`,
           tournamentId: match.tournamentId,
@@ -846,25 +894,22 @@ class Phase12SimulationEngine implements SimulationEngine {
           createdAt: now
         });
 
-        await this.context.repositories.timelineEvents.deleteByRound(round.id);
-        const timelineEvents = buildTimelineEvents({
+        const broadcastBundle = buildBroadcastSourceBundle({
           match,
           mapGame,
           round: completedRound,
           roundReport,
-          sideContext: generation.sideContext,
-          roundStartedEvent,
-          scoreEvent,
-          economyEvent,
-          killFeedEvents,
-          highlightEvent,
-          roundReportEvent,
-          roundCompletedEvent,
-          createdAt: now
+          teamA,
+          teamB,
+          sourceEventIds: {
+            scoreEventId: scoreEvent.id,
+            economyEventId: economyEvent.id,
+            highlightEventId: highlightEvent.id,
+            roundReportEventId: roundReportEvent.id,
+            roundCompletedEventId: roundCompletedEvent.id,
+            killFeedEventIds: killFeedEvents.map((event) => event.id)
+          }
         });
-        for (const timelineEvent of timelineEvents) {
-          await this.context.repositories.timelineEvents.save(timelineEvent);
-        }
 
         if (mapEvaluation.state === "completed") {
           await this.completeMap({
@@ -878,8 +923,40 @@ class Phase12SimulationEngine implements SimulationEngine {
           });
         }
 
+        committed = {
+          match,
+          mapGame,
+          teamA,
+          teamB,
+          completedRound,
+          roundReport,
+          sideContext: generation.sideContext,
+          roundStartedEvent,
+          scoreEvent,
+          economyEvent,
+          killFeedEvents,
+          highlightEvent,
+          roundReportEvent,
+          roundCompletedEvent,
+          broadcastBundle,
+          plannedBroadcastEventIds,
+          createdAt: now
+        };
+
         return completedRound;
       });
+
+      if (!committed) {
+        return completedRound;
+      }
+
+      const broadcastItems = await this.buildRoundBroadcastItems({
+        bundle: committed.broadcastBundle,
+        createdAt: committed.createdAt
+      });
+      await this.commitBroadcastTimeline({ committed, broadcastItems });
+
+      return completedRound;
     } catch (error) {
       if (error instanceof CompletedRoundError) {
         return error.round;
@@ -890,6 +967,118 @@ class Phase12SimulationEngine implements SimulationEngine {
 
       throw error;
     }
+  }
+
+  private async buildRoundBroadcastItems(input: {
+    bundle: BroadcastSourceBundle;
+    createdAt: string;
+  }): Promise<RoundBroadcastItems> {
+    if (!this.context.broadcastGenerator) {
+      return buildRoundBroadcastItems(input);
+    }
+
+    try {
+      return await this.context.broadcastGenerator.build(input);
+    } catch {
+      return buildRoundBroadcastItems(input);
+    }
+  }
+
+  private async commitBroadcastTimeline(input: {
+    committed: CommittedRoundGeneration;
+    broadcastItems: RoundBroadcastItems;
+  }): Promise<void> {
+    const { committed, broadcastItems } = input;
+    const { match, mapGame, completedRound, roundReport } = committed;
+    await runInTransaction(this.context.repositories, async () => {
+      const casterLineEvent = isDisplayableBroadcastItem(broadcastItems.casterLine)
+        ? await this.appendEvent({
+            id: committed.plannedBroadcastEventIds.casterLine,
+            type: "caster_line_created",
+            category: "broadcast",
+            tournamentId: match.tournamentId,
+            matchId: match.id,
+            mapGameId: mapGame.id,
+            roundId: completedRound.id,
+            scopeType: "round",
+            scopeId: completedRound.id,
+            payload: toBroadcastEventPayload(broadcastItems.casterLine),
+            createdAt: committed.createdAt
+          })
+        : undefined;
+      const barrageEvent = isDisplayableBroadcastItem(broadcastItems.barrage)
+        ? await this.appendEvent({
+            id: committed.plannedBroadcastEventIds.barrage,
+            type: "barrage_created",
+            category: "broadcast",
+            tournamentId: match.tournamentId,
+            matchId: match.id,
+            mapGameId: mapGame.id,
+            roundId: completedRound.id,
+            scopeType: "round",
+            scopeId: completedRound.id,
+            payload: toBroadcastEventPayload(broadcastItems.barrage),
+            createdAt: committed.createdAt
+          })
+        : undefined;
+      const supportRateEvent = isDisplayableBroadcastItem(broadcastItems.supportRate)
+        ? await this.appendEvent({
+            id: committed.plannedBroadcastEventIds.supportRate,
+            type: "support_rate_updated",
+            category: "broadcast",
+            tournamentId: match.tournamentId,
+            matchId: match.id,
+            mapGameId: mapGame.id,
+            roundId: completedRound.id,
+            scopeType: "round",
+            scopeId: completedRound.id,
+            payload: toBroadcastEventPayload(broadcastItems.supportRate),
+            createdAt: committed.createdAt
+          })
+        : undefined;
+      const replayCardEvent = isDisplayableBroadcastItem(broadcastItems.replayCard)
+        ? await this.appendEvent({
+            id: committed.plannedBroadcastEventIds.replayCard,
+            type: "replay_card_created",
+            category: "broadcast",
+            tournamentId: match.tournamentId,
+            matchId: match.id,
+            mapGameId: mapGame.id,
+            roundId: completedRound.id,
+            scopeType: "round",
+            scopeId: completedRound.id,
+            payload: toBroadcastEventPayload(broadcastItems.replayCard),
+            createdAt: committed.createdAt
+          })
+        : undefined;
+
+      await this.context.repositories.timelineEvents.deleteByRound(completedRound.id);
+      const timelineEvents = buildTimelineEvents({
+        match,
+        mapGame,
+        teamA: committed.teamA,
+        teamB: committed.teamB,
+        round: completedRound,
+        roundReport,
+        sideContext: committed.sideContext,
+        roundStartedEvent: committed.roundStartedEvent,
+        scoreEvent: committed.scoreEvent,
+        economyEvent: committed.economyEvent,
+        killFeedEvents: committed.killFeedEvents,
+        highlightEvent: committed.highlightEvent,
+        broadcastItems,
+        casterLineEvent,
+        barrageEvent,
+        supportRateEvent,
+        replayCardEvent,
+        roundReportEvent: committed.roundReportEvent,
+        roundCompletedEvent: committed.roundCompletedEvent,
+        createdAt: committed.createdAt
+      });
+      for (const timelineEvent of timelineEvents) {
+        await this.context.repositories.timelineEvents.save(timelineEvent);
+      }
+    });
   }
 
   private async completeMap(input: {
@@ -994,19 +1183,19 @@ class Phase12SimulationEngine implements SimulationEngine {
       throw new Error(`Match ${match.id} cannot complete without a BO3 winner.`);
     }
 
-    const [teamA, teamB, mapGames, matchEvents] = await Promise.all([
+    const [teamA, teamB, mapGames, matchEvents] = (await Promise.all([
       required(this.context.repositories.teams.getById(match.teamAId), `Team not found: ${match.teamAId}`),
       required(this.context.repositories.teams.getById(match.teamBId), `Team not found: ${match.teamBId}`),
       this.context.repositories.mapGames.listByMatch(match.id),
       this.context.repositories.events.listByMatch(match.id)
-    ]);
+    ])) as [Team, Team, MapGame[], Event[]];
     const winnerTeamId = match.teamAMapsWon >= 2 ? teamA.id : teamB.id;
     const completedMaps = mapGames.filter((mapGame) => mapGame.status === "completed");
     const mapSummaries = (
       await Promise.all(
         completedMaps.map(async (mapGame) => (mapGame.summaryId ? this.context.repositories.summaries.getById(mapGame.summaryId) : null))
       )
-    ).filter((summary): summary is Summary => summary !== null);
+    ).filter((summary: Summary | null): summary is Summary => summary !== null);
     const matchCompletedEvent = await this.appendEvent({
       id: `evt_${match.id}_match_completed`,
       type: "match_completed",
@@ -1046,7 +1235,7 @@ class Phase12SimulationEngine implements SimulationEngine {
       sourceEventIds: [
         matchCompletedEvent.id,
         ...matchEvents.filter((event) => event.type === "map_completed").map((event) => event.id),
-        ...mapSummaries.flatMap((mapSummary) => mapSummary.sourceEventIds)
+        ...mapSummaries.flatMap((mapSummary: Summary) => mapSummary.sourceEventIds)
       ],
       createdAt: completedAt
     });
@@ -1445,6 +1634,8 @@ function buildHighlightTags(input: {
 function buildTimelineEvents(input: {
   match: Match;
   mapGame: MapGame;
+  teamA: Team;
+  teamB: Team;
   round: Round;
   roundReport: RoundReport;
   sideContext: SideContext;
@@ -1453,6 +1644,11 @@ function buildTimelineEvents(input: {
   economyEvent: Event;
   killFeedEvents: Event[];
   highlightEvent: Event;
+  broadcastItems: RoundBroadcastItems;
+  casterLineEvent: Event | undefined;
+  barrageEvent: Event | undefined;
+  supportRateEvent: Event | undefined;
+  replayCardEvent: Event | undefined;
   roundReportEvent: Event;
   roundCompletedEvent: Event;
   createdAt: string;
@@ -1495,11 +1691,12 @@ function buildTimelineEvents(input: {
       kind: "scoreboard_update",
       atMs: 5000,
       durationMs: 3000,
-      sourceEventIds: [input.scoreEvent.id],
+      sourceEventIds: [input.scoreEvent.id, ...(input.supportRateEvent ? [input.supportRateEvent.id] : [])],
       payload: {
         winnerTeamId: input.roundReport.winnerTeamId,
         scoreBeforeRound: input.roundReport.scoreBeforeRound,
-        scoreAfterRound: input.roundReport.scoreAfterRound
+        scoreAfterRound: input.roundReport.scoreAfterRound,
+        supportRate: input.broadcastItems.supportRate.payload
       }
     },
     {
@@ -1519,26 +1716,28 @@ function buildTimelineEvents(input: {
       sourceEventIds: [event.id],
       payload: event.payload
     })),
+    ...buildCasterTimelineItems(input),
     {
-      kind: "caster_line",
-      atMs: 44000,
-      durationMs: 7000,
-      sourceEventIds: [input.roundReportEvent.id],
+      kind: "barrage_stream",
+      atMs: 50000,
+      durationMs: 12000,
+      sourceEventIds: [input.barrageEvent?.id ?? input.roundReportEvent.id],
       payload: {
-        text: input.roundReport.summary,
-        reason: input.roundReport.judgeResult.reason,
-        tags: input.roundReport.highlightTags ?? []
+        ...input.broadcastItems.barrage.payload,
+        generationMode: input.broadcastItems.barrage.generationMode,
+        qualityStatus: input.broadcastItems.barrage.qualityStatus
       }
     },
     {
       kind: "highlight_reveal",
       atMs: 54000,
       durationMs: 5000,
-      sourceEventIds: [input.highlightEvent.id],
+      sourceEventIds: [input.highlightEvent.id, ...(input.replayCardEvent ? [input.replayCardEvent.id] : [])],
       payload: {
         tags: input.roundReport.highlightTags ?? [],
         mvpAgentId: input.roundReport.judgeResult.mvpAgentId,
-        reason: input.roundReport.judgeResult.reason
+        reason: input.roundReport.judgeResult.reason,
+        replayCard: input.broadcastItems.replayCard.payload
       }
     },
     {
@@ -1556,7 +1755,7 @@ function buildTimelineEvents(input: {
     },
     {
       kind: "round_outro",
-      atMs: 69000,
+      atMs: 72000,
       durationMs: 3000,
       sourceEventIds: [input.roundCompletedEvent.id],
       payload: {
@@ -1571,6 +1770,111 @@ function buildTimelineEvents(input: {
     sequenceIndex: index,
     ...item
   }));
+}
+
+function buildCasterTimelineItems(input: {
+  teamA: Team;
+  teamB: Team;
+  round: Round;
+  roundReport: RoundReport;
+  sideContext: SideContext;
+  roundStartedEvent: Event;
+  economyEvent: Event;
+  killFeedEvents: Event[];
+  casterLineEvent: Event | undefined;
+  roundReportEvent: Event;
+  roundCompletedEvent: Event;
+  broadcastItems: RoundBroadcastItems;
+}): Array<{
+  kind: "caster_line";
+  atMs: number;
+  durationMs: number;
+  sourceEventIds: string[];
+  payload: unknown;
+}> {
+  const setupLine = buildCasterSetupLine(input);
+  const controlLine = buildCasterControlLine(input);
+  const finalPayload = {
+    ...input.broadcastItems.casterLine.payload,
+    lineRole: "result_wrap",
+    generationMode: input.broadcastItems.casterLine.generationMode,
+    qualityStatus: input.broadcastItems.casterLine.qualityStatus
+  };
+
+  return [
+    {
+      kind: "caster_line",
+      atMs: 12000,
+      durationMs: 6000,
+      sourceEventIds: [input.roundStartedEvent.id, input.economyEvent.id],
+      payload: setupLine
+    },
+    {
+      kind: "caster_line",
+      atMs: 36000,
+      durationMs: 6000,
+      sourceEventIds: input.killFeedEvents[0] ? [input.killFeedEvents[0].id] : [input.roundReportEvent.id],
+      payload: controlLine
+    },
+    {
+      kind: "caster_line",
+      atMs: 63000,
+      durationMs: 7000,
+      sourceEventIds: [input.casterLineEvent?.id ?? input.roundReportEvent.id, input.roundCompletedEvent.id],
+      payload: finalPayload
+    }
+  ];
+}
+
+function buildCasterSetupLine(input: {
+  teamA: Team;
+  teamB: Team;
+  round: Round;
+  roundReport: RoundReport;
+  sideContext: SideContext;
+}): {
+  speakerRole: "main_caster";
+  text: string;
+  reason: string;
+  tags: string[];
+  lineRole: "round_setup";
+  generationMode: "rule";
+  qualityStatus: "ready";
+} {
+  const teamABuy = input.round.teamABuyType ? formatBuyType(input.round.teamABuyType) : "未知买型";
+  const teamBBuy = input.round.teamBBuyType ? formatBuyType(input.round.teamBBuyType) : "未知买型";
+  return {
+    speakerRole: "main_caster",
+    text: `第 ${input.round.roundNumber} 回合开局，${formatSidePhase(input.sideContext.phase)}，比分 ${formatScore(input.roundReport.scoreBeforeRound)}。${input.teamA.shortName} ${teamABuy} 对 ${input.teamB.shortName} ${teamBBuy}，先看第一波资源分配。`,
+    reason: "基于回合开局、比分、半场和买型信息生成。",
+    tags: ["round_setup", input.sideContext.phase],
+    lineRole: "round_setup",
+    generationMode: "rule",
+    qualityStatus: "ready"
+  };
+}
+
+function buildCasterControlLine(input: {
+  roundReport: RoundReport;
+}): {
+  speakerRole: "main_caster";
+  text: string;
+  reason: string;
+  tags: string[];
+  lineRole: "mid_control";
+  generationMode: "rule";
+  qualityStatus: "ready";
+} {
+  const firstKeyEvent = input.roundReport.keyEvents[0];
+  return {
+    speakerRole: "main_caster",
+    text: firstKeyEvent ? `中段控制权开始变化：${firstKeyEvent.impact}` : "中段还在拉扯，双方都在等一个关键控制点。",
+    reason: "基于本回合第一条关键事件生成。",
+    tags: ["mid_control", ...(input.roundReport.highlightTags ?? []).slice(0, 2)],
+    lineRole: "mid_control",
+    generationMode: "rule",
+    qualityStatus: "ready"
+  };
 }
 
 function buildSummary(input: {

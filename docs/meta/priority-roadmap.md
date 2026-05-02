@@ -278,6 +278,7 @@ docs/p1-match-loop/simulation-engine.md
 
 - 输入 M02 状态（state）、M03 智能体（agent）、M06 经济系统（economy）。
 - 输出 M08 事件（event）、M14 状态（state）、M15 异步任务（async jobs）。
+- Phase 1.6 后，P1.4 还将承载攻守方分配、攻方方案、守方部署和区域碰撞判定。
 
 验收标准：
 
@@ -366,6 +367,7 @@ docs/p2-broadcast-viewer/tactical-map.md
 - M13 地图素材（map materials）定义地图区域（zones）。
 - 回合战报（RoundReport）.key_events 引用地图区域（zones）。
 - M10 渲染地图区域（zones）和控制变化（control delta）。
+- Phase 1.6 后，地图区域还会成为攻防协议的战术词汇；P2.2 仍只消费事实，不反写 Judge。
 
 验收标准：
 
@@ -383,7 +385,7 @@ docs/p2-broadcast-viewer/broadcast-system.md
 当前状态：
 
 ```text
-已完成评审稿，作为 Phase 1 fake provider MVP 的转播包装层边界；Phase 1.5 结束后再评估是否冻结。
+已完成，作为 Phase 1 fake provider MVP 与 Phase 1.5 真实 caster_line 的转播包装层边界；Phase 1 范围内可按 Frozen 执行。
 ```
 
 必须覆盖：
@@ -399,6 +401,7 @@ docs/p2-broadcast-viewer/broadcast-system.md
 - M09 从 M08 / M11 消费事实，不发明比赛结果。
 - 解说（caster）/ 弹幕（barrage） 可异步生成。
 - 失败时不阻塞 M05。
+- Phase 1.6 后，P2.3 可以包装攻防事实，例如重防 A、假打转 B、B 点弱防被打穿，但不能决定这些事实。
 
 验收标准：
 
@@ -617,16 +620,19 @@ docs/p4-web-ops/web-migration.md
 ### 当前最应该做
 
 ```text
-1. Phase 1.5 前置评审：确认真实 LLM 小范围接入的最小安全切入点。
-2. Phase 1.5：真实 LLM 小范围接入。
-3. Phase 2：完整赛事结构与外围生态的后续扩展。
+1. Phase 1.6：区域化攻防回合协议。
+2. Phase 1.6：攻守方分配、换边、AttackPlan、DefenseDeployment 和 ZoneResourceAllocation。
+3. Phase 1.6：区域碰撞进入 Judge 输入、RoundReport tacticalContext 和 EventType。
+4. Phase 2：完整赛事结构与外围生态的后续扩展。
 ```
 
 原因：
 
 - Phase 1.0 / 1.1 / 1.2 / 1.3 / 1.4 基础版已经跑通，当前已经有本地 SQLite、单回合 replay、单图 replay、BO3 match replay、summary、CLI replay/export 和 BO3 伪直播播放器。
 - Phase 1.4 的 RoundReport、TimelineEvent、keyRounds 和 highlight 已完成第一轮内容质量与事件可信度收口。
-- P2.2 已经明确 2D 战术地图如何消费结构化事实源；P2.3 评审稿已经明确转播系统中哪些内容来自事实源，哪些只是可延后、可丢弃、可重建的包装层。
+- P2.2 已经明确 2D 战术地图如何消费结构化事实源；P2.3 已经明确转播系统中哪些内容来自事实源，哪些只是可延后、可丢弃、可重建的包装层。
+- Phase 1.5 已完成真实 caster_line 小范围接入，区域化攻防可以开始进入 Phase 1.6。
+- 区域化攻防会改变 Round Context、Judge 输入、RoundReport 和 EventType，因此必须作为独立 Phase 处理，不应塞回 Phase 1.45 或 Phase 1.5。
 
 ### P2.1 后的工程切换结果
 
@@ -678,7 +684,7 @@ P2.1 之后采用：
 
 - 主线目标从“继续补完整文档”切换为“跑通 fake provider MVP”。
 - 不再等待 P3 / P4 全部文档完成。
-- 工程实现必须遵守 P0 / P1 / P2.1 / P2.2 已冻结契约，并以 P2.3 评审稿作为 Phase 1.5 的转播边界输入。
+- 工程实现必须遵守 P0 / P1 / P2.1 / P2.2 已冻结契约，并以 P2.3 作为 Phase 1 的转播边界输入。
 - 如果实现中发现会改变核心契约的问题，先补对应文档，再改代码。
 - 如果只是模块内部实现细节，不阻塞代码推进，后续再回填文档。
 
@@ -716,9 +722,11 @@ P2.1 之后采用：
 已完成：Phase 1.4 极简伪直播播放器基础版。
 已完成：Phase 1.4 播放结果的内容质量与事件可信度收口。
 已完成：P2.2 2D 战术地图说明。
-已完成：P2.3 转播系统说明评审稿。
-当前：Phase 1.5 前置评审，决定小范围接真实 LLM 的安全切入点。
-之后：执行真实 LLM 小范围接入。
+已完成：P2.3 转播系统说明。
+已完成：Phase 1.45 P2.2 / P2.3 契约代码落地。
+已完成：Phase 1.5 真实 LLM 小范围接入。
+当前：Phase 1.6 区域化攻防回合协议。
+之后：Phase 2 完整赛事雏形。
 ```
 
 ### 长期规划判断
@@ -730,13 +738,16 @@ P2.1 之后采用：
 如果远期设计只是内容包装、页面表现、弹幕语料、奖项命名或运营风格，可以先保留方向，不展开细节。
 ```
 
-因此，当前应继续保持“近期写深，远期写边界”的文档策略。P2.2 已经完成，P2.3 已完成评审稿，下一步应做 Phase 1.5 前置评审；Phase 2 完整赛事、Phase 3 赛事生态和 Phase 4 Web 化只保留边界意识，不阻塞当前主线。
+因此，当前应继续保持“近期写深，远期写边界”的文档策略。P2.2 已经完成，P2.3 已完成并可作为 Phase 1 转播边界执行，Phase 1.45 已把关键契约落到代码锚点，Phase 1.5 已完成真实 caster_line 小范围接入。下一步应进入 Phase 1.6 区域化攻防回合协议。Phase 2 完整赛事、Phase 3 赛事生态和 Phase 4 Web 化只保留边界意识，不阻塞当前主线。
 
 ### 后续文档补充顺序
 
 ```text
 已完成：docs/p2-broadcast-viewer/tactical-map.md
 已完成：docs/p2-broadcast-viewer/broadcast-system.md
+已完成：docs/phase-plans/phase-1.45-contract-code-alignment.md
+已完成：docs/phase-plans/phase-1.5-real-llm-integration.md
+已预留：docs/phase-plans/phase-1.6-zone-offense-defense-protocol.md
 ```
 
 原因：

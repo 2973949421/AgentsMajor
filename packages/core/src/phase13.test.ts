@@ -3,10 +3,12 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 
 import { createSqliteRepositories } from "@agent-major/db";
-import { FakeProvider } from "@agent-major/llm";
+import { FakeProvider, type LlmGateway } from "@agent-major/llm";
 import { UnconfiguredJobQueue } from "@agent-major/queue";
 import { describe, expect, it } from "vitest";
 
+import { createLlmCasterBroadcastGenerator } from "./broadcast-llm.js";
+import type { RoundBroadcastGenerator } from "./broadcast.js";
 import { phase11DemoIds, seedPhase11Demo } from "./demo.js";
 import { createPhase13SimulationEngine } from "./engine.js";
 import { readMatchReplay } from "./map-replay.js";
@@ -41,27 +43,46 @@ describe("Phase 1.3 BO3 match chain", () => {
     const roundReports = replay.maps.flatMap((mapReplay) => mapReplay.rounds.map((roundReplay) => roundReplay.roundReport));
     expect(roundReports.every((report) => !report.summary.includes("Phase 1.2") && !report.judgeResult.reason.includes("Phase 1.2"))).toBe(true);
     expect(
-      roundReports.every((report) => (report.highlightTags ?? []).length > 0 && (report.highlightTags ?? []).every((tag) => !genericTags.has(tag)))
+      roundReports.every((report) => (report.highlightTags ?? []).length > 0 && (report.highlightTags ?? []).every((tag: string) => !genericTags.has(tag)))
     ).toBe(true);
     expect(roundReports.some((report) => report.highlightTags?.includes("overtime_round"))).toBe(true);
-    expect(roundReports.some((report) => report.keyEvents.some((event) => event.type === "economy_swing"))).toBe(true);
+    expect(roundReports.some((report) => report.keyEvents.some((event: { type: string }) => event.type === "economy_swing"))).toBe(true);
 
     const firstRound = replay.maps[0]?.rounds[0];
     const highlightTimeline = firstRound?.timelineEvents.find((event) => event.kind === "highlight_reveal");
+    const scoreboardTimeline = firstRound?.timelineEvents.find((event) => event.kind === "scoreboard_update");
+    const barrageTimeline = firstRound?.timelineEvents.find((event) => event.kind === "barrage_stream");
+    const casterTimeline = firstRound?.timelineEvents.find((event) => event.kind === "caster_line");
     expect(highlightTimeline?.payload).toMatchObject({
       tags: firstRound?.roundReport.highlightTags,
-      reason: firstRound?.roundReport.judgeResult.reason
+      reason: firstRound?.roundReport.judgeResult.reason,
+      replayCard: {
+        jumpTarget: { type: "highlight_reveal", roundId: firstRound?.round.id }
+      }
     });
+    expect(scoreboardTimeline?.payload).toMatchObject({
+      supportRate: {
+        leaderTeamId: expect.any(String),
+        label: expect.any(String)
+      }
+    });
+    expect(barrageTimeline?.sourceEventIds.length).toBeGreaterThan(0);
+    expect(barrageTimeline?.payload).toMatchObject({ messages: expect.any(Array) });
+    expect(casterTimeline?.sourceEventIds.length).toBeGreaterThan(0);
     for (const mapReplay of replay.maps) {
       const keyRounds = (mapReplay.mapSummary?.payload as { keyRounds?: Array<{ highlightTags?: string[]; summary?: string }> } | undefined)?.keyRounds ?? [];
       expect(keyRounds.length).toBeGreaterThan(0);
-      expect(keyRounds.every((round) => (round.highlightTags ?? []).some((tag) => !genericTags.has(tag)) && typeof round.summary === "string")).toBe(true);
+      expect(keyRounds.every((round) => (round.highlightTags ?? []).some((tag: string) => !genericTags.has(tag)) && typeof round.summary === "string")).toBe(true);
     }
 
     const events = await repositories.events.listByMatch(phase11DemoIds.matchId);
     expect(events.some((event) => event.type === "match_completed")).toBe(true);
+    expect(events.some((event) => event.type === "caster_line_created")).toBe(true);
+    expect(events.some((event) => event.type === "barrage_created")).toBe(true);
+    expect(events.some((event) => event.type === "support_rate_updated")).toBe(true);
+    expect(events.some((event) => event.type === "replay_card_created")).toBe(true);
     const eventIds = new Set(events.map((event) => event.id));
-    expect(replay.matchSummary?.sourceEventIds.every((id) => eventIds.has(id))).toBe(true);
+    expect(replay.matchSummary?.sourceEventIds.every((id: string) => eventIds.has(id))).toBe(true);
 
     const rerun = await engine.runCurrentMatch({ matchId: phase11DemoIds.matchId });
     expect(rerun.match.status).toBe("completed");
@@ -85,6 +106,37 @@ describe("Phase 1.3 BO3 match chain", () => {
     expect(replay.match.teamBMapsWon).toBe(0);
     expect(replay.maps).toHaveLength(2);
     expect(replay.mapGames.map((mapGame) => mapGame.status)).toEqual(["completed", "completed", "scheduled"]);
+  });
+
+  it("can use a mock Phase 1.5 caster generator while preserving match facts", async () => {
+    const gateway: LlmGateway = {
+      async generateStructured<TData = unknown>() {
+        const rawText =
+          "{\"text\":\"真实解说链路模拟输出：这一回合已经进入可播包装。\",\"reason\":\"mock phase15 caster\",\"tags\":[\"phase15_mock\"]}";
+        return {
+          data: rawText as TData,
+          rawText,
+          usage: { promptTokens: 3, completionTokens: 4, totalTokens: 7 }
+        };
+      }
+    };
+    const { repositories, engine } = await createDemoEngine(
+      createLlmCasterBroadcastGenerator({
+        llmGateway: gateway,
+        driverModelId: "driver_kimi_k2_5"
+      })
+    );
+
+    const result = await engine.runCurrentMatch({ matchId: phase11DemoIds.matchId, selectedMapIds: ["DUST2", "MIRAGE"] });
+    expect(result.match.status).toBe("completed");
+    expect(result.match.winnerTeamId).toBe("team_ghost_nav");
+
+    const events = await repositories.events.listByMatch(phase11DemoIds.matchId);
+    const casterEvent = events.find((event) => event.type === "caster_line_created");
+    expect(casterEvent?.payload).toMatchObject({
+      generationMode: "llm",
+      qualityStatus: "ready"
+    });
   });
 
   it("upgrades an existing single-map veto into a complete BO3", async () => {
@@ -131,13 +183,14 @@ describe("Phase 1.3 BO3 match chain", () => {
   });
 });
 
-async function createDemoEngine() {
+async function createDemoEngine(broadcastGenerator?: RoundBroadcastGenerator) {
   const tempRoot = mkdtempSync(resolve(tmpdir(), "agent-major-phase13-"));
   const repositories = createSqliteRepositories(resolve(tempRoot, "agent-major.sqlite"));
   const engine = createPhase13SimulationEngine({
     repositories,
     llmGateway: new FakeProvider({ providerId: "phase13-test-provider" }),
-    jobQueue: new UnconfiguredJobQueue()
+    jobQueue: new UnconfiguredJobQueue(),
+    ...(broadcastGenerator ? { broadcastGenerator } : {})
   });
 
   await seedPhase11Demo(repositories);

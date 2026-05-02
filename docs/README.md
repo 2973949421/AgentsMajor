@@ -17,8 +17,8 @@
 ## 2. 当前状态
 
 ```text
-P 线：已完成到 P2.3 评审稿，Phase 1.5 结束后再评估是否冻结。
-Phase 线：已完成到 Phase 1.4 基础版，下一步评审真实 LLM 小范围接入。
+P 线：已完成到 P2.3，Phase 1 范围内可按 Frozen 执行。
+Phase 线：已完成到 Phase 1.5 真实 LLM 小范围接入，下一步进入 Phase 1.6 区域化攻防回合协议。
 ```
 
 ## 3. 目录说明
@@ -94,6 +94,9 @@ p4-web-ops/web-migration.md      # 待补
 
 ```text
 phase-plans/phase-1.0-engineering-plan.md
+phase-plans/phase-1.5-real-llm-integration.md
+phase-plans/phase-1.45-contract-code-alignment.md
+phase-plans/phase-1.6-zone-offense-defense-protocol.md
 ```
 
 ## 4. 维护规则

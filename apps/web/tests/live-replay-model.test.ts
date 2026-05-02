@@ -85,11 +85,62 @@ describe("Phase 1.4 live replay model", () => {
     const firstRound = liveReplay.maps[0]?.rounds[0];
 
     expect(liveReplay.matchId).toBe("match");
+    expect(liveReplay.maps[0]?.tacticalMap.zones).toHaveLength(8);
     expect(liveReplay.maps[0]?.keyRoundNumbers).toEqual([2]);
+    expect(firstRound?.roundReport.mapName).toBe("DUST2");
     expect(firstRound?.roundReport.summary).toBe("test round");
     expect(firstRound?.timelineEvents[0]?.id).toBe("tl-1");
     expect(firstRound).not.toHaveProperty("events");
     expect(firstRound?.roundReport).not.toHaveProperty("agentOutputs");
+  });
+
+  it("exposes Phase 1.45 tactical map and broadcast frame data", () => {
+    const item = roundItem(1, [
+      timelineEvent({
+        id: "kill",
+        kind: "kill_feed_item",
+        atMs: 20000,
+        payload: { keyEventId: "ke-1", zoneId: "unknown_zone", text: "unknown zone event" }
+      }),
+      timelineEvent({
+        id: "score",
+        kind: "scoreboard_update",
+        atMs: 22000,
+        payload: { supportRate: { teamA: 61, teamB: 39, leaderTeamId: "team-a", trend: "team_a_up", label: "A leads" } }
+      }),
+      timelineEvent({
+        id: "barrage",
+        kind: "barrage_stream",
+        atMs: 30000,
+        payload: { messages: [{ id: "bm-1", atMs: 18000, text: "nice control", intensity: "medium" }] }
+      }),
+      timelineEvent({
+        id: "highlight",
+        kind: "highlight_reveal",
+        atMs: 54000,
+        payload: {
+          tags: ["economy_swing"],
+          replayCard: {
+            title: "Round 1 | Economy Swing",
+            summary: "test card",
+            highlightTags: ["economy_swing"],
+            jumpTarget: { type: "highlight_reveal", roundId: "round-1", atMs: 54000 }
+          }
+        }
+      })
+    ]);
+    item.roundReport.keyEvents = [{ id: "ke-1", type: "entry", actorTeamId: "team-a", zoneId: "unknown_zone", impact: "fallback control" }];
+    item.roundReport.highlightTags = ["economy_swing"];
+
+    const frame = buildRoundFrame(item, 54000);
+    const fallbackZone = frame.tacticalMap.zones.find((zone) => zone.id === "buyer_mid");
+
+    expect(frame.supportRate?.teamA).toBe(61);
+    expect(frame.barrageMessages[0]?.text).toBe("nice control");
+    expect(frame.replayCard?.title).toBe("Round 1 | Economy Swing");
+    expect(fallbackZone?.active).toBe(true);
+    expect(fallbackZone?.weak).toBe(true);
+    expect(frame.tacticalMap.connections.some((connection) => connection.active)).toBe(true);
   });
 });
 
@@ -112,6 +163,7 @@ function roundItem(roundNumber: number, timelineEvents: LiveReplayTimelineEvent[
     roundNumber,
     roundReport: {
       winnerTeamId: "team-a",
+      mapName: "DUST2",
       scoreBeforeRound: { teamA: roundNumber - 1, teamB: 0 },
       scoreAfterRound: { teamA: roundNumber, teamB: 0 },
       keyEvents: [],
@@ -131,6 +183,13 @@ function mapReplay(rounds: LiveReplayRound[], keyRoundNumbers: number[] = []): L
     id: "map",
     order: 1,
     mapName: "DUST2",
+    tacticalMap: {
+      mapName: "DUST2",
+      canvas: { width: 1000, height: 640 },
+      fallbackZoneId: "buyer_mid",
+      zones: [],
+      connections: []
+    },
     finalScore: { teamA: 7, teamB: 5 },
     winnerTeamId: "team-a",
     keyRoundNumbers,
@@ -177,6 +236,7 @@ function matchReplayFixture(): MatchReplay {
               roundNumber: 1
             },
             roundReport: {
+              mapName: "DUST2",
               winnerTeamId: "team-a",
               scoreBeforeRound: { teamA: 0, teamB: 0 },
               scoreAfterRound: { teamA: 1, teamB: 0 },

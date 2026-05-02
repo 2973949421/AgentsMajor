@@ -6,6 +6,12 @@ export interface ArtifactWriteInput {
   artifactType: string;
   relativePath: string;
   content: string | Uint8Array;
+  tournamentId?: string;
+  matchId?: string;
+  mapGameId?: string;
+  roundId?: string;
+  agentId?: string;
+  sourceEventIds?: string[];
   metadata?: Record<string, unknown>;
 }
 

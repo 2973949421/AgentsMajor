@@ -1,11 +1,14 @@
 import { LiveReplayPlayer } from "./live-replay-player";
 import { toLiveReplayData } from "./live-replay-model";
 import { defaultMatchId, loadMatchReplay } from "./map-replay-data";
+import { RunMatchControls } from "./run-match-controls";
+import { getPublicWebRunnerPolicy } from "./server-web-runner-policy";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const replay = await loadMatchReplay(defaultMatchId);
+  const webRunnerPolicy = getPublicWebRunnerPolicy();
 
   if (!replay || replay.maps.length === 0) {
     return (
@@ -13,7 +16,8 @@ export default async function HomePage() {
         <section className="phase14-empty-card">
           <p>Agent Major Phase 1.4</p>
           <h1>等待 BO3 Replay</h1>
-          <span>运行 `pnpm phase13:match` 后，首页会读取同一个 SQLite 事实源并播放伪直播。</span>
+          <span>运行命令行或点击下方按钮后，首页会读取同一个 SQLite 事实源并播放伪直播。</span>
+          <RunMatchControls matchId={defaultMatchId} runnerPolicy={webRunnerPolicy} />
         </section>
         <style>{`
           .phase14-empty-shell {
@@ -56,5 +60,5 @@ export default async function HomePage() {
     );
   }
 
-  return <LiveReplayPlayer replay={toLiveReplayData(replay)} />;
+  return <LiveReplayPlayer replay={toLiveReplayData(replay)} runnerPolicy={webRunnerPolicy} />;
 }

@@ -21,7 +21,7 @@ describe("Phase 1.1 simulation chain", () => {
 
     const eventIds = new Set(replay.events.map((event) => event.id));
     for (const timelineEvent of replay.timelineEvents) {
-      expect(timelineEvent.sourceEventIds.every((id) => eventIds.has(id))).toBe(true);
+      expect(timelineEvent.sourceEventIds.every((id: string) => eventIds.has(id))).toBe(true);
     }
 
     for (const projected of replay.roundReport.eventProjection.coreEventsLinkedByRoundReport) {

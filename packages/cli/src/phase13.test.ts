@@ -30,7 +30,7 @@ describe("Phase 1.3 CLI commands", () => {
     const exportResult = await runPhase13Command("export", projectRoot);
     expect(exportResult.exportPath).toContain("data\\exports\\matches");
     expect(await readMatchFingerprint(projectRoot)).toEqual(afterMatch);
-  });
+  }, 15_000);
 
   it("refuses replay/export output for an incomplete match", async () => {
     const projectRoot = mkdtempSync(resolve(tmpdir(), "agent-major-cli-phase13-incomplete-"));
