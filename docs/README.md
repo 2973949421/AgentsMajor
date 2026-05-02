@@ -17,8 +17,8 @@
 ## 2. 当前状态
 
 ```text
-P 线：已完成到 P2.2，下一步补 P2.3。
-Phase 线：已完成到 Phase 1.4 基础版，下一步先补 P2.3，再决定是否进入 Phase 1.5。
+P 线：已完成到 P2.3 评审稿，Phase 1.5 结束后再评估是否冻结。
+Phase 线：已完成到 Phase 1.4 基础版，下一步评审真实 LLM 小范围接入。
 ```
 
 ## 3. 目录说明
@@ -64,7 +64,7 @@ p1-match-loop/local-persistence.md
 ```text
 p2-broadcast-viewer/live-timeline.md
 p2-broadcast-viewer/tactical-map.md
-p2-broadcast-viewer/broadcast-system.md  # 待补 P2.3
+p2-broadcast-viewer/broadcast-system.md
 ```
 
 ### p3-ecosystem

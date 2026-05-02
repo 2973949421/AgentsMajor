@@ -23,6 +23,7 @@ P0：事实源与边界层。
 P1：最小比赛闭环。
 P2.1：直播时间线说明。
 P2.2：2D 战术地图说明。
+P2.3：转播系统说明评审稿。
 ```
 
 对应文件包括：
@@ -38,6 +39,7 @@ docs/p1-match-loop/simulation-engine.md
 docs/p1-match-loop/local-persistence.md
 docs/p2-broadcast-viewer/live-timeline.md
 docs/p2-broadcast-viewer/tactical-map.md
+docs/p2-broadcast-viewer/broadcast-system.md
 ```
 
 文档结构迁移状态：
@@ -48,7 +50,7 @@ docs/p2-broadcast-viewer/tactical-map.md
 后续提交必须整体纳入 docs 的删除、新增、移动和 README 索引更新，避免只提交旧文档删除或只提交新文档新增。
 ```
 
-这些文档已经足够支撑本地 fake provider MVP，不需要等待 P2.3 / P3 / P4 全部完成后再继续工程。
+这些文档已经足够支撑本地 fake provider MVP，不需要等待 P3 / P4 全部完成后再继续工程。
 
 ### 工程层
 
@@ -197,40 +199,40 @@ provider fallback。
 
 ```text
 P2.2：2D 战术地图说明，已完成，见 docs/p2-broadcast-viewer/tactical-map.md。
-P2.3：转播系统说明，下一步补齐。
+P2.3：转播系统说明评审稿，已完成，见 docs/p2-broadcast-viewer/broadcast-system.md；Phase 1.5 结束后再评估是否冻结。
 P3：数据、奖项、新闻、素材库。
 P4：API、队列、可观测性、Web 迁移。
 ```
 
-P2.3 是当前文档主线；P3 / P4 只保留边界意识，不展开到实现细节。
+P2.3 已补齐 Phase 1 fake provider MVP 需要的转播包装边界，但当前保持评审稿状态；P3 / P4 只保留边界意识，不展开到实现细节。
 
 ## 4. 当前下一步
 
 当前只建议做一件主线工作：
 
 ```text
-补 P2.3：转播系统边界说明。
+Phase 1.5 前置评审：决定真实 LLM 小范围接入的最小、安全、可降级切入点。
 ```
 
 下一步优先补强对象：
 
 ```text
-1. P2.3：定义 Caster / Barrage / Highlight / Replay Clip 的输入、输出和异步生成边界。
-2. P2.3：明确哪些转播内容来自结构化事实源，哪些只是可丢弃的包装层。
-3. P2.3：补清转播系统与 RoundReport、TimelineEvent、map_summary keyRounds、tactical map zones 的勾稽关系。
-4. P2.3：定义缺失解说、缺失弹幕、低质量包装内容时的降级规则。
+1. Phase 1.5：确认先接真实 LLM 的任务类型，优先选择可失败降级的包装任务。
+2. Phase 1.5：确认 llm_calls、Artifact、fallback 和质量闸门是否已经足够支撑真实调用。
+3. Phase 1.5：确认真实模型输出不能进入比赛经济，不能改变裁判事实和比分。
+4. Phase 1.5：确认失败、超时、限流和结构不稳定时的本地恢复方式。
 ```
 
 当前不建议先做：
 
 ```text
-不先接真实 LLM。
+不做大范围真实 LLM 接入。
 不先做完整 2D 地图。
 不先做新闻站、奖项站或 16 队完整赛事。
 不先做 Web 部署。
 ```
 
-原因是 BO3 match 级事实源、Phase 1.4 播放层、第一轮赛事语义收口和 P2.2 2D 战术地图契约已经具备。继续接真实 LLM 前，先把转播系统的消费边界写清楚，可以避免包装层反向污染事实源。
+原因是 BO3 match 级事实源、Phase 1.4 播放层、第一轮赛事语义收口、P2.2 2D 战术地图契约和 P2.3 转播系统评审稿已经具备。下一步可以评审真实 LLM 小范围接入，但应该从可降级、可重试、不会污染事实源的任务开始。
 
 ## 5. 长期规划判断
 
