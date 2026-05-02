@@ -617,13 +617,13 @@ docs/p4-web-ops/web-migration.md
 - 后续 UI、持久化、解说、新闻、统计都依赖它们。
 - 没有这些，直接写代码会很容易返工。
 
-### 当前最应该做
+### 当前阶段最应该补强
 
 ```text
-1. Phase 1.6：区域化攻防回合协议。
-2. Phase 1.6：攻守方分配、换边、AttackPlan、DefenseDeployment 和 ZoneResourceAllocation。
-3. Phase 1.6：区域碰撞进入 Judge 输入、RoundReport tacticalContext 和 EventType。
-4. Phase 2：完整赛事结构与外围生态的后续扩展。
+1. 定义 tactical 数据观察面、调试视图和回归指标。
+2. 评估更多地图区域、更多战术路径和是否需要 tactical 专表。
+3. 补齐完整赛事、统计、奖项、新闻和素材边界文档。
+4. 补齐公开导出、API、队列与 Web 迁移约束。
 ```
 
 原因：
@@ -631,8 +631,8 @@ docs/p4-web-ops/web-migration.md
 - Phase 1.0 / 1.1 / 1.2 / 1.3 / 1.4 基础版已经跑通，当前已经有本地 SQLite、单回合 replay、单图 replay、BO3 match replay、summary、CLI replay/export 和 BO3 伪直播播放器。
 - Phase 1.4 的 RoundReport、TimelineEvent、keyRounds 和 highlight 已完成第一轮内容质量与事件可信度收口。
 - P2.2 已经明确 2D 战术地图如何消费结构化事实源；P2.3 已经明确转播系统中哪些内容来自事实源，哪些只是可延后、可丢弃、可重建的包装层。
-- Phase 1.5 已完成真实 caster_line 小范围接入，区域化攻防可以开始进入 Phase 1.6。
-- 区域化攻防会改变 Round Context、Judge 输入、RoundReport 和 EventType，因此必须作为独立 Phase 处理，不应塞回 Phase 1.45 或 Phase 1.5。
+- Phase 1.6 已完成 deterministic rule-based 区域化攻防协议，当前不再需要把它当成待办主线。
+- 下一阶段更重要的是先把战术协议的观察面、导出边界、API 暴露面和 Web / 队列迁移约束写清楚，避免后续继续返工。
 
 ### P2.1 后的工程切换结果
 
@@ -725,8 +725,8 @@ P2.1 之后采用：
 已完成：P2.3 转播系统说明。
 已完成：Phase 1.45 P2.2 / P2.3 契约代码落地。
 已完成：Phase 1.5 真实 LLM 小范围接入。
-当前：Phase 1.6 区域化攻防回合协议。
-之后：Phase 2 完整赛事雏形。
+当前：Phase 1.6 区域化攻防回合协议已完成收口。
+之后：后续阶段的边界设计、完整赛事雏形与生态扩展，阶段编号待定义。
 ```
 
 ### 长期规划判断
@@ -738,7 +738,7 @@ P2.1 之后采用：
 如果远期设计只是内容包装、页面表现、弹幕语料、奖项命名或运营风格，可以先保留方向，不展开细节。
 ```
 
-因此，当前应继续保持“近期写深，远期写边界”的文档策略。P2.2 已经完成，P2.3 已完成并可作为 Phase 1 转播边界执行，Phase 1.45 已把关键契约落到代码锚点，Phase 1.5 已完成真实 caster_line 小范围接入。下一步应进入 Phase 1.6 区域化攻防回合协议。Phase 2 完整赛事、Phase 3 赛事生态和 Phase 4 Web 化只保留边界意识，不阻塞当前主线。
+因此，当前应继续保持“近期写深，远期写边界”的文档策略。P2.2 已完成，P2.3 已完成并可作为 Phase 1 转播边界执行，Phase 1.45 已把关键契约落到代码锚点，Phase 1.5 已完成真实 caster_line 小范围接入，Phase 1.6 已完成 deterministic rule-based 区域化攻防协议。下一步应先转入后续阶段的边界设计与阶段编号确认，优先确认战术观测面、更多地图区域、公开导出 / API 边界，以及后续 Web / 队列迁移的约束。Phase 3 赛事生态和 Phase 4 Web 化仍只保留边界意识，不阻塞当前主线。
 
 ### 后续文档补充顺序
 

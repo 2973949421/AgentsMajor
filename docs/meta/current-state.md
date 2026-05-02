@@ -64,6 +64,7 @@ Phase 1.3：BO3 fake provider。
 Phase 1.4：极简伪直播播放器基础版。
 Phase 1.45：P2.2 / P2.3 契约代码落地。
 Phase 1.5：真实 LLM 小范围接入。
+Phase 1.6：区域化攻防回合协议。
 ```
 
 Phase 1.2 的当前事实：
@@ -286,7 +287,7 @@ Web 本地按钮：额外设置 AGENT_MAJOR_WEB_RUNNER_ENABLED=true。
 
 真实 API 成本和比赛内 Token 经济仍然不耦合。
 
-### Phase 1.6：区域化攻防回合协议（下一步）
+### Phase 1.6：区域化攻防回合协议
 
 该阶段用于承接新的核心思路：
 
@@ -303,9 +304,9 @@ P2.2 只展示战术区域，P2.3 只包装攻防事实。
 当前状态：
 
 ```text
-文档预留完成。
-Phase 1.5 已完成收口。
-下一步应进入 Phase 1.6 的详细设计与代码计划。
+文档、代码和验收均已完成收口。
+`phase16:*` 命令已落地并与 `phase13:*`、`phase15:*` 保持隔离。
+命令行、Web 播放层、导出边界和人工复查已通过。
 ```
 
 ### P2.2 之后的文档
@@ -323,32 +324,32 @@ P2.3 已补齐 Phase 1 fake provider MVP 和 Phase 1.5 真实 caster_line 需要
 
 ## 4. 当前下一步
 
-当前只建议做一件主线工作：
+当前建议先做一个上层动作：
 
 ```text
-Phase 1.6：区域化攻防回合协议。
+后续阶段的边界设计与路线确认，阶段编号待定义。
 ```
 
 下一步优先补强对象：
 
 ```text
-1. Phase 1.6：定义攻守方分配、换边和每回合 side context。
-2. Phase 1.6：定义 AttackPlan / DefenseDeployment / ZoneResourceAllocation。
-3. Phase 1.6：定义区域碰撞如何进入 Judge 输入和 RoundReport tacticalContext。
-4. Phase 1.6：定义攻防相关 EventType / TimelineEvent 投影 / Web 展示方式。
+1. 定义 tactical 数据观察面、调试视图和回归指标。
+2. 评估更多地图区域、更多战术路径和是否需要 tactical 专表。
+3. 补齐完整赛事、统计、奖项、新闻和素材边界文档。
+4. 补齐公开导出、API、队列与 Web 迁移约束。
 ```
 
 当前不建议先做：
 
 ```text
-不做大范围真实 LLM 接入。
-不先做完整 2D 地图。
-不先做新闻站、奖项站或 16 队完整赛事。
-不先做 Web 部署。
-不继续扩 Phase 1.5 的真实 LLM 范围。
+不把真实 LLM 接入扩展到战术生成和胜负判定。
+不先做完整 2D 美术地图。
+不先做完整新闻站、奖项站或 16 队正式赛季实现。
+不先做远端部署和长期在线任务系统。
+不在未补边界前继续扩公开 API 和公开导出范围。
 ```
 
-原因是 BO3 match 级事实源、Phase 1.4 播放层、第一轮赛事语义收口、P2.2 2D 战术地图契约、P2.3 转播系统和 Phase 1.5 真实 caster_line 链路已经具备。下一步应该把 A / B 点、中路、连接区、攻方方案、守方部署和资源分配做成结构化回合协议。
+原因是 BO3 match 级事实源、Phase 1.4 播放层、P2.2 2D 战术地图契约、P2.3 转播系统、Phase 1.5 真实 caster_line 链路和 Phase 1.6 区域化攻防协议都已经具备。当前主线不再是补 Phase 1.6，而是把下一阶段会影响事实源、导出边界、API、队列和 Web 迁移的决策先写清楚。
 
 ## 5. 长期规划判断
 
@@ -411,4 +412,4 @@ Phase 1.6 已作为独立工程阶段落地：`phase16:*` 命令启用 determini
 
 已完成的核心能力包括：攻守方分配、AttackPlan、DefenseDeployment、TacticalCollision、`RoundReport.tacticalContext` 持久化、4 个 tactical events、timeline tactical projection、Web `tacticalRound` 与 tactical map 高亮。
 
-下一阶段若进入 Phase 1.7 或 Phase 2，应优先评估战术协议的数据观察面、更多地图区域、真实 LLM 战术生成的安全边界，以及是否需要 tactical 专表；不应在 Phase 1.6 v1 中让真实 LLM 影响胜负判定。
+下一阶段若继续推进，应优先评估战术协议的数据观察面、更多地图区域、真实 LLM 战术生成的安全边界，以及是否需要 tactical 专表；不应在 Phase 1.6 v1 中让真实 LLM 影响胜负判定。
