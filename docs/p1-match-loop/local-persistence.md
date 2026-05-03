@@ -222,12 +222,25 @@ broadcast_materials
 | `teamId` | `text index` | 所属队伍。 |
 | `driverModelId` | `text index` | 指向 DriverModel。 |
 | `parameterProfileId` | `text null` | 未来智能体参数入口。 |
-| `role` | `text` | coach / igl / entry / star / lurker / support / closer。 |
+| `role` | `text` | coach / igl / awper / entry / star_rifler / lurker / support / rifler / stand_in。 |
+| `secondaryRolesJson` | `text null` | AgentRoleTag[]，保存 anchor / flex / closer / system_architect 等副标签。 |
+| `roleProfileJson` | `text null` | AgentRoleProfile JSON，保存 materials raw position、confidence、positionTags 和职责说明。 |
+| `materialRefJson` | `text null` | AgentMaterialRef JSON，保存 materials entity id、team slug、json path、binding version 与 runtimeEnabled。 |
 | `displayName` | `text` | 展示名称。 |
 | `baseProfileJson` | `text` | AgentBaseProfile JSON。 |
 | `currentState` | `text` | ready / active / hot 等。 |
 | `createdAt` | `text` | 创建时间。 |
 | `updatedAt` | `text null` | 更新时间。 |
+
+Phase 1.7 兼容规则：
+
+```text
+读取旧数据时 star 映射为 star_rifler。
+读取旧数据时 closer 映射为 rifler。
+新写入不再产生 star 或 closer primary role。
+closer 只允许作为 secondaryRolesJson 中的副标签保留。
+materialRefJson.runtimeEnabled 在 Phase 1.7 必须为 false。
+```
 
 ### 7.4 driver_models
 

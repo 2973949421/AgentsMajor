@@ -6,8 +6,32 @@
   "real_name": null,
   "in_game_id": "frozen",
   "display_name": "frozen",
-  "role": "star",
+  "role": "star_rifler",
   "status": "active",
+  "cs_role_profile": {
+    "source_path": "raw/teams/agent_major_player_roles.md",
+    "source_team_name": "PhaseClan",
+    "member_type": "player",
+    "raw_position": "Star Rifler / Lurker",
+    "raw_position_parts": [
+      "Star Rifler",
+      "Lurker"
+    ],
+    "primary_role": "star_rifler",
+    "secondary_roles": [
+      "lurker"
+    ],
+    "position_tags": [
+      "star_rifler",
+      "lurker"
+    ],
+    "confidence": "高",
+    "notes": "核心步枪，后期残局能力强。",
+    "agent_major_responsibilities": [
+      "核心输出 / 关键回合 carry",
+      "反制 / 偷点 / 找对手逻辑漏洞"
+    ]
+  },
   "aliases": [
     "frozen"
   ],
@@ -20,8 +44,8 @@
     "stable-star"
   ],
   "playstyle_tags": [
-    "high-impact",
-    "space-winning",
+    "impact-rifle",
+    "resource-heavy",
     "rifle-core",
     "site-break"
   ],
@@ -54,16 +78,80 @@
     ]
   },
   "future_driver_binding": {
-    "preferred_driver_model_id": null,
-    "fallback_driver_model_ids": [],
+    "binding_version": "2026-05-03-llm-binding-v1",
+    "binding_scope": "asset_preallocation",
+    "runtime_enabled": false,
+    "role_template_id": "llm_role_template_star_rifler",
+    "preferred_driver_model_id": "driver_kimi_k2_5",
+    "fallback_driver_model_ids": [
+      "driver_qwen_3_6_plus"
+    ],
+    "task_bindings": [
+      {
+        "task_id": "profile_card_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "news_story_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "broadcast_caster_line",
+        "model_profile_id": "llm_profile_caster_expressive",
+        "driver_model_id": "driver_kimi_k2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.6,
+        "max_output_tokens": 500
+      },
+      {
+        "task_id": "spotlight_moment_copy",
+        "model_profile_id": "llm_profile_caster_expressive",
+        "driver_model_id": "driver_kimi_k2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.6,
+        "max_output_tokens": 500
+      }
+    ],
     "prompt_bias_tags": [
-      "high-impact",
-      "space-winning",
-      "rifle-core",
-      "site-break",
       "headline-core",
       "win-condition",
+      "impact-rifle",
+      "resource-heavy",
+      "rifle-core",
+      "site-break",
       "stable-star"
+    ],
+    "env_contract_refs": [
+      "AGENT_MAJOR_REAL_LLM_ENABLED",
+      "AGENT_MAJOR_LLM_PROVIDER",
+      "DASHSCOPE_BASE_URL",
+      "DASHSCOPE_API_KEY"
+    ],
+    "override_ids": [
+      "llm_override_spotlight_player_phaseclan_frozen"
+    ],
+    "ops_notes": [
+      "Use star heat and resource-pressure framing."
     ]
   },
   "ops_hooks": {

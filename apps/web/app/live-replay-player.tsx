@@ -115,9 +115,9 @@ export function LiveReplayPlayer({ replay, runnerPolicy }: LiveReplayPlayerProps
     return (
       <main className={styles.shell}>
         <section className={styles.emptyState}>
-          <p>Agent Major Phase 1.4</p>
+          <p>Agent Major Phase 1.7</p>
           <h1>没有可播放地图</h1>
-          <span>当前 match replay 没有 completed map，请先运行 `pnpm phase13:match`。</span>
+          <span>当前 match replay 没有 completed map，请先运行 `pnpm phase17:match`。</span>
         </section>
       </main>
     );
@@ -171,7 +171,7 @@ export function LiveReplayPlayer({ replay, runnerPolicy }: LiveReplayPlayerProps
     <main className={styles.shell}>
       <section className={styles.hero}>
         <div>
-          <p className={styles.kicker}>Agent Major Phase 1.4 / Viewer Mode</p>
+          <p className={styles.kicker}>Agent Major Phase 1.7 / Materials Showcase</p>
           <h1>
             {replay.teams.teamA.displayName} vs {replay.teams.teamB.displayName}
           </h1>
@@ -349,7 +349,10 @@ export function LiveReplayPlayer({ replay, runnerPolicy }: LiveReplayPlayerProps
                   <div key={entry.id} className={styles.feedItem}>
                     <span>{formatClock(entry.atMs)}</span>
                     <strong>{entry.text}</strong>
-                    <small>{entry.zoneId ?? "unknown zone"}</small>
+                    <small>
+                      {entry.actorName ?? entry.actorAgentId ?? "unknown"} {entry.actorRole ? `(${entry.actorRole})` : ""}{" "}
+                      {entry.targetName ? `-> ${entry.targetName}` : ""} / {entry.zoneId ?? "unknown zone"}
+                    </small>
                   </div>
                 ))
               ) : (
@@ -378,7 +381,7 @@ export function LiveReplayPlayer({ replay, runnerPolicy }: LiveReplayPlayerProps
             {frame.highlightTags.length > 0 ? (
               <div className={styles.highlightBox}>
                 <strong>{frame.highlightTags.join(" / ")}</strong>
-                <span>MVP 候选：{frame.highlightMvpAgentId ?? "pending"}</span>
+                <span>MVP: {frame.highlightMvpName ?? frame.highlightMvpAgentId ?? "pending"}</span>
                 {frame.replayCard ? (
                   <div className={styles.replayCard}>
                     <small>Replay Card</small>
@@ -400,10 +403,10 @@ export function LiveReplayPlayer({ replay, runnerPolicy }: LiveReplayPlayerProps
             <div className={styles.economyGrid}>
               {frame.economyRows.map((row) => (
                 <div key={row.agentId} className={styles.economyRow}>
-                  <span>{row.agentId}</span>
+                  <span>{row.displayName}</span>
                   <strong>{row.afterTokenBank}</strong>
                   <small>
-                    {row.buyType} / {row.spent} spent / LS {row.lossStreak}
+                    {row.role} / {row.buyType} / {row.spent} spent / LS {row.lossStreak}
                   </small>
                 </div>
               ))}

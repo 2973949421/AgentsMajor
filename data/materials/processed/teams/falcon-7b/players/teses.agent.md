@@ -8,6 +8,15 @@
 - 公开 ID：TeSeS
 - 法定姓名：待回填
 
+## CS Role Profile
+- 原始位置：Support / Anchor / rifler
+- 主位置：support
+- 次级位置：anchor, rifler
+- 可信度：中-高
+- Agent Major 职责：补全细节 / 修复方案 / 提供上下文；防守型论证 / 稳定性校验；通用火力 / 回合执行 / 补枪衔接
+- 备注：团队步枪、补位和锚点。
+- 来源：raw/teams/agent_major_player_roles.md
+
 ## Alias
 - TeSeS
 
@@ -31,7 +40,8 @@
 
 ## Future Interfaces
 - agent 人格接口：money-superteam, old-guard-last-dance, upset-watch, glue-piece, utility-worker, glue-fragger
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- 模型绑定接口：llm_role_template_support / driver_qwen_3_6_plus
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：补枪块, money-superteam, old-guard-last-dance, upset-watch
 
 ## Canon Notes

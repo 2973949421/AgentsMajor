@@ -6,8 +6,32 @@
   "real_name": null,
   "in_game_id": "XANTARES",
   "display_name": "XANTARES",
-  "role": "star",
+  "role": "entry",
   "status": "active",
+  "cs_role_profile": {
+    "source_path": "raw/teams/agent_major_player_roles.md",
+    "source_team_name": "AuLoRA",
+    "member_type": "player",
+    "raw_position": "Entry / Star Rifler",
+    "raw_position_parts": [
+      "Entry",
+      "Star Rifler"
+    ],
+    "primary_role": "entry",
+    "secondary_roles": [
+      "star_rifler"
+    ],
+    "position_tags": [
+      "entry",
+      "star_rifler"
+    ],
+    "confidence": "高",
+    "notes": "高爆发步枪、强主动性。",
+    "agent_major_responsibilities": [
+      "首轮出击 / 激进创意 / 打开局面",
+      "核心输出 / 关键回合 carry"
+    ]
+  },
   "aliases": [
     "XANTARES"
   ],
@@ -16,35 +40,36 @@
     "开脸"
   ],
   "persona_tags": [
-    "headline-core",
-    "win-condition",
+    "frontline-instigator",
+    "heat-checker",
     "frontline-star"
   ],
   "playstyle_tags": [
-    "high-impact",
-    "space-winning",
+    "first-contact",
+    "space-creator",
     "rifle-burst",
     "swing-control"
   ],
   "caster_focus_tags": [
-    "machine_star_carry"
+    "machine_force_buy_shock"
   ],
   "barrage_focus_tags": [
-    "player_targeting"
+    "player_targeting",
+    "research"
   ],
   "news_focus_tags": [
     "upset-watch"
   ],
   "cross_circle_tags": [
-    "band_to_superteam"
+    "cabinet_to_live_room_chaos"
   ],
   "future_agent_profile": {
     "persona_summary": "最像镜头正中心的人，只要正面滚起来就能瞬间拉高整队气压。",
     "voice_mode": "cn-live-room-competitive",
     "narrative_axes": [
       "upset-watch",
-      "headline-core",
-      "win-condition",
+      "frontline-instigator",
+      "heat-checker",
       "frontline-star"
     ],
     "reserved_memory_slots": [
@@ -55,16 +80,92 @@
     ]
   },
   "future_driver_binding": {
-    "preferred_driver_model_id": null,
-    "fallback_driver_model_ids": [],
+    "binding_version": "2026-05-03-llm-binding-v1",
+    "binding_scope": "asset_preallocation",
+    "runtime_enabled": false,
+    "role_template_id": "llm_role_template_entry",
+    "preferred_driver_model_id": "driver_minimax_m2_5",
+    "fallback_driver_model_ids": [
+      "driver_qwen_3_5_plus"
+    ],
+    "task_bindings": [
+      {
+        "task_id": "profile_card_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "broadcast_caster_line",
+        "model_profile_id": "llm_profile_caster_expressive",
+        "driver_model_id": "driver_kimi_k2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.6,
+        "max_output_tokens": 500
+      },
+      {
+        "task_id": "barrage_style_line",
+        "model_profile_id": "llm_profile_barrage_chaos",
+        "driver_model_id": "driver_minimax_m2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_5_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.7,
+        "max_output_tokens": 450
+      },
+      {
+        "task_id": "meme_reaction_line",
+        "model_profile_id": "llm_profile_barrage_chaos",
+        "driver_model_id": "driver_minimax_m2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_5_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.7,
+        "max_output_tokens": 450
+      },
+      {
+        "task_id": "spotlight_moment_copy",
+        "model_profile_id": "llm_profile_caster_expressive",
+        "driver_model_id": "driver_kimi_k2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.6,
+        "max_output_tokens": 500
+      }
+    ],
     "prompt_bias_tags": [
-      "high-impact",
-      "space-winning",
+      "frontline-instigator",
+      "first-contact",
+      "space-creator",
+      "high-variance",
       "rifle-burst",
       "swing-control",
-      "headline-core",
-      "win-condition",
+      "heat-checker",
       "frontline-star"
+    ],
+    "env_contract_refs": [
+      "AGENT_MAJOR_REAL_LLM_ENABLED",
+      "AGENT_MAJOR_LLM_PROVIDER",
+      "DASHSCOPE_BASE_URL",
+      "DASHSCOPE_API_KEY"
+    ],
+    "override_ids": [
+      "llm_override_spotlight_player_aulora_xantares"
+    ],
+    "ops_notes": [
+      "Prefer first-contact, overpeek, space creation, and instant reaction hooks."
     ]
   },
   "ops_hooks": {
@@ -76,7 +177,7 @@
     ],
     "card_priority": 12,
     "broadcast_entry_points": [
-      "machine_star_carry"
+      "machine_force_buy_shock"
     ]
   },
   "canon_notes": []

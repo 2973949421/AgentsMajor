@@ -8,6 +8,15 @@
 - 公开 ID：B1ad3
 - 法定姓名：待回填
 
+## CS Role Profile
+- 原始位置：Coach / system architect
+- 主位置：coach
+- 次级位置：system_architect
+- 可信度：高
+- Agent Major 职责：战术暂停 / 赛前准备 / 赛后复盘
+- 备注：NaVi 长期体系教练。
+- 来源：raw/teams/agent_major_player_roles.md
+
 ## Alias
 - B1ad3
 - blad3
@@ -32,7 +41,8 @@
 
 ## Future Interfaces
 - agent 人格接口：history-burden, system-adult, reset-point, culture-builder
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- 模型绑定接口：llm_role_template_coach / driver_qwen_3_max_2026_01_23
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：体系教父, history-burden
 
 ## Canon Notes

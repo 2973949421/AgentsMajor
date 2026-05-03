@@ -3,10 +3,19 @@
 ## Snapshot
 - 队伍：Prompt Gaming
 - 类型：player
-- 角色：igl
+- 角色：rifler
 - 当前状态：active
 - 公开 ID：vsm
 - 法定姓名：待回填
+
+## CS Role Profile
+- 原始位置：Rifler / Star
+- 主位置：rifler
+- 次级位置：star_rifler
+- 可信度：中
+- Agent Major 职责：通用火力 / 回合执行 / 补枪衔接；核心输出 / 关键回合 carry
+- 备注：核心步枪火力。
+- 来源：raw/teams/agent_major_player_roles.md
 
 ## Alias
 - vsm
@@ -18,20 +27,21 @@
 - 节奏头
 
 ## Playstyle Tags
-- mid-round-call
-- tempo-control
+- rifle-trade
+- site-pressure
 - pace-up
 - emotion-call
 
 ## Broadcast / Barrage / News
-- 解说标签：machine_old_guard_command
-- 弹幕标签：player_targeting, old_guard
+- 解说标签：machine_map_point_pressure
+- 弹幕标签：player_targeting
 - 新闻标签：brazil-heat, upset-watch
 - 跨圈标签：customer_service_to_cleanup
 
 ## Future Interfaces
-- agent 人格接口：brazil-heat, upset-watch, shotcaller, system-brain, energy-caller
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- agent 人格接口：brazil-heat, upset-watch, rifle-worker, round-connector, energy-caller
+- 模型绑定接口：llm_role_template_rifler / driver_qwen_3_6_plus
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：节奏头, brazil-heat, upset-watch
 
 ## Canon Notes

@@ -8,6 +8,15 @@
 - 公开 ID：flameZ
 - 法定姓名：待回填
 
+## CS Role Profile
+- 原始位置：Entry / aggressive rifler
+- 主位置：entry
+- 次级位置：rifler
+- 可信度：高
+- Agent Major 职责：首轮出击 / 激进创意 / 打开局面；通用火力 / 回合执行 / 补枪衔接
+- 备注：常见定位为突破/高主动性步枪手。
+- 来源：raw/teams/agent_major_player_roles.md
+
 ## Alias
 - flameZ
 - 火
@@ -35,7 +44,8 @@
 
 ## Future Interfaces
 - agent 人格接口：research-chaos, frontline-instigator, heat-checker, chaos-trigger, research-prototype
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- 模型绑定接口：llm_role_template_entry / driver_minimax_m2_5
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：研发样本, 火÷, 影响研发, research-chaos
 
 ## Canon Notes

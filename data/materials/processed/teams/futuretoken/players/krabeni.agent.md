@@ -8,6 +8,15 @@
 - 公开 ID：Krabeni
 - 法定姓名：待回填
 
+## CS Role Profile
+- 原始位置：Support / Rifler
+- 主位置：support
+- 次级位置：rifler
+- 可信度：低-中
+- Agent Major 职责：补全细节 / 修复方案 / 提供上下文；通用火力 / 回合执行 / 补枪衔接
+- 备注：公开角色资料较少，项目中设为辅助步枪。
+- 来源：raw/teams/agent_major_player_roles.md
+
 ## Alias
 - Krabeni
 
@@ -31,7 +40,8 @@
 
 ## Future Interfaces
 - agent 人格接口：upset-watch, glue-piece, utility-worker, mid-pack-worker
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- 模型绑定接口：llm_role_template_support / driver_qwen_3_6_plus
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：拼图支持, upset-watch
 
 ## Canon Notes

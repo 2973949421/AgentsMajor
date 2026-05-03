@@ -8,6 +8,15 @@
 - 公开 ID：FalleN
 - 法定姓名：待回填
 
+## CS Role Profile
+- 原始位置：IGL / secondary AWPer
+- 主位置：igl
+- 次级位置：awper
+- 可信度：中-高
+- Agent Major 职责：战术规划 / 回合策略 / 资源分配；高精度关键论点 / 单点突破 / 高风险高收益调用
+- 备注：项目中建议设为指挥，兼具老牌狙击传统。
+- 来源：raw/teams/agent_major_player_roles.md
+
 ## Alias
 - FalleN
 - 巴西教父
@@ -34,7 +43,8 @@
 
 ## Future Interfaces
 - agent 人格接口：old-guard-last-dance, brazil-heat, shotcaller, system-brain, mentor-core, legacy-leader
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- 模型绑定接口：llm_role_template_igl / driver_qwen_3_max_2026_01_23
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：巴西教父, 老将拨钟, old-guard-last-dance, brazil-heat
 
 ## Canon Notes

@@ -26,7 +26,7 @@ describe("Phase 1.5 web runner policy", () => {
         projectRoot,
         { AGENT_MAJOR_WEB_RUNNER_ENABLED: "true" }
       )
-    ).toEqual({ ok: true });
+    ).toEqual({ ok: true, mode: "phase15_single_map" });
   });
 
   it("rejects remote access unless a token-protected remote mode is configured", () => {
@@ -59,7 +59,7 @@ describe("Phase 1.5 web runner policy", () => {
           AGENT_MAJOR_WEB_RUNNER_TOKEN: "local-token"
         }
       )
-    ).toEqual({ ok: true });
+    ).toEqual({ ok: true, mode: "phase15_single_map" });
   });
 });
 

@@ -1,0 +1,281 @@
+{
+  "registry_id": "llm-agent-binding-overrides",
+  "version": "2026-05-03-llm-binding-v1",
+  "binding_scope": "asset_preallocation",
+  "runtime_enabled": false,
+  "selection_policy": "Generated spotlight overrides for high-heat entities with card_priority <= 20.",
+  "overrides": [
+    {
+      "override_id": "llm_override_spotlight_player_vitallmty_apex",
+      "entity_id": "player_vitallmty_apex",
+      "team_id": "team_vitallmty",
+      "team_slug": "vitallmty",
+      "display_name": "apEX",
+      "role": "igl",
+      "selection_reason": "heat_level=high and card_priority<=20",
+      "applied_task_ids": [
+        "spotlight_moment_copy"
+      ],
+      "applied_model_profile_ids": [
+        "llm_profile_caster_expressive"
+      ],
+      "runtime_enabled": false
+    },
+    {
+      "override_id": "llm_override_spotlight_player_vitallmty_ropz",
+      "entity_id": "player_vitallmty_ropz",
+      "team_id": "team_vitallmty",
+      "team_slug": "vitallmty",
+      "display_name": "ropz",
+      "role": "lurker",
+      "selection_reason": "heat_level=high and card_priority<=20",
+      "applied_task_ids": [
+        "spotlight_moment_copy"
+      ],
+      "applied_model_profile_ids": [
+        "llm_profile_caster_expressive"
+      ],
+      "runtime_enabled": false
+    },
+    {
+      "override_id": "llm_override_spotlight_player_vitallmty_zywoo",
+      "entity_id": "player_vitallmty_zywoo",
+      "team_id": "team_vitallmty",
+      "team_slug": "vitallmty",
+      "display_name": "ZywOo",
+      "role": "awper",
+      "selection_reason": "heat_level=high and card_priority<=20",
+      "applied_task_ids": [
+        "spotlight_moment_copy"
+      ],
+      "applied_model_profile_ids": [
+        "llm_profile_caster_expressive"
+      ],
+      "runtime_enabled": false
+    },
+    {
+      "override_id": "llm_override_spotlight_player_vitallmty_flamez",
+      "entity_id": "player_vitallmty_flamez",
+      "team_id": "team_vitallmty",
+      "team_slug": "vitallmty",
+      "display_name": "flameZ",
+      "role": "entry",
+      "selection_reason": "heat_level=high and card_priority<=20",
+      "applied_task_ids": [
+        "spotlight_moment_copy"
+      ],
+      "applied_model_profile_ids": [
+        "llm_profile_caster_expressive"
+      ],
+      "runtime_enabled": false
+    },
+    {
+      "override_id": "llm_override_spotlight_player_furia_fallen",
+      "entity_id": "player_furia_fallen",
+      "team_id": "team_furia",
+      "team_slug": "furia",
+      "display_name": "FalleN",
+      "role": "igl",
+      "selection_reason": "heat_level=high and card_priority<=20",
+      "applied_task_ids": [
+        "spotlight_moment_copy"
+      ],
+      "applied_model_profile_ids": [
+        "llm_profile_caster_expressive"
+      ],
+      "runtime_enabled": false
+    },
+    {
+      "override_id": "llm_override_spotlight_player_furia_yekindar",
+      "entity_id": "player_furia_yekindar",
+      "team_id": "team_furia",
+      "team_slug": "furia",
+      "display_name": "YEKINDAR",
+      "role": "entry",
+      "selection_reason": "heat_level=high and card_priority<=20",
+      "applied_task_ids": [
+        "spotlight_moment_copy"
+      ],
+      "applied_model_profile_ids": [
+        "llm_profile_caster_expressive"
+      ],
+      "runtime_enabled": false
+    },
+    {
+      "override_id": "llm_override_spotlight_player_furia_kscerato",
+      "entity_id": "player_furia_kscerato",
+      "team_id": "team_furia",
+      "team_slug": "furia",
+      "display_name": "KSCERATO",
+      "role": "star_rifler",
+      "selection_reason": "heat_level=high and card_priority<=20",
+      "applied_task_ids": [
+        "spotlight_moment_copy"
+      ],
+      "applied_model_profile_ids": [
+        "llm_profile_caster_expressive"
+      ],
+      "runtime_enabled": false
+    },
+    {
+      "override_id": "llm_override_spotlight_player_falcon_7b_karrigan",
+      "entity_id": "player_falcon_7b_karrigan",
+      "team_id": "team_falcon_7b",
+      "team_slug": "falcon-7b",
+      "display_name": "karrigan",
+      "role": "igl",
+      "selection_reason": "heat_level=high and card_priority<=20",
+      "applied_task_ids": [
+        "spotlight_moment_copy"
+      ],
+      "applied_model_profile_ids": [
+        "llm_profile_caster_expressive"
+      ],
+      "runtime_enabled": false
+    },
+    {
+      "override_id": "llm_override_spotlight_player_falcon_7b_niko",
+      "entity_id": "player_falcon_7b_niko",
+      "team_id": "team_falcon_7b",
+      "team_slug": "falcon-7b",
+      "display_name": "NiKo",
+      "role": "star_rifler",
+      "selection_reason": "heat_level=high and card_priority<=20",
+      "applied_task_ids": [
+        "spotlight_moment_copy"
+      ],
+      "applied_model_profile_ids": [
+        "llm_profile_caster_expressive"
+      ],
+      "runtime_enabled": false
+    },
+    {
+      "override_id": "llm_override_spotlight_player_falcon_7b_m0nesy",
+      "entity_id": "player_falcon_7b_m0nesy",
+      "team_id": "team_falcon_7b",
+      "team_slug": "falcon-7b",
+      "display_name": "m0NESY",
+      "role": "awper",
+      "selection_reason": "heat_level=high and card_priority<=20",
+      "applied_task_ids": [
+        "spotlight_moment_copy"
+      ],
+      "applied_model_profile_ids": [
+        "llm_profile_caster_expressive"
+      ],
+      "runtime_enabled": false
+    },
+    {
+      "override_id": "llm_override_spotlight_player_parivision_omni_jame",
+      "entity_id": "player_parivision_omni_jame",
+      "team_id": "team_parivision_omni",
+      "team_slug": "parivision-omni",
+      "display_name": "Jame",
+      "role": "igl",
+      "selection_reason": "heat_level=high and card_priority<=20",
+      "applied_task_ids": [
+        "spotlight_moment_copy"
+      ],
+      "applied_model_profile_ids": [
+        "llm_profile_caster_expressive"
+      ],
+      "runtime_enabled": false
+    },
+    {
+      "override_id": "llm_override_spotlight_player_aulora_xantares",
+      "entity_id": "player_aulora_xantares",
+      "team_id": "team_aulora",
+      "team_slug": "aulora",
+      "display_name": "XANTARES",
+      "role": "entry",
+      "selection_reason": "heat_level=high and card_priority<=20",
+      "applied_task_ids": [
+        "spotlight_moment_copy"
+      ],
+      "applied_model_profile_ids": [
+        "llm_profile_caster_expressive"
+      ],
+      "runtime_enabled": false
+    },
+    {
+      "override_id": "llm_override_spotlight_player_the_mongolzk_910",
+      "entity_id": "player_the_mongolzk_910",
+      "team_id": "team_the_mongolzk",
+      "team_slug": "the-mongolzk",
+      "display_name": "910",
+      "role": "awper",
+      "selection_reason": "heat_level=high and card_priority<=20",
+      "applied_task_ids": [
+        "spotlight_moment_copy"
+      ],
+      "applied_model_profile_ids": [
+        "llm_profile_caster_expressive"
+      ],
+      "runtime_enabled": false
+    },
+    {
+      "override_id": "llm_override_spotlight_player_team_spirit_donk",
+      "entity_id": "player_team_spirit_donk",
+      "team_id": "team_team_spirit",
+      "team_slug": "team-spirit",
+      "display_name": "donk",
+      "role": "entry",
+      "selection_reason": "heat_level=high and card_priority<=20",
+      "applied_task_ids": [
+        "spotlight_moment_copy"
+      ],
+      "applied_model_profile_ids": [
+        "llm_profile_caster_expressive"
+      ],
+      "runtime_enabled": false
+    },
+    {
+      "override_id": "llm_override_spotlight_player_phaseclan_broky",
+      "entity_id": "player_phaseclan_broky",
+      "team_id": "team_phaseclan",
+      "team_slug": "phaseclan",
+      "display_name": "broky",
+      "role": "awper",
+      "selection_reason": "heat_level=high and card_priority<=20",
+      "applied_task_ids": [
+        "spotlight_moment_copy"
+      ],
+      "applied_model_profile_ids": [
+        "llm_profile_caster_expressive"
+      ],
+      "runtime_enabled": false
+    },
+    {
+      "override_id": "llm_override_spotlight_player_phaseclan_twistzz",
+      "entity_id": "player_phaseclan_twistzz",
+      "team_id": "team_phaseclan",
+      "team_slug": "phaseclan",
+      "display_name": "Twistzz",
+      "role": "igl",
+      "selection_reason": "heat_level=high and card_priority<=20",
+      "applied_task_ids": [
+        "spotlight_moment_copy"
+      ],
+      "applied_model_profile_ids": [
+        "llm_profile_caster_expressive"
+      ],
+      "runtime_enabled": false
+    },
+    {
+      "override_id": "llm_override_spotlight_player_phaseclan_frozen",
+      "entity_id": "player_phaseclan_frozen",
+      "team_id": "team_phaseclan",
+      "team_slug": "phaseclan",
+      "display_name": "frozen",
+      "role": "star_rifler",
+      "selection_reason": "heat_level=high and card_priority<=20",
+      "applied_task_ids": [
+        "spotlight_moment_copy"
+      ],
+      "applied_model_profile_ids": [
+        "llm_profile_caster_expressive"
+      ],
+      "runtime_enabled": false
+    }
+  ]
+}

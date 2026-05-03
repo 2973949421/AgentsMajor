@@ -1,14 +1,14 @@
 # The MongolZK Roster
 
 ## Active Five
-- bLitz | igl | player_the_mongolzk_blitz
-- Techno | support | player_the_mongolzk_techno
-- mzinho | star | player_the_mongolzk_mzinho
-- 910 | closer | player_the_mongolzk_910
-- cobrazera | entry | player_the_mongolzk_cobrazera
+- bLitz | igl | IGL / Rifler | 高 | player_the_mongolzk_blitz
+- Techno | rifler | Rifler / Entry-style | 中-高 | player_the_mongolzk_techno
+- mzinho | rifler | Rifler / Support / Anchor | 中 | player_the_mongolzk_mzinho
+- 910 | awper | AWPer | 高 | player_the_mongolzk_910
+- cobrazera | rifler | Rifler / Flex | 中 | player_the_mongolzk_cobrazera
 
 ## Coach
-- 正式教练：maaRaa (coach_the_mongolzk_maaraa)
+- 正式教练：maaRaa (coach_the_mongolzk_maaraa，Coach，可信度 高)
 
 ## Snapshot
 - 阵容版本：2026-05-03-canon-v1

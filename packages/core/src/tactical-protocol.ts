@@ -43,6 +43,7 @@ export interface TacticalCollisionInput extends RuleBasedTacticalPlans {
   scoreBeforeRound: ScorePair;
   judgeResult: JudgeResult;
   teamAId: string;
+  activeAgentsById: Record<string, Agent>;
 }
 
 export interface TacticalRoundGeneration extends RuleBasedTacticalPlans {
@@ -119,7 +120,7 @@ export function resolveTacticalCollision(input: TacticalCollisionInput): Tactica
     buyModifier(attackingBuyType) +
     attackApproachModifier(input.attackPlan.approach) +
     weakZoneBonus +
-    attackRoleModifier(input.attackPlan.activeAgentIds) +
+    attackRoleModifier(input.attackPlan.activeAgentIds, input.activeAgentsById) +
     tempoModifier(input.sideAssignment.attackingTeamId, input.teamAId, input.scoreBeforeRound, input.judgeResult.winnerTeamId) +
     midAttackBonus +
     ecoStealBonus;
@@ -128,7 +129,7 @@ export function resolveTacticalCollision(input: TacticalCollisionInput): Tactica
     buyModifier(defendingBuyType) +
     defenseSetupModifier(input.defenseDeployment.setup) +
     rotateModifier(input.defenseDeployment.rotatePolicy) +
-    defenseRoleModifier(input.defenseDeployment.anchorAgentIds) +
+    defenseRoleModifier(input.defenseDeployment.anchorAgentIds, input.activeAgentsById) +
     tempoModifier(input.sideAssignment.defendingTeamId, input.teamAId, input.scoreBeforeRound, input.judgeResult.winnerTeamId) +
     heavyZoneBonus +
     midDefenseBonus +
@@ -628,12 +629,21 @@ function alignScoresWithCollisionResult(input: {
   };
 }
 
-function attackRoleModifier(agentIds: string[]): number {
-  return Math.min(9, agentIds.filter((agentId) => /entry|star|closer/i.test(agentId)).length * 3);
+function attackRoleModifier(agentIds: string[], agentsById: Record<string, Agent>): number {
+  return Math.min(9, agentIds.filter((agentId) => agentHasAnyRole(agentsById[agentId], ["entry", "star_rifler", "awper", "closer"])).length * 3);
 }
 
-function defenseRoleModifier(agentIds: string[]): number {
-  return Math.min(9, agentIds.filter((agentId) => /igl|support|coach/i.test(agentId)).length * 3);
+function defenseRoleModifier(agentIds: string[], agentsById: Record<string, Agent>): number {
+  return Math.min(9, agentIds.filter((agentId) => agentHasAnyRole(agentsById[agentId], ["igl", "support", "lurker", "anchor", "coach"])).length * 3);
+}
+
+function agentHasAnyRole(agent: Agent | undefined, roles: string[]): boolean {
+  if (!agent) {
+    return false;
+  }
+
+  const roleSet = new Set<string>([agent.role, ...(agent.secondaryRoles ?? [])]);
+  return roles.some((role) => roleSet.has(role));
 }
 
 function tempoModifier(teamId: string, teamAId: string, scoreBeforeRound: ScorePair, judgeWinnerTeamId: string): number {

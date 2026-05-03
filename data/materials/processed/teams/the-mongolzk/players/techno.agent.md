@@ -3,10 +3,19 @@
 ## Snapshot
 - 队伍：The MongolZK
 - 类型：player
-- 角色：support
+- 角色：rifler
 - 当前状态：active
 - 公开 ID：Techno
 - 法定姓名：待回填
+
+## CS Role Profile
+- 原始位置：Rifler / Entry-style
+- 主位置：rifler
+- 次级位置：entry
+- 可信度：中-高
+- Agent Major 职责：通用火力 / 回合执行 / 补枪衔接；首轮出击 / 激进创意 / 打开局面
+- 备注：高主动性步枪位。
+- 来源：raw/teams/agent_major_player_roles.md
 
 ## Alias
 - Techno
@@ -18,8 +27,8 @@
 - 工兵铁骑
 
 ## Playstyle Tags
-- trade-layer
-- utility-setup
+- rifle-trade
+- site-pressure
 - utility-hold
 - trade-work
 
@@ -30,8 +39,9 @@
 - 跨圈标签：customer_service_to_cleanup
 
 ## Future Interfaces
-- agent 人格接口：asia-rise, upset-watch, glue-piece, utility-worker, line-holder
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- agent 人格接口：asia-rise, upset-watch, rifle-worker, round-connector, line-holder
+- 模型绑定接口：llm_role_template_rifler / driver_qwen_3_6_plus
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：工兵铁骑, asia-rise, upset-watch
 
 ## Canon Notes

@@ -8,6 +8,15 @@
 - 公开 ID：mezii
 - 法定姓名：待回填
 
+## CS Role Profile
+- 原始位置：Support / Anchor / flex rifler
+- 主位置：support
+- 次级位置：anchor, flex
+- 可信度：中-高
+- Agent Major 职责：补全细节 / 修复方案 / 提供上下文；防守型论证 / 稳定性校验；多场景适配 / 缺口填补 / 角色切换
+- 备注：多功能补位，偏团队型步枪位。
+- 来源：raw/teams/agent_major_player_roles.md
+
 ## Alias
 - mezii
 
@@ -31,7 +40,8 @@
 
 ## Future Interfaces
 - agent 人格接口：title-favorite, glue-piece, utility-worker, glue-player, quiet-fixer
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- 模型绑定接口：llm_role_template_support / driver_qwen_3_6_plus
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：补位工兵, title-favorite
 
 ## Canon Notes

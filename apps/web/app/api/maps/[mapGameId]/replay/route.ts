@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server.js";
 
+import { toLiveMapReplayData } from "../../../../live-replay-model";
 import { loadMapReplay } from "../../../../map-replay-data";
 
 export const runtime = "nodejs";
@@ -11,12 +12,18 @@ interface RouteContext {
   }>;
 }
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   const { mapGameId } = await context.params;
   const replay = await loadMapReplay(mapGameId);
   if (!replay) {
     return NextResponse.json({ error: `Map replay not found: ${mapGameId}` }, { status: 404 });
   }
 
-  return NextResponse.json(replay);
+  const { searchParams } = new URL(request.url);
+  const format = searchParams.get("format");
+  if (format && format !== "live") {
+    return NextResponse.json({ error: "Public replay routes only expose the live-safe format." }, { status: 400 });
+  }
+
+  return NextResponse.json(toLiveMapReplayData(replay));
 }

@@ -19,6 +19,7 @@
       "@agent-major/llm": ["packages/llm/src/index.ts"],
       "@agent-major/queue": ["packages/queue/src/index.ts"],
       "@agent-major/db": ["packages/db/src/index.ts"],
+      "@agent-major/materials": ["packages/materials/src/index.ts"],
       "@agent-major/core": ["packages/core/src/index.ts"],
       "@agent-major/cli": ["packages/cli/src/index.ts"]
     },

@@ -233,8 +233,11 @@ CREATE TABLE IF NOT EXISTS agents (
   driver_model_id text NOT NULL REFERENCES driver_models(id),
   parameter_profile_id text,
   role text NOT NULL,
+  secondary_roles_json text,
   display_name text NOT NULL,
   base_profile_json text NOT NULL,
+  role_profile_json text,
+  material_ref_json text,
   current_state text NOT NULL,
   created_at text NOT NULL,
   updated_at text
@@ -442,6 +445,9 @@ CREATE INDEX IF NOT EXISTS economy_states_agent_round_idx ON economy_states(agen
 CREATE INDEX IF NOT EXISTS summaries_scope_idx ON summaries(scope_type, scope_id, created_at);
 `);
   ensureSqliteColumn(sqlite, "round_reports", "tactical_context_json", "text");
+  ensureSqliteColumn(sqlite, "agents", "secondary_roles_json", "text");
+  ensureSqliteColumn(sqlite, "agents", "role_profile_json", "text");
+  ensureSqliteColumn(sqlite, "agents", "material_ref_json", "text");
 }
 
 function ensureSqliteColumn(sqlite: SqliteDatabase, tableName: string, columnName: string, definition: string): void {
@@ -562,14 +568,23 @@ class AgentSqliteRepository implements AgentRepository {
     const item = agentSchema.parse(entity);
     this.sqlite
       .prepare(
-        `INSERT INTO agents (id, team_id, driver_model_id, parameter_profile_id, role, display_name, base_profile_json, current_state, created_at, updated_at)
-         VALUES (@id, @teamId, @driverModelId, @parameterProfileId, @role, @displayName, @baseProfileJson, @currentState, @createdAt, @updatedAt)
+        `INSERT INTO agents (id, team_id, driver_model_id, parameter_profile_id, role, secondary_roles_json, display_name, base_profile_json, role_profile_json, material_ref_json, current_state, created_at, updated_at)
+         VALUES (@id, @teamId, @driverModelId, @parameterProfileId, @role, @secondaryRolesJson, @displayName, @baseProfileJson, @roleProfileJson, @materialRefJson, @currentState, @createdAt, @updatedAt)
          ON CONFLICT(id) DO UPDATE SET
          team_id = excluded.team_id, driver_model_id = excluded.driver_model_id, parameter_profile_id = excluded.parameter_profile_id,
-         role = excluded.role, display_name = excluded.display_name, base_profile_json = excluded.base_profile_json,
+         role = excluded.role, secondary_roles_json = excluded.secondary_roles_json, display_name = excluded.display_name, base_profile_json = excluded.base_profile_json,
+         role_profile_json = excluded.role_profile_json, material_ref_json = excluded.material_ref_json,
          current_state = excluded.current_state, created_at = excluded.created_at, updated_at = excluded.updated_at`
       )
-      .run(toNullable({ ...item, baseProfileJson: JSON.stringify(item.baseProfile) }));
+      .run(
+        toNullable({
+          ...item,
+          secondaryRolesJson: stringifyOptional(item.secondaryRoles),
+          baseProfileJson: JSON.stringify(item.baseProfile),
+          roleProfileJson: stringifyOptional(item.roleProfile),
+          materialRefJson: stringifyOptional(item.materialRef)
+        })
+      );
   }
 }
 
@@ -1039,18 +1054,55 @@ function mapDriverModel(row: Row) {
 }
 
 function mapAgent(row: Row) {
+  const role = normalizeLegacyAgentRole(asString(row.role));
   return removeUndefined({
     id: asString(row.id),
     teamId: asString(row.team_id),
     driverModelId: asString(row.driver_model_id),
     parameterProfileId: nullableString(row.parameter_profile_id),
-    role: asString(row.role),
+    role,
+    secondaryRoles: normalizeAgentRoleTags(parseOptionalJson(row.secondary_roles_json)),
     displayName: asString(row.display_name),
     baseProfile: parseJson(row.base_profile_json),
+    roleProfile: normalizeRoleProfile(parseOptionalJson(row.role_profile_json)),
+    materialRef: parseOptionalJson(row.material_ref_json),
     currentState: asString(row.current_state),
     createdAt: asString(row.created_at),
     updatedAt: nullableString(row.updated_at)
   });
+}
+
+function normalizeLegacyAgentRole(role: string): string {
+  if (role === "star") return "star_rifler";
+  if (role === "closer") return "rifler";
+  return role;
+}
+
+function normalizeAgentRoleTags(value: unknown): unknown {
+  if (!Array.isArray(value)) {
+    return value;
+  }
+
+  return value.map((item) => (typeof item === "string" ? normalizeLegacyAgentRoleTag(item) : item));
+}
+
+function normalizeLegacyAgentRoleTag(role: string): string {
+  if (role === "star") return "star_rifler";
+  return role;
+}
+
+function normalizeRoleProfile(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return value;
+  }
+
+  const record = value as Record<string, unknown>;
+  return {
+    ...record,
+    primaryRole: typeof record.primaryRole === "string" ? normalizeLegacyAgentRole(record.primaryRole) : record.primaryRole,
+    secondaryRoles: normalizeAgentRoleTags(record.secondaryRoles),
+    positionTags: normalizeAgentRoleTags(record.positionTags)
+  };
 }
 
 function mapMatch(row: Row) {

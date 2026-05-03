@@ -3,10 +3,19 @@
 ## Snapshot
 - 队伍：FurIA
 - 类型：player
-- 角色：support
+- 角色：awper
 - 当前状态：active
 - 公开 ID：molodoy
 - 法定姓名：待回填
+
+## CS Role Profile
+- 原始位置：AWPer
+- 主位置：awper
+- 次级位置：none
+- 可信度：高
+- Agent Major 职责：高精度关键论点 / 单点突破 / 高风险高收益调用
+- 备注：作为主狙处理。
+- 来源：raw/teams/agent_major_player_roles.md
 
 ## Alias
 - molodoy
@@ -18,20 +27,21 @@
 - 新拼图
 
 ## Playstyle Tags
-- trade-layer
-- utility-setup
+- awp-control
+- single-point-pressure
 - support-spacing
 - rotate-cover
 
 ## Broadcast / Barrage / News
-- 解说标签：machine_map_point_pressure
-- 弹幕标签：player_targeting
+- 解说标签：machine_star_carry
+- 弹幕标签：player_targeting, big_dad
 - 新闻标签：upset-watch
 - 跨圈标签：customer_service_to_cleanup
 
 ## Future Interfaces
-- agent 人格接口：upset-watch, glue-piece, utility-worker, new-piece
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- agent 人格接口：upset-watch, precision-core, high-leverage, new-piece
+- 模型绑定接口：llm_role_template_awper / driver_kimi_k2_5
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：新拼图, upset-watch
 
 ## Canon Notes

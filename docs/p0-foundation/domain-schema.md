@@ -210,7 +210,10 @@ status
 | 所属队伍 ID | `teamId` | `string` | 是 | 指向 Team。 |
 | 驾驶员模型 ID | `driverModelId` | `string` | 是 | 指向 DriverModel。 |
 | 参数档案 ID | `parameterProfileId` | `string` | 否 | 连接未来智能体精细化参数。 |
-| 角色 | `role` | `AgentRole` | 是 | 教练、指挥、突破手等。 |
+| 主角色 | `role` | `AgentRole` | 是 | materials 主角色枚举，例如 entry、star_rifler、awper。 |
+| 副角色标签 | `secondaryRoles` | `AgentRoleTag[]` | 否 | anchor、flex、closer、system_architect 等辅助标签。 |
+| 角色档案 | `roleProfile` | `AgentRoleProfile` | 否 | 保存 raw position、confidence、positionTags 和职责说明。 |
+| 素材引用 | `materialRef` | `AgentMaterialRef` | 否 | 保存 materials entity id、team slug、json path、binding version 与 runtimeEnabled。 |
 | 展示名称 | `displayName` | `string` | 是 | 转播、面板、统计使用。 |
 | 基础档案 | `baseProfile` | `AgentBaseProfile` | 是 | 只放基础可读信息。 |
 | 当前状态 | `currentState` | `AgentState` | 是 | 火热、低迷、低经济等基础状态。 |
@@ -226,6 +229,28 @@ status
 | 风格标签 | `styleTags` | `string[]` | 是 | 例如激进、稳健、反制。 |
 | 优势摘要 | `strengthSummary` | `string` | 否 | 不展开能力参数。 |
 | 弱点摘要 | `weaknessSummary` | `string` | 否 | 不展开能力参数。 |
+
+`roleProfile` 保存 materials 到运行时的角色解释：
+
+| 中文字段 | 代码字段 | 类型草案 | 必填 | 说明 |
+|---|---|---|---|---|
+| 原始位置 | `rawPosition` | `string` | 否 | materials 原始 position 文本。 |
+| 主角色 | `primaryRole` | `AgentRole` | 是 | 规范化后的主角色。 |
+| 置信度 | `confidence` | `string` | 否 | role index 给出的角色归一置信度或描述。 |
+| 位置标签 | `positionTags` | `AgentRoleTag[]` | 否 | anchor、flex、closer 等副标签。 |
+| 职责说明 | `responsibilitySummary` | `string` | 否 | 面向转播和调试的职责摘要。 |
+
+`materialRef` 保存 materials 资产引用，但不暴露 raw materials 全量 JSON：
+
+| 中文字段 | 代码字段 | 类型草案 | 必填 | 说明 |
+|---|---|---|---|---|
+| 实体 ID | `entityId` | `string` | 是 | materials entity id。 |
+| 实体类型 | `entityType` | `string` | 是 | player、coach 等。 |
+| 队伍 slug | `teamSlug` | `string` | 是 | materials team slug。 |
+| JSON 路径 | `jsonPath` | `string` | 是 | processed 内相对路径或索引路径。 |
+| 绑定版本 | `bindingVersion` | `string` | 否 | future LLM binding 版本。 |
+| 运行时启用 | `runtimeEnabled` | `boolean` | 是 | Phase 1.7 固定为 false。 |
+| 别名 | `aliases` | `string[]` | 否 | 可公开展示的安全别名。 |
 
 上游来源：
 
@@ -246,6 +271,9 @@ status
 - `driverModelId` 用于绑定执行引擎，不进入第一版经济平衡。
 - `parameterProfileId` 是未来扩展入口，P0.1 不展开完整智能体参数体系。
 - 精细化参数后续可覆盖能力、战术倾向、经济行为、地图偏好、状态波动、输出风格等。
+- Phase 1.7 后，materials 的 processed role index 是运行时角色事实源。
+- 读取旧数据时允许把 `star` 映射为 `star_rifler`，把 `closer` 映射为 `rifler`；新写入不得继续产生旧 primary role。
+- `materialRef.runtimeEnabled` 在 Phase 1.7 必须为 `false`，表示 future LLM binding 只作为资产引用，不参与胜负、战术或生成。
 
 ### 5.4 大模型驾驶员（DriverModel）
 
@@ -801,18 +829,37 @@ waiting_for_next_map
 ```text
 coach
 igl
+awper
 entry
-star
+star_rifler
 lurker
 support
-closer
+rifler
+stand_in
 ```
 
 说明：
 
-- 第一版可使用 5 名智能体 + 1 名教练。
-- 是否同时使用 support 和 closer，由后续队伍构成文档决定。
-- P0.1 只保留角色枚举，不决定每队最终人数。
+- Phase 1.7 后，`Agent.role` 使用 materials 主角色枚举。
+- `star` 不再作为新写入角色，读取旧数据时兼容映射为 `star_rifler`。
+- `closer` 不再作为新写入 primary role，读取旧数据时兼容映射为 `rifler`。
+- 每队运行时默认导入 5 名 active player；coach 是否导入取决于 materials 中是否存在有效 head coach。
+- P0.1 只保留角色枚举，不决定完整赛事名单人数。
+
+### 8.7.1 智能体副角色标签（AgentRoleTag）
+
+```text
+anchor
+flex
+closer
+system_architect
+```
+
+说明：
+
+- 副角色标签用于保留 materials 中的辅助定位，不替代 `Agent.role`。
+- `closer` 作为 secondary role tag 仍可表达残局收束特质。
+- 工程实现可以扩展可接受标签，但新增标签必须先经过 shared schema 和 materials validator。
 
 ### 8.8 智能体状态（AgentState）
 

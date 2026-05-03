@@ -1,14 +1,14 @@
 # Mouse Roster
 
 ## Active Five
-- torzsi | closer | player_mouse_torzsi
-- Spinx | lurker | player_mouse_spinx
-- jL | entry | player_mouse_jl
-- xertioN | star | player_mouse_xertion
-- xelex | support | player_mouse_xelex
+- torzsi | awper | AWPer | 高 | player_mouse_torzsi
+- Spinx | lurker | Lurker / Star Rifler | 高 | player_mouse_spinx
+- jL | rifler | Rifler / Entry-style / Flex | 中 | player_mouse_jl
+- xertioN | igl | IGL / aggressive rifler | 中-高 | player_mouse_xertion
+- xelex | rifler | Rifler / Support / young firepower | 中 | player_mouse_xelex
 
 ## Coach
-- 正式教练：sycrone (coach_mouse_sycrone)
+- 正式教练：sycrone (coach_mouse_sycrone，Coach，可信度 高)
 
 ## Snapshot
 - 阵容版本：2026-05-03-canon-v1

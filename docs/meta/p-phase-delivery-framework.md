@@ -189,18 +189,20 @@ Phase 1.4：极简伪直播播放器基础版。
 Phase 1.4 内容质量与事件可信度收口。
 Phase 1.45：P2.2 / P2.3 契约代码落地。
 Phase 1.5：真实 LLM 小范围接入。
+Phase 1.6：区域化攻防回合协议。
+Phase 1.7：Materials runtime integration 与角色契约升级。
 ```
 
-当前必须先做：
+当前必须先收口：
 
 ```text
-Phase 1.6：区域化攻防回合协议。
+Phase 1.7：恢复依赖后的完整回归验证、CLI smoke 和 Web/export 安全扫描。
 ```
 
 已预留并进入下一步：
 
 ```text
-Phase 1.6：区域化攻防回合协议，用 A / B 点、中路、连接区和 Token 资源分配承载 CS 式攻防博弈。
+Phase 2.0：完整 16 队 bracket 与赛事调度。
 ```
 
 当前进入：
@@ -309,6 +311,7 @@ Phase 1.4 极简伪直播 demo
 Phase 1.45 契约代码落地
 Phase 1.5 真实 LLM 小范围接入
 Phase 1.6 区域化攻防回合协议
+Phase 1.7 Materials runtime integration 与角色契约升级
 ```
 
 ### Phase 1.0 工程骨架
@@ -545,6 +548,68 @@ Judge 能解释区域碰撞如何影响胜负。
 P2.2 和 P2.3 只消费攻防事实，不反写比赛事实。
 ```
 
+### Phase 1.7 Materials runtime integration 与角色契约升级
+
+目标：
+
+```text
+把 data/materials/processed 稳定接入运行时，并让 materials 里的角色成为 Agent.role / secondaryRoles / roleProfile / materialRef 的工程事实源。
+```
+
+输入 P 文档：
+
+```text
+P0.1 领域模型。
+P1.3 大模型驾驶员契约。
+P1.4 比赛引擎说明。
+P1.5 本地持久化说明。
+P2.1 直播时间线说明。
+P2.2 2D 战术地图说明。
+P2.3 转播系统说明。
+```
+
+输出：
+
+```text
+@agent-major/materials Node-only package。
+loadProcessedMaterials。
+buildRuntimeTeamSeed。
+seedPhase17ShowcaseMatch。
+phase17:match / phase17:replay / phase17:export。
+默认 Falcon-7B vs VitaLLMty canon BO3。
+Web runner phase17_showcase_match fake-only 模式。
+Replay safe agentsById 视图。
+```
+
+角色契约：
+
+```text
+Agent.role = coach / igl / awper / entry / star_rifler / lurker / support / rifler / stand_in。
+Agent.secondaryRoles = anchor / flex / closer / system_architect 等副标签。
+读取旧数据时 star -> star_rifler，closer -> rifler。
+新写入不再产生 star 或 closer primary role。
+```
+
+验收：
+
+```text
+materials loader 校验 16 队、5 active players、role index、alias、style hooks 和 LLM binding。
+unknown role fail fast。
+所有 runtime agent 使用 driver_fake_phase17。
+future LLM binding 只作为 runtimeEnabled:false materialRef 保存。
+PhaseClan head_coach=null 不导入 Coach TBD 作为运行时 coach。
+Phase 1.6 tactical protocol 不再依赖 agent id 正则判断角色。
+Web replay/export 不暴露模型字段、llm_calls 或 future_driver_binding 全量 JSON。
+```
+
+非目标：
+
+```text
+不做完整 16 队 bracket。
+不启用真实 agent / judge LLM。
+不让 materials LLM binding 影响胜负、战术或生成。
+```
+
 ### Phase 2：完整赛事雏形
 
 目标：
@@ -667,7 +732,7 @@ BullMQ 或等价队列。
 | P2.3 转播系统 | Frozen for Phase 1 | Phase 1.4 / Phase 1.5 / Phase 2 | 否 |
 | P3.1 数据统计与奖项 | Reserved | Phase 3 | 否 |
 | P3.2 新闻与媒体 | Reserved | Phase 3 | 否 |
-| P3.3 素材库 | Reserved | Phase 3 | 否 |
+| P3.3 素材库 | Reserved；Phase 1.7 仅使用 processed runtime seed 子集 | Phase 1.7 / Phase 3 | 否 |
 | P4.1 API 契约 | Reserved | Phase 4 | 否 |
 | P4.2 队列与工作器 | Reserved | Phase 4 | 否 |
 | P4.3 可观测性与成本 | Reserved | Phase 4 | 否 |
@@ -792,10 +857,12 @@ Phase 4 不需要重写核心引擎。
 8. P2.3：转播系统说明。
 9. Phase 1.45：P2.2 / P2.3 契约代码落地。
 10. Phase 1.5：真实 LLM 小范围接入。
+11. Phase 1.6：区域化攻防回合协议。
+12. Phase 1.7：Materials runtime integration 与角色契约升级。
 
 当前下一步：
-11. Phase 1.6：区域化攻防回合协议。
+13. Phase 1.7 验收收口：依赖恢复后跑完整回归、CLI smoke 和 Web/export 安全扫描。
 
 后续预留：
-12. Phase 2：完整赛事雏形。
+14. Phase 2：完整赛事雏形。
 ```

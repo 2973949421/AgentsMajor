@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 
 import { findProjectRoot } from "./server-project-root";
 import { loadRootLocalEnv, type EnvRecord } from "./server-local-env";
+import type { WebRunMode } from "./server-run-progress";
 
 export type WebRunnerDisabledReason =
   | "web_runner_disabled"
@@ -28,7 +29,7 @@ export interface WebRunnerRequestBody {
 }
 
 export type WebRunnerRequestValidation =
-  | { ok: true }
+  | { ok: true; mode: WebRunMode }
   | {
       ok: false;
       status: number;
@@ -63,7 +64,8 @@ export function validateWebRunnerRequest(
     };
   }
 
-  if (body.mode !== "phase15_single_map") {
+  const mode = parseMode(body.mode);
+  if (!mode) {
     return { ok: false, status: 400, error: "Unsupported run mode." };
   }
 
@@ -87,7 +89,15 @@ export function validateWebRunnerRequest(
     return { ok: false, status: 401, error: "Invalid web runner token." };
   }
 
-  return { ok: true };
+  return { ok: true, mode };
+}
+
+function parseMode(value: unknown): WebRunMode | null {
+  if (value === "phase17_showcase_match" || value === "phase15_single_map") {
+    return value;
+  }
+
+  return null;
 }
 
 function loadPrivateWebRunnerPolicy(projectRoot: string, baseEnv: EnvRecord): PrivateWebRunnerPolicy {

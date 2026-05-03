@@ -1,0 +1,2558 @@
+{
+  "index_id": "llm-bindings-index",
+  "version": "2026-05-03-llm-binding-v1",
+  "binding_scope": "asset_preallocation",
+  "runtime_enabled": false,
+  "driver_registry_ref": "packages/llm/src/model-registry.ts",
+  "model_profiles_path": "processed/llm/model-profiles.json",
+  "role_binding_templates_path": "processed/llm/role-binding-templates.json",
+  "agent_binding_overrides_path": "processed/llm/agent-binding-overrides.json",
+  "entities": [
+    {
+      "entity_id": "player_vitallmty_apex",
+      "entity_type": "player",
+      "team_id": "team_vitallmty",
+      "team_slug": "vitallmty",
+      "display_name": "apEX",
+      "role": "igl",
+      "role_template_id": "llm_role_template_igl",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [
+        "llm_override_spotlight_player_vitallmty_apex"
+      ],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/vitallmty/players/apex.agent.json"
+    },
+    {
+      "entity_id": "player_vitallmty_ropz",
+      "entity_type": "player",
+      "team_id": "team_vitallmty",
+      "team_slug": "vitallmty",
+      "display_name": "ropz",
+      "role": "lurker",
+      "role_template_id": "llm_role_template_lurker",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [
+        "llm_override_spotlight_player_vitallmty_ropz"
+      ],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/vitallmty/players/ropz.agent.json"
+    },
+    {
+      "entity_id": "player_vitallmty_zywoo",
+      "entity_type": "player",
+      "team_id": "team_vitallmty",
+      "team_slug": "vitallmty",
+      "display_name": "ZywOo",
+      "role": "awper",
+      "role_template_id": "llm_role_template_awper",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [
+        "llm_override_spotlight_player_vitallmty_zywoo"
+      ],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/vitallmty/players/zywoo.agent.json"
+    },
+    {
+      "entity_id": "player_vitallmty_flamez",
+      "entity_type": "player",
+      "team_id": "team_vitallmty",
+      "team_slug": "vitallmty",
+      "display_name": "flameZ",
+      "role": "entry",
+      "role_template_id": "llm_role_template_entry",
+      "preferred_driver_model_id": "driver_minimax_m2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line",
+        "meme_reaction_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [
+        "llm_override_spotlight_player_vitallmty_flamez"
+      ],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/vitallmty/players/flamez.agent.json"
+    },
+    {
+      "entity_id": "player_vitallmty_mezii",
+      "entity_type": "player",
+      "team_id": "team_vitallmty",
+      "team_slug": "vitallmty",
+      "display_name": "mezii",
+      "role": "support",
+      "role_template_id": "llm_role_template_support",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/vitallmty/players/mezii.agent.json"
+    },
+    {
+      "entity_id": "coach_vitallmty_xtqzzz",
+      "entity_type": "coach",
+      "team_id": "team_vitallmty",
+      "team_slug": "vitallmty",
+      "display_name": "XTQZZZ",
+      "role": "coach",
+      "role_template_id": "llm_role_template_coach",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "judge_note_reserved"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_conservative_judge_reserved"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/vitallmty/coach/xtqzzz.agent.json"
+    },
+    {
+      "entity_id": "player_neural_vincere_aleksib",
+      "entity_type": "player",
+      "team_id": "team_neural_vincere",
+      "team_slug": "neural-vincere",
+      "display_name": "Aleksib",
+      "role": "igl",
+      "role_template_id": "llm_role_template_igl",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/neural-vincere/players/aleksib.agent.json"
+    },
+    {
+      "entity_id": "player_neural_vincere_im",
+      "entity_type": "player",
+      "team_id": "team_neural_vincere",
+      "team_slug": "neural-vincere",
+      "display_name": "iM",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/neural-vincere/players/im.agent.json"
+    },
+    {
+      "entity_id": "player_neural_vincere_bit",
+      "entity_type": "player",
+      "team_id": "team_neural_vincere",
+      "team_slug": "neural-vincere",
+      "display_name": "b1t",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/neural-vincere/players/b1t.agent.json"
+    },
+    {
+      "entity_id": "player_neural_vincere_w0nderful",
+      "entity_type": "player",
+      "team_id": "team_neural_vincere",
+      "team_slug": "neural-vincere",
+      "display_name": "w0nderful",
+      "role": "awper",
+      "role_template_id": "llm_role_template_awper",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/neural-vincere/players/w0nderful.agent.json"
+    },
+    {
+      "entity_id": "player_neural_vincere_makazze",
+      "entity_type": "player",
+      "team_id": "team_neural_vincere",
+      "team_slug": "neural-vincere",
+      "display_name": "makazze",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/neural-vincere/players/makazze.agent.json"
+    },
+    {
+      "entity_id": "coach_neural_vincere_b1ad3",
+      "entity_type": "coach",
+      "team_id": "team_neural_vincere",
+      "team_slug": "neural-vincere",
+      "display_name": "B1ad3",
+      "role": "coach",
+      "role_template_id": "llm_role_template_coach",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "judge_note_reserved"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_conservative_judge_reserved"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/neural-vincere/coach/b1ad3.agent.json"
+    },
+    {
+      "entity_id": "player_furia_fallen",
+      "entity_type": "player",
+      "team_id": "team_furia",
+      "team_slug": "furia",
+      "display_name": "FalleN",
+      "role": "igl",
+      "role_template_id": "llm_role_template_igl",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [
+        "llm_override_spotlight_player_furia_fallen"
+      ],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/furia/players/fallen.agent.json"
+    },
+    {
+      "entity_id": "player_furia_yuurih",
+      "entity_type": "player",
+      "team_id": "team_furia",
+      "team_slug": "furia",
+      "display_name": "yuurih",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/furia/players/yuurih.agent.json"
+    },
+    {
+      "entity_id": "player_furia_yekindar",
+      "entity_type": "player",
+      "team_id": "team_furia",
+      "team_slug": "furia",
+      "display_name": "YEKINDAR",
+      "role": "entry",
+      "role_template_id": "llm_role_template_entry",
+      "preferred_driver_model_id": "driver_minimax_m2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line",
+        "meme_reaction_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [
+        "llm_override_spotlight_player_furia_yekindar"
+      ],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/furia/players/yekindar.agent.json"
+    },
+    {
+      "entity_id": "player_furia_kscerato",
+      "entity_type": "player",
+      "team_id": "team_furia",
+      "team_slug": "furia",
+      "display_name": "KSCERATO",
+      "role": "star_rifler",
+      "role_template_id": "llm_role_template_star_rifler",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [
+        "llm_override_spotlight_player_furia_kscerato"
+      ],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/furia/players/kscerato.agent.json"
+    },
+    {
+      "entity_id": "player_furia_molodoy",
+      "entity_type": "player",
+      "team_id": "team_furia",
+      "team_slug": "furia",
+      "display_name": "molodoy",
+      "role": "awper",
+      "role_template_id": "llm_role_template_awper",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/furia/players/molodoy.agent.json"
+    },
+    {
+      "entity_id": "coach_furia_sidde",
+      "entity_type": "coach",
+      "team_id": "team_furia",
+      "team_slug": "furia",
+      "display_name": "sidde",
+      "role": "coach",
+      "role_template_id": "llm_role_template_coach",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "judge_note_reserved"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_conservative_judge_reserved"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/furia/coach/sidde.agent.json"
+    },
+    {
+      "entity_id": "player_falcon_7b_karrigan",
+      "entity_type": "player",
+      "team_id": "team_falcon_7b",
+      "team_slug": "falcon-7b",
+      "display_name": "karrigan",
+      "role": "igl",
+      "role_template_id": "llm_role_template_igl",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [
+        "llm_override_spotlight_player_falcon_7b_karrigan"
+      ],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/falcon-7b/players/karrigan.agent.json"
+    },
+    {
+      "entity_id": "player_falcon_7b_niko",
+      "entity_type": "player",
+      "team_id": "team_falcon_7b",
+      "team_slug": "falcon-7b",
+      "display_name": "NiKo",
+      "role": "star_rifler",
+      "role_template_id": "llm_role_template_star_rifler",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [
+        "llm_override_spotlight_player_falcon_7b_niko"
+      ],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/falcon-7b/players/niko.agent.json"
+    },
+    {
+      "entity_id": "player_falcon_7b_teses",
+      "entity_type": "player",
+      "team_id": "team_falcon_7b",
+      "team_slug": "falcon-7b",
+      "display_name": "TeSeS",
+      "role": "support",
+      "role_template_id": "llm_role_template_support",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/falcon-7b/players/teses.agent.json"
+    },
+    {
+      "entity_id": "player_falcon_7b_m0nesy",
+      "entity_type": "player",
+      "team_id": "team_falcon_7b",
+      "team_slug": "falcon-7b",
+      "display_name": "m0NESY",
+      "role": "awper",
+      "role_template_id": "llm_role_template_awper",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [
+        "llm_override_spotlight_player_falcon_7b_m0nesy"
+      ],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/falcon-7b/players/m0nesy.agent.json"
+    },
+    {
+      "entity_id": "player_falcon_7b_kyousuke",
+      "entity_type": "player",
+      "team_id": "team_falcon_7b",
+      "team_slug": "falcon-7b",
+      "display_name": "kyousuke",
+      "role": "entry",
+      "role_template_id": "llm_role_template_entry",
+      "preferred_driver_model_id": "driver_minimax_m2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line",
+        "meme_reaction_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/falcon-7b/players/kyousuke.agent.json"
+    },
+    {
+      "entity_id": "coach_falcon_7b_zonic",
+      "entity_type": "coach",
+      "team_id": "team_falcon_7b",
+      "team_slug": "falcon-7b",
+      "display_name": "zonic",
+      "role": "coach",
+      "role_template_id": "llm_role_template_coach",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "judge_note_reserved"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_conservative_judge_reserved"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/falcon-7b/coach/zonic.agent.json"
+    },
+    {
+      "entity_id": "player_parivision_omni_jame",
+      "entity_type": "player",
+      "team_id": "team_parivision_omni",
+      "team_slug": "parivision-omni",
+      "display_name": "Jame",
+      "role": "igl",
+      "role_template_id": "llm_role_template_igl",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [
+        "llm_override_spotlight_player_parivision_omni_jame"
+      ],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/parivision-omni/players/jame.agent.json"
+    },
+    {
+      "entity_id": "player_parivision_omni_belchonokk",
+      "entity_type": "player",
+      "team_id": "team_parivision_omni",
+      "team_slug": "parivision-omni",
+      "display_name": "BELCHONOKK",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/parivision-omni/players/belchonokk.agent.json"
+    },
+    {
+      "entity_id": "player_parivision_omni_xielo",
+      "entity_type": "player",
+      "team_id": "team_parivision_omni",
+      "team_slug": "parivision-omni",
+      "display_name": "xiELO",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/parivision-omni/players/xielo.agent.json"
+    },
+    {
+      "entity_id": "player_parivision_omni_nota",
+      "entity_type": "player",
+      "team_id": "team_parivision_omni",
+      "team_slug": "parivision-omni",
+      "display_name": "nota",
+      "role": "support",
+      "role_template_id": "llm_role_template_support",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/parivision-omni/players/nota.agent.json"
+    },
+    {
+      "entity_id": "player_parivision_omni_zweih",
+      "entity_type": "player",
+      "team_id": "team_parivision_omni",
+      "team_slug": "parivision-omni",
+      "display_name": "zweih",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/parivision-omni/players/zweih.agent.json"
+    },
+    {
+      "entity_id": "coach_parivision_omni_dastan",
+      "entity_type": "coach",
+      "team_id": "team_parivision_omni",
+      "team_slug": "parivision-omni",
+      "display_name": "dastan",
+      "role": "coach",
+      "role_template_id": "llm_role_template_coach",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "judge_note_reserved"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_conservative_judge_reserved"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/parivision-omni/coach/dastan.agent.json"
+    },
+    {
+      "entity_id": "player_aulora_maj3r",
+      "entity_type": "player",
+      "team_id": "team_aulora",
+      "team_slug": "aulora",
+      "display_name": "MAJ3R",
+      "role": "igl",
+      "role_template_id": "llm_role_template_igl",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/aulora/players/maj3r.agent.json"
+    },
+    {
+      "entity_id": "player_aulora_xantares",
+      "entity_type": "player",
+      "team_id": "team_aulora",
+      "team_slug": "aulora",
+      "display_name": "XANTARES",
+      "role": "entry",
+      "role_template_id": "llm_role_template_entry",
+      "preferred_driver_model_id": "driver_minimax_m2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line",
+        "meme_reaction_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [
+        "llm_override_spotlight_player_aulora_xantares"
+      ],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/aulora/players/xantares.agent.json"
+    },
+    {
+      "entity_id": "player_aulora_woxic",
+      "entity_type": "player",
+      "team_id": "team_aulora",
+      "team_slug": "aulora",
+      "display_name": "woxic",
+      "role": "awper",
+      "role_template_id": "llm_role_template_awper",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/aulora/players/woxic.agent.json"
+    },
+    {
+      "entity_id": "player_aulora_soulfly",
+      "entity_type": "player",
+      "team_id": "team_aulora",
+      "team_slug": "aulora",
+      "display_name": "soulfly",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/aulora/players/soulfly.agent.json"
+    },
+    {
+      "entity_id": "player_aulora_wicadia",
+      "entity_type": "player",
+      "team_id": "team_aulora",
+      "team_slug": "aulora",
+      "display_name": "Wicadia",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/aulora/players/wicadia.agent.json"
+    },
+    {
+      "entity_id": "coach_aulora_fabre",
+      "entity_type": "coach",
+      "team_id": "team_aulora",
+      "team_slug": "aulora",
+      "display_name": "Fabre",
+      "role": "coach",
+      "role_template_id": "llm_role_template_coach",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "judge_note_reserved"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_conservative_judge_reserved"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/aulora/coach/fabre.agent.json"
+    },
+    {
+      "entity_id": "player_mouse_torzsi",
+      "entity_type": "player",
+      "team_id": "team_mouse",
+      "team_slug": "mouse",
+      "display_name": "torzsi",
+      "role": "awper",
+      "role_template_id": "llm_role_template_awper",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/mouse/players/torzsi.agent.json"
+    },
+    {
+      "entity_id": "player_mouse_spinx",
+      "entity_type": "player",
+      "team_id": "team_mouse",
+      "team_slug": "mouse",
+      "display_name": "Spinx",
+      "role": "lurker",
+      "role_template_id": "llm_role_template_lurker",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/mouse/players/spinx.agent.json"
+    },
+    {
+      "entity_id": "player_mouse_jl",
+      "entity_type": "player",
+      "team_id": "team_mouse",
+      "team_slug": "mouse",
+      "display_name": "jL",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/mouse/players/jl.agent.json"
+    },
+    {
+      "entity_id": "player_mouse_xertion",
+      "entity_type": "player",
+      "team_id": "team_mouse",
+      "team_slug": "mouse",
+      "display_name": "xertioN",
+      "role": "igl",
+      "role_template_id": "llm_role_template_igl",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/mouse/players/xertion.agent.json"
+    },
+    {
+      "entity_id": "player_mouse_xelex",
+      "entity_type": "player",
+      "team_id": "team_mouse",
+      "team_slug": "mouse",
+      "display_name": "xelex",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/mouse/players/xelex.agent.json"
+    },
+    {
+      "entity_id": "coach_mouse_sycrone",
+      "entity_type": "coach",
+      "team_id": "team_mouse",
+      "team_slug": "mouse",
+      "display_name": "sycrone",
+      "role": "coach",
+      "role_template_id": "llm_role_template_coach",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "judge_note_reserved"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_conservative_judge_reserved"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/mouse/coach/sycrone.agent.json"
+    },
+    {
+      "entity_id": "player_the_mongolzk_blitz",
+      "entity_type": "player",
+      "team_id": "team_the_mongolzk",
+      "team_slug": "the-mongolzk",
+      "display_name": "bLitz",
+      "role": "igl",
+      "role_template_id": "llm_role_template_igl",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/the-mongolzk/players/blitz.agent.json"
+    },
+    {
+      "entity_id": "player_the_mongolzk_techno",
+      "entity_type": "player",
+      "team_id": "team_the_mongolzk",
+      "team_slug": "the-mongolzk",
+      "display_name": "Techno",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/the-mongolzk/players/techno.agent.json"
+    },
+    {
+      "entity_id": "player_the_mongolzk_mzinho",
+      "entity_type": "player",
+      "team_id": "team_the_mongolzk",
+      "team_slug": "the-mongolzk",
+      "display_name": "mzinho",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/the-mongolzk/players/mzinho.agent.json"
+    },
+    {
+      "entity_id": "player_the_mongolzk_910",
+      "entity_type": "player",
+      "team_id": "team_the_mongolzk",
+      "team_slug": "the-mongolzk",
+      "display_name": "910",
+      "role": "awper",
+      "role_template_id": "llm_role_template_awper",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [
+        "llm_override_spotlight_player_the_mongolzk_910"
+      ],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/the-mongolzk/players/910.agent.json"
+    },
+    {
+      "entity_id": "player_the_mongolzk_cobrazera",
+      "entity_type": "player",
+      "team_id": "team_the_mongolzk",
+      "team_slug": "the-mongolzk",
+      "display_name": "cobrazera",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/the-mongolzk/players/cobrazera.agent.json"
+    },
+    {
+      "entity_id": "coach_the_mongolzk_maaraa",
+      "entity_type": "coach",
+      "team_id": "team_the_mongolzk",
+      "team_slug": "the-mongolzk",
+      "display_name": "maaRaa",
+      "role": "coach",
+      "role_template_id": "llm_role_template_coach",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "judge_note_reserved"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_conservative_judge_reserved"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/the-mongolzk/coach/maaraa.agent.json"
+    },
+    {
+      "entity_id": "player_team_spirit_donk",
+      "entity_type": "player",
+      "team_id": "team_team_spirit",
+      "team_slug": "team-spirit",
+      "display_name": "donk",
+      "role": "entry",
+      "role_template_id": "llm_role_template_entry",
+      "preferred_driver_model_id": "driver_minimax_m2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line",
+        "meme_reaction_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [
+        "llm_override_spotlight_player_team_spirit_donk"
+      ],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/team-spirit/players/donk.agent.json"
+    },
+    {
+      "entity_id": "player_team_spirit_magixx",
+      "entity_type": "player",
+      "team_id": "team_team_spirit",
+      "team_slug": "team-spirit",
+      "display_name": "magixx",
+      "role": "igl",
+      "role_template_id": "llm_role_template_igl",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/team-spirit/players/magixx.agent.json"
+    },
+    {
+      "entity_id": "player_team_spirit_sh1ro",
+      "entity_type": "player",
+      "team_id": "team_team_spirit",
+      "team_slug": "team-spirit",
+      "display_name": "sh1ro",
+      "role": "awper",
+      "role_template_id": "llm_role_template_awper",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/team-spirit/players/sh1ro.agent.json"
+    },
+    {
+      "entity_id": "player_team_spirit_tn1r",
+      "entity_type": "player",
+      "team_id": "team_team_spirit",
+      "team_slug": "team-spirit",
+      "display_name": "tN1R",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/team-spirit/players/tn1r.agent.json"
+    },
+    {
+      "entity_id": "player_team_spirit_zont1x",
+      "entity_type": "player",
+      "team_id": "team_team_spirit",
+      "team_slug": "team-spirit",
+      "display_name": "zont1x",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/team-spirit/players/zont1x.agent.json"
+    },
+    {
+      "entity_id": "coach_team_spirit_hally",
+      "entity_type": "coach",
+      "team_id": "team_team_spirit",
+      "team_slug": "team-spirit",
+      "display_name": "hally",
+      "role": "coach",
+      "role_template_id": "llm_role_template_coach",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "judge_note_reserved"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_conservative_judge_reserved"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/team-spirit/coach/hally.agent.json"
+    },
+    {
+      "entity_id": "player_futuretoken_dem0n",
+      "entity_type": "player",
+      "team_id": "team_futuretoken",
+      "team_slug": "futuretoken",
+      "display_name": "dem0n",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/futuretoken/players/dem0n.agent.json"
+    },
+    {
+      "entity_id": "player_futuretoken_launx",
+      "entity_type": "player",
+      "team_id": "team_futuretoken",
+      "team_slug": "futuretoken",
+      "display_name": "lauNX",
+      "role": "entry",
+      "role_template_id": "llm_role_template_entry",
+      "preferred_driver_model_id": "driver_minimax_m2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line",
+        "meme_reaction_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/futuretoken/players/launx.agent.json"
+    },
+    {
+      "entity_id": "player_futuretoken_krabeni",
+      "entity_type": "player",
+      "team_id": "team_futuretoken",
+      "team_slug": "futuretoken",
+      "display_name": "Krabeni",
+      "role": "support",
+      "role_template_id": "llm_role_template_support",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/futuretoken/players/krabeni.agent.json"
+    },
+    {
+      "entity_id": "player_futuretoken_cmtry",
+      "entity_type": "player",
+      "team_id": "team_futuretoken",
+      "team_slug": "futuretoken",
+      "display_name": "cmtry",
+      "role": "igl",
+      "role_template_id": "llm_role_template_igl",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/futuretoken/players/cmtry.agent.json"
+    },
+    {
+      "entity_id": "player_futuretoken_dziugss",
+      "entity_type": "player",
+      "team_id": "team_futuretoken",
+      "team_slug": "futuretoken",
+      "display_name": "dziugss",
+      "role": "awper",
+      "role_template_id": "llm_role_template_awper",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/futuretoken/players/dziugss.agent.json"
+    },
+    {
+      "entity_id": "coach_futuretoken_coolio",
+      "entity_type": "coach",
+      "team_id": "team_futuretoken",
+      "team_slug": "futuretoken",
+      "display_name": "coolio",
+      "role": "coach",
+      "role_template_id": "llm_role_template_coach",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "judge_note_reserved"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_conservative_judge_reserved"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/futuretoken/coach/coolio.agent.json"
+    },
+    {
+      "entity_id": "player_astrallm_hooxi",
+      "entity_type": "player",
+      "team_id": "team_astrallm",
+      "team_slug": "astrallm",
+      "display_name": "HooXi",
+      "role": "igl",
+      "role_template_id": "llm_role_template_igl",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/astrallm/players/hooxi.agent.json"
+    },
+    {
+      "entity_id": "player_astrallm_phzy",
+      "entity_type": "player",
+      "team_id": "team_astrallm",
+      "team_slug": "astrallm",
+      "display_name": "phzy",
+      "role": "awper",
+      "role_template_id": "llm_role_template_awper",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/astrallm/players/phzy.agent.json"
+    },
+    {
+      "entity_id": "player_astrallm_jabbi",
+      "entity_type": "player",
+      "team_id": "team_astrallm",
+      "team_slug": "astrallm",
+      "display_name": "jabbi",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/astrallm/players/jabbi.agent.json"
+    },
+    {
+      "entity_id": "player_astrallm_staehr",
+      "entity_type": "player",
+      "team_id": "team_astrallm",
+      "team_slug": "astrallm",
+      "display_name": "Staehr",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/astrallm/players/staehr.agent.json"
+    },
+    {
+      "entity_id": "player_astrallm_ryu",
+      "entity_type": "player",
+      "team_id": "team_astrallm",
+      "team_slug": "astrallm",
+      "display_name": "ryu",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/astrallm/players/ryu.agent.json"
+    },
+    {
+      "entity_id": "coach_astrallm_ruggah",
+      "entity_type": "coach",
+      "team_id": "team_astrallm",
+      "team_slug": "astrallm",
+      "display_name": "ruggah",
+      "role": "coach",
+      "role_template_id": "llm_role_template_coach",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "judge_note_reserved"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_conservative_judge_reserved"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/astrallm/coach/ruggah.agent.json"
+    },
+    {
+      "entity_id": "player_g2pt_hunter",
+      "entity_type": "player",
+      "team_id": "team_g2pt",
+      "team_slug": "g2pt",
+      "display_name": "huNter-",
+      "role": "igl",
+      "role_template_id": "llm_role_template_igl",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/g2pt/players/hunter.agent.json"
+    },
+    {
+      "entity_id": "player_g2pt_nertz",
+      "entity_type": "player",
+      "team_id": "team_g2pt",
+      "team_slug": "g2pt",
+      "display_name": "NertZ",
+      "role": "star_rifler",
+      "role_template_id": "llm_role_template_star_rifler",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/g2pt/players/nertz.agent.json"
+    },
+    {
+      "entity_id": "player_g2pt_sunpayus",
+      "entity_type": "player",
+      "team_id": "team_g2pt",
+      "team_slug": "g2pt",
+      "display_name": "SunPayus",
+      "role": "awper",
+      "role_template_id": "llm_role_template_awper",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/g2pt/players/sunpayus.agent.json"
+    },
+    {
+      "entity_id": "player_g2pt_heavygod",
+      "entity_type": "player",
+      "team_id": "team_g2pt",
+      "team_slug": "g2pt",
+      "display_name": "HeavyGod",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/g2pt/players/heavygod.agent.json"
+    },
+    {
+      "entity_id": "player_g2pt_matys",
+      "entity_type": "player",
+      "team_id": "team_g2pt",
+      "team_slug": "g2pt",
+      "display_name": "MATYS",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/g2pt/players/matys.agent.json"
+    },
+    {
+      "entity_id": "coach_g2pt_saw",
+      "entity_type": "coach",
+      "team_id": "team_g2pt",
+      "team_slug": "g2pt",
+      "display_name": "sAw",
+      "role": "coach",
+      "role_template_id": "llm_role_template_coach",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "judge_note_reserved"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_conservative_judge_reserved"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/g2pt/coach/saw.agent.json"
+    },
+    {
+      "entity_id": "player_legacy_v1_art",
+      "entity_type": "player",
+      "team_id": "team_legacy_v1",
+      "team_slug": "legacy-v1",
+      "display_name": "arT",
+      "role": "igl",
+      "role_template_id": "llm_role_template_igl",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/legacy-v1/players/art.agent.json"
+    },
+    {
+      "entity_id": "player_legacy_v1_dumau",
+      "entity_type": "player",
+      "team_id": "team_legacy_v1",
+      "team_slug": "legacy-v1",
+      "display_name": "dumau",
+      "role": "star_rifler",
+      "role_template_id": "llm_role_template_star_rifler",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/legacy-v1/players/dumau.agent.json"
+    },
+    {
+      "entity_id": "player_legacy_v1_latto",
+      "entity_type": "player",
+      "team_id": "team_legacy_v1",
+      "team_slug": "legacy-v1",
+      "display_name": "latto",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/legacy-v1/players/latto.agent.json"
+    },
+    {
+      "entity_id": "player_legacy_v1_n1ssim",
+      "entity_type": "player",
+      "team_id": "team_legacy_v1",
+      "team_slug": "legacy-v1",
+      "display_name": "n1ssim",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/legacy-v1/players/n1ssim.agent.json"
+    },
+    {
+      "entity_id": "player_legacy_v1_saadzin",
+      "entity_type": "player",
+      "team_id": "team_legacy_v1",
+      "team_slug": "legacy-v1",
+      "display_name": "saadzin",
+      "role": "awper",
+      "role_template_id": "llm_role_template_awper",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/legacy-v1/players/saadzin.agent.json"
+    },
+    {
+      "entity_id": "coach_legacy_v1_adrrr",
+      "entity_type": "coach",
+      "team_id": "team_legacy_v1",
+      "team_slug": "legacy-v1",
+      "display_name": "adrrr",
+      "role": "coach",
+      "role_template_id": "llm_role_template_coach",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "judge_note_reserved"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_conservative_judge_reserved"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/legacy-v1/coach/adrrr.agent.json"
+    },
+    {
+      "entity_id": "player_bit8_alex666",
+      "entity_type": "player",
+      "team_id": "team_bit8",
+      "team_slug": "bit8",
+      "display_name": "alex666",
+      "role": "igl",
+      "role_template_id": "llm_role_template_igl",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/bit8/players/alex666.agent.json"
+    },
+    {
+      "entity_id": "player_bit8_npl",
+      "entity_type": "player",
+      "team_id": "team_bit8",
+      "team_slug": "bit8",
+      "display_name": "npl",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/bit8/players/npl.agent.json"
+    },
+    {
+      "entity_id": "player_bit8_kensizor",
+      "entity_type": "player",
+      "team_id": "team_bit8",
+      "team_slug": "bit8",
+      "display_name": "kensizor",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/bit8/players/kensizor.agent.json"
+    },
+    {
+      "entity_id": "player_bit8_esenthial",
+      "entity_type": "player",
+      "team_id": "team_bit8",
+      "team_slug": "bit8",
+      "display_name": "esenthial",
+      "role": "support",
+      "role_template_id": "llm_role_template_support",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/bit8/players/esenthial.agent.json"
+    },
+    {
+      "entity_id": "player_bit8_s1zzi",
+      "entity_type": "player",
+      "team_id": "team_bit8",
+      "team_slug": "bit8",
+      "display_name": "s1zzi",
+      "role": "awper",
+      "role_template_id": "llm_role_template_awper",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/bit8/players/s1zzi.agent.json"
+    },
+    {
+      "entity_id": "coach_bit8_maddened",
+      "entity_type": "coach",
+      "team_id": "team_bit8",
+      "team_slug": "bit8",
+      "display_name": "maddened",
+      "role": "coach",
+      "role_template_id": "llm_role_template_coach",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "judge_note_reserved"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_conservative_judge_reserved"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/bit8/coach/maddened.agent.json"
+    },
+    {
+      "entity_id": "player_prompt_gaming_vsm",
+      "entity_type": "player",
+      "team_id": "team_prompt_gaming",
+      "team_slug": "prompt-gaming",
+      "display_name": "vsm",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/prompt-gaming/players/vsm.agent.json"
+    },
+    {
+      "entity_id": "player_prompt_gaming_biguzera",
+      "entity_type": "player",
+      "team_id": "team_prompt_gaming",
+      "team_slug": "prompt-gaming",
+      "display_name": "biguzera",
+      "role": "igl",
+      "role_template_id": "llm_role_template_igl",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/prompt-gaming/players/biguzera.agent.json"
+    },
+    {
+      "entity_id": "player_prompt_gaming_piriajr",
+      "entity_type": "player",
+      "team_id": "team_prompt_gaming",
+      "team_slug": "prompt-gaming",
+      "display_name": "piriajr",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/prompt-gaming/players/piriajr.agent.json"
+    },
+    {
+      "entity_id": "player_prompt_gaming_saffee",
+      "entity_type": "player",
+      "team_id": "team_prompt_gaming",
+      "team_slug": "prompt-gaming",
+      "display_name": "saffee",
+      "role": "awper",
+      "role_template_id": "llm_role_template_awper",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/prompt-gaming/players/saffee.agent.json"
+    },
+    {
+      "entity_id": "player_prompt_gaming_snow",
+      "entity_type": "player",
+      "team_id": "team_prompt_gaming",
+      "team_slug": "prompt-gaming",
+      "display_name": "snow",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/prompt-gaming/players/snow.agent.json"
+    },
+    {
+      "entity_id": "coach_prompt_gaming_rikz",
+      "entity_type": "coach",
+      "team_id": "team_prompt_gaming",
+      "team_slug": "prompt-gaming",
+      "display_name": "rikz",
+      "role": "coach",
+      "role_template_id": "llm_role_template_coach",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "judge_note_reserved"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_conservative_judge_reserved"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/prompt-gaming/coach/rikz.agent.json"
+    },
+    {
+      "entity_id": "player_phaseclan_broky",
+      "entity_type": "player",
+      "team_id": "team_phaseclan",
+      "team_slug": "phaseclan",
+      "display_name": "broky",
+      "role": "awper",
+      "role_template_id": "llm_role_template_awper",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [
+        "llm_override_spotlight_player_phaseclan_broky"
+      ],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/phaseclan/players/broky.agent.json"
+    },
+    {
+      "entity_id": "player_phaseclan_twistzz",
+      "entity_type": "player",
+      "team_id": "team_phaseclan",
+      "team_slug": "phaseclan",
+      "display_name": "Twistzz",
+      "role": "igl",
+      "role_template_id": "llm_role_template_igl",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [
+        "llm_override_spotlight_player_phaseclan_twistzz"
+      ],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/phaseclan/players/twistzz.agent.json"
+    },
+    {
+      "entity_id": "player_phaseclan_jcobbb",
+      "entity_type": "player",
+      "team_id": "team_phaseclan",
+      "team_slug": "phaseclan",
+      "display_name": "jcobbb",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/phaseclan/players/jcobbb.agent.json"
+    },
+    {
+      "entity_id": "player_phaseclan_frozen",
+      "entity_type": "player",
+      "team_id": "team_phaseclan",
+      "team_slug": "phaseclan",
+      "display_name": "frozen",
+      "role": "star_rifler",
+      "role_template_id": "llm_role_template_star_rifler",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "broadcast_caster_line",
+        "spotlight_moment_copy"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive"
+      ],
+      "override_ids": [
+        "llm_override_spotlight_player_phaseclan_frozen"
+      ],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/phaseclan/players/frozen.agent.json"
+    },
+    {
+      "entity_id": "player_phaseclan_neityu",
+      "entity_type": "player",
+      "team_id": "team_phaseclan",
+      "team_slug": "phaseclan",
+      "display_name": "Neityu",
+      "role": "stand_in",
+      "role_template_id": "llm_role_template_stand_in",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "broadcast_caster_line",
+        "barrage_style_line"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/phaseclan/players/neityu.agent.json"
+    },
+    {
+      "entity_id": "coach_phaseclan_coach_tbd",
+      "entity_type": "coach",
+      "team_id": "team_phaseclan",
+      "team_slug": "phaseclan",
+      "display_name": "TBD",
+      "role": "coach",
+      "role_template_id": "llm_role_template_coach",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "tactical_analysis_note",
+        "judge_note_reserved"
+      ],
+      "model_profile_ids": [
+        "llm_profile_strong_reasoning",
+        "llm_profile_conservative_judge_reserved"
+      ],
+      "override_ids": [],
+      "runtime_enabled": false,
+      "json_path": "processed/teams/phaseclan/coach/coach-tbd.agent.json"
+    }
+  ]
+}

@@ -1,14 +1,14 @@
 # FurIA Roster
 
 ## Active Five
-- FalleN | igl | player_furia_fallen
-- yuurih | lurker | player_furia_yuurih
-- YEKINDAR | entry | player_furia_yekindar
-- KSCERATO | star | player_furia_kscerato
-- molodoy | support | player_furia_molodoy
+- FalleN | igl | IGL / secondary AWPer | 中-高 | player_furia_fallen
+- yuurih | rifler | Rifler / Support | 中-高 | player_furia_yuurih
+- YEKINDAR | entry | Entry / aggressive rifler | 高 | player_furia_yekindar
+- KSCERATO | star_rifler | Star Rifler / Lurker | 高 | player_furia_kscerato
+- molodoy | awper | AWPer | 高 | player_furia_molodoy
 
 ## Coach
-- 正式教练：sidde (coach_furia_sidde)
+- 正式教练：sidde (coach_furia_sidde，Coach，可信度 高)
 
 ## Snapshot
 - 阵容版本：2026-05-03-canon-v1

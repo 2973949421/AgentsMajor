@@ -1,14 +1,14 @@
 # Bit8 Roster
 
 ## Active Five
-- alex666 | igl | player_bit8_alex666
-- npl | star | player_bit8_npl
-- kensizor | entry | player_bit8_kensizor
-- esenthial | support | player_bit8_esenthial
-- s1zzi | lurker | player_bit8_s1zzi
+- alex666 | igl | IGL | 高 | player_bit8_alex666
+- npl | rifler | Rifler / Playmaker | 中-高 | player_bit8_npl
+- kensizor | rifler | Rifler | 中-高 | player_bit8_kensizor
+- esenthial | support | Support / Anchor / Rifler | 中 | player_bit8_esenthial
+- s1zzi | awper | AWPer | 低-中 | player_bit8_s1zzi
 
 ## Coach
-- 正式教练：maddened (coach_bit8_maddened)
+- 正式教练：maddened (coach_bit8_maddened，Coach，可信度 高)
 
 ## Snapshot
 - 阵容版本：2026-05-03-canon-v1

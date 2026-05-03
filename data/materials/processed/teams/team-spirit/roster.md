@@ -1,14 +1,14 @@
 # Team SpirIT Roster
 
 ## Active Five
-- donk | star | player_team_spirit_donk
-- magixx | support | player_team_spirit_magixx
-- sh1ro | closer | player_team_spirit_sh1ro
-- tN1R | entry | player_team_spirit_tn1r
-- zont1x | lurker | player_team_spirit_zont1x
+- donk | entry | Entry / Star Rifler | 高 | player_team_spirit_donk
+- magixx | igl | IGL / Rifler | 中-高 | player_team_spirit_magixx
+- sh1ro | awper | AWPer | 高 | player_team_spirit_sh1ro
+- tN1R | rifler | Rifler / Flex | 中 | player_team_spirit_tn1r
+- zont1x | rifler | Rifler / Anchor | 中-高 | player_team_spirit_zont1x
 
 ## Coach
-- 正式教练：hally (coach_team_spirit_hally)
+- 正式教练：hally (coach_team_spirit_hally，Coach，可信度 高)
 
 ## Snapshot
 - 阵容版本：2026-05-03-canon-v1

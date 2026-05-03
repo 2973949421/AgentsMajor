@@ -471,6 +471,14 @@ docs/p3-ecosystem/news-media.md
 docs/p3-ecosystem/materials-library.md
 ```
 
+当前执行边界：
+
+```text
+Phase 1.7 已先使用 data/materials/processed 的 runtime seed 子集。
+这不等于 P3.3 素材库完整完成。
+P3.3 仍负责后续素材来源、版权、风格资产、弹幕语料和媒体内容边界。
+```
+
 必须覆盖：
 
 - 幽灵战队导入（ghost team import）。
@@ -620,10 +628,10 @@ docs/p4-web-ops/web-migration.md
 ### 当前阶段最应该补强
 
 ```text
-1. 定义 tactical 数据观察面、调试视图和回归指标。
-2. 评估更多地图区域、更多战术路径和是否需要 tactical 专表。
-3. 补齐完整赛事、统计、奖项、新闻和素材边界文档。
-4. 补齐公开导出、API、队列与 Web 迁移约束。
+1. Phase 1.7 materials runtime seed 的完整回归验证。
+2. Agent role / secondaryRoles / roleProfile / materialRef 在 P0 / P1 / DB / Web replay 中保持一致。
+3. Falcon-7B vs VitaLLMty canon BO3 的 CLI、Replay、Export 和 Web runner smoke。
+4. Phase 2.0 完整 16 队 bracket 的边界设计。
 ```
 
 原因：
@@ -632,7 +640,7 @@ docs/p4-web-ops/web-migration.md
 - Phase 1.4 的 RoundReport、TimelineEvent、keyRounds 和 highlight 已完成第一轮内容质量与事件可信度收口。
 - P2.2 已经明确 2D 战术地图如何消费结构化事实源；P2.3 已经明确转播系统中哪些内容来自事实源，哪些只是可延后、可丢弃、可重建的包装层。
 - Phase 1.6 已完成 deterministic rule-based 区域化攻防协议，当前不再需要把它当成待办主线。
-- 下一阶段更重要的是先把战术协议的观察面、导出边界、API 暴露面和 Web / 队列迁移约束写清楚，避免后续继续返工。
+- Phase 1.7 引入了真实 materials 资产和角色契约重构，当前更重要的是先把事实源、兼容迁移、导出安全和默认 showcase 固定住，避免 Phase 2.0 做 16 队 bracket 时返工。
 
 ### P2.1 后的工程切换结果
 
@@ -726,7 +734,8 @@ P2.1 之后采用：
 已完成：Phase 1.45 P2.2 / P2.3 契约代码落地。
 已完成：Phase 1.5 真实 LLM 小范围接入。
 当前：Phase 1.6 区域化攻防回合协议已完成收口。
-之后：后续阶段的边界设计、完整赛事雏形与生态扩展，阶段编号待定义。
+当前：Phase 1.7 Materials runtime integration 与角色契约升级已进入落地和验收收口。
+之后：Phase 2.0 完整 16 队赛事雏形与生态扩展。
 ```
 
 ### 长期规划判断
@@ -740,6 +749,8 @@ P2.1 之后采用：
 
 因此，当前应继续保持“近期写深，远期写边界”的文档策略。P2.2 已完成，P2.3 已完成并可作为 Phase 1 转播边界执行，Phase 1.45 已把关键契约落到代码锚点，Phase 1.5 已完成真实 caster_line 小范围接入，Phase 1.6 已完成 deterministic rule-based 区域化攻防协议。下一步应先转入后续阶段的边界设计与阶段编号确认，优先确认战术观测面、更多地图区域、公开导出 / API 边界，以及后续 Web / 队列迁移的约束。Phase 3 赛事生态和 Phase 4 Web 化仍只保留边界意识，不阻塞当前主线。
 
+Phase 1.7 的决策是先把 materials 资产接入 runtime seed，并把角色契约重构为 materials 主角色枚举。这一步会改变 Agent schema、repository 兼容、runtime seeding、Web replay 安全视图和 CLI 默认 fixture，因此属于必须同步更新 P0 / P1 契约的工程阶段。它仍不展开 P3.3 完整素材库，也不提前实现 Phase 2.0 的 16 队 bracket。
+
 ### 后续文档补充顺序
 
 ```text
@@ -747,7 +758,8 @@ P2.1 之后采用：
 已完成：docs/p2-broadcast-viewer/broadcast-system.md
 已完成：docs/phase-plans/phase-1.45-contract-code-alignment.md
 已完成：docs/phase-plans/phase-1.5-real-llm-integration.md
-已预留：docs/phase-plans/phase-1.6-zone-offense-defense-protocol.md
+已完成：docs/phase-plans/phase-1.6-zone-offense-defense-protocol.md
+已完成：docs/phase-plans/phase-1.7-materials-runtime-integration.md
 ```
 
 原因：

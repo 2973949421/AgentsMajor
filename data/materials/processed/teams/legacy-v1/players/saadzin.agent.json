@@ -6,8 +6,32 @@
   "real_name": null,
   "in_game_id": "saadzin",
   "display_name": "saadzin",
-  "role": "entry",
+  "role": "awper",
   "status": "active",
+  "cs_role_profile": {
+    "source_path": "raw/teams/agent_major_player_roles.md",
+    "source_team_name": "Legacy.v1",
+    "member_type": "player",
+    "raw_position": "AWPer / Rifler",
+    "raw_position_parts": [
+      "AWPer",
+      "Rifler"
+    ],
+    "primary_role": "awper",
+    "secondary_roles": [
+      "rifler"
+    ],
+    "position_tags": [
+      "awper",
+      "rifler"
+    ],
+    "confidence": "低-中",
+    "notes": "项目中暂设为主狙/混合火力位；后续可复核。",
+    "agent_major_responsibilities": [
+      "高精度关键论点 / 单点突破 / 高风险高收益调用",
+      "通用火力 / 回合执行 / 补枪衔接"
+    ]
+  },
   "aliases": [
     "saadzin"
   ],
@@ -15,29 +39,29 @@
     "前顶位"
   ],
   "persona_tags": [
-    "frontline-instigator",
-    "heat-checker",
+    "precision-core",
+    "high-leverage",
     "impact-opener"
   ],
   "playstyle_tags": [
-    "first-contact",
-    "space-creator",
+    "awp-control",
+    "single-point-pressure",
     "entry",
     "space-take"
   ],
   "caster_focus_tags": [
-    "machine_force_buy_shock"
+    "machine_star_carry"
   ],
   "barrage_focus_tags": [
     "player_targeting",
-    "research"
+    "big_dad"
   ],
   "news_focus_tags": [
     "upset-watch",
     "brazil-heat"
   ],
   "cross_circle_tags": [
-    "cabinet_to_live_room_chaos"
+    "customer_service_to_cleanup"
   ],
   "future_agent_profile": {
     "persona_summary": "前顶位，最容易把 Legacy.v1 的泥地味变成真实的回合优势。",
@@ -45,8 +69,8 @@
     "narrative_axes": [
       "upset-watch",
       "brazil-heat",
-      "frontline-instigator",
-      "heat-checker",
+      "precision-core",
+      "high-leverage",
       "impact-opener"
     ],
     "reserved_memory_slots": [
@@ -57,16 +81,79 @@
     ]
   },
   "future_driver_binding": {
-    "preferred_driver_model_id": null,
-    "fallback_driver_model_ids": [],
+    "binding_version": "2026-05-03-llm-binding-v1",
+    "binding_scope": "asset_preallocation",
+    "runtime_enabled": false,
+    "role_template_id": "llm_role_template_awper",
+    "preferred_driver_model_id": "driver_kimi_k2_5",
+    "fallback_driver_model_ids": [
+      "driver_qwen_3_6_plus"
+    ],
+    "task_bindings": [
+      {
+        "task_id": "profile_card_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "news_story_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "broadcast_caster_line",
+        "model_profile_id": "llm_profile_caster_expressive",
+        "driver_model_id": "driver_kimi_k2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.6,
+        "max_output_tokens": 500
+      },
+      {
+        "task_id": "spotlight_moment_copy",
+        "model_profile_id": "llm_profile_caster_expressive",
+        "driver_model_id": "driver_kimi_k2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.6,
+        "max_output_tokens": 500
+      }
+    ],
     "prompt_bias_tags": [
-      "first-contact",
-      "space-creator",
+      "precision-core",
+      "high-leverage",
+      "single-point-pressure",
+      "clutch-risk",
+      "awp-control",
       "entry",
       "space-take",
-      "frontline-instigator",
-      "heat-checker",
       "impact-opener"
+    ],
+    "env_contract_refs": [
+      "AGENT_MAJOR_REAL_LLM_ENABLED",
+      "AGENT_MAJOR_LLM_PROVIDER",
+      "DASHSCOPE_BASE_URL",
+      "DASHSCOPE_API_KEY"
+    ],
+    "override_ids": [],
+    "ops_notes": [
+      "Prioritize key-shot, clutch, and single-round pressure hooks."
     ]
   },
   "ops_hooks": {
@@ -78,7 +165,7 @@
     ],
     "card_priority": 35,
     "broadcast_entry_points": [
-      "machine_force_buy_shock"
+      "machine_star_carry"
     ]
   },
   "canon_notes": []

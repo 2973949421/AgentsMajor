@@ -81,6 +81,7 @@ describe("Phase 1.6 tactical protocol", () => {
       buyTypeByTeam: input.buyTypeByTeam,
       scoreBeforeRound: { teamA: 3, teamB: 3 },
       teamAId: "team_a",
+      activeAgentsById: agentsById(input),
       judgeResult: {
         winnerTeamId: "team_a",
         loserTeamId: "team_b",
@@ -104,6 +105,7 @@ describe("Phase 1.6 tactical protocol", () => {
       buyTypeByTeam: input.buyTypeByTeam,
       scoreBeforeRound: { teamA: 3, teamB: 3 },
       teamAId: "team_a",
+      activeAgentsById: agentsById(input),
       judgeResult: {
         winnerTeamId: "team_b",
         loserTeamId: "team_a",
@@ -149,7 +151,7 @@ function tacticalInput(): RuleBasedTacticalInput {
     teamA: { id: "team_a", tournamentId: "t", displayName: "Team A", shortName: "A", seed: 1, createdAt: "2026-05-01T00:00:00.000Z" },
     teamB: { id: "team_b", tournamentId: "t", displayName: "Team B", shortName: "B", seed: 2, createdAt: "2026-05-01T00:00:00.000Z" },
     activeAgentsByTeam: {
-      team_a: [agent("agent_a_entry", "team_a", "entry"), agent("agent_a_star", "team_a", "star")],
+      team_a: [agent("agent_a_entry", "team_a", "entry"), agent("agent_a_star", "team_a", "star_rifler")],
       team_b: [agent("agent_b_igl", "team_b", "igl"), agent("agent_b_support", "team_b", "support")]
     },
     buyTypeByTeam: { team_a: "fullBuy" as BuyType, team_b: "fullBuy" as BuyType },
@@ -158,6 +160,10 @@ function tacticalInput(): RuleBasedTacticalInput {
     tacticalMapLayout: getTacticalMapLayout("DUST2"),
     sideAssignment
   };
+}
+
+function agentsById(input: RuleBasedTacticalInput): Record<string, Agent> {
+  return Object.fromEntries(Object.values(input.activeAgentsByTeam).flat().map((item) => [item.id, item]));
 }
 
 function agent(id: string, teamId: string, role: Agent["role"]): Agent {

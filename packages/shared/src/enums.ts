@@ -30,8 +30,11 @@ export const runControlStates = [
 ] as const;
 export type RunControlState = (typeof runControlStates)[number];
 
-export const agentRoles = ["coach", "igl", "entry", "star", "lurker", "support", "closer"] as const;
+export const agentRoles = ["coach", "igl", "awper", "entry", "star_rifler", "lurker", "support", "rifler", "stand_in"] as const;
 export type AgentRole = (typeof agentRoles)[number];
+
+export const agentRoleTags = ["anchor", "awper", "closer", "coach", "entry", "flex", "igl", "lurker", "rifler", "stand_in", "star_rifler", "support", "system_architect"] as const;
+export type AgentRoleTag = (typeof agentRoleTags)[number];
 
 export const agentStates = ["ready", "active", "down", "hot", "cold", "lowEco", "clutch", "boosted", "tilted", "resting"] as const;
 export type AgentState = (typeof agentStates)[number];

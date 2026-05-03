@@ -6,8 +6,27 @@
   "real_name": null,
   "in_game_id": "phzy",
   "display_name": "phzy",
-  "role": "closer",
+  "role": "awper",
   "status": "active",
+  "cs_role_profile": {
+    "source_path": "raw/teams/agent_major_player_roles.md",
+    "source_team_name": "AstraLLM",
+    "member_type": "player",
+    "raw_position": "AWPer",
+    "raw_position_parts": [
+      "AWPer"
+    ],
+    "primary_role": "awper",
+    "secondary_roles": [],
+    "position_tags": [
+      "awper"
+    ],
+    "confidence": "高",
+    "notes": "主狙。",
+    "agent_major_responsibilities": [
+      "高精度关键论点 / 单点突破 / 高风险高收益调用"
+    ]
+  },
   "aliases": [
     "phzy"
   ],
@@ -15,13 +34,13 @@
     "新狙线"
   ],
   "persona_tags": [
-    "late-round-finisher",
-    "calm-core",
+    "precision-core",
+    "high-leverage",
     "reset-sniper"
   ],
   "playstyle_tags": [
-    "clutch-finish",
-    "hold-angle",
+    "awp-control",
+    "single-point-pressure",
     "awp-hold",
     "late-round-pick"
   ],
@@ -29,7 +48,8 @@
     "machine_star_carry"
   ],
   "barrage_focus_tags": [
-    "player_targeting"
+    "player_targeting",
+    "big_dad"
   ],
   "news_focus_tags": [
     "history-burden",
@@ -44,8 +64,8 @@
     "narrative_axes": [
       "history-burden",
       "upset-watch",
-      "late-round-finisher",
-      "calm-core",
+      "precision-core",
+      "high-leverage",
       "reset-sniper"
     ],
     "reserved_memory_slots": [
@@ -56,16 +76,79 @@
     ]
   },
   "future_driver_binding": {
-    "preferred_driver_model_id": null,
-    "fallback_driver_model_ids": [],
+    "binding_version": "2026-05-03-llm-binding-v1",
+    "binding_scope": "asset_preallocation",
+    "runtime_enabled": false,
+    "role_template_id": "llm_role_template_awper",
+    "preferred_driver_model_id": "driver_kimi_k2_5",
+    "fallback_driver_model_ids": [
+      "driver_qwen_3_6_plus"
+    ],
+    "task_bindings": [
+      {
+        "task_id": "profile_card_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "news_story_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "broadcast_caster_line",
+        "model_profile_id": "llm_profile_caster_expressive",
+        "driver_model_id": "driver_kimi_k2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.6,
+        "max_output_tokens": 500
+      },
+      {
+        "task_id": "spotlight_moment_copy",
+        "model_profile_id": "llm_profile_caster_expressive",
+        "driver_model_id": "driver_kimi_k2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.6,
+        "max_output_tokens": 500
+      }
+    ],
     "prompt_bias_tags": [
-      "clutch-finish",
-      "hold-angle",
+      "precision-core",
+      "high-leverage",
+      "single-point-pressure",
+      "clutch-risk",
+      "awp-control",
       "awp-hold",
       "late-round-pick",
-      "late-round-finisher",
-      "calm-core",
       "reset-sniper"
+    ],
+    "env_contract_refs": [
+      "AGENT_MAJOR_REAL_LLM_ENABLED",
+      "AGENT_MAJOR_LLM_PROVIDER",
+      "DASHSCOPE_BASE_URL",
+      "DASHSCOPE_API_KEY"
+    ],
+    "override_ids": [],
+    "ops_notes": [
+      "Prioritize key-shot, clutch, and single-round pressure hooks."
     ]
   },
   "ops_hooks": {

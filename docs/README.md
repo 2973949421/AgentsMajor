@@ -18,7 +18,7 @@
 
 ```text
 P 线：已完成到 P2.3，Phase 1 范围内可按 Frozen 执行。
-Phase 线：已完成到 Phase 1.6 区域化攻防回合协议收口；下一步先做后续阶段的高层边界设计与路线确认，阶段编号待定义。
+Phase 线：已推进到 Phase 1.7 Materials runtime integration 与角色契约升级；下一步先做 Phase 1.7 验收收口，再进入 Phase 2.0 完整 16 队赛事雏形。
 ```
 
 ## 3. 目录说明
@@ -97,6 +97,7 @@ phase-plans/phase-1.0-engineering-plan.md
 phase-plans/phase-1.5-real-llm-integration.md
 phase-plans/phase-1.45-contract-code-alignment.md
 phase-plans/phase-1.6-zone-offense-defense-protocol.md
+phase-plans/phase-1.7-materials-runtime-integration.md
 ```
 
 ## 4. 维护规则

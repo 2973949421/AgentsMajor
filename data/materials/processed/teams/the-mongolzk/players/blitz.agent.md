@@ -8,6 +8,15 @@
 - 公开 ID：bLitz
 - 法定姓名：待回填
 
+## CS Role Profile
+- 原始位置：IGL / Rifler
+- 主位置：igl
+- 次级位置：rifler
+- 可信度：高
+- Agent Major 职责：战术规划 / 回合策略 / 资源分配；通用火力 / 回合执行 / 补枪衔接
+- 备注：The MongolZ 指挥核心。
+- 来源：raw/teams/agent_major_player_roles.md
+
 ## Alias
 - bLitz
 
@@ -31,7 +40,8 @@
 
 ## Future Interfaces
 - agent 人格接口：asia-rise, shotcaller, system-brain, momentum-caller
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- 模型绑定接口：llm_role_template_igl / driver_qwen_3_max_2026_01_23
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：铁骑指挥, asia-rise
 
 ## Canon Notes

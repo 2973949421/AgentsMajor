@@ -3,10 +3,19 @@
 ## Snapshot
 - 队伍：PhaseClan
 - 类型：player
-- 角色：star
+- 角色：star_rifler
 - 当前状态：active
 - 公开 ID：frozen
 - 法定姓名：待回填
+
+## CS Role Profile
+- 原始位置：Star Rifler / Lurker
+- 主位置：star_rifler
+- 次级位置：lurker
+- 可信度：高
+- Agent Major 职责：核心输出 / 关键回合 carry；反制 / 偷点 / 找对手逻辑漏洞
+- 备注：核心步枪，后期残局能力强。
+- 来源：raw/teams/agent_major_player_roles.md
 
 ## Alias
 - frozen
@@ -18,8 +27,8 @@
 - 硬核火力
 
 ## Playstyle Tags
-- high-impact
-- space-winning
+- impact-rifle
+- resource-heavy
 - rifle-core
 - site-break
 
@@ -31,7 +40,8 @@
 
 ## Future Interfaces
 - agent 人格接口：special_invite, headline-core, win-condition, stable-star
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- 模型绑定接口：llm_role_template_star_rifler / driver_kimi_k2_5
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：硬核火力, special_invite
 
 ## Canon Notes

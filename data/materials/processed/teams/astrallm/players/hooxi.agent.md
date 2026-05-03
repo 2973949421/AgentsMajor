@@ -8,6 +8,15 @@
 - 公开 ID：HooXi
 - 法定姓名：待回填
 
+## CS Role Profile
+- 原始位置：IGL
+- 主位置：igl
+- 次级位置：none
+- 可信度：高
+- Agent Major 职责：战术规划 / 回合策略 / 资源分配
+- 备注：公开资料标注为 IGL。
+- 来源：raw/teams/agent_major_player_roles.md
+
 ## Alias
 - HooXi
 - hooxi
@@ -33,7 +42,8 @@
 
 ## Future Interfaces
 - agent 人格接口：history-burden, shotcaller, system-brain, rebuild-caller
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- 模型绑定接口：llm_role_template_igl / driver_qwen_3_max_2026_01_23
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：指挥位, 重建话事人, history-burden
 
 ## Canon Notes

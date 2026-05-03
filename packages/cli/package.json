@@ -35,12 +35,16 @@
     "phase15:export": "tsx src/phase15.ts export",
     "phase16:match": "tsx src/phase16.ts match",
     "phase16:replay": "tsx src/phase16.ts replay",
-    "phase16:export": "tsx src/phase16.ts export"
+    "phase16:export": "tsx src/phase16.ts export",
+    "phase17:match": "tsx src/phase17.ts match",
+    "phase17:replay": "tsx src/phase17.ts replay",
+    "phase17:export": "tsx src/phase17.ts export"
   },
   "dependencies": {
     "@agent-major/core": "workspace:*",
     "@agent-major/db": "workspace:*",
     "@agent-major/llm": "workspace:*",
+    "@agent-major/materials": "workspace:*",
     "@agent-major/queue": "workspace:*"
   }
 }

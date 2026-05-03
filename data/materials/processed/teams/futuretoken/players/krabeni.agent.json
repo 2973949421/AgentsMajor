@@ -8,6 +8,30 @@
   "display_name": "Krabeni",
   "role": "support",
   "status": "active",
+  "cs_role_profile": {
+    "source_path": "raw/teams/agent_major_player_roles.md",
+    "source_team_name": "FUtureToken",
+    "member_type": "player",
+    "raw_position": "Support / Rifler",
+    "raw_position_parts": [
+      "Support",
+      "Rifler"
+    ],
+    "primary_role": "support",
+    "secondary_roles": [
+      "rifler"
+    ],
+    "position_tags": [
+      "support",
+      "rifler"
+    ],
+    "confidence": "低-中",
+    "notes": "公开角色资料较少，项目中设为辅助步枪。",
+    "agent_major_responsibilities": [
+      "补全细节 / 修复方案 / 提供上下文",
+      "通用火力 / 回合执行 / 补枪衔接"
+    ]
+  },
   "aliases": [
     "Krabeni"
   ],
@@ -54,16 +78,68 @@
     ]
   },
   "future_driver_binding": {
-    "preferred_driver_model_id": null,
-    "fallback_driver_model_ids": [],
+    "binding_version": "2026-05-03-llm-binding-v1",
+    "binding_scope": "asset_preallocation",
+    "runtime_enabled": false,
+    "role_template_id": "llm_role_template_support",
+    "preferred_driver_model_id": "driver_qwen_3_6_plus",
+    "fallback_driver_model_ids": [
+      "driver_qwen_3_5_plus"
+    ],
+    "task_bindings": [
+      {
+        "task_id": "profile_card_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "broadcast_caster_line",
+        "model_profile_id": "llm_profile_caster_expressive",
+        "driver_model_id": "driver_kimi_k2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.6,
+        "max_output_tokens": 500
+      },
+      {
+        "task_id": "barrage_style_line",
+        "model_profile_id": "llm_profile_barrage_chaos",
+        "driver_model_id": "driver_minimax_m2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_5_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.7,
+        "max_output_tokens": 450
+      }
+    ],
     "prompt_bias_tags": [
+      "glue-piece",
+      "utility-worker",
       "trade-layer",
+      "setup-support",
       "utility-setup",
       "utility",
       "trade",
-      "glue-piece",
-      "utility-worker",
       "mid-pack-worker"
+    ],
+    "env_contract_refs": [
+      "AGENT_MAJOR_REAL_LLM_ENABLED",
+      "AGENT_MAJOR_LLM_PROVIDER",
+      "DASHSCOPE_BASE_URL",
+      "DASHSCOPE_API_KEY"
+    ],
+    "override_ids": [],
+    "ops_notes": [
+      "Keep framing around utility, spacing, and invisible value."
     ]
   },
   "ops_hooks": {

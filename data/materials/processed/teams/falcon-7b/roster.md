@@ -1,14 +1,14 @@
 # Falcon-7B Roster
 
 ## Active Five
-- karrigan | igl | player_falcon_7b_karrigan
-- NiKo | star | player_falcon_7b_niko
-- TeSeS | support | player_falcon_7b_teses
-- m0NESY | closer | player_falcon_7b_m0nesy
-- kyousuke | entry | player_falcon_7b_kyousuke
+- karrigan | igl | IGL | 高 | player_falcon_7b_karrigan
+- NiKo | star_rifler | Star Rifler / closer | 高 | player_falcon_7b_niko
+- TeSeS | support | Support / Anchor / rifler | 中-高 | player_falcon_7b_teses
+- m0NESY | awper | AWPer / Star | 高 | player_falcon_7b_m0nesy
+- kyousuke | entry | Entry / star rifler | 中 | player_falcon_7b_kyousuke
 
 ## Coach
-- 正式教练：zonic (coach_falcon_7b_zonic)
+- 正式教练：zonic (coach_falcon_7b_zonic，Coach，可信度 高)
 
 ## Snapshot
 - 阵容版本：2026-05-03-canon-v1

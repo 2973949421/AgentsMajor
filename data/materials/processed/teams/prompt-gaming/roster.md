@@ -1,14 +1,14 @@
 # Prompt Gaming Roster
 
 ## Active Five
-- vsm | igl | player_prompt_gaming_vsm
-- biguzera | star | player_prompt_gaming_biguzera
-- piriajr | entry | player_prompt_gaming_piriajr
-- saffee | closer | player_prompt_gaming_saffee
-- snow | support | player_prompt_gaming_snow
+- vsm | rifler | Rifler / Star | 中 | player_prompt_gaming_vsm
+- biguzera | igl | IGL / Rifler | 高 | player_prompt_gaming_biguzera
+- piriajr | rifler | Rifler / Support / Flex | 中 | player_prompt_gaming_piriajr
+- saffee | awper | AWPer | 高 | player_prompt_gaming_saffee
+- snow | rifler | Rifler / Entry-style | 中 | player_prompt_gaming_snow
 
 ## Coach
-- 正式教练：rikz (coach_prompt_gaming_rikz)
+- 正式教练：rikz (coach_prompt_gaming_rikz，Coach，可信度 高)
 
 ## Snapshot
 - 阵容版本：2026-05-03-canon-v1

@@ -8,6 +8,15 @@
 - 公开 ID：lauNX
 - 法定姓名：待回填
 
+## CS Role Profile
+- 原始位置：Entry / Star Rifler
+- 主位置：entry
+- 次级位置：star_rifler
+- 可信度：中
+- Agent Major 职责：首轮出击 / 激进创意 / 打开局面；核心输出 / 关键回合 carry
+- 备注：以高火力步枪位处理。
+- 来源：raw/teams/agent_major_player_roles.md
+
 ## Alias
 - lauNX
 
@@ -31,7 +40,8 @@
 
 ## Future Interfaces
 - agent 人格接口：upset-watch, frontline-instigator, heat-checker, aggressive-open
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- 模型绑定接口：llm_role_template_entry / driver_minimax_m2_5
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：前线开口, upset-watch
 
 ## Canon Notes

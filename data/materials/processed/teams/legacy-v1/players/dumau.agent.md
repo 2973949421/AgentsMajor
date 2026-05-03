@@ -3,10 +3,19 @@
 ## Snapshot
 - 队伍：Legacy.v1
 - 类型：player
-- 角色：star
+- 角色：star_rifler
 - 当前状态：active
 - 公开 ID：dumau
 - 法定姓名：待回填
+
+## CS Role Profile
+- 原始位置：Star Rifler
+- 主位置：star_rifler
+- 次级位置：none
+- 可信度：中-高
+- Agent Major 职责：核心输出 / 关键回合 carry
+- 备注：核心步枪火力。
+- 来源：raw/teams/agent_major_player_roles.md
 
 ## Alias
 - dumau
@@ -18,8 +27,8 @@
 - 巴西火力点
 
 ## Playstyle Tags
-- high-impact
-- space-winning
+- impact-rifle
+- resource-heavy
 - rifle-pop
 - clutch-impact
 
@@ -31,7 +40,8 @@
 
 ## Future Interfaces
 - agent 人格接口：upset-watch, brazil-heat, headline-core, win-condition, carry-engine
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- 模型绑定接口：llm_role_template_star_rifler / driver_kimi_k2_5
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：巴西火力点, upset-watch, brazil-heat
 
 ## Canon Notes

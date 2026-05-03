@@ -6,6 +6,8 @@
 
 - `raw/`：原始资料、研究稿、快照、待整理素材。
 - `processed/`：正式资产库，作为后续产品、运营和技术接入的统一读取入口。
+- `raw/teams/agent_major_player_roles.md`：选手 / 教练现实位置到 Agent Major 职责的当前角色来源。
+- `processed/indexes/roles.index.json`：所有正赛选手 / 教练的角色汇总索引。
 
 ## 命令入口
 
@@ -27,6 +29,14 @@
 - 工程层路径和程序标识统一小写，例如 `team_slug`、文件路径、`team_id`、`entity_id`。
 - 前端、卡片页、新闻页、直播间文案默认读取展示层字段，不直接把 slug 当展示名输出。
 - 后续新增队伍、选手或教练资产时，先确定展示名，再派生对应的小写 slug 和稳定 ID。
+
+## LLM 绑定资产层
+
+- `processed/llm/`：保存模型画像、角色绑定模板和少量 spotlight override，只保存可审查的模型元数据。
+- `processed/indexes/llm-bindings.index.json`：汇总 96 个选手 / 教练 agent 的 LLM binding，供前端、运营工具和未来 runtime 查询。
+- `.env.local`：只属于本地运行时凭证来源，禁止把真实 API Key、token、secret、base url 值写入 materials。
+- v1 只做 `asset_preallocation`，所有 `runtime_enabled` 和 `task_bindings[].enabled` 必须为 `false`，不影响比赛模拟、裁判、胜负、战术或生成流程。
+- 未来 runtime 接入读取顺序固定为：agent binding → role template → model profile → `packages/llm` driver registry → env。
 
 ## 当前 canon 口径
 

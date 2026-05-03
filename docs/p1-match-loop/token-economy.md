@@ -131,7 +131,7 @@ tokenBank >= 10000
 - 允许高比例 SubmittedOutput。
 - 默认提交 80%-100%。
 - 优先使用 `multi_slice`。
-- 适合 Star、Closer、关键回合。
+- 适合 star_rifler、awper、带 closer 副标签的关键回合角色。
 
 ### 5.2 Half Buy
 
@@ -380,7 +380,7 @@ randomSeed
 | `front_cut` | 截取开头 | 稳健输出、Save。 |
 | `core_window` | 截取中间核心段 | Half Buy。 |
 | `random_window` | 可复现随机窗口 | Eco、Force Buy 的节目效果。 |
-| `multi_slice` | 多段拼接 | Full Buy、Star Agent。 |
+| `multi_slice` | 多段拼接 | Full Buy、star_rifler / awper Agent。 |
 | `multi_slice_lite` | 少量多段拼接 | Force Buy。 |
 | `summary_cut` | 先压缩再提交 | Coach、IGL 特例。 |
 
@@ -454,7 +454,7 @@ P1.2 需要产生或消费以下事件。
   "fromAgentId": "agent_nav_support",
   "toAgentId": "agent_nav_star",
   "amount": 2200,
-  "reason": "Support 给 Star 起关键回合装备。"
+  "reason": "Support 给 star_rifler 起关键回合装备。"
 }
 ```
 

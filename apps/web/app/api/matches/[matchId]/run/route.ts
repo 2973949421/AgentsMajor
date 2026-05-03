@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server.js";
 
-import { hasActiveWebRun, readWebRunProgress, sanitizeRunError, startPhase15SingleMapWebRun } from "../../../../server-run-progress";
+import {
+  hasActiveWebRun,
+  readWebRunProgress,
+  sanitizeRunError,
+  startPhase15SingleMapWebRun,
+  startPhase17ShowcaseWebRun
+} from "../../../../server-run-progress";
 import { validateWebRunnerRequest, type WebRunnerRequestBody } from "../../../../server-web-runner-policy";
 
 export const runtime = "nodejs";
@@ -25,10 +31,14 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   try {
-    const progress = startPhase15SingleMapWebRun(matchId);
+    const progress =
+      validation.mode === "phase17_showcase_match" ? startPhase17ShowcaseWebRun(matchId) : startPhase15SingleMapWebRun(matchId);
     return NextResponse.json(
       {
-        summary: "DUST2 single-map real LLM generation started.",
+        summary:
+          validation.mode === "phase17_showcase_match"
+            ? "Phase 1.7 Falcon-7B vs VitaLLMty BO3 fake-only generation started."
+            : "DUST2 single-map real LLM generation started.",
         progress
       },
       { status: 202 }

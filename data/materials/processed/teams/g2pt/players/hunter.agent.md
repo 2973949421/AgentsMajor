@@ -8,6 +8,15 @@
 - 公开 ID：huNter-
 - 法定姓名：待回填
 
+## CS Role Profile
+- 原始位置：IGL / Lurker
+- 主位置：igl
+- 次级位置：lurker
+- 可信度：中-高
+- Agent Major 职责：战术规划 / 回合策略 / 资源分配；反制 / 偷点 / 找对手逻辑漏洞
+- 备注：公开资料有 IGL/Lurker 口径。
+- 来源：raw/teams/agent_major_player_roles.md
+
 ## Alias
 - huNter-
 - hunter
@@ -32,7 +41,8 @@
 
 ## Future Interfaces
 - agent 人格接口：money-superteam, shotcaller, system-brain, headline-caller
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- 模型绑定接口：llm_role_template_igl / driver_qwen_3_max_2026_01_23
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：老牌核心, money-superteam
 
 ## Canon Notes

@@ -32,6 +32,9 @@ importers:
       '@agent-major/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@agent-major/materials':
+        specifier: workspace:*
+        version: link:../../packages/materials
       next:
         specifier: ^15.3.3
         version: 15.5.15(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -60,6 +63,9 @@ importers:
       '@agent-major/llm':
         specifier: workspace:*
         version: link:../llm
+      '@agent-major/materials':
+        specifier: workspace:*
+        version: link:../materials
       '@agent-major/queue':
         specifier: workspace:*
         version: link:../queue
@@ -94,6 +100,15 @@ importers:
 
   packages/llm:
     dependencies:
+      '@agent-major/shared':
+        specifier: workspace:*
+        version: link:../shared
+
+  packages/materials:
+    dependencies:
+      '@agent-major/db':
+        specifier: workspace:*
+        version: link:../db
       '@agent-major/shared':
         specifier: workspace:*
         version: link:../shared

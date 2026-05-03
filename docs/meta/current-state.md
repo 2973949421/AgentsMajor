@@ -65,6 +65,7 @@ Phase 1.4：极简伪直播播放器基础版。
 Phase 1.45：P2.2 / P2.3 契约代码落地。
 Phase 1.5：真实 LLM 小范围接入。
 Phase 1.6：区域化攻防回合协议。
+Phase 1.7：Materials runtime integration 与角色契约升级。
 ```
 
 Phase 1.2 的当前事实：
@@ -309,6 +310,42 @@ P2.2 只展示战术区域，P2.3 只包装攻防事实。
 命令行、Web 播放层、导出边界和人工复查已通过。
 ```
 
+### Phase 1.7：Materials runtime integration 与角色契约升级
+
+当前状态：
+
+```text
+已新增 docs/phase-plans/phase-1.7-materials-runtime-integration.md。
+已新增 Node-only @agent-major/materials package。
+data/materials/processed 已接入运行时 seeding。
+默认 showcase 固定为 Falcon-7B vs VitaLLMty。
+默认 BO3 地图为 DUST2 / INFERNO / MIRAGE。
+新增 phase17:match / phase17:replay / phase17:export。
+Web runner 新增 phase17_showcase_match fake-only 模式。
+Phase 1.5 real LLM 单图路径保留为 phase15_single_map legacy/debug 模式。
+```
+
+角色契约已经升级：
+
+```text
+Agent.role 主枚举：coach / igl / awper / entry / star_rifler / lurker / support / rifler / stand_in。
+Agent.secondaryRoles 保存 anchor / flex / closer / system_architect 等副标签。
+Agent.roleProfile 保存 materials 里的 raw position、confidence、positionTags 和职责说明。
+Agent.materialRef 保存 materials entity id、team slug、json path、binding version 与 runtimeEnabled:false。
+读取旧数据时 star -> star_rifler，closer -> rifler。
+新写入不再产生旧 primary role。
+```
+
+Phase 1.7 边界：
+
+```text
+不跑完整 16 队 bracket。
+不启用真实 agent / judge LLM。
+不让 materials 的 future LLM binding 影响胜负、战术或生成流程。
+不把 future_driver_binding、driver ids、modelName、llm_calls 或 raw materials 全量 JSON 暴露给观众侧。
+完整 16 队 bracket 留给 Phase 2.0。
+```
+
 ### P2.2 之后的文档
 
 当前状态：
@@ -324,19 +361,22 @@ P2.3 已补齐 Phase 1 fake provider MVP 和 Phase 1.5 真实 caster_line 需要
 
 ## 4. 当前下一步
 
-当前建议先做一个上层动作：
+当前建议先完成 Phase 1.7 验收收口，再进入 Phase 2.0 的完整赛事设计：
 
 ```text
-后续阶段的边界设计与路线确认，阶段编号待定义。
+1. 恢复本地依赖后跑完 pnpm typecheck / pnpm test / pnpm build。
+2. 对 phase17:match -> phase17:replay -> phase17:export 做 CLI smoke。
+3. 确认 Web replay/export 安全扫描。
+4. 开始 Phase 2.0：完整 16 队 bracket 与赛事调度。
 ```
 
 下一步优先补强对象：
 
 ```text
-1. 定义 tactical 数据观察面、调试视图和回归指标。
-2. 评估更多地图区域、更多战术路径和是否需要 tactical 专表。
-3. 补齐完整赛事、统计、奖项、新闻和素材边界文档。
-4. 补齐公开导出、API、队列与 Web 迁移约束。
+1. Phase 1.7 的依赖恢复与完整回归验证。
+2. Phase 2.0 16 队 bracket 的状态机、seed、fixture 和失败恢复设计。
+3. 赛事统计、奖项、新闻和素材库的边界文档。
+4. 公开导出、API、队列与 Web 迁移约束。
 ```
 
 当前不建议先做：

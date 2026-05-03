@@ -1,5 +1,5 @@
 import { getTacticalMapLayout, resolveTacticalZone } from "@agent-major/core";
-import type { MatchReplay, RoundReplayItem, TacticalMapLayout, TacticalPathType, TacticalZoneRole } from "@agent-major/core";
+import type { MapReplay, MatchReplay, RoundReplayItem, TacticalMapLayout, TacticalPathType, TacticalZoneRole } from "@agent-major/core";
 
 type SourceTimelineEvent = RoundReplayItem["timelineEvents"][number];
 type SourceRoundReport = RoundReplayItem["roundReport"];
@@ -27,7 +27,17 @@ export interface LiveReplayData {
     teamA: LiveReplayTeam;
     teamB: LiveReplayTeam;
   };
+  agentsById: Record<string, LiveReplayAgent>;
   maps: LiveReplayMap[];
+}
+
+export interface LiveReplayAgent {
+  id: string;
+  teamId: string;
+  displayName: string;
+  role: string;
+  secondaryRoles: string[];
+  aliases: string[];
 }
 
 export interface LiveReplayMap {
@@ -44,6 +54,7 @@ export interface LiveReplayMap {
 export interface LiveReplayRound {
   id: string;
   roundNumber: number;
+  agentsById: Record<string, LiveReplayAgent>;
   roundReport: LiveReplayRoundReport;
   tacticalRound?: LiveTacticalRound;
   timelineEvents: LiveReplayTimelineEvent[];
@@ -73,7 +84,6 @@ export interface LiveReplayTimelineEvent {
   kind: SourceTimelineEvent["kind"];
   payload: unknown;
   roundId?: string;
-  sourceEventIds?: string[];
   sequenceIndex: number;
 }
 
@@ -91,6 +101,9 @@ export interface KillFeedEntry {
   text: string;
   actorAgentId?: string;
   targetAgentId?: string;
+  actorName?: string;
+  actorRole?: string;
+  targetName?: string;
   zoneId?: string;
   keyEventId?: string;
 }
@@ -98,6 +111,9 @@ export interface KillFeedEntry {
 export interface EconomyRow {
   agentId: string;
   teamId: string;
+  displayName: string;
+  role: string;
+  aliases: string[];
   beforeTokenBank: number;
   spent: number;
   reward: number;
@@ -208,6 +224,7 @@ export interface LiveRoundFrame {
   supportRate: LiveSupportRate | null;
   highlightTags: string[];
   highlightMvpAgentId: string | null;
+  highlightMvpName: string | null;
   replayCard: LiveReplayCard | null;
   resultWinnerTeamId: string | null;
   roundSummary: string | null;
@@ -217,33 +234,22 @@ export interface LiveRoundFrame {
 }
 
 export function toLiveReplayData(replay: MatchReplay): LiveReplayData {
+  const agentsById = toLiveAgentsById(replay.agentsById);
   return {
     matchId: replay.match.id,
     teams: {
       teamA: toLiveTeam(replay.teams.teamA),
       teamB: toLiveTeam(replay.teams.teamB)
     },
+    agentsById,
     maps: [...replay.maps]
       .sort((left, right) => left.mapGame.order - right.mapGame.order)
-      .map((mapReplay) => {
-        const winnerTeamId = mapReplay.mapGame.winnerTeamId;
-        return {
-          id: mapReplay.mapGame.id,
-          order: mapReplay.mapGame.order,
-          mapName: mapReplay.mapGame.mapName,
-          tacticalMap: toLiveTacticalMapLayout(getTacticalMapLayout(mapReplay.mapGame.mapName)),
-          finalScore: {
-            teamA: mapReplay.mapGame.teamAScore,
-            teamB: mapReplay.mapGame.teamBScore
-          },
-          ...(winnerTeamId ? { winnerTeamId } : {}),
-          keyRoundNumbers: readKeyRoundNumbers(mapReplay.mapSummary?.payload),
-          rounds: [...mapReplay.rounds]
-            .sort((left, right) => left.round.roundNumber - right.round.roundNumber)
-            .map(toLiveRound)
-        };
-      })
+      .map((mapReplay) => toLiveMapReplay(mapReplay, agentsById))
   };
+}
+
+export function toLiveMapReplayData(replay: MapReplay): LiveReplayMap {
+  return toLiveMapReplay(replay, toLiveAgentsById(replay.agentsById));
 }
 
 export function sortRounds(rounds: LiveReplayRound[]): LiveReplayRound[] {
@@ -289,8 +295,9 @@ export function buildRoundFrame(roundItem: LiveReplayRound, currentAtMs: number)
   const roundDurationMs = getRoundDurationMs(roundItem);
   const visibleEvents = getVisibleTimelineEvents(roundItem.timelineEvents, currentAtMs);
   const scoreFromTimeline = findLatestScore(visibleEvents);
-  const killFeed = buildKillFeed(visibleEvents);
+  const killFeed = buildKillFeed(visibleEvents, roundItem.agentsById);
   const highlightEvent = findLatestByKind(visibleEvents, "highlight_reveal");
+  const highlightMvpAgentId = readOptionalString(asRecord(highlightEvent?.payload)?.mvpAgentId) ?? null;
   const resultEvent = findLatestByKind(visibleEvents, "round_result");
   const economyVisible = visibleEvents.some((event) => event.kind === "economy_panel_update");
   const tacticalMap = buildTacticalMapFrame(roundItem, killFeed, visibleEvents);
@@ -307,7 +314,8 @@ export function buildRoundFrame(roundItem: LiveReplayRound, currentAtMs: number)
     barrageMessages: buildBarrageMessages(visibleEvents),
     supportRate: readSupportRate(visibleEvents),
     highlightTags: readStringArray(asRecord(highlightEvent?.payload)?.tags),
-    highlightMvpAgentId: readOptionalString(asRecord(highlightEvent?.payload)?.mvpAgentId) ?? null,
+    highlightMvpAgentId,
+    highlightMvpName: highlightMvpAgentId ? roundItem.agentsById[highlightMvpAgentId]?.displayName ?? null : null,
     replayCard: readReplayCard(asRecord(highlightEvent?.payload)?.replayCard),
     resultWinnerTeamId: readOptionalString(asRecord(resultEvent?.payload)?.winnerTeamId) ?? null,
     roundSummary: resultEvent ? roundItem.roundReport.summary : null,
@@ -332,12 +340,14 @@ export function findNextHighlightRoundIndex(mapReplay: LiveReplayMap, startIndex
 
   const normalizedStart = clamp(Math.floor(startIndex), 0, rounds.length - 1);
   for (let index = normalizedStart + 1; index < rounds.length; index += 1) {
-    if (isHighlightRound(mapReplay, rounds[index])) {
+    const round = rounds[index];
+    if (round && isHighlightRound(mapReplay, round)) {
       return index;
     }
   }
   for (let index = 0; index <= normalizedStart; index += 1) {
-    if (isHighlightRound(mapReplay, rounds[index])) {
+    const round = rounds[index];
+    if (round && isHighlightRound(mapReplay, round)) {
       return index;
     }
   }
@@ -370,10 +380,46 @@ function toLiveTeam(team: MatchReplay["teams"]["teamA"]): LiveReplayTeam {
   };
 }
 
-function toLiveRound(item: RoundReplayItem): LiveReplayRound {
+function toLiveMapReplay(mapReplay: MapReplay, agentsById: Record<string, LiveReplayAgent>): LiveReplayMap {
+  const winnerTeamId = mapReplay.mapGame.winnerTeamId;
+  return {
+    id: mapReplay.mapGame.id,
+    order: mapReplay.mapGame.order,
+    mapName: mapReplay.mapGame.mapName,
+    tacticalMap: toLiveTacticalMapLayout(getTacticalMapLayout(mapReplay.mapGame.mapName)),
+    finalScore: {
+      teamA: mapReplay.mapGame.teamAScore,
+      teamB: mapReplay.mapGame.teamBScore
+    },
+    ...(winnerTeamId ? { winnerTeamId } : {}),
+    keyRoundNumbers: readKeyRoundNumbers(mapReplay.mapSummary?.payload),
+    rounds: [...mapReplay.rounds]
+      .sort((left, right) => left.round.roundNumber - right.round.roundNumber)
+      .map((round) => toLiveRound(round, agentsById))
+  };
+}
+
+function toLiveAgentsById(agentsById: MatchReplay["agentsById"] | null | undefined): Record<string, LiveReplayAgent> {
+  return Object.fromEntries(
+    Object.entries(agentsById ?? {}).map(([id, agent]) => [
+      id,
+      {
+        id: agent.id,
+        teamId: agent.teamId,
+        displayName: agent.displayName,
+        role: agent.role,
+        secondaryRoles: agent.secondaryRoles ?? [],
+        aliases: agent.aliases ?? []
+      }
+    ])
+  );
+}
+
+function toLiveRound(item: RoundReplayItem, agentsById: Record<string, LiveReplayAgent>): LiveReplayRound {
   return {
     id: item.round.id,
     roundNumber: item.round.roundNumber,
+    agentsById,
     roundReport: {
       mapName: item.roundReport.mapName,
       winnerTeamId: item.roundReport.winnerTeamId,
@@ -387,7 +433,7 @@ function toLiveRound(item: RoundReplayItem): LiveReplayRound {
         impact: event.impact
       })),
       economyDelta: {
-        agents: item.roundReport.economyDelta.agents.map(toEconomyRow),
+        agents: item.roundReport.economyDelta.agents.map((row) => toEconomyRow(row, agentsById)),
         teamTotals: item.roundReport.economyDelta.teamTotals
       },
       highlightTags: item.roundReport.highlightTags ?? [],
@@ -406,7 +452,6 @@ function toLiveTimelineEvent(event: SourceTimelineEvent): LiveReplayTimelineEven
     kind: event.kind,
     payload: event.payload,
     ...(event.roundId ? { roundId: event.roundId } : {}),
-    ...(event.sourceEventIds.length > 0 ? { sourceEventIds: event.sourceEventIds } : {}),
     sequenceIndex: event.sequenceIndex
   };
 }
@@ -452,13 +497,15 @@ function findLatestScore(events: LiveReplayTimelineEvent[]): ScorePair | null {
   return null;
 }
 
-function buildKillFeed(events: LiveReplayTimelineEvent[]): KillFeedEntry[] {
+function buildKillFeed(events: LiveReplayTimelineEvent[], agentsById: Record<string, LiveReplayAgent>): KillFeedEntry[] {
   return events
     .filter((event) => event.kind === "kill_feed_item")
     .map((event) => {
       const payload = asRecord(event.payload);
       const actorAgentId = readOptionalString(payload?.actorAgentId);
       const targetAgentId = readOptionalString(payload?.targetAgentId);
+      const actor = actorAgentId ? agentsById[actorAgentId] : undefined;
+      const target = targetAgentId ? agentsById[targetAgentId] : undefined;
       const zoneId = readOptionalString(payload?.zoneId);
       const keyEventId = readOptionalString(payload?.keyEventId);
       return {
@@ -467,6 +514,8 @@ function buildKillFeed(events: LiveReplayTimelineEvent[]): KillFeedEntry[] {
         text: readOptionalString(payload?.text) ?? "关键事件已触发",
         ...(actorAgentId ? { actorAgentId } : {}),
         ...(targetAgentId ? { targetAgentId } : {}),
+        ...(actor ? { actorName: actor.displayName, actorRole: actor.role } : {}),
+        ...(target ? { targetName: target.displayName } : {}),
         ...(zoneId ? { zoneId } : {}),
         ...(keyEventId ? { keyEventId } : {})
       };
@@ -787,10 +836,14 @@ function readOptionalString(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
-function toEconomyRow(row: SourceRoundReport["economyDelta"]["agents"][number]): EconomyRow {
+function toEconomyRow(row: SourceRoundReport["economyDelta"]["agents"][number], agentsById: Record<string, LiveReplayAgent>): EconomyRow {
+  const agent = agentsById[row.agentId];
   return {
     agentId: row.agentId,
     teamId: row.teamId,
+    displayName: agent?.displayName ?? row.agentId,
+    role: agent?.role ?? "unknown",
+    aliases: agent?.aliases ?? [],
     beforeTokenBank: row.beforeTokenBank,
     spent: row.spent,
     reward: row.reward,

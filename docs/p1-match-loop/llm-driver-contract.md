@@ -316,6 +316,8 @@ Agent.driverModelId -> DriverModel.id
 - `driverModelId` 默认在赛事开始前确定。
 - 第一版不把模型绑定作为比赛经济资源。
 - 经济系统不能修改 `driverModelId`。
+- Phase 1.7 中，materials 的 future LLM binding 只保存到 `Agent.materialRef`，运行时 `driverModelId` 统一使用 `driver_fake_phase17`。
+- Phase 1.7 不允许 materials LLM binding 影响 agent action、judge、战术协议、胜负判定或转播生成。
 
 ### 5.2 是否公开展示
 
@@ -336,10 +338,11 @@ Agent.driverModelId -> DriverModel.id
 选手模型分配后续会单独细化。P1.3 先给出默认原则：
 
 - Coach / IGL：优先深度思考强的模型。
-- Star / Closer：优先综合输出强、创造力强的模型。
+- star_rifler / awper：优先综合输出强、创造力强、关键回合冲击强的模型。
 - Entry：优先快速提出高冲击方案的模型。
 - Lurker：优先反制、找漏洞、长推理能力强的模型。
 - Support：优先结构化补全、稳健表达强的模型。
+- rifler / stand_in：优先稳定、低失败率和可替换性强的模型。
 
 第一版不强制某个模型只能用于某张地图。
 
@@ -1093,5 +1096,5 @@ DASHSCOPE_API_KEY=<local-secret>
 4. 是否允许在观众页面公开展示“驾驶员模型”？
 5. `RawOutput` 是否永久保存，还是只保存本地开发阶段？
 6. 深度思考参数如果供应商实际报错，是静默关闭，还是在管理面板提示？
-7. 是否需要为每个模型维护“适合角色”标签，例如 Coach、IGL、Star、Lurker？
+7. 是否需要为每个模型维护“适合角色”标签，例如 Coach、IGL、star_rifler、awper、Lurker？
 8. 第一版是否需要做“模型驾驶员数据榜”，还是推迟到 Stats 模块？

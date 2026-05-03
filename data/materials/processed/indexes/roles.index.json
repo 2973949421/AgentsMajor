@@ -1,0 +1,3037 @@
+{
+  "index_id": "roles-index",
+  "version": "2026-05-03-canon-v1",
+  "source_path": "raw/teams/agent_major_player_roles.md",
+  "entries": [
+    {
+      "team_id": "team_vitallmty",
+      "team_slug": "vitallmty",
+      "agent_team_name": "VitaLLMty",
+      "entity_id": "player_vitallmty_apex",
+      "entity_type": "player",
+      "display_name": "apEX",
+      "role": "igl",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "VitaLLMty",
+        "member_type": "player",
+        "raw_position": "IGL / aggressive caller",
+        "raw_position_parts": [
+          "IGL",
+          "aggressive caller"
+        ],
+        "primary_role": "igl",
+        "secondary_roles": [],
+        "position_tags": [
+          "igl"
+        ],
+        "confidence": "高",
+        "notes": "公开资料长期标注为 Vitality 指挥。",
+        "agent_major_responsibilities": [
+          "战术规划 / 回合策略 / 资源分配"
+        ]
+      }
+    },
+    {
+      "team_id": "team_vitallmty",
+      "team_slug": "vitallmty",
+      "agent_team_name": "VitaLLMty",
+      "entity_id": "player_vitallmty_ropz",
+      "entity_type": "player",
+      "display_name": "ropz",
+      "role": "lurker",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "VitaLLMty",
+        "member_type": "player",
+        "raw_position": "Lurker / late-round rifler",
+        "raw_position_parts": [
+          "Lurker",
+          "late-round rifler"
+        ],
+        "primary_role": "lurker",
+        "secondary_roles": [
+          "rifler"
+        ],
+        "position_tags": [
+          "lurker",
+          "rifler"
+        ],
+        "confidence": "高",
+        "notes": "典型 lurker、冷静残局位。",
+        "agent_major_responsibilities": [
+          "反制 / 偷点 / 找对手逻辑漏洞",
+          "通用火力 / 回合执行 / 补枪衔接"
+        ]
+      }
+    },
+    {
+      "team_id": "team_vitallmty",
+      "team_slug": "vitallmty",
+      "agent_team_name": "VitaLLMty",
+      "entity_id": "player_vitallmty_zywoo",
+      "entity_type": "player",
+      "display_name": "ZywOo",
+      "role": "awper",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "VitaLLMty",
+        "member_type": "player",
+        "raw_position": "AWPer / Star",
+        "raw_position_parts": [
+          "AWPer",
+          "Star"
+        ],
+        "primary_role": "awper",
+        "secondary_roles": [
+          "star_rifler"
+        ],
+        "position_tags": [
+          "awper",
+          "star_rifler"
+        ],
+        "confidence": "高",
+        "notes": "队伍核心主狙与超级明星位。",
+        "agent_major_responsibilities": [
+          "高精度关键论点 / 单点突破 / 高风险高收益调用",
+          "核心输出 / 关键回合 carry"
+        ]
+      }
+    },
+    {
+      "team_id": "team_vitallmty",
+      "team_slug": "vitallmty",
+      "agent_team_name": "VitaLLMty",
+      "entity_id": "player_vitallmty_flamez",
+      "entity_type": "player",
+      "display_name": "flameZ",
+      "role": "entry",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "VitaLLMty",
+        "member_type": "player",
+        "raw_position": "Entry / aggressive rifler",
+        "raw_position_parts": [
+          "Entry",
+          "aggressive rifler"
+        ],
+        "primary_role": "entry",
+        "secondary_roles": [
+          "rifler"
+        ],
+        "position_tags": [
+          "entry",
+          "rifler"
+        ],
+        "confidence": "高",
+        "notes": "常见定位为突破/高主动性步枪手。",
+        "agent_major_responsibilities": [
+          "首轮出击 / 激进创意 / 打开局面",
+          "通用火力 / 回合执行 / 补枪衔接"
+        ]
+      }
+    },
+    {
+      "team_id": "team_vitallmty",
+      "team_slug": "vitallmty",
+      "agent_team_name": "VitaLLMty",
+      "entity_id": "player_vitallmty_mezii",
+      "entity_type": "player",
+      "display_name": "mezii",
+      "role": "support",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "VitaLLMty",
+        "member_type": "player",
+        "raw_position": "Support / Anchor / flex rifler",
+        "raw_position_parts": [
+          "Support",
+          "Anchor",
+          "flex rifler"
+        ],
+        "primary_role": "support",
+        "secondary_roles": [
+          "anchor",
+          "flex"
+        ],
+        "position_tags": [
+          "support",
+          "anchor",
+          "flex"
+        ],
+        "confidence": "中-高",
+        "notes": "多功能补位，偏团队型步枪位。",
+        "agent_major_responsibilities": [
+          "补全细节 / 修复方案 / 提供上下文",
+          "防守型论证 / 稳定性校验",
+          "多场景适配 / 缺口填补 / 角色切换"
+        ]
+      }
+    },
+    {
+      "team_id": "team_vitallmty",
+      "team_slug": "vitallmty",
+      "agent_team_name": "VitaLLMty",
+      "entity_id": "coach_vitallmty_xtqzzz",
+      "entity_type": "coach",
+      "display_name": "XTQZZZ",
+      "role": "coach",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "VitaLLMty",
+        "member_type": "coach",
+        "raw_position": "Coach",
+        "raw_position_parts": [
+          "Coach"
+        ],
+        "primary_role": "coach",
+        "secondary_roles": [],
+        "position_tags": [
+          "coach"
+        ],
+        "confidence": "高",
+        "notes": "Vitality 教练。",
+        "agent_major_responsibilities": [
+          "战术暂停 / 赛前准备 / 赛后复盘"
+        ]
+      }
+    },
+    {
+      "team_id": "team_neural_vincere",
+      "team_slug": "neural-vincere",
+      "agent_team_name": "Neural Vincere",
+      "entity_id": "player_neural_vincere_aleksib",
+      "entity_type": "player",
+      "display_name": "Aleksib",
+      "role": "igl",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Neural Vincere",
+        "member_type": "player",
+        "raw_position": "IGL",
+        "raw_position_parts": [
+          "IGL"
+        ],
+        "primary_role": "igl",
+        "secondary_roles": [],
+        "position_tags": [
+          "igl"
+        ],
+        "confidence": "高",
+        "notes": "NaVi 指挥。",
+        "agent_major_responsibilities": [
+          "战术规划 / 回合策略 / 资源分配"
+        ]
+      }
+    },
+    {
+      "team_id": "team_neural_vincere",
+      "team_slug": "neural-vincere",
+      "agent_team_name": "Neural Vincere",
+      "entity_id": "player_neural_vincere_im",
+      "entity_type": "player",
+      "display_name": "iM",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Neural Vincere",
+        "member_type": "player",
+        "raw_position": "Rifler / Entry-style rifler",
+        "raw_position_parts": [
+          "Rifler",
+          "Entry-style rifler"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "entry"
+        ],
+        "position_tags": [
+          "rifler",
+          "entry"
+        ],
+        "confidence": "中",
+        "notes": "高主动性步枪手，项目中可作为突破/火力位。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "首轮出击 / 激进创意 / 打开局面"
+        ]
+      }
+    },
+    {
+      "team_id": "team_neural_vincere",
+      "team_slug": "neural-vincere",
+      "agent_team_name": "Neural Vincere",
+      "entity_id": "player_neural_vincere_bit",
+      "entity_type": "player",
+      "display_name": "b1t",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Neural Vincere",
+        "member_type": "player",
+        "raw_position": "Rifler / Anchor",
+        "raw_position_parts": [
+          "Rifler",
+          "Anchor"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "anchor"
+        ],
+        "position_tags": [
+          "rifler",
+          "anchor"
+        ],
+        "confidence": "中-高",
+        "notes": "稳定步枪与防守锚点。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "防守型论证 / 稳定性校验"
+        ]
+      }
+    },
+    {
+      "team_id": "team_neural_vincere",
+      "team_slug": "neural-vincere",
+      "agent_team_name": "Neural Vincere",
+      "entity_id": "player_neural_vincere_w0nderful",
+      "entity_type": "player",
+      "display_name": "w0nderful",
+      "role": "awper",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Neural Vincere",
+        "member_type": "player",
+        "raw_position": "AWPer",
+        "raw_position_parts": [
+          "AWPer"
+        ],
+        "primary_role": "awper",
+        "secondary_roles": [],
+        "position_tags": [
+          "awper"
+        ],
+        "confidence": "高",
+        "notes": "NaVi 主狙。",
+        "agent_major_responsibilities": [
+          "高精度关键论点 / 单点突破 / 高风险高收益调用"
+        ]
+      }
+    },
+    {
+      "team_id": "team_neural_vincere",
+      "team_slug": "neural-vincere",
+      "agent_team_name": "Neural Vincere",
+      "entity_id": "player_neural_vincere_makazze",
+      "entity_type": "player",
+      "display_name": "makazze",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Neural Vincere",
+        "member_type": "player",
+        "raw_position": "Rifler / young firepower",
+        "raw_position_parts": [
+          "Rifler",
+          "young firepower"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "star_rifler"
+        ],
+        "position_tags": [
+          "rifler",
+          "star_rifler"
+        ],
+        "confidence": "中",
+        "notes": "年轻步枪火力位，具体一线角色仍需随项目口径固定。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "核心输出 / 关键回合 carry"
+        ]
+      }
+    },
+    {
+      "team_id": "team_neural_vincere",
+      "team_slug": "neural-vincere",
+      "agent_team_name": "Neural Vincere",
+      "entity_id": "coach_neural_vincere_b1ad3",
+      "entity_type": "coach",
+      "display_name": "B1ad3",
+      "role": "coach",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Neural Vincere",
+        "member_type": "coach",
+        "raw_position": "Coach / system architect",
+        "raw_position_parts": [
+          "Coach",
+          "system architect"
+        ],
+        "primary_role": "coach",
+        "secondary_roles": [
+          "system_architect"
+        ],
+        "position_tags": [
+          "coach",
+          "system_architect"
+        ],
+        "confidence": "高",
+        "notes": "NaVi 长期体系教练。",
+        "agent_major_responsibilities": [
+          "战术暂停 / 赛前准备 / 赛后复盘"
+        ]
+      }
+    },
+    {
+      "team_id": "team_furia",
+      "team_slug": "furia",
+      "agent_team_name": "FurIA",
+      "entity_id": "player_furia_fallen",
+      "entity_type": "player",
+      "display_name": "FalleN",
+      "role": "igl",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "FurIA",
+        "member_type": "player",
+        "raw_position": "IGL / secondary AWPer",
+        "raw_position_parts": [
+          "IGL",
+          "secondary AWPer"
+        ],
+        "primary_role": "igl",
+        "secondary_roles": [
+          "awper"
+        ],
+        "position_tags": [
+          "igl",
+          "awper"
+        ],
+        "confidence": "中-高",
+        "notes": "项目中建议设为指挥，兼具老牌狙击传统。",
+        "agent_major_responsibilities": [
+          "战术规划 / 回合策略 / 资源分配",
+          "高精度关键论点 / 单点突破 / 高风险高收益调用"
+        ]
+      }
+    },
+    {
+      "team_id": "team_furia",
+      "team_slug": "furia",
+      "agent_team_name": "FurIA",
+      "entity_id": "player_furia_yuurih",
+      "entity_type": "player",
+      "display_name": "yuurih",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "FurIA",
+        "member_type": "player",
+        "raw_position": "Rifler / Support",
+        "raw_position_parts": [
+          "Rifler",
+          "Support"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "support"
+        ],
+        "position_tags": [
+          "rifler",
+          "support"
+        ],
+        "confidence": "中-高",
+        "notes": "团队型步枪与补位。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "补全细节 / 修复方案 / 提供上下文"
+        ]
+      }
+    },
+    {
+      "team_id": "team_furia",
+      "team_slug": "furia",
+      "agent_team_name": "FurIA",
+      "entity_id": "player_furia_yekindar",
+      "entity_type": "player",
+      "display_name": "YEKINDAR",
+      "role": "entry",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "FurIA",
+        "member_type": "player",
+        "raw_position": "Entry / aggressive rifler",
+        "raw_position_parts": [
+          "Entry",
+          "aggressive rifler"
+        ],
+        "primary_role": "entry",
+        "secondary_roles": [
+          "rifler"
+        ],
+        "position_tags": [
+          "entry",
+          "rifler"
+        ],
+        "confidence": "高",
+        "notes": "典型突破手/高主动性步枪。",
+        "agent_major_responsibilities": [
+          "首轮出击 / 激进创意 / 打开局面",
+          "通用火力 / 回合执行 / 补枪衔接"
+        ]
+      }
+    },
+    {
+      "team_id": "team_furia",
+      "team_slug": "furia",
+      "agent_team_name": "FurIA",
+      "entity_id": "player_furia_kscerato",
+      "entity_type": "player",
+      "display_name": "KSCERATO",
+      "role": "star_rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "FurIA",
+        "member_type": "player",
+        "raw_position": "Star Rifler / Lurker",
+        "raw_position_parts": [
+          "Star Rifler",
+          "Lurker"
+        ],
+        "primary_role": "star_rifler",
+        "secondary_roles": [
+          "lurker"
+        ],
+        "position_tags": [
+          "star_rifler",
+          "lurker"
+        ],
+        "confidence": "高",
+        "notes": "核心步枪与残局强点。",
+        "agent_major_responsibilities": [
+          "核心输出 / 关键回合 carry",
+          "反制 / 偷点 / 找对手逻辑漏洞"
+        ]
+      }
+    },
+    {
+      "team_id": "team_furia",
+      "team_slug": "furia",
+      "agent_team_name": "FurIA",
+      "entity_id": "player_furia_molodoy",
+      "entity_type": "player",
+      "display_name": "molodoy",
+      "role": "awper",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "FurIA",
+        "member_type": "player",
+        "raw_position": "AWPer",
+        "raw_position_parts": [
+          "AWPer"
+        ],
+        "primary_role": "awper",
+        "secondary_roles": [],
+        "position_tags": [
+          "awper"
+        ],
+        "confidence": "高",
+        "notes": "作为主狙处理。",
+        "agent_major_responsibilities": [
+          "高精度关键论点 / 单点突破 / 高风险高收益调用"
+        ]
+      }
+    },
+    {
+      "team_id": "team_furia",
+      "team_slug": "furia",
+      "agent_team_name": "FurIA",
+      "entity_id": "coach_furia_sidde",
+      "entity_type": "coach",
+      "display_name": "sidde",
+      "role": "coach",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "FurIA",
+        "member_type": "coach",
+        "raw_position": "Coach",
+        "raw_position_parts": [
+          "Coach"
+        ],
+        "primary_role": "coach",
+        "secondary_roles": [],
+        "position_tags": [
+          "coach"
+        ],
+        "confidence": "高",
+        "notes": "FURIA 教练。",
+        "agent_major_responsibilities": [
+          "战术暂停 / 赛前准备 / 赛后复盘"
+        ]
+      }
+    },
+    {
+      "team_id": "team_falcon_7b",
+      "team_slug": "falcon-7b",
+      "agent_team_name": "Falcon-7B",
+      "entity_id": "player_falcon_7b_karrigan",
+      "entity_type": "player",
+      "display_name": "karrigan",
+      "role": "igl",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Falcon-7B",
+        "member_type": "player",
+        "raw_position": "IGL",
+        "raw_position_parts": [
+          "IGL"
+        ],
+        "primary_role": "igl",
+        "secondary_roles": [],
+        "position_tags": [
+          "igl"
+        ],
+        "confidence": "高",
+        "notes": "经典指挥位。",
+        "agent_major_responsibilities": [
+          "战术规划 / 回合策略 / 资源分配"
+        ]
+      }
+    },
+    {
+      "team_id": "team_falcon_7b",
+      "team_slug": "falcon-7b",
+      "agent_team_name": "Falcon-7B",
+      "entity_id": "player_falcon_7b_niko",
+      "entity_type": "player",
+      "display_name": "NiKo",
+      "role": "star_rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Falcon-7B",
+        "member_type": "player",
+        "raw_position": "Star Rifler / closer",
+        "raw_position_parts": [
+          "Star Rifler",
+          "closer"
+        ],
+        "primary_role": "star_rifler",
+        "secondary_roles": [
+          "closer"
+        ],
+        "position_tags": [
+          "star_rifler",
+          "closer"
+        ],
+        "confidence": "高",
+        "notes": "核心步枪、后期收割与残局位。",
+        "agent_major_responsibilities": [
+          "核心输出 / 关键回合 carry",
+          "残局处理 / 压力判断 / 终局收束"
+        ]
+      }
+    },
+    {
+      "team_id": "team_falcon_7b",
+      "team_slug": "falcon-7b",
+      "agent_team_name": "Falcon-7B",
+      "entity_id": "player_falcon_7b_teses",
+      "entity_type": "player",
+      "display_name": "TeSeS",
+      "role": "support",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Falcon-7B",
+        "member_type": "player",
+        "raw_position": "Support / Anchor / rifler",
+        "raw_position_parts": [
+          "Support",
+          "Anchor",
+          "rifler"
+        ],
+        "primary_role": "support",
+        "secondary_roles": [
+          "anchor",
+          "rifler"
+        ],
+        "position_tags": [
+          "support",
+          "anchor",
+          "rifler"
+        ],
+        "confidence": "中-高",
+        "notes": "团队步枪、补位和锚点。",
+        "agent_major_responsibilities": [
+          "补全细节 / 修复方案 / 提供上下文",
+          "防守型论证 / 稳定性校验",
+          "通用火力 / 回合执行 / 补枪衔接"
+        ]
+      }
+    },
+    {
+      "team_id": "team_falcon_7b",
+      "team_slug": "falcon-7b",
+      "agent_team_name": "Falcon-7B",
+      "entity_id": "player_falcon_7b_m0nesy",
+      "entity_type": "player",
+      "display_name": "m0NESY",
+      "role": "awper",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Falcon-7B",
+        "member_type": "player",
+        "raw_position": "AWPer / Star",
+        "raw_position_parts": [
+          "AWPer",
+          "Star"
+        ],
+        "primary_role": "awper",
+        "secondary_roles": [
+          "star_rifler"
+        ],
+        "position_tags": [
+          "awper",
+          "star_rifler"
+        ],
+        "confidence": "高",
+        "notes": "主狙与明星位。",
+        "agent_major_responsibilities": [
+          "高精度关键论点 / 单点突破 / 高风险高收益调用",
+          "核心输出 / 关键回合 carry"
+        ]
+      }
+    },
+    {
+      "team_id": "team_falcon_7b",
+      "team_slug": "falcon-7b",
+      "agent_team_name": "Falcon-7B",
+      "entity_id": "player_falcon_7b_kyousuke",
+      "entity_type": "player",
+      "display_name": "kyousuke",
+      "role": "entry",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Falcon-7B",
+        "member_type": "player",
+        "raw_position": "Entry / star rifler",
+        "raw_position_parts": [
+          "Entry",
+          "star rifler"
+        ],
+        "primary_role": "entry",
+        "secondary_roles": [
+          "star_rifler"
+        ],
+        "position_tags": [
+          "entry",
+          "star_rifler"
+        ],
+        "confidence": "中",
+        "notes": "新锐火力位，项目中可设为突破/爆发位。",
+        "agent_major_responsibilities": [
+          "首轮出击 / 激进创意 / 打开局面",
+          "核心输出 / 关键回合 carry"
+        ]
+      }
+    },
+    {
+      "team_id": "team_falcon_7b",
+      "team_slug": "falcon-7b",
+      "agent_team_name": "Falcon-7B",
+      "entity_id": "coach_falcon_7b_zonic",
+      "entity_type": "coach",
+      "display_name": "zonic",
+      "role": "coach",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Falcon-7B",
+        "member_type": "coach",
+        "raw_position": "Coach",
+        "raw_position_parts": [
+          "Coach"
+        ],
+        "primary_role": "coach",
+        "secondary_roles": [],
+        "position_tags": [
+          "coach"
+        ],
+        "confidence": "高",
+        "notes": "Falcons 教练。",
+        "agent_major_responsibilities": [
+          "战术暂停 / 赛前准备 / 赛后复盘"
+        ]
+      }
+    },
+    {
+      "team_id": "team_parivision_omni",
+      "team_slug": "parivision-omni",
+      "agent_team_name": "PariVision-Omni",
+      "entity_id": "player_parivision_omni_jame",
+      "entity_type": "player",
+      "display_name": "Jame",
+      "role": "igl",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "PariVision-Omni",
+        "member_type": "player",
+        "raw_position": "IGL / AWPer",
+        "raw_position_parts": [
+          "IGL",
+          "AWPer"
+        ],
+        "primary_role": "igl",
+        "secondary_roles": [
+          "awper"
+        ],
+        "position_tags": [
+          "igl",
+          "awper"
+        ],
+        "confidence": "高",
+        "notes": "经典 Jame 体系：指挥 + 主狙。",
+        "agent_major_responsibilities": [
+          "战术规划 / 回合策略 / 资源分配",
+          "高精度关键论点 / 单点突破 / 高风险高收益调用"
+        ]
+      }
+    },
+    {
+      "team_id": "team_parivision_omni",
+      "team_slug": "parivision-omni",
+      "agent_team_name": "PariVision-Omni",
+      "entity_id": "player_parivision_omni_belchonokk",
+      "entity_type": "player",
+      "display_name": "BELCHONOKK",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "PariVision-Omni",
+        "member_type": "player",
+        "raw_position": "Rifler / Entry-style",
+        "raw_position_parts": [
+          "Rifler",
+          "Entry-style"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "entry"
+        ],
+        "position_tags": [
+          "rifler",
+          "entry"
+        ],
+        "confidence": "中",
+        "notes": "项目中可设为主动步枪/突破位。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "首轮出击 / 激进创意 / 打开局面"
+        ]
+      }
+    },
+    {
+      "team_id": "team_parivision_omni",
+      "team_slug": "parivision-omni",
+      "agent_team_name": "PariVision-Omni",
+      "entity_id": "player_parivision_omni_xielo",
+      "entity_type": "player",
+      "display_name": "xiELO",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "PariVision-Omni",
+        "member_type": "player",
+        "raw_position": "Rifler / Flex",
+        "raw_position_parts": [
+          "Rifler",
+          "Flex"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "flex"
+        ],
+        "position_tags": [
+          "rifler",
+          "flex"
+        ],
+        "confidence": "中",
+        "notes": "公开角色信息较少，项目中设为灵活步枪。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "多场景适配 / 缺口填补 / 角色切换"
+        ]
+      }
+    },
+    {
+      "team_id": "team_parivision_omni",
+      "team_slug": "parivision-omni",
+      "agent_team_name": "PariVision-Omni",
+      "entity_id": "player_parivision_omni_nota",
+      "entity_type": "player",
+      "display_name": "nota",
+      "role": "support",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "PariVision-Omni",
+        "member_type": "player",
+        "raw_position": "Support / Anchor",
+        "raw_position_parts": [
+          "Support",
+          "Anchor"
+        ],
+        "primary_role": "support",
+        "secondary_roles": [
+          "anchor"
+        ],
+        "position_tags": [
+          "support",
+          "anchor"
+        ],
+        "confidence": "中",
+        "notes": "公开角色信息较少，项目中设为辅助/锚点。",
+        "agent_major_responsibilities": [
+          "补全细节 / 修复方案 / 提供上下文",
+          "防守型论证 / 稳定性校验"
+        ]
+      }
+    },
+    {
+      "team_id": "team_parivision_omni",
+      "team_slug": "parivision-omni",
+      "agent_team_name": "PariVision-Omni",
+      "entity_id": "player_parivision_omni_zweih",
+      "entity_type": "player",
+      "display_name": "zweih",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "PariVision-Omni",
+        "member_type": "player",
+        "raw_position": "Rifler / young firepower",
+        "raw_position_parts": [
+          "Rifler",
+          "young firepower"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "star_rifler"
+        ],
+        "position_tags": [
+          "rifler",
+          "star_rifler"
+        ],
+        "confidence": "中",
+        "notes": "项目中设为年轻火力步枪。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "核心输出 / 关键回合 carry"
+        ]
+      }
+    },
+    {
+      "team_id": "team_parivision_omni",
+      "team_slug": "parivision-omni",
+      "agent_team_name": "PariVision-Omni",
+      "entity_id": "coach_parivision_omni_dastan",
+      "entity_type": "coach",
+      "display_name": "dastan",
+      "role": "coach",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "PariVision-Omni",
+        "member_type": "coach",
+        "raw_position": "Coach",
+        "raw_position_parts": [
+          "Coach"
+        ],
+        "primary_role": "coach",
+        "secondary_roles": [],
+        "position_tags": [
+          "coach"
+        ],
+        "confidence": "高",
+        "notes": "PARIVISION 教练。",
+        "agent_major_responsibilities": [
+          "战术暂停 / 赛前准备 / 赛后复盘"
+        ]
+      }
+    },
+    {
+      "team_id": "team_aulora",
+      "team_slug": "aulora",
+      "agent_team_name": "AuLoRA",
+      "entity_id": "player_aulora_maj3r",
+      "entity_type": "player",
+      "display_name": "MAJ3R",
+      "role": "igl",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "AuLoRA",
+        "member_type": "player",
+        "raw_position": "IGL",
+        "raw_position_parts": [
+          "IGL"
+        ],
+        "primary_role": "igl",
+        "secondary_roles": [],
+        "position_tags": [
+          "igl"
+        ],
+        "confidence": "高",
+        "notes": "公开资料标注为 IGL。",
+        "agent_major_responsibilities": [
+          "战术规划 / 回合策略 / 资源分配"
+        ]
+      }
+    },
+    {
+      "team_id": "team_aulora",
+      "team_slug": "aulora",
+      "agent_team_name": "AuLoRA",
+      "entity_id": "player_aulora_xantares",
+      "entity_type": "player",
+      "display_name": "XANTARES",
+      "role": "entry",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "AuLoRA",
+        "member_type": "player",
+        "raw_position": "Entry / Star Rifler",
+        "raw_position_parts": [
+          "Entry",
+          "Star Rifler"
+        ],
+        "primary_role": "entry",
+        "secondary_roles": [
+          "star_rifler"
+        ],
+        "position_tags": [
+          "entry",
+          "star_rifler"
+        ],
+        "confidence": "高",
+        "notes": "高爆发步枪、强主动性。",
+        "agent_major_responsibilities": [
+          "首轮出击 / 激进创意 / 打开局面",
+          "核心输出 / 关键回合 carry"
+        ]
+      }
+    },
+    {
+      "team_id": "team_aulora",
+      "team_slug": "aulora",
+      "agent_team_name": "AuLoRA",
+      "entity_id": "player_aulora_woxic",
+      "entity_type": "player",
+      "display_name": "woxic",
+      "role": "awper",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "AuLoRA",
+        "member_type": "player",
+        "raw_position": "AWPer",
+        "raw_position_parts": [
+          "AWPer"
+        ],
+        "primary_role": "awper",
+        "secondary_roles": [],
+        "position_tags": [
+          "awper"
+        ],
+        "confidence": "高",
+        "notes": "主狙。",
+        "agent_major_responsibilities": [
+          "高精度关键论点 / 单点突破 / 高风险高收益调用"
+        ]
+      }
+    },
+    {
+      "team_id": "team_aulora",
+      "team_slug": "aulora",
+      "agent_team_name": "AuLoRA",
+      "entity_id": "player_aulora_soulfly",
+      "entity_type": "player",
+      "display_name": "soulfly",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "AuLoRA",
+        "member_type": "player",
+        "raw_position": "Rifler / Anchor",
+        "raw_position_parts": [
+          "Rifler",
+          "Anchor"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "anchor"
+        ],
+        "position_tags": [
+          "rifler",
+          "anchor"
+        ],
+        "confidence": "中",
+        "notes": "项目中设为步枪/锚点。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "防守型论证 / 稳定性校验"
+        ]
+      }
+    },
+    {
+      "team_id": "team_aulora",
+      "team_slug": "aulora",
+      "agent_team_name": "AuLoRA",
+      "entity_id": "player_aulora_wicadia",
+      "entity_type": "player",
+      "display_name": "Wicadia",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "AuLoRA",
+        "member_type": "player",
+        "raw_position": "Rifler / Entry-support",
+        "raw_position_parts": [
+          "Rifler",
+          "Entry-support"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "entry"
+        ],
+        "position_tags": [
+          "rifler",
+          "entry"
+        ],
+        "confidence": "中-高",
+        "notes": "年轻步枪手，项目中可设为副突破。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "首轮出击 / 激进创意 / 打开局面"
+        ]
+      }
+    },
+    {
+      "team_id": "team_aulora",
+      "team_slug": "aulora",
+      "agent_team_name": "AuLoRA",
+      "entity_id": "coach_aulora_fabre",
+      "entity_type": "coach",
+      "display_name": "Fabre",
+      "role": "coach",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "AuLoRA",
+        "member_type": "coach",
+        "raw_position": "Coach",
+        "raw_position_parts": [
+          "Coach"
+        ],
+        "primary_role": "coach",
+        "secondary_roles": [],
+        "position_tags": [
+          "coach"
+        ],
+        "confidence": "高",
+        "notes": "Aurora 教练。",
+        "agent_major_responsibilities": [
+          "战术暂停 / 赛前准备 / 赛后复盘"
+        ]
+      }
+    },
+    {
+      "team_id": "team_mouse",
+      "team_slug": "mouse",
+      "agent_team_name": "Mouse",
+      "entity_id": "player_mouse_torzsi",
+      "entity_type": "player",
+      "display_name": "torzsi",
+      "role": "awper",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Mouse",
+        "member_type": "player",
+        "raw_position": "AWPer",
+        "raw_position_parts": [
+          "AWPer"
+        ],
+        "primary_role": "awper",
+        "secondary_roles": [],
+        "position_tags": [
+          "awper"
+        ],
+        "confidence": "高",
+        "notes": "主狙。",
+        "agent_major_responsibilities": [
+          "高精度关键论点 / 单点突破 / 高风险高收益调用"
+        ]
+      }
+    },
+    {
+      "team_id": "team_mouse",
+      "team_slug": "mouse",
+      "agent_team_name": "Mouse",
+      "entity_id": "player_mouse_spinx",
+      "entity_type": "player",
+      "display_name": "Spinx",
+      "role": "lurker",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Mouse",
+        "member_type": "player",
+        "raw_position": "Lurker / Star Rifler",
+        "raw_position_parts": [
+          "Lurker",
+          "Star Rifler"
+        ],
+        "primary_role": "lurker",
+        "secondary_roles": [
+          "star_rifler"
+        ],
+        "position_tags": [
+          "lurker",
+          "star_rifler"
+        ],
+        "confidence": "高",
+        "notes": "典型 lurker / 高资源步枪位。",
+        "agent_major_responsibilities": [
+          "反制 / 偷点 / 找对手逻辑漏洞",
+          "核心输出 / 关键回合 carry"
+        ]
+      }
+    },
+    {
+      "team_id": "team_mouse",
+      "team_slug": "mouse",
+      "agent_team_name": "Mouse",
+      "entity_id": "player_mouse_jl",
+      "entity_type": "player",
+      "display_name": "jL",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Mouse",
+        "member_type": "player",
+        "raw_position": "Rifler / Entry-style / Flex",
+        "raw_position_parts": [
+          "Rifler",
+          "Entry-style",
+          "Flex"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "entry",
+          "flex"
+        ],
+        "position_tags": [
+          "rifler",
+          "entry",
+          "flex"
+        ],
+        "confidence": "中",
+        "notes": "从 NaVi 租借后项目中设为火力/灵活步枪。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "首轮出击 / 激进创意 / 打开局面",
+          "多场景适配 / 缺口填补 / 角色切换"
+        ]
+      }
+    },
+    {
+      "team_id": "team_mouse",
+      "team_slug": "mouse",
+      "agent_team_name": "Mouse",
+      "entity_id": "player_mouse_xertion",
+      "entity_type": "player",
+      "display_name": "xertioN",
+      "role": "igl",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Mouse",
+        "member_type": "player",
+        "raw_position": "IGL / aggressive rifler",
+        "raw_position_parts": [
+          "IGL",
+          "aggressive rifler"
+        ],
+        "primary_role": "igl",
+        "secondary_roles": [
+          "rifler"
+        ],
+        "position_tags": [
+          "igl",
+          "rifler"
+        ],
+        "confidence": "中-高",
+        "notes": "MOUZ 近期变动后，xertioN 被公开标注为 IGL。",
+        "agent_major_responsibilities": [
+          "战术规划 / 回合策略 / 资源分配",
+          "通用火力 / 回合执行 / 补枪衔接"
+        ]
+      }
+    },
+    {
+      "team_id": "team_mouse",
+      "team_slug": "mouse",
+      "agent_team_name": "Mouse",
+      "entity_id": "player_mouse_xelex",
+      "entity_type": "player",
+      "display_name": "xelex",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Mouse",
+        "member_type": "player",
+        "raw_position": "Rifler / Support / young firepower",
+        "raw_position_parts": [
+          "Rifler",
+          "Support",
+          "young firepower"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "support",
+          "star_rifler"
+        ],
+        "position_tags": [
+          "rifler",
+          "support",
+          "star_rifler"
+        ],
+        "confidence": "中",
+        "notes": "从 MOUZ NXT 提拔，具体一线角色可项目化设定。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "补全细节 / 修复方案 / 提供上下文",
+          "核心输出 / 关键回合 carry"
+        ]
+      }
+    },
+    {
+      "team_id": "team_mouse",
+      "team_slug": "mouse",
+      "agent_team_name": "Mouse",
+      "entity_id": "coach_mouse_sycrone",
+      "entity_type": "coach",
+      "display_name": "sycrone",
+      "role": "coach",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Mouse",
+        "member_type": "coach",
+        "raw_position": "Coach",
+        "raw_position_parts": [
+          "Coach"
+        ],
+        "primary_role": "coach",
+        "secondary_roles": [],
+        "position_tags": [
+          "coach"
+        ],
+        "confidence": "高",
+        "notes": "MOUZ 教练。",
+        "agent_major_responsibilities": [
+          "战术暂停 / 赛前准备 / 赛后复盘"
+        ]
+      }
+    },
+    {
+      "team_id": "team_the_mongolzk",
+      "team_slug": "the-mongolzk",
+      "agent_team_name": "The MongolZK",
+      "entity_id": "player_the_mongolzk_blitz",
+      "entity_type": "player",
+      "display_name": "bLitz",
+      "role": "igl",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "The MongolZK",
+        "member_type": "player",
+        "raw_position": "IGL / Rifler",
+        "raw_position_parts": [
+          "IGL",
+          "Rifler"
+        ],
+        "primary_role": "igl",
+        "secondary_roles": [
+          "rifler"
+        ],
+        "position_tags": [
+          "igl",
+          "rifler"
+        ],
+        "confidence": "高",
+        "notes": "The MongolZ 指挥核心。",
+        "agent_major_responsibilities": [
+          "战术规划 / 回合策略 / 资源分配",
+          "通用火力 / 回合执行 / 补枪衔接"
+        ]
+      }
+    },
+    {
+      "team_id": "team_the_mongolzk",
+      "team_slug": "the-mongolzk",
+      "agent_team_name": "The MongolZK",
+      "entity_id": "player_the_mongolzk_techno",
+      "entity_type": "player",
+      "display_name": "Techno",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "The MongolZK",
+        "member_type": "player",
+        "raw_position": "Rifler / Entry-style",
+        "raw_position_parts": [
+          "Rifler",
+          "Entry-style"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "entry"
+        ],
+        "position_tags": [
+          "rifler",
+          "entry"
+        ],
+        "confidence": "中-高",
+        "notes": "高主动性步枪位。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "首轮出击 / 激进创意 / 打开局面"
+        ]
+      }
+    },
+    {
+      "team_id": "team_the_mongolzk",
+      "team_slug": "the-mongolzk",
+      "agent_team_name": "The MongolZK",
+      "entity_id": "player_the_mongolzk_mzinho",
+      "entity_type": "player",
+      "display_name": "mzinho",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "The MongolZK",
+        "member_type": "player",
+        "raw_position": "Rifler / Support / Anchor",
+        "raw_position_parts": [
+          "Rifler",
+          "Support",
+          "Anchor"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "support",
+          "anchor"
+        ],
+        "position_tags": [
+          "rifler",
+          "support",
+          "anchor"
+        ],
+        "confidence": "中",
+        "notes": "团队型步枪/补位。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "补全细节 / 修复方案 / 提供上下文",
+          "防守型论证 / 稳定性校验"
+        ]
+      }
+    },
+    {
+      "team_id": "team_the_mongolzk",
+      "team_slug": "the-mongolzk",
+      "agent_team_name": "The MongolZK",
+      "entity_id": "player_the_mongolzk_910",
+      "entity_type": "player",
+      "display_name": "910",
+      "role": "awper",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "The MongolZK",
+        "member_type": "player",
+        "raw_position": "AWPer",
+        "raw_position_parts": [
+          "AWPer"
+        ],
+        "primary_role": "awper",
+        "secondary_roles": [],
+        "position_tags": [
+          "awper"
+        ],
+        "confidence": "高",
+        "notes": "主狙。",
+        "agent_major_responsibilities": [
+          "高精度关键论点 / 单点突破 / 高风险高收益调用"
+        ]
+      }
+    },
+    {
+      "team_id": "team_the_mongolzk",
+      "team_slug": "the-mongolzk",
+      "agent_team_name": "The MongolZK",
+      "entity_id": "player_the_mongolzk_cobrazera",
+      "entity_type": "player",
+      "display_name": "cobrazera",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "The MongolZK",
+        "member_type": "player",
+        "raw_position": "Rifler / Flex",
+        "raw_position_parts": [
+          "Rifler",
+          "Flex"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "flex"
+        ],
+        "position_tags": [
+          "rifler",
+          "flex"
+        ],
+        "confidence": "中",
+        "notes": "新加入步枪位，项目中设为灵活火力。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "多场景适配 / 缺口填补 / 角色切换"
+        ]
+      }
+    },
+    {
+      "team_id": "team_the_mongolzk",
+      "team_slug": "the-mongolzk",
+      "agent_team_name": "The MongolZK",
+      "entity_id": "coach_the_mongolzk_maaraa",
+      "entity_type": "coach",
+      "display_name": "maaRaa",
+      "role": "coach",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "The MongolZK",
+        "member_type": "coach",
+        "raw_position": "Coach",
+        "raw_position_parts": [
+          "Coach"
+        ],
+        "primary_role": "coach",
+        "secondary_roles": [],
+        "position_tags": [
+          "coach"
+        ],
+        "confidence": "高",
+        "notes": "The MongolZ 教练。",
+        "agent_major_responsibilities": [
+          "战术暂停 / 赛前准备 / 赛后复盘"
+        ]
+      }
+    },
+    {
+      "team_id": "team_team_spirit",
+      "team_slug": "team-spirit",
+      "agent_team_name": "Team SpirIT",
+      "entity_id": "player_team_spirit_donk",
+      "entity_type": "player",
+      "display_name": "donk",
+      "role": "entry",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Team SpirIT",
+        "member_type": "player",
+        "raw_position": "Entry / Star Rifler",
+        "raw_position_parts": [
+          "Entry",
+          "Star Rifler"
+        ],
+        "primary_role": "entry",
+        "secondary_roles": [
+          "star_rifler"
+        ],
+        "position_tags": [
+          "entry",
+          "star_rifler"
+        ],
+        "confidence": "高",
+        "notes": "超高影响力突破/明星步枪。",
+        "agent_major_responsibilities": [
+          "首轮出击 / 激进创意 / 打开局面",
+          "核心输出 / 关键回合 carry"
+        ]
+      }
+    },
+    {
+      "team_id": "team_team_spirit",
+      "team_slug": "team-spirit",
+      "agent_team_name": "Team SpirIT",
+      "entity_id": "player_team_spirit_magixx",
+      "entity_type": "player",
+      "display_name": "magixx",
+      "role": "igl",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Team SpirIT",
+        "member_type": "player",
+        "raw_position": "IGL / Rifler",
+        "raw_position_parts": [
+          "IGL",
+          "Rifler"
+        ],
+        "primary_role": "igl",
+        "secondary_roles": [
+          "rifler"
+        ],
+        "position_tags": [
+          "igl",
+          "rifler"
+        ],
+        "confidence": "中-高",
+        "notes": "公开资料中有 IGL/Rifler 口径。",
+        "agent_major_responsibilities": [
+          "战术规划 / 回合策略 / 资源分配",
+          "通用火力 / 回合执行 / 补枪衔接"
+        ]
+      }
+    },
+    {
+      "team_id": "team_team_spirit",
+      "team_slug": "team-spirit",
+      "agent_team_name": "Team SpirIT",
+      "entity_id": "player_team_spirit_sh1ro",
+      "entity_type": "player",
+      "display_name": "sh1ro",
+      "role": "awper",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Team SpirIT",
+        "member_type": "player",
+        "raw_position": "AWPer",
+        "raw_position_parts": [
+          "AWPer"
+        ],
+        "primary_role": "awper",
+        "secondary_roles": [],
+        "position_tags": [
+          "awper"
+        ],
+        "confidence": "高",
+        "notes": "主狙。",
+        "agent_major_responsibilities": [
+          "高精度关键论点 / 单点突破 / 高风险高收益调用"
+        ]
+      }
+    },
+    {
+      "team_id": "team_team_spirit",
+      "team_slug": "team-spirit",
+      "agent_team_name": "Team SpirIT",
+      "entity_id": "player_team_spirit_tn1r",
+      "entity_type": "player",
+      "display_name": "tN1R",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Team SpirIT",
+        "member_type": "player",
+        "raw_position": "Rifler / Flex",
+        "raw_position_parts": [
+          "Rifler",
+          "Flex"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "flex"
+        ],
+        "position_tags": [
+          "rifler",
+          "flex"
+        ],
+        "confidence": "中",
+        "notes": "新阵容步枪位，项目中设为灵活火力。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "多场景适配 / 缺口填补 / 角色切换"
+        ]
+      }
+    },
+    {
+      "team_id": "team_team_spirit",
+      "team_slug": "team-spirit",
+      "agent_team_name": "Team SpirIT",
+      "entity_id": "player_team_spirit_zont1x",
+      "entity_type": "player",
+      "display_name": "zont1x",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Team SpirIT",
+        "member_type": "player",
+        "raw_position": "Rifler / Anchor",
+        "raw_position_parts": [
+          "Rifler",
+          "Anchor"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "anchor"
+        ],
+        "position_tags": [
+          "rifler",
+          "anchor"
+        ],
+        "confidence": "中-高",
+        "notes": "步枪与防守锚点。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "防守型论证 / 稳定性校验"
+        ]
+      }
+    },
+    {
+      "team_id": "team_team_spirit",
+      "team_slug": "team-spirit",
+      "agent_team_name": "Team SpirIT",
+      "entity_id": "coach_team_spirit_hally",
+      "entity_type": "coach",
+      "display_name": "hally",
+      "role": "coach",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Team SpirIT",
+        "member_type": "coach",
+        "raw_position": "Coach",
+        "raw_position_parts": [
+          "Coach"
+        ],
+        "primary_role": "coach",
+        "secondary_roles": [],
+        "position_tags": [
+          "coach"
+        ],
+        "confidence": "高",
+        "notes": "Spirit 教练。",
+        "agent_major_responsibilities": [
+          "战术暂停 / 赛前准备 / 赛后复盘"
+        ]
+      }
+    },
+    {
+      "team_id": "team_futuretoken",
+      "team_slug": "futuretoken",
+      "agent_team_name": "FUtureToken",
+      "entity_id": "player_futuretoken_dem0n",
+      "entity_type": "player",
+      "display_name": "dem0n",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "FUtureToken",
+        "member_type": "player",
+        "raw_position": "Rifler / Star",
+        "raw_position_parts": [
+          "Rifler",
+          "Star"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "star_rifler"
+        ],
+        "position_tags": [
+          "rifler",
+          "star_rifler"
+        ],
+        "confidence": "中",
+        "notes": "步枪火力位。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "核心输出 / 关键回合 carry"
+        ]
+      }
+    },
+    {
+      "team_id": "team_futuretoken",
+      "team_slug": "futuretoken",
+      "agent_team_name": "FUtureToken",
+      "entity_id": "player_futuretoken_launx",
+      "entity_type": "player",
+      "display_name": "lauNX",
+      "role": "entry",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "FUtureToken",
+        "member_type": "player",
+        "raw_position": "Entry / Star Rifler",
+        "raw_position_parts": [
+          "Entry",
+          "Star Rifler"
+        ],
+        "primary_role": "entry",
+        "secondary_roles": [
+          "star_rifler"
+        ],
+        "position_tags": [
+          "entry",
+          "star_rifler"
+        ],
+        "confidence": "中",
+        "notes": "以高火力步枪位处理。",
+        "agent_major_responsibilities": [
+          "首轮出击 / 激进创意 / 打开局面",
+          "核心输出 / 关键回合 carry"
+        ]
+      }
+    },
+    {
+      "team_id": "team_futuretoken",
+      "team_slug": "futuretoken",
+      "agent_team_name": "FUtureToken",
+      "entity_id": "player_futuretoken_krabeni",
+      "entity_type": "player",
+      "display_name": "Krabeni",
+      "role": "support",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "FUtureToken",
+        "member_type": "player",
+        "raw_position": "Support / Rifler",
+        "raw_position_parts": [
+          "Support",
+          "Rifler"
+        ],
+        "primary_role": "support",
+        "secondary_roles": [
+          "rifler"
+        ],
+        "position_tags": [
+          "support",
+          "rifler"
+        ],
+        "confidence": "低-中",
+        "notes": "公开角色资料较少，项目中设为辅助步枪。",
+        "agent_major_responsibilities": [
+          "补全细节 / 修复方案 / 提供上下文",
+          "通用火力 / 回合执行 / 补枪衔接"
+        ]
+      }
+    },
+    {
+      "team_id": "team_futuretoken",
+      "team_slug": "futuretoken",
+      "agent_team_name": "FUtureToken",
+      "entity_id": "player_futuretoken_cmtry",
+      "entity_type": "player",
+      "display_name": "cmtry",
+      "role": "igl",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "FUtureToken",
+        "member_type": "player",
+        "raw_position": "IGL / Support",
+        "raw_position_parts": [
+          "IGL",
+          "Support"
+        ],
+        "primary_role": "igl",
+        "secondary_roles": [
+          "support"
+        ],
+        "position_tags": [
+          "igl",
+          "support"
+        ],
+        "confidence": "低-中",
+        "notes": "公开角色资料较少；项目中暂设为指挥/辅助位。",
+        "agent_major_responsibilities": [
+          "战术规划 / 回合策略 / 资源分配",
+          "补全细节 / 修复方案 / 提供上下文"
+        ]
+      }
+    },
+    {
+      "team_id": "team_futuretoken",
+      "team_slug": "futuretoken",
+      "agent_team_name": "FUtureToken",
+      "entity_id": "player_futuretoken_dziugss",
+      "entity_type": "player",
+      "display_name": "dziugss",
+      "role": "awper",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "FUtureToken",
+        "member_type": "player",
+        "raw_position": "AWPer / Rifler",
+        "raw_position_parts": [
+          "AWPer",
+          "Rifler"
+        ],
+        "primary_role": "awper",
+        "secondary_roles": [
+          "rifler"
+        ],
+        "position_tags": [
+          "awper",
+          "rifler"
+        ],
+        "confidence": "低-中",
+        "notes": "公开角色资料较少；若需严格主狙，可后续二次校验。",
+        "agent_major_responsibilities": [
+          "高精度关键论点 / 单点突破 / 高风险高收益调用",
+          "通用火力 / 回合执行 / 补枪衔接"
+        ]
+      }
+    },
+    {
+      "team_id": "team_futuretoken",
+      "team_slug": "futuretoken",
+      "agent_team_name": "FUtureToken",
+      "entity_id": "coach_futuretoken_coolio",
+      "entity_type": "coach",
+      "display_name": "coolio",
+      "role": "coach",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "FUtureToken",
+        "member_type": "coach",
+        "raw_position": "Coach",
+        "raw_position_parts": [
+          "Coach"
+        ],
+        "primary_role": "coach",
+        "secondary_roles": [],
+        "position_tags": [
+          "coach"
+        ],
+        "confidence": "高",
+        "notes": "FUT 教练。",
+        "agent_major_responsibilities": [
+          "战术暂停 / 赛前准备 / 赛后复盘"
+        ]
+      }
+    },
+    {
+      "team_id": "team_astrallm",
+      "team_slug": "astrallm",
+      "agent_team_name": "AstraLLM",
+      "entity_id": "player_astrallm_hooxi",
+      "entity_type": "player",
+      "display_name": "HooXi",
+      "role": "igl",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "AstraLLM",
+        "member_type": "player",
+        "raw_position": "IGL",
+        "raw_position_parts": [
+          "IGL"
+        ],
+        "primary_role": "igl",
+        "secondary_roles": [],
+        "position_tags": [
+          "igl"
+        ],
+        "confidence": "高",
+        "notes": "公开资料标注为 IGL。",
+        "agent_major_responsibilities": [
+          "战术规划 / 回合策略 / 资源分配"
+        ]
+      }
+    },
+    {
+      "team_id": "team_astrallm",
+      "team_slug": "astrallm",
+      "agent_team_name": "AstraLLM",
+      "entity_id": "player_astrallm_phzy",
+      "entity_type": "player",
+      "display_name": "phzy",
+      "role": "awper",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "AstraLLM",
+        "member_type": "player",
+        "raw_position": "AWPer",
+        "raw_position_parts": [
+          "AWPer"
+        ],
+        "primary_role": "awper",
+        "secondary_roles": [],
+        "position_tags": [
+          "awper"
+        ],
+        "confidence": "高",
+        "notes": "主狙。",
+        "agent_major_responsibilities": [
+          "高精度关键论点 / 单点突破 / 高风险高收益调用"
+        ]
+      }
+    },
+    {
+      "team_id": "team_astrallm",
+      "team_slug": "astrallm",
+      "agent_team_name": "AstraLLM",
+      "entity_id": "player_astrallm_jabbi",
+      "entity_type": "player",
+      "display_name": "jabbi",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "AstraLLM",
+        "member_type": "player",
+        "raw_position": "Rifler / Lurker",
+        "raw_position_parts": [
+          "Rifler",
+          "Lurker"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "lurker"
+        ],
+        "position_tags": [
+          "rifler",
+          "lurker"
+        ],
+        "confidence": "中-高",
+        "notes": "核心步枪，项目中可设为 lurker/侧翼。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "反制 / 偷点 / 找对手逻辑漏洞"
+        ]
+      }
+    },
+    {
+      "team_id": "team_astrallm",
+      "team_slug": "astrallm",
+      "agent_team_name": "AstraLLM",
+      "entity_id": "player_astrallm_staehr",
+      "entity_type": "player",
+      "display_name": "Staehr",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "AstraLLM",
+        "member_type": "player",
+        "raw_position": "Rifler / Anchor",
+        "raw_position_parts": [
+          "Rifler",
+          "Anchor"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "anchor"
+        ],
+        "position_tags": [
+          "rifler",
+          "anchor"
+        ],
+        "confidence": "中-高",
+        "notes": "步枪/锚点。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "防守型论证 / 稳定性校验"
+        ]
+      }
+    },
+    {
+      "team_id": "team_astrallm",
+      "team_slug": "astrallm",
+      "agent_team_name": "AstraLLM",
+      "entity_id": "player_astrallm_ryu",
+      "entity_type": "player",
+      "display_name": "ryu",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "AstraLLM",
+        "member_type": "player",
+        "raw_position": "Rifler / Flex",
+        "raw_position_parts": [
+          "Rifler",
+          "Flex"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "flex"
+        ],
+        "position_tags": [
+          "rifler",
+          "flex"
+        ],
+        "confidence": "中",
+        "notes": "新阵容步枪，项目中设为灵活位。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "多场景适配 / 缺口填补 / 角色切换"
+        ]
+      }
+    },
+    {
+      "team_id": "team_astrallm",
+      "team_slug": "astrallm",
+      "agent_team_name": "AstraLLM",
+      "entity_id": "coach_astrallm_ruggah",
+      "entity_type": "coach",
+      "display_name": "ruggah",
+      "role": "coach",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "AstraLLM",
+        "member_type": "coach",
+        "raw_position": "Coach",
+        "raw_position_parts": [
+          "Coach"
+        ],
+        "primary_role": "coach",
+        "secondary_roles": [],
+        "position_tags": [
+          "coach"
+        ],
+        "confidence": "高",
+        "notes": "Astralis 教练。",
+        "agent_major_responsibilities": [
+          "战术暂停 / 赛前准备 / 赛后复盘"
+        ]
+      }
+    },
+    {
+      "team_id": "team_g2pt",
+      "team_slug": "g2pt",
+      "agent_team_name": "G2PT",
+      "entity_id": "player_g2pt_hunter",
+      "entity_type": "player",
+      "display_name": "huNter-",
+      "role": "igl",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "G2PT",
+        "member_type": "player",
+        "raw_position": "IGL / Lurker",
+        "raw_position_parts": [
+          "IGL",
+          "Lurker"
+        ],
+        "primary_role": "igl",
+        "secondary_roles": [
+          "lurker"
+        ],
+        "position_tags": [
+          "igl",
+          "lurker"
+        ],
+        "confidence": "中-高",
+        "notes": "公开资料有 IGL/Lurker 口径。",
+        "agent_major_responsibilities": [
+          "战术规划 / 回合策略 / 资源分配",
+          "反制 / 偷点 / 找对手逻辑漏洞"
+        ]
+      }
+    },
+    {
+      "team_id": "team_g2pt",
+      "team_slug": "g2pt",
+      "agent_team_name": "G2PT",
+      "entity_id": "player_g2pt_nertz",
+      "entity_type": "player",
+      "display_name": "NertZ",
+      "role": "star_rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "G2PT",
+        "member_type": "player",
+        "raw_position": "Star Rifler / Lurker",
+        "raw_position_parts": [
+          "Star Rifler",
+          "Lurker"
+        ],
+        "primary_role": "star_rifler",
+        "secondary_roles": [
+          "lurker"
+        ],
+        "position_tags": [
+          "star_rifler",
+          "lurker"
+        ],
+        "confidence": "中-高",
+        "notes": "高影响力步枪位。",
+        "agent_major_responsibilities": [
+          "核心输出 / 关键回合 carry",
+          "反制 / 偷点 / 找对手逻辑漏洞"
+        ]
+      }
+    },
+    {
+      "team_id": "team_g2pt",
+      "team_slug": "g2pt",
+      "agent_team_name": "G2PT",
+      "entity_id": "player_g2pt_sunpayus",
+      "entity_type": "player",
+      "display_name": "SunPayus",
+      "role": "awper",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "G2PT",
+        "member_type": "player",
+        "raw_position": "AWPer",
+        "raw_position_parts": [
+          "AWPer"
+        ],
+        "primary_role": "awper",
+        "secondary_roles": [],
+        "position_tags": [
+          "awper"
+        ],
+        "confidence": "高",
+        "notes": "主狙。",
+        "agent_major_responsibilities": [
+          "高精度关键论点 / 单点突破 / 高风险高收益调用"
+        ]
+      }
+    },
+    {
+      "team_id": "team_g2pt",
+      "team_slug": "g2pt",
+      "agent_team_name": "G2PT",
+      "entity_id": "player_g2pt_heavygod",
+      "entity_type": "player",
+      "display_name": "HeavyGod",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "G2PT",
+        "member_type": "player",
+        "raw_position": "Rifler / Entry-style",
+        "raw_position_parts": [
+          "Rifler",
+          "Entry-style"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "entry"
+        ],
+        "position_tags": [
+          "rifler",
+          "entry"
+        ],
+        "confidence": "中",
+        "notes": "年轻强力步枪，项目中可设为突破/火力位。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "首轮出击 / 激进创意 / 打开局面"
+        ]
+      }
+    },
+    {
+      "team_id": "team_g2pt",
+      "team_slug": "g2pt",
+      "agent_team_name": "G2PT",
+      "entity_id": "player_g2pt_matys",
+      "entity_type": "player",
+      "display_name": "MATYS",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "G2PT",
+        "member_type": "player",
+        "raw_position": "Rifler / Support / Flex",
+        "raw_position_parts": [
+          "Rifler",
+          "Support",
+          "Flex"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "support",
+          "flex"
+        ],
+        "position_tags": [
+          "rifler",
+          "support",
+          "flex"
+        ],
+        "confidence": "中",
+        "notes": "步枪/灵活位。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "补全细节 / 修复方案 / 提供上下文",
+          "多场景适配 / 缺口填补 / 角色切换"
+        ]
+      }
+    },
+    {
+      "team_id": "team_g2pt",
+      "team_slug": "g2pt",
+      "agent_team_name": "G2PT",
+      "entity_id": "coach_g2pt_saw",
+      "entity_type": "coach",
+      "display_name": "sAw",
+      "role": "coach",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "G2PT",
+        "member_type": "coach",
+        "raw_position": "Coach",
+        "raw_position_parts": [
+          "Coach"
+        ],
+        "primary_role": "coach",
+        "secondary_roles": [],
+        "position_tags": [
+          "coach"
+        ],
+        "confidence": "高",
+        "notes": "G2 教练。",
+        "agent_major_responsibilities": [
+          "战术暂停 / 赛前准备 / 赛后复盘"
+        ]
+      }
+    },
+    {
+      "team_id": "team_legacy_v1",
+      "team_slug": "legacy-v1",
+      "agent_team_name": "Legacy.v1",
+      "entity_id": "player_legacy_v1_art",
+      "entity_type": "player",
+      "display_name": "arT",
+      "role": "igl",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Legacy.v1",
+        "member_type": "player",
+        "raw_position": "IGL / Entry",
+        "raw_position_parts": [
+          "IGL",
+          "Entry"
+        ],
+        "primary_role": "igl",
+        "secondary_roles": [
+          "entry"
+        ],
+        "position_tags": [
+          "igl",
+          "entry"
+        ],
+        "confidence": "高",
+        "notes": "arT 作为激进指挥/突破式 IGL 的辨识度很高。",
+        "agent_major_responsibilities": [
+          "战术规划 / 回合策略 / 资源分配",
+          "首轮出击 / 激进创意 / 打开局面"
+        ]
+      }
+    },
+    {
+      "team_id": "team_legacy_v1",
+      "team_slug": "legacy-v1",
+      "agent_team_name": "Legacy.v1",
+      "entity_id": "player_legacy_v1_dumau",
+      "entity_type": "player",
+      "display_name": "dumau",
+      "role": "star_rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Legacy.v1",
+        "member_type": "player",
+        "raw_position": "Star Rifler",
+        "raw_position_parts": [
+          "Star Rifler"
+        ],
+        "primary_role": "star_rifler",
+        "secondary_roles": [],
+        "position_tags": [
+          "star_rifler"
+        ],
+        "confidence": "中-高",
+        "notes": "核心步枪火力。",
+        "agent_major_responsibilities": [
+          "核心输出 / 关键回合 carry"
+        ]
+      }
+    },
+    {
+      "team_id": "team_legacy_v1",
+      "team_slug": "legacy-v1",
+      "agent_team_name": "Legacy.v1",
+      "entity_id": "player_legacy_v1_latto",
+      "entity_type": "player",
+      "display_name": "latto",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Legacy.v1",
+        "member_type": "player",
+        "raw_position": "Rifler / Support",
+        "raw_position_parts": [
+          "Rifler",
+          "Support"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "support"
+        ],
+        "position_tags": [
+          "rifler",
+          "support"
+        ],
+        "confidence": "中",
+        "notes": "团队步枪。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "补全细节 / 修复方案 / 提供上下文"
+        ]
+      }
+    },
+    {
+      "team_id": "team_legacy_v1",
+      "team_slug": "legacy-v1",
+      "agent_team_name": "Legacy.v1",
+      "entity_id": "player_legacy_v1_n1ssim",
+      "entity_type": "player",
+      "display_name": "n1ssim",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Legacy.v1",
+        "member_type": "player",
+        "raw_position": "Rifler / Anchor",
+        "raw_position_parts": [
+          "Rifler",
+          "Anchor"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "anchor"
+        ],
+        "position_tags": [
+          "rifler",
+          "anchor"
+        ],
+        "confidence": "中",
+        "notes": "步枪/锚点。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "防守型论证 / 稳定性校验"
+        ]
+      }
+    },
+    {
+      "team_id": "team_legacy_v1",
+      "team_slug": "legacy-v1",
+      "agent_team_name": "Legacy.v1",
+      "entity_id": "player_legacy_v1_saadzin",
+      "entity_type": "player",
+      "display_name": "saadzin",
+      "role": "awper",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Legacy.v1",
+        "member_type": "player",
+        "raw_position": "AWPer / Rifler",
+        "raw_position_parts": [
+          "AWPer",
+          "Rifler"
+        ],
+        "primary_role": "awper",
+        "secondary_roles": [
+          "rifler"
+        ],
+        "position_tags": [
+          "awper",
+          "rifler"
+        ],
+        "confidence": "低-中",
+        "notes": "项目中暂设为主狙/混合火力位；后续可复核。",
+        "agent_major_responsibilities": [
+          "高精度关键论点 / 单点突破 / 高风险高收益调用",
+          "通用火力 / 回合执行 / 补枪衔接"
+        ]
+      }
+    },
+    {
+      "team_id": "team_legacy_v1",
+      "team_slug": "legacy-v1",
+      "agent_team_name": "Legacy.v1",
+      "entity_id": "coach_legacy_v1_adrrr",
+      "entity_type": "coach",
+      "display_name": "adrrr",
+      "role": "coach",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Legacy.v1",
+        "member_type": "coach",
+        "raw_position": "Coach",
+        "raw_position_parts": [
+          "Coach"
+        ],
+        "primary_role": "coach",
+        "secondary_roles": [],
+        "position_tags": [
+          "coach"
+        ],
+        "confidence": "高",
+        "notes": "Legacy 当前教练口径。",
+        "agent_major_responsibilities": [
+          "战术暂停 / 赛前准备 / 赛后复盘"
+        ]
+      }
+    },
+    {
+      "team_id": "team_bit8",
+      "team_slug": "bit8",
+      "agent_team_name": "Bit8",
+      "entity_id": "player_bit8_alex666",
+      "entity_type": "player",
+      "display_name": "alex666",
+      "role": "igl",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Bit8",
+        "member_type": "player",
+        "raw_position": "IGL",
+        "raw_position_parts": [
+          "IGL"
+        ],
+        "primary_role": "igl",
+        "secondary_roles": [],
+        "position_tags": [
+          "igl"
+        ],
+        "confidence": "高",
+        "notes": "Liquipedia 标注为 IGL。",
+        "agent_major_responsibilities": [
+          "战术规划 / 回合策略 / 资源分配"
+        ]
+      }
+    },
+    {
+      "team_id": "team_bit8",
+      "team_slug": "bit8",
+      "agent_team_name": "Bit8",
+      "entity_id": "player_bit8_npl",
+      "entity_type": "player",
+      "display_name": "npl",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Bit8",
+        "member_type": "player",
+        "raw_position": "Rifler / Playmaker",
+        "raw_position_parts": [
+          "Rifler",
+          "Playmaker"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "star_rifler"
+        ],
+        "position_tags": [
+          "rifler",
+          "star_rifler"
+        ],
+        "confidence": "中-高",
+        "notes": "官方队伍页曾将 npl 标注为 Playmaker。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "核心输出 / 关键回合 carry"
+        ]
+      }
+    },
+    {
+      "team_id": "team_bit8",
+      "team_slug": "bit8",
+      "agent_team_name": "Bit8",
+      "entity_id": "player_bit8_kensizor",
+      "entity_type": "player",
+      "display_name": "kensizor",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Bit8",
+        "member_type": "player",
+        "raw_position": "Rifler",
+        "raw_position_parts": [
+          "Rifler"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [],
+        "position_tags": [
+          "rifler"
+        ],
+        "confidence": "中-高",
+        "notes": "官方队伍页标注为 Rifler。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接"
+        ]
+      }
+    },
+    {
+      "team_id": "team_bit8",
+      "team_slug": "bit8",
+      "agent_team_name": "Bit8",
+      "entity_id": "player_bit8_esenthial",
+      "entity_type": "player",
+      "display_name": "esenthial",
+      "role": "support",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Bit8",
+        "member_type": "player",
+        "raw_position": "Support / Anchor / Rifler",
+        "raw_position_parts": [
+          "Support",
+          "Anchor",
+          "Rifler"
+        ],
+        "primary_role": "support",
+        "secondary_roles": [
+          "anchor",
+          "rifler"
+        ],
+        "position_tags": [
+          "support",
+          "anchor",
+          "rifler"
+        ],
+        "confidence": "中",
+        "notes": "项目中设为补位/锚点步枪。",
+        "agent_major_responsibilities": [
+          "补全细节 / 修复方案 / 提供上下文",
+          "防守型论证 / 稳定性校验",
+          "通用火力 / 回合执行 / 补枪衔接"
+        ]
+      }
+    },
+    {
+      "team_id": "team_bit8",
+      "team_slug": "bit8",
+      "agent_team_name": "Bit8",
+      "entity_id": "player_bit8_s1zzi",
+      "entity_type": "player",
+      "display_name": "s1zzi",
+      "role": "awper",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Bit8",
+        "member_type": "player",
+        "raw_position": "AWPer",
+        "raw_position_parts": [
+          "AWPer"
+        ],
+        "primary_role": "awper",
+        "secondary_roles": [],
+        "position_tags": [
+          "awper"
+        ],
+        "confidence": "低-中",
+        "notes": "项目中暂设为主狙；需后续复核。",
+        "agent_major_responsibilities": [
+          "高精度关键论点 / 单点突破 / 高风险高收益调用"
+        ]
+      }
+    },
+    {
+      "team_id": "team_bit8",
+      "team_slug": "bit8",
+      "agent_team_name": "Bit8",
+      "entity_id": "coach_bit8_maddened",
+      "entity_type": "coach",
+      "display_name": "maddened",
+      "role": "coach",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Bit8",
+        "member_type": "coach",
+        "raw_position": "Coach",
+        "raw_position_parts": [
+          "Coach"
+        ],
+        "primary_role": "coach",
+        "secondary_roles": [],
+        "position_tags": [
+          "coach"
+        ],
+        "confidence": "高",
+        "notes": "B8 教练。",
+        "agent_major_responsibilities": [
+          "战术暂停 / 赛前准备 / 赛后复盘"
+        ]
+      }
+    },
+    {
+      "team_id": "team_prompt_gaming",
+      "team_slug": "prompt-gaming",
+      "agent_team_name": "Prompt Gaming",
+      "entity_id": "player_prompt_gaming_vsm",
+      "entity_type": "player",
+      "display_name": "vsm",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Prompt Gaming",
+        "member_type": "player",
+        "raw_position": "Rifler / Star",
+        "raw_position_parts": [
+          "Rifler",
+          "Star"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "star_rifler"
+        ],
+        "position_tags": [
+          "rifler",
+          "star_rifler"
+        ],
+        "confidence": "中",
+        "notes": "核心步枪火力。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "核心输出 / 关键回合 carry"
+        ]
+      }
+    },
+    {
+      "team_id": "team_prompt_gaming",
+      "team_slug": "prompt-gaming",
+      "agent_team_name": "Prompt Gaming",
+      "entity_id": "player_prompt_gaming_biguzera",
+      "entity_type": "player",
+      "display_name": "biguzera",
+      "role": "igl",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Prompt Gaming",
+        "member_type": "player",
+        "raw_position": "IGL / Rifler",
+        "raw_position_parts": [
+          "IGL",
+          "Rifler"
+        ],
+        "primary_role": "igl",
+        "secondary_roles": [
+          "rifler"
+        ],
+        "position_tags": [
+          "igl",
+          "rifler"
+        ],
+        "confidence": "高",
+        "notes": "Liquipedia 标注为 IGL。",
+        "agent_major_responsibilities": [
+          "战术规划 / 回合策略 / 资源分配",
+          "通用火力 / 回合执行 / 补枪衔接"
+        ]
+      }
+    },
+    {
+      "team_id": "team_prompt_gaming",
+      "team_slug": "prompt-gaming",
+      "agent_team_name": "Prompt Gaming",
+      "entity_id": "player_prompt_gaming_piriajr",
+      "entity_type": "player",
+      "display_name": "piriajr",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Prompt Gaming",
+        "member_type": "player",
+        "raw_position": "Rifler / Support / Flex",
+        "raw_position_parts": [
+          "Rifler",
+          "Support",
+          "Flex"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "support",
+          "flex"
+        ],
+        "position_tags": [
+          "rifler",
+          "support",
+          "flex"
+        ],
+        "confidence": "中",
+        "notes": "项目中设为灵活步枪/补位。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "补全细节 / 修复方案 / 提供上下文",
+          "多场景适配 / 缺口填补 / 角色切换"
+        ]
+      }
+    },
+    {
+      "team_id": "team_prompt_gaming",
+      "team_slug": "prompt-gaming",
+      "agent_team_name": "Prompt Gaming",
+      "entity_id": "player_prompt_gaming_saffee",
+      "entity_type": "player",
+      "display_name": "saffee",
+      "role": "awper",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Prompt Gaming",
+        "member_type": "player",
+        "raw_position": "AWPer",
+        "raw_position_parts": [
+          "AWPer"
+        ],
+        "primary_role": "awper",
+        "secondary_roles": [],
+        "position_tags": [
+          "awper"
+        ],
+        "confidence": "高",
+        "notes": "主狙。",
+        "agent_major_responsibilities": [
+          "高精度关键论点 / 单点突破 / 高风险高收益调用"
+        ]
+      }
+    },
+    {
+      "team_id": "team_prompt_gaming",
+      "team_slug": "prompt-gaming",
+      "agent_team_name": "Prompt Gaming",
+      "entity_id": "player_prompt_gaming_snow",
+      "entity_type": "player",
+      "display_name": "snow",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Prompt Gaming",
+        "member_type": "player",
+        "raw_position": "Rifler / Entry-style",
+        "raw_position_parts": [
+          "Rifler",
+          "Entry-style"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "entry"
+        ],
+        "position_tags": [
+          "rifler",
+          "entry"
+        ],
+        "confidence": "中",
+        "notes": "年轻步枪/主动位。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "首轮出击 / 激进创意 / 打开局面"
+        ]
+      }
+    },
+    {
+      "team_id": "team_prompt_gaming",
+      "team_slug": "prompt-gaming",
+      "agent_team_name": "Prompt Gaming",
+      "entity_id": "coach_prompt_gaming_rikz",
+      "entity_type": "coach",
+      "display_name": "rikz",
+      "role": "coach",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "Prompt Gaming",
+        "member_type": "coach",
+        "raw_position": "Coach",
+        "raw_position_parts": [
+          "Coach"
+        ],
+        "primary_role": "coach",
+        "secondary_roles": [],
+        "position_tags": [
+          "coach"
+        ],
+        "confidence": "高",
+        "notes": "paiN 教练。",
+        "agent_major_responsibilities": [
+          "战术暂停 / 赛前准备 / 赛后复盘"
+        ]
+      }
+    },
+    {
+      "team_id": "team_phaseclan",
+      "team_slug": "phaseclan",
+      "agent_team_name": "PhaseClan",
+      "entity_id": "player_phaseclan_broky",
+      "entity_type": "player",
+      "display_name": "broky",
+      "role": "awper",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "PhaseClan",
+        "member_type": "player",
+        "raw_position": "AWPer",
+        "raw_position_parts": [
+          "AWPer"
+        ],
+        "primary_role": "awper",
+        "secondary_roles": [],
+        "position_tags": [
+          "awper"
+        ],
+        "confidence": "高",
+        "notes": "主狙。",
+        "agent_major_responsibilities": [
+          "高精度关键论点 / 单点突破 / 高风险高收益调用"
+        ]
+      }
+    },
+    {
+      "team_id": "team_phaseclan",
+      "team_slug": "phaseclan",
+      "agent_team_name": "PhaseClan",
+      "entity_id": "player_phaseclan_twistzz",
+      "entity_type": "player",
+      "display_name": "Twistzz",
+      "role": "igl",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "PhaseClan",
+        "member_type": "player",
+        "raw_position": "IGL / Star Rifler",
+        "raw_position_parts": [
+          "IGL",
+          "Star Rifler"
+        ],
+        "primary_role": "igl",
+        "secondary_roles": [
+          "star_rifler"
+        ],
+        "position_tags": [
+          "igl",
+          "star_rifler"
+        ],
+        "confidence": "中-高",
+        "notes": "近期语境中 Twistzz 作为新 captain/指挥核心处理。",
+        "agent_major_responsibilities": [
+          "战术规划 / 回合策略 / 资源分配",
+          "核心输出 / 关键回合 carry"
+        ]
+      }
+    },
+    {
+      "team_id": "team_phaseclan",
+      "team_slug": "phaseclan",
+      "agent_team_name": "PhaseClan",
+      "entity_id": "player_phaseclan_jcobbb",
+      "entity_type": "player",
+      "display_name": "jcobbb",
+      "role": "rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "PhaseClan",
+        "member_type": "player",
+        "raw_position": "Rifler / Flex",
+        "raw_position_parts": [
+          "Rifler",
+          "Flex"
+        ],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "flex"
+        ],
+        "position_tags": [
+          "rifler",
+          "flex"
+        ],
+        "confidence": "中",
+        "notes": "年轻步枪/灵活位。",
+        "agent_major_responsibilities": [
+          "通用火力 / 回合执行 / 补枪衔接",
+          "多场景适配 / 缺口填补 / 角色切换"
+        ]
+      }
+    },
+    {
+      "team_id": "team_phaseclan",
+      "team_slug": "phaseclan",
+      "agent_team_name": "PhaseClan",
+      "entity_id": "player_phaseclan_frozen",
+      "entity_type": "player",
+      "display_name": "frozen",
+      "role": "star_rifler",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "PhaseClan",
+        "member_type": "player",
+        "raw_position": "Star Rifler / Lurker",
+        "raw_position_parts": [
+          "Star Rifler",
+          "Lurker"
+        ],
+        "primary_role": "star_rifler",
+        "secondary_roles": [
+          "lurker"
+        ],
+        "position_tags": [
+          "star_rifler",
+          "lurker"
+        ],
+        "confidence": "高",
+        "notes": "核心步枪，后期残局能力强。",
+        "agent_major_responsibilities": [
+          "核心输出 / 关键回合 carry",
+          "反制 / 偷点 / 找对手逻辑漏洞"
+        ]
+      }
+    },
+    {
+      "team_id": "team_phaseclan",
+      "team_slug": "phaseclan",
+      "agent_team_name": "PhaseClan",
+      "entity_id": "player_phaseclan_neityu",
+      "entity_type": "player",
+      "display_name": "Neityu",
+      "role": "stand_in",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "PhaseClan",
+        "member_type": "player",
+        "raw_position": "Stand-in / Rifler",
+        "raw_position_parts": [
+          "Stand-in",
+          "Rifler"
+        ],
+        "primary_role": "stand_in",
+        "secondary_roles": [
+          "rifler"
+        ],
+        "position_tags": [
+          "stand_in",
+          "rifler"
+        ],
+        "confidence": "中",
+        "notes": "近期 stand-in，项目中可设为临时火力位。",
+        "agent_major_responsibilities": [
+          "临时接入 / 快速适配 / 低上下文执行",
+          "通用火力 / 回合执行 / 补枪衔接"
+        ]
+      }
+    },
+    {
+      "team_id": "team_phaseclan",
+      "team_slug": "phaseclan",
+      "agent_team_name": "PhaseClan",
+      "entity_id": "coach_phaseclan_coach_tbd",
+      "entity_type": "coach",
+      "display_name": "TBD",
+      "role": "coach",
+      "cs_role_profile": {
+        "source_path": "raw/teams/agent_major_player_roles.md",
+        "source_team_name": "PhaseClan",
+        "member_type": "coach",
+        "raw_position": "Coach TBD",
+        "raw_position_parts": [
+          "Coach TBD"
+        ],
+        "primary_role": "coach",
+        "secondary_roles": [],
+        "position_tags": [
+          "coach"
+        ],
+        "confidence": "低",
+        "notes": "PhaseClan 为 Agent Major Special Invite，教练位可由项目后续设定。",
+        "agent_major_responsibilities": [
+          "战术暂停 / 赛前准备 / 赛后复盘"
+        ]
+      }
+    }
+  ]
+}

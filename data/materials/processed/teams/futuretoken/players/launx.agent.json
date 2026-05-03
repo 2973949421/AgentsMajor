@@ -8,6 +8,30 @@
   "display_name": "lauNX",
   "role": "entry",
   "status": "active",
+  "cs_role_profile": {
+    "source_path": "raw/teams/agent_major_player_roles.md",
+    "source_team_name": "FUtureToken",
+    "member_type": "player",
+    "raw_position": "Entry / Star Rifler",
+    "raw_position_parts": [
+      "Entry",
+      "Star Rifler"
+    ],
+    "primary_role": "entry",
+    "secondary_roles": [
+      "star_rifler"
+    ],
+    "position_tags": [
+      "entry",
+      "star_rifler"
+    ],
+    "confidence": "中",
+    "notes": "以高火力步枪位处理。",
+    "agent_major_responsibilities": [
+      "首轮出击 / 激进创意 / 打开局面",
+      "核心输出 / 关键回合 carry"
+    ]
+  },
   "aliases": [
     "lauNX"
   ],
@@ -55,16 +79,79 @@
     ]
   },
   "future_driver_binding": {
-    "preferred_driver_model_id": null,
-    "fallback_driver_model_ids": [],
+    "binding_version": "2026-05-03-llm-binding-v1",
+    "binding_scope": "asset_preallocation",
+    "runtime_enabled": false,
+    "role_template_id": "llm_role_template_entry",
+    "preferred_driver_model_id": "driver_minimax_m2_5",
+    "fallback_driver_model_ids": [
+      "driver_qwen_3_5_plus"
+    ],
+    "task_bindings": [
+      {
+        "task_id": "profile_card_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "broadcast_caster_line",
+        "model_profile_id": "llm_profile_caster_expressive",
+        "driver_model_id": "driver_kimi_k2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.6,
+        "max_output_tokens": 500
+      },
+      {
+        "task_id": "barrage_style_line",
+        "model_profile_id": "llm_profile_barrage_chaos",
+        "driver_model_id": "driver_minimax_m2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_5_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.7,
+        "max_output_tokens": 450
+      },
+      {
+        "task_id": "meme_reaction_line",
+        "model_profile_id": "llm_profile_barrage_chaos",
+        "driver_model_id": "driver_minimax_m2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_5_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.7,
+        "max_output_tokens": 450
+      }
+    ],
     "prompt_bias_tags": [
+      "frontline-instigator",
       "first-contact",
       "space-creator",
+      "high-variance",
       "entry-bite",
       "first-space",
-      "frontline-instigator",
       "heat-checker",
       "aggressive-open"
+    ],
+    "env_contract_refs": [
+      "AGENT_MAJOR_REAL_LLM_ENABLED",
+      "AGENT_MAJOR_LLM_PROVIDER",
+      "DASHSCOPE_BASE_URL",
+      "DASHSCOPE_API_KEY"
+    ],
+    "override_ids": [],
+    "ops_notes": [
+      "Prefer first-contact, overpeek, space creation, and instant reaction hooks."
     ]
   },
   "ops_hooks": {

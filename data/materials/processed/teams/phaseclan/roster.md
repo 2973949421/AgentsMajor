@@ -1,14 +1,14 @@
 # PhaseClan Roster
 
 ## Active Five
-- broky | closer | player_phaseclan_broky
-- Twistzz | igl | player_phaseclan_twistzz
-- jcobbb | entry | player_phaseclan_jcobbb
-- frozen | star | player_phaseclan_frozen
-- Neityu | support | player_phaseclan_neityu
+- broky | awper | AWPer | 高 | player_phaseclan_broky
+- Twistzz | igl | IGL / Star Rifler | 中-高 | player_phaseclan_twistzz
+- jcobbb | rifler | Rifler / Flex | 中 | player_phaseclan_jcobbb
+- frozen | star_rifler | Star Rifler / Lurker | 高 | player_phaseclan_frozen
+- Neityu | stand_in | Stand-in / Rifler | 中 | player_phaseclan_neityu
 
 ## Coach
-- 正式教练：未锁定（保留槽 coach_phaseclan_coach_tbd）
+- 正式教练：未锁定（保留槽 coach_phaseclan_coach_tbd，Coach TBD，可信度 低）
 
 ## Snapshot
 - 阵容版本：2026-05-03-canon-v1

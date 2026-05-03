@@ -8,6 +8,25 @@
   "display_name": "MAJ3R",
   "role": "igl",
   "status": "active",
+  "cs_role_profile": {
+    "source_path": "raw/teams/agent_major_player_roles.md",
+    "source_team_name": "AuLoRA",
+    "member_type": "player",
+    "raw_position": "IGL",
+    "raw_position_parts": [
+      "IGL"
+    ],
+    "primary_role": "igl",
+    "secondary_roles": [],
+    "position_tags": [
+      "igl"
+    ],
+    "confidence": "高",
+    "notes": "公开资料标注为 IGL。",
+    "agent_major_responsibilities": [
+      "战术规划 / 回合策略 / 资源分配"
+    ]
+  },
   "aliases": [
     "MAJ3R"
   ],
@@ -55,16 +74,79 @@
     ]
   },
   "future_driver_binding": {
-    "preferred_driver_model_id": null,
-    "fallback_driver_model_ids": [],
+    "binding_version": "2026-05-03-llm-binding-v1",
+    "binding_scope": "asset_preallocation",
+    "runtime_enabled": false,
+    "role_template_id": "llm_role_template_igl",
+    "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+    "fallback_driver_model_ids": [
+      "driver_qwen_3_6_plus"
+    ],
+    "task_bindings": [
+      {
+        "task_id": "profile_card_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "news_story_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "tactical_analysis_note",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "broadcast_caster_line",
+        "model_profile_id": "llm_profile_caster_expressive",
+        "driver_model_id": "driver_kimi_k2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.6,
+        "max_output_tokens": 500
+      }
+    ],
     "prompt_bias_tags": [
-      "mid-round-call",
-      "tempo-control",
-      "mid-round-reset",
-      "structure-call",
       "shotcaller",
       "system-brain",
+      "tempo-control",
+      "mid-round-logic",
+      "mid-round-call",
+      "mid-round-reset",
+      "structure-call",
       "pace-keeper"
+    ],
+    "env_contract_refs": [
+      "AGENT_MAJOR_REAL_LLM_ENABLED",
+      "AGENT_MAJOR_LLM_PROVIDER",
+      "DASHSCOPE_BASE_URL",
+      "DASHSCOPE_API_KEY"
+    ],
+    "override_ids": [],
+    "ops_notes": [
+      "Use command perspective and tempo-control framing."
     ]
   },
   "ops_hooks": {

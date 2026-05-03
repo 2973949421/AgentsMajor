@@ -8,6 +8,15 @@
 - 公开 ID：Jame
 - 法定姓名：待回填
 
+## CS Role Profile
+- 原始位置：IGL / AWPer
+- 主位置：igl
+- 次级位置：awper
+- 可信度：高
+- Agent Major 职责：战术规划 / 回合策略 / 资源分配；高精度关键论点 / 单点突破 / 高风险高收益调用
+- 备注：经典 Jame 体系：指挥 + 主狙。
+- 来源：raw/teams/agent_major_player_roles.md
+
 ## Alias
 - Jame
 - Jame Time
@@ -33,7 +42,8 @@
 
 ## Future Interfaces
 - agent 人格接口：upset-watch, shotcaller, system-brain, economy-reader, slow-tempo-caller
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- 模型绑定接口：llm_role_template_igl / driver_qwen_3_max_2026_01_23
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：Jame Time, 保枪大师, upset-watch
 
 ## Canon Notes

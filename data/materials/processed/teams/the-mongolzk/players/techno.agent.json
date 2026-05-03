@@ -6,8 +6,32 @@
   "real_name": null,
   "in_game_id": "Techno",
   "display_name": "Techno",
-  "role": "support",
+  "role": "rifler",
   "status": "active",
+  "cs_role_profile": {
+    "source_path": "raw/teams/agent_major_player_roles.md",
+    "source_team_name": "The MongolZK",
+    "member_type": "player",
+    "raw_position": "Rifler / Entry-style",
+    "raw_position_parts": [
+      "Rifler",
+      "Entry-style"
+    ],
+    "primary_role": "rifler",
+    "secondary_roles": [
+      "entry"
+    ],
+    "position_tags": [
+      "rifler",
+      "entry"
+    ],
+    "confidence": "中-高",
+    "notes": "高主动性步枪位。",
+    "agent_major_responsibilities": [
+      "通用火力 / 回合执行 / 补枪衔接",
+      "首轮出击 / 激进创意 / 打开局面"
+    ]
+  },
   "aliases": [
     "Techno"
   ],
@@ -15,13 +39,13 @@
     "工兵铁骑"
   ],
   "persona_tags": [
-    "glue-piece",
-    "utility-worker",
+    "rifle-worker",
+    "round-connector",
     "line-holder"
   ],
   "playstyle_tags": [
-    "trade-layer",
-    "utility-setup",
+    "rifle-trade",
+    "site-pressure",
     "utility-hold",
     "trade-work"
   ],
@@ -44,8 +68,8 @@
     "narrative_axes": [
       "asia-rise",
       "upset-watch",
-      "glue-piece",
-      "utility-worker",
+      "rifle-worker",
+      "round-connector",
       "line-holder"
     ],
     "reserved_memory_slots": [
@@ -56,16 +80,68 @@
     ]
   },
   "future_driver_binding": {
-    "preferred_driver_model_id": null,
-    "fallback_driver_model_ids": [],
+    "binding_version": "2026-05-03-llm-binding-v1",
+    "binding_scope": "asset_preallocation",
+    "runtime_enabled": false,
+    "role_template_id": "llm_role_template_rifler",
+    "preferred_driver_model_id": "driver_qwen_3_6_plus",
+    "fallback_driver_model_ids": [
+      "driver_qwen_3_5_plus"
+    ],
+    "task_bindings": [
+      {
+        "task_id": "profile_card_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "broadcast_caster_line",
+        "model_profile_id": "llm_profile_caster_expressive",
+        "driver_model_id": "driver_kimi_k2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.6,
+        "max_output_tokens": 500
+      },
+      {
+        "task_id": "barrage_style_line",
+        "model_profile_id": "llm_profile_barrage_chaos",
+        "driver_model_id": "driver_minimax_m2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_5_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.7,
+        "max_output_tokens": 450
+      }
+    ],
     "prompt_bias_tags": [
+      "rifle-worker",
+      "round-connector",
+      "site-pressure",
       "trade-layer",
-      "utility-setup",
+      "rifle-trade",
       "utility-hold",
       "trade-work",
-      "glue-piece",
-      "utility-worker",
       "line-holder"
+    ],
+    "env_contract_refs": [
+      "AGENT_MAJOR_REAL_LLM_ENABLED",
+      "AGENT_MAJOR_LLM_PROVIDER",
+      "DASHSCOPE_BASE_URL",
+      "DASHSCOPE_API_KEY"
+    ],
+    "override_ids": [],
+    "ops_notes": [
+      "Use as the default player fallback when no sharper role is available."
     ]
   },
   "ops_hooks": {

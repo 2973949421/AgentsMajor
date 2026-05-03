@@ -679,7 +679,7 @@ P1.1 定义第一批高光标签。完整高光检测规则留给后续高光 / 
 |---|---|---|---|---|---|
 | 经济局残局 | `eco_clutch` | 经济局或低额度下赢下回合。 | economyDelta、judgeResult | 是 | 是 |
 | 强起奇迹 | `force_buy_miracle` | 强起投入后赢下高压回合。 | economyDelta、keyEvents | 是 | 是 |
-| 明星位接管 | `star_carry` | Star agent 贡献多个高影响事件。 | keyEvents、AgentRole | 是 | 是 |
+| 核心步枪位接管 | `star_carry` | star_rifler / awper agent 贡献多个高影响事件。 | keyEvents、AgentRole | 是 | 是 |
 | 教练调整成功 | `coach_adjustment_success` | 教练调整后回合胜利。 | keyEvents | 是 | 是 |
 | 潜伏偷家 | `lurker_backdoor` | Lurker 找到隐蔽突破口。 | keyEvents | 是 | 是 |
 | 商业闭环突破 | `conversion_breakthrough` | 付费和转化逻辑被打通。 | keyEvents | 是 | 是 |
@@ -845,7 +845,7 @@ type ProjectedEvent = {
       "targetAgentId": "agent_fur_igl",
       "targetTeamId": "team_ghost_fur",
       "zoneId": "buyer_mid",
-      "impact": "Ghost NAV Star 把 buyer 从泛用户压缩到招聘团队负责人，拿到买家中路控制权。",
+      "impact": "Ghost NAV star_rifler 把 buyer 从泛用户压缩到招聘团队负责人，拿到买家中路控制权。",
       "sourceAgentOutputIds": ["ao_nav_star_004"]
     },
     {
@@ -918,7 +918,7 @@ type ProjectedEvent = {
     ]
   },
   "highlightTags": ["conversion_breakthrough"],
-  "summary": "Ghost NAV 在 MIRAGE 第 4 回合通过 Star 的买家中路突破和 Support 的转化 A 点补枪，明确招聘团队负责人、套餐和试点路径，拿下商业闭环回合。",
+  "summary": "Ghost NAV 在 MIRAGE 第 4 回合通过 star_rifler 的买家中路突破和 Support 的转化 A 点补枪，明确招聘团队负责人、套餐和试点路径，拿下商业闭环回合。",
   "eventProjection": {
     "coreEventsLinkedByRoundReport": [
       {
@@ -1238,3 +1238,18 @@ tacticalContext?: {
 - `tacticalContext` 不能覆盖 `winnerTeamId`、`scoreBeforeRound`、`scoreAfterRound`、`judgeResult` 或 `economyDelta`。
 - `tacticalContext` 是赛后公开事实摘要，不是赛前隐藏计划原文。
 - 当前持久化方式是现有 `round_reports.tactical_context_json` 列，不新增 SQLite 表。
+
+## Phase 1.7 增量：角色归因使用 materials role
+
+Phase 1.7 后，RoundReport、JudgeResult、MVP 归因、kill feed 投影和战术高光说明都应通过 Agent 安全身份视图读取角色，不应从 agent id 中解析 `star`、`closer` 等旧命名。
+
+当前规则：
+
+```text
+主角色读取 Agent.role。
+副标签读取 Agent.secondaryRoles。
+star 旧数据读取时映射为 star_rifler。
+closer 旧数据读取时映射为 rifler，closer 特质可作为 secondaryRoles 保留。
+```
+
+下游展示可以使用 `displayName`、`role`、`secondaryRoles` 和安全 aliases，但不能展示 `driverModelId`、`modelName`、`llm_calls` 或 future LLM binding 全量 JSON。

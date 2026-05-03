@@ -20,9 +20,10 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   const { searchParams } = new URL(request.url);
-  if (searchParams.get("format") === "live") {
-    return NextResponse.json(toLiveReplayData(replay));
+  const format = searchParams.get("format");
+  if (format && format !== "live") {
+    return NextResponse.json({ error: "Public replay routes only expose the live-safe format." }, { status: 400 });
   }
 
-  return NextResponse.json(replay);
+  return NextResponse.json(toLiveReplayData(replay));
 }

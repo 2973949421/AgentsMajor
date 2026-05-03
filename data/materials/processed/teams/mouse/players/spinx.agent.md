@@ -8,6 +8,15 @@
 - 公开 ID：Spinx
 - 法定姓名：待回填
 
+## CS Role Profile
+- 原始位置：Lurker / Star Rifler
+- 主位置：lurker
+- 次级位置：star_rifler
+- 可信度：高
+- Agent Major 职责：反制 / 偷点 / 找对手逻辑漏洞；核心输出 / 关键回合 carry
+- 备注：典型 lurker / 高资源步枪位。
+- 来源：raw/teams/agent_major_player_roles.md
+
 ## Alias
 - Spinx
 
@@ -31,7 +40,8 @@
 
 ## Future Interfaces
 - agent 人格接口：upset-watch, timing-hunter, map-reader, shadow-rifler
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- 模型绑定接口：llm_role_template_lurker / driver_qwen_3_max_2026_01_23
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：静音刀, upset-watch
 
 ## Canon Notes

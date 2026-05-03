@@ -6,8 +6,32 @@
   "real_name": null,
   "in_game_id": "zweih",
   "display_name": "zweih",
-  "role": "star",
+  "role": "rifler",
   "status": "active",
+  "cs_role_profile": {
+    "source_path": "raw/teams/agent_major_player_roles.md",
+    "source_team_name": "PariVision-Omni",
+    "member_type": "player",
+    "raw_position": "Rifler / young firepower",
+    "raw_position_parts": [
+      "Rifler",
+      "young firepower"
+    ],
+    "primary_role": "rifler",
+    "secondary_roles": [
+      "star_rifler"
+    ],
+    "position_tags": [
+      "rifler",
+      "star_rifler"
+    ],
+    "confidence": "中",
+    "notes": "项目中设为年轻火力步枪。",
+    "agent_major_responsibilities": [
+      "通用火力 / 回合执行 / 补枪衔接",
+      "核心输出 / 关键回合 carry"
+    ]
+  },
   "aliases": [
     "zweih"
   ],
@@ -15,18 +39,18 @@
     "关键输出"
   ],
   "persona_tags": [
-    "headline-core",
-    "win-condition",
+    "rifle-worker",
+    "round-connector",
     "understated-star"
   ],
   "playstyle_tags": [
-    "high-impact",
-    "space-winning",
+    "rifle-trade",
+    "site-pressure",
     "impact-rifle",
     "site-swing"
   ],
   "caster_focus_tags": [
-    "machine_star_carry"
+    "machine_map_point_pressure"
   ],
   "barrage_focus_tags": [
     "player_targeting"
@@ -36,7 +60,7 @@
     "research-chaos"
   ],
   "cross_circle_tags": [
-    "band_to_superteam"
+    "customer_service_to_cleanup"
   ],
   "future_agent_profile": {
     "persona_summary": "黑马线真正能抬头的火力点。只要连续出镜，就应该被提升成标题人物。",
@@ -44,8 +68,8 @@
     "narrative_axes": [
       "upset-watch",
       "research-chaos",
-      "headline-core",
-      "win-condition",
+      "rifle-worker",
+      "round-connector",
       "understated-star"
     ],
     "reserved_memory_slots": [
@@ -56,16 +80,68 @@
     ]
   },
   "future_driver_binding": {
-    "preferred_driver_model_id": null,
-    "fallback_driver_model_ids": [],
+    "binding_version": "2026-05-03-llm-binding-v1",
+    "binding_scope": "asset_preallocation",
+    "runtime_enabled": false,
+    "role_template_id": "llm_role_template_rifler",
+    "preferred_driver_model_id": "driver_qwen_3_6_plus",
+    "fallback_driver_model_ids": [
+      "driver_qwen_3_5_plus"
+    ],
+    "task_bindings": [
+      {
+        "task_id": "profile_card_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "broadcast_caster_line",
+        "model_profile_id": "llm_profile_caster_expressive",
+        "driver_model_id": "driver_kimi_k2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.6,
+        "max_output_tokens": 500
+      },
+      {
+        "task_id": "barrage_style_line",
+        "model_profile_id": "llm_profile_barrage_chaos",
+        "driver_model_id": "driver_minimax_m2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_5_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.7,
+        "max_output_tokens": 450
+      }
+    ],
     "prompt_bias_tags": [
-      "high-impact",
-      "space-winning",
+      "rifle-worker",
+      "round-connector",
+      "site-pressure",
+      "trade-layer",
+      "rifle-trade",
       "impact-rifle",
       "site-swing",
-      "headline-core",
-      "win-condition",
       "understated-star"
+    ],
+    "env_contract_refs": [
+      "AGENT_MAJOR_REAL_LLM_ENABLED",
+      "AGENT_MAJOR_LLM_PROVIDER",
+      "DASHSCOPE_BASE_URL",
+      "DASHSCOPE_API_KEY"
+    ],
+    "override_ids": [],
+    "ops_notes": [
+      "Use as the default player fallback when no sharper role is available."
     ]
   },
   "ops_hooks": {
@@ -77,7 +153,7 @@
     ],
     "card_priority": 18,
     "broadcast_entry_points": [
-      "machine_star_carry"
+      "machine_map_point_pressure"
     ]
   },
   "canon_notes": []

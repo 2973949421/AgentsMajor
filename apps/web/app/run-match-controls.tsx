@@ -15,7 +15,10 @@ type RunState = "idle" | "running" | "success" | "failed";
 
 interface WebRunProgress {
   runId: string;
+  mode: "phase17_showcase_match" | "phase15_single_map";
   status: "running" | "completed" | "failed";
+  mapGameIds: string[];
+  mapName: string;
   estimatedTotalRounds: number;
   completedRounds: number;
   currentRoundNumber: number | null;
@@ -25,11 +28,6 @@ interface WebRunProgress {
   result?: {
     status: string;
     score: string;
-    llmCalls: {
-      count: number;
-      inputTokens: number | null;
-      outputTokens: number | null;
-    };
   };
 }
 
@@ -72,8 +70,8 @@ export function RunMatchControls({ matchId, runnerPolicy, compact = false }: Run
         setProgress(payload.progress);
         if (payload.progress.status === "completed") {
           setState("success");
-          const calls = payload.progress.result?.llmCalls.count ?? payload.progress.casterLines;
-          setMessage(`DUST2 单图生成完成，比分 ${payload.progress.result?.score ?? "pending"}，LLM 调用 ${calls} 次。正在刷新页面。`);
+          const completedLabel = payload.progress.mode === "phase17_showcase_match" ? "Phase 1.7 BO3" : "P1.5 DUST2 单图";
+          setMessage(`${completedLabel} 生成完成，比分 ${payload.progress.result?.score ?? "pending"}，解说事件 ${payload.progress.casterLines} 条。正在刷新页面。`);
           window.setTimeout(() => window.location.reload(), 700);
         }
         if (payload.progress.status === "failed") {
@@ -96,16 +94,16 @@ export function RunMatchControls({ matchId, runnerPolicy, compact = false }: Run
     };
   }, [matchId, progress?.runId, state]);
 
-  const handleRunSingleMap = async () => {
+  const handleRun = async (mode: WebRunProgress["mode"]) => {
     setState("running");
     setProgress(null);
-    setMessage("正在启动 DUST2 单图真实 LLM 生成；会按回合显示主解说生成进度。");
+    setMessage(mode === "phase17_showcase_match" ? "正在启动 Phase 1.7 fake-only BO3。" : "正在启动 legacy Phase 1.5 DUST2 真实 LLM 单图。");
     try {
       const response = await fetch(`/api/matches/${encodeURIComponent(matchId)}/run`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          mode: "phase15_single_map",
+          mode,
           confirmReset: true,
           ...(adminToken.trim() ? { adminToken: adminToken.trim() } : {})
         })
@@ -116,7 +114,7 @@ export function RunMatchControls({ matchId, runnerPolicy, compact = false }: Run
       }
 
       setProgress(payload.progress ?? null);
-      setMessage(payload.summary ?? "DUST2 单图真实 LLM 生成已启动。");
+      setMessage(payload.summary ?? "本地比赛生成已启动。");
     } catch (error) {
       setState("failed");
       setMessage(error instanceof Error ? error.message : "未知启动失败。");
@@ -127,7 +125,7 @@ export function RunMatchControls({ matchId, runnerPolicy, compact = false }: Run
     return (
       <div className={compact ? styles.runControlsCompact : styles.runControls}>
         <button type="button" disabled>
-          生成 DUST2 单图 LLM
+          生成 Phase 1.7 BO3
         </button>
         <span className={styles.runControlsMessage}>本地 Web 启动已关闭：{formatDisabledReason(runnerPolicy.disabledReason)}</span>
       </div>
@@ -146,8 +144,11 @@ export function RunMatchControls({ matchId, runnerPolicy, compact = false }: Run
           autoComplete="off"
         />
       ) : null}
-      <button type="button" onClick={handleRunSingleMap} disabled={state === "running"}>
-        {state === "running" ? "生成中..." : "生成 DUST2 单图 LLM"}
+      <button type="button" onClick={() => handleRun("phase17_showcase_match")} disabled={state === "running"}>
+        {state === "running" ? "Generating..." : "生成 Phase 1.7 BO3"}
+      </button>
+      <button type="button" onClick={() => handleRun("phase15_single_map")} disabled={state === "running"}>
+        Legacy P1.5 DUST2 LLM
       </button>
       {progress ? (
         <div className={styles.runProgress} aria-label="主解说生成进度">
@@ -173,7 +174,7 @@ export function RunMatchControls({ matchId, runnerPolicy, compact = false }: Run
         </div>
       ) : null}
       <span className={state === "failed" ? styles.runControlsError : styles.runControlsMessage}>
-        {message || "仅本地启用；会重置 demo_match_phase11，不暴露 API Key。"}
+        {message || "仅本地启用；默认重置 Phase 1.7 showcase，legacy 模式重置 demo_match_phase11。"}
       </span>
     </div>
   );

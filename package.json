@@ -28,6 +28,9 @@
     "phase16:match": "pnpm build:cli && node packages/cli/dist/phase16.js match",
     "phase16:replay": "pnpm build:cli && node packages/cli/dist/phase16.js replay",
     "phase16:export": "pnpm build:cli && node packages/cli/dist/phase16.js export",
+    "phase17:match": "pnpm build:cli && node packages/cli/dist/phase17.js match",
+    "phase17:replay": "pnpm build:cli && node packages/cli/dist/phase17.js replay",
+    "phase17:export": "pnpm build:cli && node packages/cli/dist/phase17.js export",
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --sort typecheck"
   },

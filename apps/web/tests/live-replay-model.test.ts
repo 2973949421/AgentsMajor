@@ -223,7 +223,6 @@ function timelineEvent(input: Partial<LiveReplayTimelineEvent> & { id: string })
     kind: input.kind ?? "round_intro",
     payload: input.payload ?? {},
     ...(input.roundId ? { roundId: input.roundId } : {}),
-    ...(input.sourceEventIds ? { sourceEventIds: input.sourceEventIds } : {}),
     sequenceIndex: input.sequenceIndex ?? 0
   };
 }
@@ -232,6 +231,7 @@ function roundItem(roundNumber: number, timelineEvents: LiveReplayTimelineEvent[
   return {
     id: `round-${roundNumber}`,
     roundNumber,
+    agentsById: {},
     roundReport: {
       winnerTeamId: "team-a",
       mapName: "DUST2",

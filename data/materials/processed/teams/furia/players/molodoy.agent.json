@@ -6,8 +6,27 @@
   "real_name": null,
   "in_game_id": "molodoy",
   "display_name": "molodoy",
-  "role": "support",
+  "role": "awper",
   "status": "active",
+  "cs_role_profile": {
+    "source_path": "raw/teams/agent_major_player_roles.md",
+    "source_team_name": "FurIA",
+    "member_type": "player",
+    "raw_position": "AWPer",
+    "raw_position_parts": [
+      "AWPer"
+    ],
+    "primary_role": "awper",
+    "secondary_roles": [],
+    "position_tags": [
+      "awper"
+    ],
+    "confidence": "高",
+    "notes": "作为主狙处理。",
+    "agent_major_responsibilities": [
+      "高精度关键论点 / 单点突破 / 高风险高收益调用"
+    ]
+  },
   "aliases": [
     "molodoy"
   ],
@@ -15,21 +34,22 @@
     "新拼图"
   ],
   "persona_tags": [
-    "glue-piece",
-    "utility-worker",
+    "precision-core",
+    "high-leverage",
     "new-piece"
   ],
   "playstyle_tags": [
-    "trade-layer",
-    "utility-setup",
+    "awp-control",
+    "single-point-pressure",
     "support-spacing",
     "rotate-cover"
   ],
   "caster_focus_tags": [
-    "machine_map_point_pressure"
+    "machine_star_carry"
   ],
   "barrage_focus_tags": [
-    "player_targeting"
+    "player_targeting",
+    "big_dad"
   ],
   "news_focus_tags": [
     "upset-watch"
@@ -42,8 +62,8 @@
     "voice_mode": "cn-live-room-competitive",
     "narrative_axes": [
       "upset-watch",
-      "glue-piece",
-      "utility-worker",
+      "precision-core",
+      "high-leverage",
       "new-piece"
     ],
     "reserved_memory_slots": [
@@ -54,16 +74,79 @@
     ]
   },
   "future_driver_binding": {
-    "preferred_driver_model_id": null,
-    "fallback_driver_model_ids": [],
+    "binding_version": "2026-05-03-llm-binding-v1",
+    "binding_scope": "asset_preallocation",
+    "runtime_enabled": false,
+    "role_template_id": "llm_role_template_awper",
+    "preferred_driver_model_id": "driver_kimi_k2_5",
+    "fallback_driver_model_ids": [
+      "driver_qwen_3_6_plus"
+    ],
+    "task_bindings": [
+      {
+        "task_id": "profile_card_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "news_story_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "broadcast_caster_line",
+        "model_profile_id": "llm_profile_caster_expressive",
+        "driver_model_id": "driver_kimi_k2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.6,
+        "max_output_tokens": 500
+      },
+      {
+        "task_id": "spotlight_moment_copy",
+        "model_profile_id": "llm_profile_caster_expressive",
+        "driver_model_id": "driver_kimi_k2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.6,
+        "max_output_tokens": 500
+      }
+    ],
     "prompt_bias_tags": [
-      "trade-layer",
-      "utility-setup",
+      "precision-core",
+      "high-leverage",
+      "single-point-pressure",
+      "clutch-risk",
+      "awp-control",
       "support-spacing",
       "rotate-cover",
-      "glue-piece",
-      "utility-worker",
       "new-piece"
+    ],
+    "env_contract_refs": [
+      "AGENT_MAJOR_REAL_LLM_ENABLED",
+      "AGENT_MAJOR_LLM_PROVIDER",
+      "DASHSCOPE_BASE_URL",
+      "DASHSCOPE_API_KEY"
+    ],
+    "override_ids": [],
+    "ops_notes": [
+      "Prioritize key-shot, clutch, and single-round pressure hooks."
     ]
   },
   "ops_hooks": {
@@ -74,7 +157,7 @@
     ],
     "card_priority": 42,
     "broadcast_entry_points": [
-      "machine_map_point_pressure"
+      "machine_star_carry"
     ]
   },
   "canon_notes": []

@@ -3,10 +3,19 @@
 ## Snapshot
 - 队伍：VitaLLMty
 - 类型：player
-- 角色：closer
+- 角色：awper
 - 当前状态：active
 - 公开 ID：ZywOo
 - 法定姓名：待回填
+
+## CS Role Profile
+- 原始位置：AWPer / Star
+- 主位置：awper
+- 次级位置：star_rifler
+- 可信度：高
+- Agent Major 职责：高精度关键论点 / 单点突破 / 高风险高收益调用；核心输出 / 关键回合 carry
+- 备注：队伍核心主狙与超级明星位。
+- 来源：raw/teams/agent_major_player_roles.md
 
 ## Alias
 - ZywOo
@@ -22,8 +31,8 @@
 - 残局保险
 
 ## Playstyle Tags
-- clutch-finish
-- hold-angle
+- awp-control
+- single-point-pressure
 - multikill-anchor
 - late-clutch
 
@@ -34,8 +43,9 @@
 - 跨圈标签：customer_service_to_cleanup
 
 ## Future Interfaces
-- agent 人格接口：title-favorite, late-round-finisher, calm-core, mvp-engine, soft-spoken-hammer
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- agent 人格接口：title-favorite, precision-core, high-leverage, mvp-engine, soft-spoken-hammer
+- 模型绑定接口：llm_role_template_awper / driver_kimi_k2_5
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：大爹兜底, 残局保险, title-favorite
 
 ## Canon Notes

@@ -3,10 +3,19 @@
 ## Snapshot
 - 队伍：Prompt Gaming
 - 类型：player
-- 角色：star
+- 角色：igl
 - 当前状态：active
 - 公开 ID：biguzera
 - 法定姓名：待回填
+
+## CS Role Profile
+- 原始位置：IGL / Rifler
+- 主位置：igl
+- 次级位置：rifler
+- 可信度：高
+- Agent Major 职责：战术规划 / 回合策略 / 资源分配；通用火力 / 回合执行 / 补枪衔接
+- 备注：Liquipedia 标注为 IGL。
+- 来源：raw/teams/agent_major_player_roles.md
 
 ## Alias
 - biguzera
@@ -18,20 +27,21 @@
 - 巴西核心
 
 ## Playstyle Tags
-- high-impact
-- space-winning
+- mid-round-call
+- tempo-control
 - rifle-pressure
 - mid-round-impact
 
 ## Broadcast / Barrage / News
-- 解说标签：machine_star_carry
-- 弹幕标签：player_targeting
+- 解说标签：machine_old_guard_command
+- 弹幕标签：player_targeting, old_guard
 - 新闻标签：brazil-heat
-- 跨圈标签：band_to_superteam
+- 跨圈标签：customer_service_to_cleanup
 
 ## Future Interfaces
-- agent 人格接口：brazil-heat, headline-core, win-condition, centerpiece
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- agent 人格接口：brazil-heat, shotcaller, system-brain, centerpiece
+- 模型绑定接口：llm_role_template_igl / driver_qwen_3_max_2026_01_23
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：巴西核心, brazil-heat
 
 ## Canon Notes

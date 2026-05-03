@@ -8,6 +8,15 @@
 - 公开 ID：Twistzz
 - 法定姓名：待回填
 
+## CS Role Profile
+- 原始位置：IGL / Star Rifler
+- 主位置：igl
+- 次级位置：star_rifler
+- 可信度：中-高
+- Agent Major 职责：战术规划 / 回合策略 / 资源分配；核心输出 / 关键回合 carry
+- 备注：近期语境中 Twistzz 作为新 captain/指挥核心处理。
+- 来源：raw/teams/agent_major_player_roles.md
+
 ## Alias
 - Twistzz
 - 总监
@@ -33,7 +42,8 @@
 
 ## Future Interfaces
 - agent 人格接口：special_invite, money-superteam, shotcaller, system-brain, office-face, style-caller
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- 模型绑定接口：llm_role_template_igl / driver_qwen_3_max_2026_01_23
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：总监, 披肩, special_invite, money-superteam
 
 ## Canon Notes

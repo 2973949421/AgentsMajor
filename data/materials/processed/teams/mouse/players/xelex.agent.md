@@ -3,10 +3,19 @@
 ## Snapshot
 - 队伍：Mouse
 - 类型：player
-- 角色：support
+- 角色：rifler
 - 当前状态：active
 - 公开 ID：xelex
 - 法定姓名：待回填
+
+## CS Role Profile
+- 原始位置：Rifler / Support / young firepower
+- 主位置：rifler
+- 次级位置：support, star_rifler
+- 可信度：中
+- Agent Major 职责：通用火力 / 回合执行 / 补枪衔接；补全细节 / 修复方案 / 提供上下文；核心输出 / 关键回合 carry
+- 备注：从 MOUZ NXT 提拔，具体一线角色可项目化设定。
+- 来源：raw/teams/agent_major_player_roles.md
 
 ## Alias
 - xelex
@@ -18,8 +27,8 @@
 - 新拼图
 
 ## Playstyle Tags
-- trade-layer
-- utility-setup
+- rifle-trade
+- site-pressure
 - support-rotations
 - utility-line
 
@@ -30,8 +39,9 @@
 - 跨圈标签：customer_service_to_cleanup
 
 ## Future Interfaces
-- agent 人格接口：upset-watch, glue-piece, utility-worker, system-piece
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- agent 人格接口：upset-watch, rifle-worker, round-connector, system-piece
+- 模型绑定接口：llm_role_template_rifler / driver_qwen_3_6_plus
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：新拼图, upset-watch
 
 ## Canon Notes

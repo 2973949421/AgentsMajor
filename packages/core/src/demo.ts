@@ -67,14 +67,14 @@ export async function seedPhase11Demo(repositories: Repositories): Promise<{
   const agents: Agent[] = [
     agent("agent_nav_igl", teamA.id, "igl", "NAV IGL", now),
     agent("agent_nav_entry", teamA.id, "entry", "NAV Entry", now),
-    agent("agent_nav_star", teamA.id, "star", "NAV Star", now),
+    agent("agent_nav_star", teamA.id, "star_rifler", "NAV Star", now),
     agent("agent_nav_support", teamA.id, "support", "NAV Support", now),
-    agent("agent_nav_closer", teamA.id, "closer", "NAV Closer", now),
+    agent("agent_nav_closer", teamA.id, "rifler", "NAV Closer", now),
     agent("agent_fur_igl", teamB.id, "igl", "FUR IGL", now),
     agent("agent_fur_entry", teamB.id, "entry", "FUR Entry", now),
-    agent("agent_fur_star", teamB.id, "star", "FUR Star", now),
+    agent("agent_fur_star", teamB.id, "star_rifler", "FUR Star", now),
     agent("agent_fur_support", teamB.id, "support", "FUR Support", now),
-    agent("agent_fur_closer", teamB.id, "closer", "FUR Closer", now)
+    agent("agent_fur_closer", teamB.id, "rifler", "FUR Closer", now)
   ];
 
   await repositories.tournaments.save(tournament);

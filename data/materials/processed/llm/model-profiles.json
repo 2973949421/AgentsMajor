@@ -1,0 +1,99 @@
+{
+  "registry_id": "llm-model-profiles",
+  "version": "2026-05-03-llm-binding-v1",
+  "binding_scope": "asset_preallocation",
+  "runtime_enabled": false,
+  "driver_registry_ref": "packages/llm/src/model-registry.ts",
+  "env_contract_refs": [
+    "AGENT_MAJOR_REAL_LLM_ENABLED",
+    "AGENT_MAJOR_LLM_PROVIDER",
+    "DASHSCOPE_BASE_URL",
+    "DASHSCOPE_API_KEY"
+  ],
+  "no_secret_policy": "Only env var names and driver model ids are stored here. Secrets stay in local runtime env files.",
+  "profiles": [
+    {
+      "id": "llm_profile_strong_reasoning",
+      "label": "Strong reasoning",
+      "summary": "News, profile cards, round reports, and narrative judgement.",
+      "primary_driver_model_id": "driver_qwen_3_max_2026_01_23",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "profile_card_copy",
+        "news_story_copy",
+        "round_report_material",
+        "tactical_analysis_note"
+      ],
+      "runtime_enabled": false,
+      "default_temperature": 0.4,
+      "default_max_output_tokens": 900
+    },
+    {
+      "id": "llm_profile_caster_expressive",
+      "label": "Caster expressive",
+      "summary": "Caster voice, interview voice, and high-emotion broadcast copy.",
+      "primary_driver_model_id": "driver_kimi_k2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_6_plus"
+      ],
+      "task_ids": [
+        "broadcast_caster_line",
+        "interview_voice",
+        "spotlight_moment_copy"
+      ],
+      "runtime_enabled": false,
+      "default_temperature": 0.6,
+      "default_max_output_tokens": 500
+    },
+    {
+      "id": "llm_profile_barrage_chaos",
+      "label": "Barrage chaos",
+      "summary": "Live-room barrage, meme lines, short reactions, and chaotic callbacks.",
+      "primary_driver_model_id": "driver_minimax_m2_5",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_5_plus"
+      ],
+      "task_ids": [
+        "barrage_style_line",
+        "meme_reaction_line"
+      ],
+      "runtime_enabled": false,
+      "default_temperature": 0.7,
+      "default_max_output_tokens": 450
+    },
+    {
+      "id": "llm_profile_conservative_judge_reserved",
+      "label": "Conservative judge reserved",
+      "summary": "Judge, arbiter, and analysis reservation only. Disabled for v1.",
+      "primary_driver_model_id": "driver_glm_5",
+      "fallback_driver_model_ids": [
+        "driver_glm_4_7"
+      ],
+      "task_ids": [
+        "judge_note_reserved",
+        "arbiter_note_reserved"
+      ],
+      "runtime_enabled": false,
+      "default_temperature": 0.2,
+      "default_max_output_tokens": 900
+    },
+    {
+      "id": "llm_profile_agent_action_reserved",
+      "label": "Agent action reserved",
+      "summary": "Future agent action planning and repair reservation only. Disabled for v1.",
+      "primary_driver_model_id": "driver_qwen_3_coder_next",
+      "fallback_driver_model_ids": [
+        "driver_qwen_3_coder_plus"
+      ],
+      "task_ids": [
+        "agent_action_planning_reserved",
+        "repair_note_reserved"
+      ],
+      "runtime_enabled": false,
+      "default_temperature": 0.3,
+      "default_max_output_tokens": 700
+    }
+  ]
+}

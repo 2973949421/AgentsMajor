@@ -627,7 +627,8 @@ class Phase12SimulationEngine implements SimulationEngine {
               buyTypeByTeam: Object.fromEntries(buyTypeByTeam),
               scoreBeforeRound,
               judgeResult,
-              teamAId: teamA.id
+              teamAId: teamA.id,
+              activeAgentsById: Object.fromEntries(allActive.map((agent) => [agent.id, agent]))
             });
             const tacticalContext = buildPublicTacticalContext({
               ...tacticalPlans,
@@ -1522,7 +1523,7 @@ class Phase12SimulationEngine implements SimulationEngine {
     const winnerTeamId = plannedWinnerSide === "teamA" ? input.teamA.id : input.teamB.id;
     const loserTeamId = winnerTeamId === input.teamA.id ? input.teamB.id : input.teamA.id;
     const winnerAgents = winnerTeamId === input.teamA.id ? input.activeA : input.activeB;
-    const mvpAgent = winnerAgents.find((agent) => agent.role === "star") ?? winnerAgents[0];
+    const mvpAgent = selectMvpCandidate(winnerAgents);
     if (!mvpAgent) {
       throw new Error("Cannot judge round without winner agents.");
     }
@@ -2526,14 +2527,28 @@ function stringArraysEqual(left: string[], right: string[]): boolean {
 function sortAgentsForRound(agents: Agent[]): Agent[] {
   const rank = new Map<string, number>([
     ["entry", 0],
-    ["star", 1],
-    ["closer", 2],
+    ["star_rifler", 1],
+    ["awper", 2],
     ["igl", 3],
-    ["support", 4],
+    ["rifler", 4],
     ["lurker", 5],
-    ["coach", 6]
+    ["support", 6],
+    ["stand_in", 7],
+    ["coach", 8]
   ]);
   return [...agents].sort((left, right) => (rank.get(left.role) ?? 99) - (rank.get(right.role) ?? 99) || left.id.localeCompare(right.id));
+}
+
+function selectMvpCandidate(winnerAgents: Agent[]): Agent | undefined {
+  const priority = ["star_rifler", "awper", "entry", "igl"] as const;
+  for (const role of priority) {
+    const candidate = winnerAgents.find((agent) => agent.role === role);
+    if (candidate) {
+      return candidate;
+    }
+  }
+
+  return winnerAgents[0];
 }
 
 function spendForBuyType(buyType: BuyType): number {

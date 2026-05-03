@@ -9,6 +9,12 @@
       "team_id": "team_vitallmty",
       "display_name": "apEX",
       "in_game_id": "apEX",
+      "role": "igl",
+      "cs_role_profile": {
+        "raw_position": "IGL / aggressive caller",
+        "primary_role": "igl",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/vitallmty/players/apex.agent.json"
     },
@@ -18,6 +24,12 @@
       "team_id": "team_vitallmty",
       "display_name": "ropz",
       "in_game_id": "ropz",
+      "role": "lurker",
+      "cs_role_profile": {
+        "raw_position": "Lurker / late-round rifler",
+        "primary_role": "lurker",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/vitallmty/players/ropz.agent.json"
     },
@@ -27,6 +39,12 @@
       "team_id": "team_vitallmty",
       "display_name": "ZywOo",
       "in_game_id": "ZywOo",
+      "role": "awper",
+      "cs_role_profile": {
+        "raw_position": "AWPer / Star",
+        "primary_role": "awper",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/vitallmty/players/zywoo.agent.json"
     },
@@ -36,6 +54,12 @@
       "team_id": "team_vitallmty",
       "display_name": "flameZ",
       "in_game_id": "flameZ",
+      "role": "entry",
+      "cs_role_profile": {
+        "raw_position": "Entry / aggressive rifler",
+        "primary_role": "entry",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/vitallmty/players/flamez.agent.json"
     },
@@ -45,6 +69,12 @@
       "team_id": "team_vitallmty",
       "display_name": "mezii",
       "in_game_id": "mezii",
+      "role": "support",
+      "cs_role_profile": {
+        "raw_position": "Support / Anchor / flex rifler",
+        "primary_role": "support",
+        "confidence": "中-高"
+      },
       "status": "active",
       "json_path": "processed/teams/vitallmty/players/mezii.agent.json"
     },
@@ -54,6 +84,12 @@
       "team_id": "team_vitallmty",
       "display_name": "XTQZZZ",
       "in_game_id": "XTQZZZ",
+      "role": "coach",
+      "cs_role_profile": {
+        "raw_position": "Coach",
+        "primary_role": "coach",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/vitallmty/coach/xtqzzz.agent.json"
     },
@@ -63,6 +99,12 @@
       "team_id": "team_neural_vincere",
       "display_name": "Aleksib",
       "in_game_id": "Aleksib",
+      "role": "igl",
+      "cs_role_profile": {
+        "raw_position": "IGL",
+        "primary_role": "igl",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/neural-vincere/players/aleksib.agent.json"
     },
@@ -72,6 +114,12 @@
       "team_id": "team_neural_vincere",
       "display_name": "iM",
       "in_game_id": "iM",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Entry-style rifler",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/neural-vincere/players/im.agent.json"
     },
@@ -81,6 +129,12 @@
       "team_id": "team_neural_vincere",
       "display_name": "b1t",
       "in_game_id": "b1t",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Anchor",
+        "primary_role": "rifler",
+        "confidence": "中-高"
+      },
       "status": "active",
       "json_path": "processed/teams/neural-vincere/players/b1t.agent.json"
     },
@@ -90,6 +144,12 @@
       "team_id": "team_neural_vincere",
       "display_name": "w0nderful",
       "in_game_id": "w0nderful",
+      "role": "awper",
+      "cs_role_profile": {
+        "raw_position": "AWPer",
+        "primary_role": "awper",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/neural-vincere/players/w0nderful.agent.json"
     },
@@ -99,6 +159,12 @@
       "team_id": "team_neural_vincere",
       "display_name": "makazze",
       "in_game_id": "makazze",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / young firepower",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/neural-vincere/players/makazze.agent.json"
     },
@@ -108,6 +174,12 @@
       "team_id": "team_neural_vincere",
       "display_name": "B1ad3",
       "in_game_id": "B1ad3",
+      "role": "coach",
+      "cs_role_profile": {
+        "raw_position": "Coach / system architect",
+        "primary_role": "coach",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/neural-vincere/coach/b1ad3.agent.json"
     },
@@ -117,6 +189,12 @@
       "team_id": "team_furia",
       "display_name": "FalleN",
       "in_game_id": "FalleN",
+      "role": "igl",
+      "cs_role_profile": {
+        "raw_position": "IGL / secondary AWPer",
+        "primary_role": "igl",
+        "confidence": "中-高"
+      },
       "status": "active",
       "json_path": "processed/teams/furia/players/fallen.agent.json"
     },
@@ -126,6 +204,12 @@
       "team_id": "team_furia",
       "display_name": "yuurih",
       "in_game_id": "yuurih",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Support",
+        "primary_role": "rifler",
+        "confidence": "中-高"
+      },
       "status": "active",
       "json_path": "processed/teams/furia/players/yuurih.agent.json"
     },
@@ -135,6 +219,12 @@
       "team_id": "team_furia",
       "display_name": "YEKINDAR",
       "in_game_id": "YEKINDAR",
+      "role": "entry",
+      "cs_role_profile": {
+        "raw_position": "Entry / aggressive rifler",
+        "primary_role": "entry",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/furia/players/yekindar.agent.json"
     },
@@ -144,6 +234,12 @@
       "team_id": "team_furia",
       "display_name": "KSCERATO",
       "in_game_id": "KSCERATO",
+      "role": "star_rifler",
+      "cs_role_profile": {
+        "raw_position": "Star Rifler / Lurker",
+        "primary_role": "star_rifler",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/furia/players/kscerato.agent.json"
     },
@@ -153,6 +249,12 @@
       "team_id": "team_furia",
       "display_name": "molodoy",
       "in_game_id": "molodoy",
+      "role": "awper",
+      "cs_role_profile": {
+        "raw_position": "AWPer",
+        "primary_role": "awper",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/furia/players/molodoy.agent.json"
     },
@@ -162,6 +264,12 @@
       "team_id": "team_furia",
       "display_name": "sidde",
       "in_game_id": "sidde",
+      "role": "coach",
+      "cs_role_profile": {
+        "raw_position": "Coach",
+        "primary_role": "coach",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/furia/coach/sidde.agent.json"
     },
@@ -171,6 +279,12 @@
       "team_id": "team_falcon_7b",
       "display_name": "karrigan",
       "in_game_id": "karrigan",
+      "role": "igl",
+      "cs_role_profile": {
+        "raw_position": "IGL",
+        "primary_role": "igl",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/falcon-7b/players/karrigan.agent.json"
     },
@@ -180,6 +294,12 @@
       "team_id": "team_falcon_7b",
       "display_name": "NiKo",
       "in_game_id": "NiKo",
+      "role": "star_rifler",
+      "cs_role_profile": {
+        "raw_position": "Star Rifler / closer",
+        "primary_role": "star_rifler",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/falcon-7b/players/niko.agent.json"
     },
@@ -189,6 +309,12 @@
       "team_id": "team_falcon_7b",
       "display_name": "TeSeS",
       "in_game_id": "TeSeS",
+      "role": "support",
+      "cs_role_profile": {
+        "raw_position": "Support / Anchor / rifler",
+        "primary_role": "support",
+        "confidence": "中-高"
+      },
       "status": "active",
       "json_path": "processed/teams/falcon-7b/players/teses.agent.json"
     },
@@ -198,6 +324,12 @@
       "team_id": "team_falcon_7b",
       "display_name": "m0NESY",
       "in_game_id": "m0NESY",
+      "role": "awper",
+      "cs_role_profile": {
+        "raw_position": "AWPer / Star",
+        "primary_role": "awper",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/falcon-7b/players/m0nesy.agent.json"
     },
@@ -207,6 +339,12 @@
       "team_id": "team_falcon_7b",
       "display_name": "kyousuke",
       "in_game_id": "kyousuke",
+      "role": "entry",
+      "cs_role_profile": {
+        "raw_position": "Entry / star rifler",
+        "primary_role": "entry",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/falcon-7b/players/kyousuke.agent.json"
     },
@@ -216,6 +354,12 @@
       "team_id": "team_falcon_7b",
       "display_name": "zonic",
       "in_game_id": "zonic",
+      "role": "coach",
+      "cs_role_profile": {
+        "raw_position": "Coach",
+        "primary_role": "coach",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/falcon-7b/coach/zonic.agent.json"
     },
@@ -225,6 +369,12 @@
       "team_id": "team_parivision_omni",
       "display_name": "Jame",
       "in_game_id": "Jame",
+      "role": "igl",
+      "cs_role_profile": {
+        "raw_position": "IGL / AWPer",
+        "primary_role": "igl",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/parivision-omni/players/jame.agent.json"
     },
@@ -234,6 +384,12 @@
       "team_id": "team_parivision_omni",
       "display_name": "BELCHONOKK",
       "in_game_id": "BELCHONOKK",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Entry-style",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/parivision-omni/players/belchonokk.agent.json"
     },
@@ -243,6 +399,12 @@
       "team_id": "team_parivision_omni",
       "display_name": "xiELO",
       "in_game_id": "xiELO",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Flex",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/parivision-omni/players/xielo.agent.json"
     },
@@ -252,6 +414,12 @@
       "team_id": "team_parivision_omni",
       "display_name": "nota",
       "in_game_id": "nota",
+      "role": "support",
+      "cs_role_profile": {
+        "raw_position": "Support / Anchor",
+        "primary_role": "support",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/parivision-omni/players/nota.agent.json"
     },
@@ -261,6 +429,12 @@
       "team_id": "team_parivision_omni",
       "display_name": "zweih",
       "in_game_id": "zweih",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / young firepower",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/parivision-omni/players/zweih.agent.json"
     },
@@ -270,6 +444,12 @@
       "team_id": "team_parivision_omni",
       "display_name": "dastan",
       "in_game_id": "dastan",
+      "role": "coach",
+      "cs_role_profile": {
+        "raw_position": "Coach",
+        "primary_role": "coach",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/parivision-omni/coach/dastan.agent.json"
     },
@@ -279,6 +459,12 @@
       "team_id": "team_aulora",
       "display_name": "MAJ3R",
       "in_game_id": "MAJ3R",
+      "role": "igl",
+      "cs_role_profile": {
+        "raw_position": "IGL",
+        "primary_role": "igl",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/aulora/players/maj3r.agent.json"
     },
@@ -288,6 +474,12 @@
       "team_id": "team_aulora",
       "display_name": "XANTARES",
       "in_game_id": "XANTARES",
+      "role": "entry",
+      "cs_role_profile": {
+        "raw_position": "Entry / Star Rifler",
+        "primary_role": "entry",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/aulora/players/xantares.agent.json"
     },
@@ -297,6 +489,12 @@
       "team_id": "team_aulora",
       "display_name": "woxic",
       "in_game_id": "woxic",
+      "role": "awper",
+      "cs_role_profile": {
+        "raw_position": "AWPer",
+        "primary_role": "awper",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/aulora/players/woxic.agent.json"
     },
@@ -306,6 +504,12 @@
       "team_id": "team_aulora",
       "display_name": "soulfly",
       "in_game_id": "soulfly",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Anchor",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/aulora/players/soulfly.agent.json"
     },
@@ -315,6 +519,12 @@
       "team_id": "team_aulora",
       "display_name": "Wicadia",
       "in_game_id": "Wicadia",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Entry-support",
+        "primary_role": "rifler",
+        "confidence": "中-高"
+      },
       "status": "active",
       "json_path": "processed/teams/aulora/players/wicadia.agent.json"
     },
@@ -324,6 +534,12 @@
       "team_id": "team_aulora",
       "display_name": "Fabre",
       "in_game_id": "Fabre",
+      "role": "coach",
+      "cs_role_profile": {
+        "raw_position": "Coach",
+        "primary_role": "coach",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/aulora/coach/fabre.agent.json"
     },
@@ -333,6 +549,12 @@
       "team_id": "team_mouse",
       "display_name": "torzsi",
       "in_game_id": "torzsi",
+      "role": "awper",
+      "cs_role_profile": {
+        "raw_position": "AWPer",
+        "primary_role": "awper",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/mouse/players/torzsi.agent.json"
     },
@@ -342,6 +564,12 @@
       "team_id": "team_mouse",
       "display_name": "Spinx",
       "in_game_id": "Spinx",
+      "role": "lurker",
+      "cs_role_profile": {
+        "raw_position": "Lurker / Star Rifler",
+        "primary_role": "lurker",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/mouse/players/spinx.agent.json"
     },
@@ -351,6 +579,12 @@
       "team_id": "team_mouse",
       "display_name": "jL",
       "in_game_id": "jL",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Entry-style / Flex",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/mouse/players/jl.agent.json"
     },
@@ -360,6 +594,12 @@
       "team_id": "team_mouse",
       "display_name": "xertioN",
       "in_game_id": "xertioN",
+      "role": "igl",
+      "cs_role_profile": {
+        "raw_position": "IGL / aggressive rifler",
+        "primary_role": "igl",
+        "confidence": "中-高"
+      },
       "status": "active",
       "json_path": "processed/teams/mouse/players/xertion.agent.json"
     },
@@ -369,6 +609,12 @@
       "team_id": "team_mouse",
       "display_name": "xelex",
       "in_game_id": "xelex",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Support / young firepower",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/mouse/players/xelex.agent.json"
     },
@@ -378,6 +624,12 @@
       "team_id": "team_mouse",
       "display_name": "sycrone",
       "in_game_id": "sycrone",
+      "role": "coach",
+      "cs_role_profile": {
+        "raw_position": "Coach",
+        "primary_role": "coach",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/mouse/coach/sycrone.agent.json"
     },
@@ -387,6 +639,12 @@
       "team_id": "team_the_mongolzk",
       "display_name": "bLitz",
       "in_game_id": "bLitz",
+      "role": "igl",
+      "cs_role_profile": {
+        "raw_position": "IGL / Rifler",
+        "primary_role": "igl",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/the-mongolzk/players/blitz.agent.json"
     },
@@ -396,6 +654,12 @@
       "team_id": "team_the_mongolzk",
       "display_name": "Techno",
       "in_game_id": "Techno",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Entry-style",
+        "primary_role": "rifler",
+        "confidence": "中-高"
+      },
       "status": "active",
       "json_path": "processed/teams/the-mongolzk/players/techno.agent.json"
     },
@@ -405,6 +669,12 @@
       "team_id": "team_the_mongolzk",
       "display_name": "mzinho",
       "in_game_id": "mzinho",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Support / Anchor",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/the-mongolzk/players/mzinho.agent.json"
     },
@@ -414,6 +684,12 @@
       "team_id": "team_the_mongolzk",
       "display_name": "910",
       "in_game_id": "910",
+      "role": "awper",
+      "cs_role_profile": {
+        "raw_position": "AWPer",
+        "primary_role": "awper",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/the-mongolzk/players/910.agent.json"
     },
@@ -423,6 +699,12 @@
       "team_id": "team_the_mongolzk",
       "display_name": "cobrazera",
       "in_game_id": "cobrazera",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Flex",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/the-mongolzk/players/cobrazera.agent.json"
     },
@@ -432,6 +714,12 @@
       "team_id": "team_the_mongolzk",
       "display_name": "maaRaa",
       "in_game_id": "maaRaa",
+      "role": "coach",
+      "cs_role_profile": {
+        "raw_position": "Coach",
+        "primary_role": "coach",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/the-mongolzk/coach/maaraa.agent.json"
     },
@@ -441,6 +729,12 @@
       "team_id": "team_team_spirit",
       "display_name": "donk",
       "in_game_id": "donk",
+      "role": "entry",
+      "cs_role_profile": {
+        "raw_position": "Entry / Star Rifler",
+        "primary_role": "entry",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/team-spirit/players/donk.agent.json"
     },
@@ -450,6 +744,12 @@
       "team_id": "team_team_spirit",
       "display_name": "magixx",
       "in_game_id": "magixx",
+      "role": "igl",
+      "cs_role_profile": {
+        "raw_position": "IGL / Rifler",
+        "primary_role": "igl",
+        "confidence": "中-高"
+      },
       "status": "active",
       "json_path": "processed/teams/team-spirit/players/magixx.agent.json"
     },
@@ -459,6 +759,12 @@
       "team_id": "team_team_spirit",
       "display_name": "sh1ro",
       "in_game_id": "sh1ro",
+      "role": "awper",
+      "cs_role_profile": {
+        "raw_position": "AWPer",
+        "primary_role": "awper",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/team-spirit/players/sh1ro.agent.json"
     },
@@ -468,6 +774,12 @@
       "team_id": "team_team_spirit",
       "display_name": "tN1R",
       "in_game_id": "tN1R",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Flex",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/team-spirit/players/tn1r.agent.json"
     },
@@ -477,6 +789,12 @@
       "team_id": "team_team_spirit",
       "display_name": "zont1x",
       "in_game_id": "zont1x",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Anchor",
+        "primary_role": "rifler",
+        "confidence": "中-高"
+      },
       "status": "active",
       "json_path": "processed/teams/team-spirit/players/zont1x.agent.json"
     },
@@ -486,6 +804,12 @@
       "team_id": "team_team_spirit",
       "display_name": "hally",
       "in_game_id": "hally",
+      "role": "coach",
+      "cs_role_profile": {
+        "raw_position": "Coach",
+        "primary_role": "coach",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/team-spirit/coach/hally.agent.json"
     },
@@ -495,6 +819,12 @@
       "team_id": "team_futuretoken",
       "display_name": "dem0n",
       "in_game_id": "dem0n",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Star",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/futuretoken/players/dem0n.agent.json"
     },
@@ -504,6 +834,12 @@
       "team_id": "team_futuretoken",
       "display_name": "lauNX",
       "in_game_id": "lauNX",
+      "role": "entry",
+      "cs_role_profile": {
+        "raw_position": "Entry / Star Rifler",
+        "primary_role": "entry",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/futuretoken/players/launx.agent.json"
     },
@@ -513,6 +849,12 @@
       "team_id": "team_futuretoken",
       "display_name": "Krabeni",
       "in_game_id": "Krabeni",
+      "role": "support",
+      "cs_role_profile": {
+        "raw_position": "Support / Rifler",
+        "primary_role": "support",
+        "confidence": "低-中"
+      },
       "status": "active",
       "json_path": "processed/teams/futuretoken/players/krabeni.agent.json"
     },
@@ -522,6 +864,12 @@
       "team_id": "team_futuretoken",
       "display_name": "cmtry",
       "in_game_id": "cmtry",
+      "role": "igl",
+      "cs_role_profile": {
+        "raw_position": "IGL / Support",
+        "primary_role": "igl",
+        "confidence": "低-中"
+      },
       "status": "active",
       "json_path": "processed/teams/futuretoken/players/cmtry.agent.json"
     },
@@ -531,6 +879,12 @@
       "team_id": "team_futuretoken",
       "display_name": "dziugss",
       "in_game_id": "dziugss",
+      "role": "awper",
+      "cs_role_profile": {
+        "raw_position": "AWPer / Rifler",
+        "primary_role": "awper",
+        "confidence": "低-中"
+      },
       "status": "active",
       "json_path": "processed/teams/futuretoken/players/dziugss.agent.json"
     },
@@ -540,6 +894,12 @@
       "team_id": "team_futuretoken",
       "display_name": "coolio",
       "in_game_id": "coolio",
+      "role": "coach",
+      "cs_role_profile": {
+        "raw_position": "Coach",
+        "primary_role": "coach",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/futuretoken/coach/coolio.agent.json"
     },
@@ -549,6 +909,12 @@
       "team_id": "team_astrallm",
       "display_name": "HooXi",
       "in_game_id": "HooXi",
+      "role": "igl",
+      "cs_role_profile": {
+        "raw_position": "IGL",
+        "primary_role": "igl",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/astrallm/players/hooxi.agent.json"
     },
@@ -558,6 +924,12 @@
       "team_id": "team_astrallm",
       "display_name": "phzy",
       "in_game_id": "phzy",
+      "role": "awper",
+      "cs_role_profile": {
+        "raw_position": "AWPer",
+        "primary_role": "awper",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/astrallm/players/phzy.agent.json"
     },
@@ -567,6 +939,12 @@
       "team_id": "team_astrallm",
       "display_name": "jabbi",
       "in_game_id": "jabbi",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Lurker",
+        "primary_role": "rifler",
+        "confidence": "中-高"
+      },
       "status": "active",
       "json_path": "processed/teams/astrallm/players/jabbi.agent.json"
     },
@@ -576,6 +954,12 @@
       "team_id": "team_astrallm",
       "display_name": "Staehr",
       "in_game_id": "Staehr",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Anchor",
+        "primary_role": "rifler",
+        "confidence": "中-高"
+      },
       "status": "active",
       "json_path": "processed/teams/astrallm/players/staehr.agent.json"
     },
@@ -585,6 +969,12 @@
       "team_id": "team_astrallm",
       "display_name": "ryu",
       "in_game_id": "ryu",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Flex",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/astrallm/players/ryu.agent.json"
     },
@@ -594,6 +984,12 @@
       "team_id": "team_astrallm",
       "display_name": "ruggah",
       "in_game_id": "ruggah",
+      "role": "coach",
+      "cs_role_profile": {
+        "raw_position": "Coach",
+        "primary_role": "coach",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/astrallm/coach/ruggah.agent.json"
     },
@@ -603,6 +999,12 @@
       "team_id": "team_g2pt",
       "display_name": "huNter-",
       "in_game_id": "huNter-",
+      "role": "igl",
+      "cs_role_profile": {
+        "raw_position": "IGL / Lurker",
+        "primary_role": "igl",
+        "confidence": "中-高"
+      },
       "status": "active",
       "json_path": "processed/teams/g2pt/players/hunter.agent.json"
     },
@@ -612,6 +1014,12 @@
       "team_id": "team_g2pt",
       "display_name": "NertZ",
       "in_game_id": "NertZ",
+      "role": "star_rifler",
+      "cs_role_profile": {
+        "raw_position": "Star Rifler / Lurker",
+        "primary_role": "star_rifler",
+        "confidence": "中-高"
+      },
       "status": "active",
       "json_path": "processed/teams/g2pt/players/nertz.agent.json"
     },
@@ -621,6 +1029,12 @@
       "team_id": "team_g2pt",
       "display_name": "SunPayus",
       "in_game_id": "SunPayus",
+      "role": "awper",
+      "cs_role_profile": {
+        "raw_position": "AWPer",
+        "primary_role": "awper",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/g2pt/players/sunpayus.agent.json"
     },
@@ -630,6 +1044,12 @@
       "team_id": "team_g2pt",
       "display_name": "HeavyGod",
       "in_game_id": "HeavyGod",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Entry-style",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/g2pt/players/heavygod.agent.json"
     },
@@ -639,6 +1059,12 @@
       "team_id": "team_g2pt",
       "display_name": "MATYS",
       "in_game_id": "MATYS",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Support / Flex",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/g2pt/players/matys.agent.json"
     },
@@ -648,6 +1074,12 @@
       "team_id": "team_g2pt",
       "display_name": "sAw",
       "in_game_id": "sAw",
+      "role": "coach",
+      "cs_role_profile": {
+        "raw_position": "Coach",
+        "primary_role": "coach",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/g2pt/coach/saw.agent.json"
     },
@@ -657,6 +1089,12 @@
       "team_id": "team_legacy_v1",
       "display_name": "arT",
       "in_game_id": "arT",
+      "role": "igl",
+      "cs_role_profile": {
+        "raw_position": "IGL / Entry",
+        "primary_role": "igl",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/legacy-v1/players/art.agent.json"
     },
@@ -666,6 +1104,12 @@
       "team_id": "team_legacy_v1",
       "display_name": "dumau",
       "in_game_id": "dumau",
+      "role": "star_rifler",
+      "cs_role_profile": {
+        "raw_position": "Star Rifler",
+        "primary_role": "star_rifler",
+        "confidence": "中-高"
+      },
       "status": "active",
       "json_path": "processed/teams/legacy-v1/players/dumau.agent.json"
     },
@@ -675,6 +1119,12 @@
       "team_id": "team_legacy_v1",
       "display_name": "latto",
       "in_game_id": "latto",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Support",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/legacy-v1/players/latto.agent.json"
     },
@@ -684,6 +1134,12 @@
       "team_id": "team_legacy_v1",
       "display_name": "n1ssim",
       "in_game_id": "n1ssim",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Anchor",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/legacy-v1/players/n1ssim.agent.json"
     },
@@ -693,6 +1149,12 @@
       "team_id": "team_legacy_v1",
       "display_name": "saadzin",
       "in_game_id": "saadzin",
+      "role": "awper",
+      "cs_role_profile": {
+        "raw_position": "AWPer / Rifler",
+        "primary_role": "awper",
+        "confidence": "低-中"
+      },
       "status": "active",
       "json_path": "processed/teams/legacy-v1/players/saadzin.agent.json"
     },
@@ -702,6 +1164,12 @@
       "team_id": "team_legacy_v1",
       "display_name": "adrrr",
       "in_game_id": "adrrr",
+      "role": "coach",
+      "cs_role_profile": {
+        "raw_position": "Coach",
+        "primary_role": "coach",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/legacy-v1/coach/adrrr.agent.json"
     },
@@ -711,6 +1179,12 @@
       "team_id": "team_bit8",
       "display_name": "alex666",
       "in_game_id": "alex666",
+      "role": "igl",
+      "cs_role_profile": {
+        "raw_position": "IGL",
+        "primary_role": "igl",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/bit8/players/alex666.agent.json"
     },
@@ -720,6 +1194,12 @@
       "team_id": "team_bit8",
       "display_name": "npl",
       "in_game_id": "npl",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Playmaker",
+        "primary_role": "rifler",
+        "confidence": "中-高"
+      },
       "status": "active",
       "json_path": "processed/teams/bit8/players/npl.agent.json"
     },
@@ -729,6 +1209,12 @@
       "team_id": "team_bit8",
       "display_name": "kensizor",
       "in_game_id": "kensizor",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler",
+        "primary_role": "rifler",
+        "confidence": "中-高"
+      },
       "status": "active",
       "json_path": "processed/teams/bit8/players/kensizor.agent.json"
     },
@@ -738,6 +1224,12 @@
       "team_id": "team_bit8",
       "display_name": "esenthial",
       "in_game_id": "esenthial",
+      "role": "support",
+      "cs_role_profile": {
+        "raw_position": "Support / Anchor / Rifler",
+        "primary_role": "support",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/bit8/players/esenthial.agent.json"
     },
@@ -747,6 +1239,12 @@
       "team_id": "team_bit8",
       "display_name": "s1zzi",
       "in_game_id": "s1zzi",
+      "role": "awper",
+      "cs_role_profile": {
+        "raw_position": "AWPer",
+        "primary_role": "awper",
+        "confidence": "低-中"
+      },
       "status": "active",
       "json_path": "processed/teams/bit8/players/s1zzi.agent.json"
     },
@@ -756,6 +1254,12 @@
       "team_id": "team_bit8",
       "display_name": "maddened",
       "in_game_id": "maddened",
+      "role": "coach",
+      "cs_role_profile": {
+        "raw_position": "Coach",
+        "primary_role": "coach",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/bit8/coach/maddened.agent.json"
     },
@@ -765,6 +1269,12 @@
       "team_id": "team_prompt_gaming",
       "display_name": "vsm",
       "in_game_id": "vsm",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Star",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/prompt-gaming/players/vsm.agent.json"
     },
@@ -774,6 +1284,12 @@
       "team_id": "team_prompt_gaming",
       "display_name": "biguzera",
       "in_game_id": "biguzera",
+      "role": "igl",
+      "cs_role_profile": {
+        "raw_position": "IGL / Rifler",
+        "primary_role": "igl",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/prompt-gaming/players/biguzera.agent.json"
     },
@@ -783,6 +1299,12 @@
       "team_id": "team_prompt_gaming",
       "display_name": "piriajr",
       "in_game_id": "piriajr",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Support / Flex",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/prompt-gaming/players/piriajr.agent.json"
     },
@@ -792,6 +1314,12 @@
       "team_id": "team_prompt_gaming",
       "display_name": "saffee",
       "in_game_id": "saffee",
+      "role": "awper",
+      "cs_role_profile": {
+        "raw_position": "AWPer",
+        "primary_role": "awper",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/prompt-gaming/players/saffee.agent.json"
     },
@@ -801,6 +1329,12 @@
       "team_id": "team_prompt_gaming",
       "display_name": "snow",
       "in_game_id": "snow",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Entry-style",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/prompt-gaming/players/snow.agent.json"
     },
@@ -810,6 +1344,12 @@
       "team_id": "team_prompt_gaming",
       "display_name": "rikz",
       "in_game_id": "rikz",
+      "role": "coach",
+      "cs_role_profile": {
+        "raw_position": "Coach",
+        "primary_role": "coach",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/prompt-gaming/coach/rikz.agent.json"
     },
@@ -819,6 +1359,12 @@
       "team_id": "team_phaseclan",
       "display_name": "broky",
       "in_game_id": "broky",
+      "role": "awper",
+      "cs_role_profile": {
+        "raw_position": "AWPer",
+        "primary_role": "awper",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/phaseclan/players/broky.agent.json"
     },
@@ -828,6 +1374,12 @@
       "team_id": "team_phaseclan",
       "display_name": "Twistzz",
       "in_game_id": "Twistzz",
+      "role": "igl",
+      "cs_role_profile": {
+        "raw_position": "IGL / Star Rifler",
+        "primary_role": "igl",
+        "confidence": "中-高"
+      },
       "status": "active",
       "json_path": "processed/teams/phaseclan/players/twistzz.agent.json"
     },
@@ -837,6 +1389,12 @@
       "team_id": "team_phaseclan",
       "display_name": "jcobbb",
       "in_game_id": "jcobbb",
+      "role": "rifler",
+      "cs_role_profile": {
+        "raw_position": "Rifler / Flex",
+        "primary_role": "rifler",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/phaseclan/players/jcobbb.agent.json"
     },
@@ -846,6 +1404,12 @@
       "team_id": "team_phaseclan",
       "display_name": "frozen",
       "in_game_id": "frozen",
+      "role": "star_rifler",
+      "cs_role_profile": {
+        "raw_position": "Star Rifler / Lurker",
+        "primary_role": "star_rifler",
+        "confidence": "高"
+      },
       "status": "active",
       "json_path": "processed/teams/phaseclan/players/frozen.agent.json"
     },
@@ -855,6 +1419,12 @@
       "team_id": "team_phaseclan",
       "display_name": "Neityu",
       "in_game_id": "Neityu",
+      "role": "stand_in",
+      "cs_role_profile": {
+        "raw_position": "Stand-in / Rifler",
+        "primary_role": "stand_in",
+        "confidence": "中"
+      },
       "status": "active",
       "json_path": "processed/teams/phaseclan/players/neityu.agent.json"
     },
@@ -864,6 +1434,12 @@
       "team_id": "team_phaseclan",
       "display_name": "TBD",
       "in_game_id": "TBD",
+      "role": "coach",
+      "cs_role_profile": {
+        "raw_position": "Coach TBD",
+        "primary_role": "coach",
+        "confidence": "低"
+      },
       "status": "tbd",
       "json_path": "processed/teams/phaseclan/coach/coach-tbd.agent.json"
     }

@@ -14,9 +14,9 @@ export default async function HomePage() {
     return (
       <main className="phase14-empty-shell">
         <section className="phase14-empty-card">
-          <p>Agent Major Phase 1.4</p>
-          <h1>等待 BO3 Replay</h1>
-          <span>运行命令行或点击下方按钮后，首页会读取同一个 SQLite 事实源并播放伪直播。</span>
+          <p>Agent Major Phase 1.7</p>
+          <h1>等待 Materials Showcase</h1>
+          <span>运行 pnpm phase17:match 或点击下方按钮后，首页会读取同一个 SQLite 事实源并播放 Falcon-7B vs VitaLLMty BO3。</span>
           <RunMatchControls matchId={defaultMatchId} runnerPolicy={webRunnerPolicy} />
         </section>
         <style>{`

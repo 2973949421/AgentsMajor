@@ -2,16 +2,20 @@ import { resolve } from "node:path";
 
 import { phase11DemoIds } from "@agent-major/core";
 import { createSqliteRepositories, defaultSqlitePath } from "@agent-major/db";
+import { phase17CanonIds } from "@agent-major/materials";
 
 import { findProjectRoot } from "./server-project-root";
-import { runPhase15SingleMapFromWeb, type WebRunSingleMapResult } from "./server-runner";
+import { runPhase15SingleMapFromWeb, runPhase17ShowcaseFromWeb, type WebRunSingleMapResult } from "./server-runner";
 
 export type WebRunStatus = "running" | "completed" | "failed";
+export type WebRunMode = "phase17_showcase_match" | "phase15_single_map";
 
 export interface WebRunProgress {
   runId: string;
+  mode: WebRunMode;
   matchId: string;
   mapGameId: string;
+  mapGameIds: string[];
   mapName: string;
   status: WebRunStatus;
   startedAt: string;
@@ -22,11 +26,6 @@ export interface WebRunProgress {
   currentRoundNumber: number | null;
   casterLines: number;
   casterModes: Array<{ mode: string | null; count: number }>;
-  llmCalls: {
-    count: number;
-    inputTokens: number | null;
-    outputTokens: number | null;
-  };
   progressPercent: number;
   result?: WebRunSingleMapResult;
   error?: string;
@@ -37,6 +36,7 @@ interface InternalWebRunState extends WebRunProgress {
 }
 
 const estimatedDust2Rounds = 18;
+const estimatedBo3Rounds = 54;
 let activeRun: InternalWebRunState | null = null;
 let latestRun: InternalWebRunState | null = null;
 
@@ -45,31 +45,61 @@ export function hasActiveWebRun(): boolean {
 }
 
 export function startPhase15SingleMapWebRun(matchId: string): WebRunProgress {
+  return startWebRun({
+    mode: "phase15_single_map",
+    matchId,
+    mapGameId: phase11DemoIds.mapGameId,
+    mapGameIds: [phase11DemoIds.mapGameId],
+    mapName: "DUST2",
+    estimatedTotalRounds: estimatedDust2Rounds,
+    run: () => runPhase15SingleMapFromWeb(matchId)
+  });
+}
+
+export function startPhase17ShowcaseWebRun(matchId: string): WebRunProgress {
+  const mapGameIds = phase17CanonIds.selectedMapIds.map((_, index) => `map_${phase17CanonIds.matchId}_${index + 1}`);
+  return startWebRun({
+    mode: "phase17_showcase_match",
+    matchId,
+    mapGameId: mapGameIds[0] ?? `map_${phase17CanonIds.matchId}_1`,
+    mapGameIds,
+    mapName: phase17CanonIds.selectedMapIds.join(" / "),
+    estimatedTotalRounds: estimatedBo3Rounds,
+    run: () => runPhase17ShowcaseFromWeb(matchId)
+  });
+}
+
+function startWebRun(input: {
+  mode: WebRunMode;
+  matchId: string;
+  mapGameId: string;
+  mapGameIds: string[];
+  mapName: string;
+  estimatedTotalRounds: number;
+  run: () => Promise<WebRunSingleMapResult>;
+}): WebRunProgress {
   if (hasActiveWebRun()) {
     throw new Error("A local match run is already in progress.");
   }
 
   const now = new Date().toISOString();
   const runId = `web_run_${Date.now().toString(36)}`;
-  const promise = runPhase15SingleMapFromWeb(matchId);
+  const promise = input.run();
   const state: InternalWebRunState = {
     runId,
-    matchId,
-    mapGameId: phase11DemoIds.mapGameId,
-    mapName: "DUST2",
+    mode: input.mode,
+    matchId: input.matchId,
+    mapGameId: input.mapGameId,
+    mapGameIds: input.mapGameIds,
+    mapName: input.mapName,
     status: "running",
     startedAt: now,
     updatedAt: now,
-    estimatedTotalRounds: estimatedDust2Rounds,
+    estimatedTotalRounds: input.estimatedTotalRounds,
     completedRounds: 0,
     currentRoundNumber: null,
     casterLines: 0,
     casterModes: [],
-    llmCalls: {
-      count: 0,
-      inputTokens: null,
-      outputTokens: null
-    },
     progressPercent: 0,
     promise
   };
@@ -81,12 +111,17 @@ export function startPhase15SingleMapWebRun(matchId: string): WebRunProgress {
     .then((result) => {
       state.status = "completed";
       state.result = result;
+      state.mapGameId = result.mapGameId;
+      state.mapGameIds = result.mapGameIds ?? [result.mapGameId];
+      state.mapName = result.mapNames?.join(" / ") ?? result.mapName;
       state.completedAt = new Date().toISOString();
       state.updatedAt = state.completedAt;
-      state.completedRounds = Math.max(state.completedRounds, estimatedDust2Rounds);
-      state.casterLines = Math.max(state.casterLines, result.llmCalls.count);
+      state.completedRounds = Math.max(state.completedRounds, state.estimatedTotalRounds);
+      state.casterLines = Math.max(
+        state.casterLines,
+        result.casterModes.reduce((sum, item) => sum + item.count, 0)
+      );
       state.casterModes = result.casterModes;
-      state.llmCalls = result.llmCalls;
       state.progressPercent = 100;
     })
     .catch((error: unknown) => {
@@ -116,18 +151,17 @@ export function readWebRunProgress(runId?: string): WebRunProgress | null {
     try {
       const roundStats = repositories.sqlite
         .prepare(
-          "SELECT COUNT(*) AS completedRounds, MAX(round_number) AS currentRoundNumber FROM round_reports WHERE map_game_id = ?"
+          `SELECT COUNT(*) AS completedRounds, MAX(round_number) AS currentRoundNumber FROM round_reports WHERE map_game_id IN (${placeholders(state.mapGameIds)})`
         )
-        .get(state.mapGameId) as { completedRounds?: unknown; currentRoundNumber?: unknown } | undefined;
+        .get(...state.mapGameIds) as { completedRounds?: unknown; currentRoundNumber?: unknown } | undefined;
       const casterLines = repositories.sqlite
-        .prepare("SELECT COUNT(*) AS count FROM events WHERE map_game_id = ? AND type = 'caster_line_created'")
-        .get(state.mapGameId) as { count?: unknown } | undefined;
+        .prepare(`SELECT COUNT(*) AS count FROM events WHERE map_game_id IN (${placeholders(state.mapGameIds)}) AND type = 'caster_line_created'`)
+        .get(...state.mapGameIds) as { count?: unknown } | undefined;
 
       state.completedRounds = typeof roundStats?.completedRounds === "number" ? roundStats.completedRounds : state.completedRounds;
       state.currentRoundNumber = typeof roundStats?.currentRoundNumber === "number" ? roundStats.currentRoundNumber : state.currentRoundNumber;
       state.casterLines = typeof casterLines?.count === "number" ? casterLines.count : state.casterLines;
-      state.casterModes = readCasterModes(repositories, state.mapGameId);
-      state.llmCalls = readLlmCallStats(repositories, state.mapGameId);
+      state.casterModes = readCasterModes(repositories, state.mapGameIds);
       state.updatedAt = new Date().toISOString();
       if (state.status === "running") {
         state.progressPercent = Math.min(99, Math.round((state.completedRounds / state.estimatedTotalRounds) * 100));
@@ -157,13 +191,17 @@ function selectRun(runId?: string): InternalWebRunState | null {
 
 function readCasterModes(
   repositories: ReturnType<typeof createSqliteRepositories>,
-  mapGameId: string
+  mapGameIds: string[]
 ): WebRunProgress["casterModes"] {
+  if (mapGameIds.length === 0) {
+    return [];
+  }
+
   return repositories.sqlite
     .prepare(
-      "SELECT json_extract(payload_json, '$.generationMode') AS mode, COUNT(*) AS count FROM events WHERE map_game_id = ? AND type = 'caster_line_created' GROUP BY mode"
+      `SELECT json_extract(payload_json, '$.generationMode') AS mode, COUNT(*) AS count FROM events WHERE map_game_id IN (${placeholders(mapGameIds)}) AND type = 'caster_line_created' GROUP BY mode`
     )
-    .all(mapGameId)
+    .all(...mapGameIds)
     .map((row) => {
       const record = row as { mode?: unknown; count?: unknown };
       return {
@@ -173,21 +211,8 @@ function readCasterModes(
     });
 }
 
-function readLlmCallStats(
-  repositories: ReturnType<typeof createSqliteRepositories>,
-  mapGameId: string
-): WebRunProgress["llmCalls"] {
-  const row = repositories.sqlite
-    .prepare(
-      "SELECT COUNT(*) AS count, SUM(input_tokens) AS inputTokens, SUM(output_tokens) AS outputTokens FROM llm_calls WHERE round_id IN (SELECT id FROM rounds WHERE map_game_id = ?)"
-    )
-    .get(mapGameId) as { count?: unknown; inputTokens?: unknown; outputTokens?: unknown } | undefined;
-
-  return {
-    count: typeof row?.count === "number" ? row.count : 0,
-    inputTokens: typeof row?.inputTokens === "number" ? row.inputTokens : null,
-    outputTokens: typeof row?.outputTokens === "number" ? row.outputTokens : null
-  };
+function placeholders(values: string[]): string {
+  return values.map(() => "?").join(",");
 }
 
 function stripPromise(state: InternalWebRunState): WebRunProgress {

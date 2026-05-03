@@ -6,8 +6,32 @@
   "real_name": null,
   "in_game_id": "iM",
   "display_name": "iM",
-  "role": "entry",
+  "role": "rifler",
   "status": "active",
+  "cs_role_profile": {
+    "source_path": "raw/teams/agent_major_player_roles.md",
+    "source_team_name": "Neural Vincere",
+    "member_type": "player",
+    "raw_position": "Rifler / Entry-style rifler",
+    "raw_position_parts": [
+      "Rifler",
+      "Entry-style rifler"
+    ],
+    "primary_role": "rifler",
+    "secondary_roles": [
+      "entry"
+    ],
+    "position_tags": [
+      "rifler",
+      "entry"
+    ],
+    "confidence": "中",
+    "notes": "高主动性步枪手，项目中可作为突破/火力位。",
+    "agent_major_responsibilities": [
+      "通用火力 / 回合执行 / 补枪衔接",
+      "首轮出击 / 激进创意 / 打开局面"
+    ]
+  },
   "aliases": [
     "iM"
   ],
@@ -16,29 +40,28 @@
     "打头阵"
   ],
   "persona_tags": [
-    "frontline-instigator",
-    "heat-checker",
+    "rifle-worker",
+    "round-connector",
     "front-push"
   ],
   "playstyle_tags": [
-    "first-contact",
-    "space-creator",
+    "rifle-trade",
+    "site-pressure",
     "wide-swing",
     "entry-contact"
   ],
   "caster_focus_tags": [
-    "machine_force_buy_shock"
+    "machine_map_point_pressure"
   ],
   "barrage_focus_tags": [
-    "player_targeting",
-    "research"
+    "player_targeting"
   ],
   "news_focus_tags": [
     "history-burden",
     "upset-watch"
   ],
   "cross_circle_tags": [
-    "cabinet_to_live_room_chaos"
+    "customer_service_to_cleanup"
   ],
   "future_agent_profile": {
     "persona_summary": "把前线打穿时很像点火器，没点燃就会被弹幕拿来拷打执行质量。",
@@ -46,8 +69,8 @@
     "narrative_axes": [
       "history-burden",
       "upset-watch",
-      "frontline-instigator",
-      "heat-checker",
+      "rifle-worker",
+      "round-connector",
       "front-push"
     ],
     "reserved_memory_slots": [
@@ -58,16 +81,68 @@
     ]
   },
   "future_driver_binding": {
-    "preferred_driver_model_id": null,
-    "fallback_driver_model_ids": [],
+    "binding_version": "2026-05-03-llm-binding-v1",
+    "binding_scope": "asset_preallocation",
+    "runtime_enabled": false,
+    "role_template_id": "llm_role_template_rifler",
+    "preferred_driver_model_id": "driver_qwen_3_6_plus",
+    "fallback_driver_model_ids": [
+      "driver_qwen_3_5_plus"
+    ],
+    "task_bindings": [
+      {
+        "task_id": "profile_card_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "broadcast_caster_line",
+        "model_profile_id": "llm_profile_caster_expressive",
+        "driver_model_id": "driver_kimi_k2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.6,
+        "max_output_tokens": 500
+      },
+      {
+        "task_id": "barrage_style_line",
+        "model_profile_id": "llm_profile_barrage_chaos",
+        "driver_model_id": "driver_minimax_m2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_5_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.7,
+        "max_output_tokens": 450
+      }
+    ],
     "prompt_bias_tags": [
-      "first-contact",
-      "space-creator",
+      "rifle-worker",
+      "round-connector",
+      "site-pressure",
+      "trade-layer",
+      "rifle-trade",
       "wide-swing",
       "entry-contact",
-      "frontline-instigator",
-      "heat-checker",
       "front-push"
+    ],
+    "env_contract_refs": [
+      "AGENT_MAJOR_REAL_LLM_ENABLED",
+      "AGENT_MAJOR_LLM_PROVIDER",
+      "DASHSCOPE_BASE_URL",
+      "DASHSCOPE_API_KEY"
+    ],
+    "override_ids": [],
+    "ops_notes": [
+      "Use as the default player fallback when no sharper role is available."
     ]
   },
   "ops_hooks": {
@@ -80,7 +155,7 @@
     ],
     "card_priority": 45,
     "broadcast_entry_points": [
-      "machine_force_buy_shock"
+      "machine_map_point_pressure"
     ]
   },
   "canon_notes": []

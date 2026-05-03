@@ -1,14 +1,14 @@
 # VitaLLMty Roster
 
 ## Active Five
-- apEX | igl | player_vitallmty_apex
-- ropz | lurker | player_vitallmty_ropz
-- ZywOo | closer | player_vitallmty_zywoo
-- flameZ | entry | player_vitallmty_flamez
-- mezii | support | player_vitallmty_mezii
+- apEX | igl | IGL / aggressive caller | 高 | player_vitallmty_apex
+- ropz | lurker | Lurker / late-round rifler | 高 | player_vitallmty_ropz
+- ZywOo | awper | AWPer / Star | 高 | player_vitallmty_zywoo
+- flameZ | entry | Entry / aggressive rifler | 高 | player_vitallmty_flamez
+- mezii | support | Support / Anchor / flex rifler | 中-高 | player_vitallmty_mezii
 
 ## Coach
-- 正式教练：XTQZZZ (coach_vitallmty_xtqzzz)
+- 正式教练：XTQZZZ (coach_vitallmty_xtqzzz，Coach，可信度 高)
 
 ## Snapshot
 - 阵容版本：2026-05-03-canon-v1

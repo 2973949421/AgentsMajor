@@ -49,8 +49,11 @@ export const agents = sqliteTable(
     driverModelId: text("driver_model_id").notNull().references(() => driverModels.id),
     parameterProfileId: text("parameter_profile_id"),
     role: text("role").notNull(),
+    secondaryRolesJson: text("secondary_roles_json", { mode: "json" }),
     displayName: text("display_name").notNull(),
     baseProfileJson: text("base_profile_json", { mode: "json" }).notNull(),
+    roleProfileJson: text("role_profile_json", { mode: "json" }),
+    materialRefJson: text("material_ref_json", { mode: "json" }),
     currentState: text("current_state").notNull(),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at")

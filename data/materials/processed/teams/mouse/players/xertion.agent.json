@@ -6,8 +6,32 @@
   "real_name": null,
   "in_game_id": "xertioN",
   "display_name": "xertioN",
-  "role": "star",
+  "role": "igl",
   "status": "active",
+  "cs_role_profile": {
+    "source_path": "raw/teams/agent_major_player_roles.md",
+    "source_team_name": "Mouse",
+    "member_type": "player",
+    "raw_position": "IGL / aggressive rifler",
+    "raw_position_parts": [
+      "IGL",
+      "aggressive rifler"
+    ],
+    "primary_role": "igl",
+    "secondary_roles": [
+      "rifler"
+    ],
+    "position_tags": [
+      "igl",
+      "rifler"
+    ],
+    "confidence": "中-高",
+    "notes": "MOUZ 近期变动后，xertioN 被公开标注为 IGL。",
+    "agent_major_responsibilities": [
+      "战术规划 / 回合策略 / 资源分配",
+      "通用火力 / 回合执行 / 补枪衔接"
+    ]
+  },
   "aliases": [
     "xertioN"
   ],
@@ -15,35 +39,36 @@
     "正面火力"
   ],
   "persona_tags": [
-    "headline-core",
-    "win-condition",
+    "shotcaller",
+    "system-brain",
     "muscle-core"
   ],
   "playstyle_tags": [
-    "high-impact",
-    "space-winning",
+    "mid-round-call",
+    "tempo-control",
     "rifle-crash",
     "site-break"
   ],
   "caster_focus_tags": [
-    "machine_star_carry"
+    "machine_old_guard_command"
   ],
   "barrage_focus_tags": [
-    "player_targeting"
+    "player_targeting",
+    "old_guard"
   ],
   "news_focus_tags": [
     "upset-watch"
   ],
   "cross_circle_tags": [
-    "band_to_superteam"
+    "customer_service_to_cleanup"
   ],
   "future_agent_profile": {
     "persona_summary": "纪律体系里负责把伤害真正灌进去的肌肉位。",
     "voice_mode": "cn-live-room-competitive",
     "narrative_axes": [
       "upset-watch",
-      "headline-core",
-      "win-condition",
+      "shotcaller",
+      "system-brain",
       "muscle-core"
     ],
     "reserved_memory_slots": [
@@ -54,16 +79,79 @@
     ]
   },
   "future_driver_binding": {
-    "preferred_driver_model_id": null,
-    "fallback_driver_model_ids": [],
+    "binding_version": "2026-05-03-llm-binding-v1",
+    "binding_scope": "asset_preallocation",
+    "runtime_enabled": false,
+    "role_template_id": "llm_role_template_igl",
+    "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+    "fallback_driver_model_ids": [
+      "driver_qwen_3_6_plus"
+    ],
+    "task_bindings": [
+      {
+        "task_id": "profile_card_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "news_story_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "tactical_analysis_note",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "broadcast_caster_line",
+        "model_profile_id": "llm_profile_caster_expressive",
+        "driver_model_id": "driver_kimi_k2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.6,
+        "max_output_tokens": 500
+      }
+    ],
     "prompt_bias_tags": [
-      "high-impact",
-      "space-winning",
+      "shotcaller",
+      "system-brain",
+      "tempo-control",
+      "mid-round-logic",
+      "mid-round-call",
       "rifle-crash",
       "site-break",
-      "headline-core",
-      "win-condition",
       "muscle-core"
+    ],
+    "env_contract_refs": [
+      "AGENT_MAJOR_REAL_LLM_ENABLED",
+      "AGENT_MAJOR_LLM_PROVIDER",
+      "DASHSCOPE_BASE_URL",
+      "DASHSCOPE_API_KEY"
+    ],
+    "override_ids": [],
+    "ops_notes": [
+      "Use command perspective and tempo-control framing."
     ]
   },
   "ops_hooks": {
@@ -74,7 +162,7 @@
     ],
     "card_priority": 16,
     "broadcast_entry_points": [
-      "machine_star_carry"
+      "machine_old_guard_command"
     ]
   },
   "canon_notes": []

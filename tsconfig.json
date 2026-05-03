@@ -5,6 +5,7 @@
     { "path": "./packages/llm" },
     { "path": "./packages/queue" },
     { "path": "./packages/db" },
+    { "path": "./packages/materials" },
     { "path": "./packages/core" },
     { "path": "./packages/cli" }
   ]

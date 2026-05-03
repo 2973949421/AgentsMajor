@@ -8,6 +8,29 @@
   "display_name": "B1ad3",
   "role": "coach",
   "status": "active",
+  "cs_role_profile": {
+    "source_path": "raw/teams/agent_major_player_roles.md",
+    "source_team_name": "Neural Vincere",
+    "member_type": "coach",
+    "raw_position": "Coach / system architect",
+    "raw_position_parts": [
+      "Coach",
+      "system architect"
+    ],
+    "primary_role": "coach",
+    "secondary_roles": [
+      "system_architect"
+    ],
+    "position_tags": [
+      "coach",
+      "system_architect"
+    ],
+    "confidence": "高",
+    "notes": "NaVi 长期体系教练。",
+    "agent_major_responsibilities": [
+      "战术暂停 / 赛前准备 / 赛后复盘"
+    ]
+  },
   "aliases": [
     "B1ad3",
     "blad3"
@@ -55,16 +78,79 @@
     ]
   },
   "future_driver_binding": {
-    "preferred_driver_model_id": null,
-    "fallback_driver_model_ids": [],
+    "binding_version": "2026-05-03-llm-binding-v1",
+    "binding_scope": "asset_preallocation",
+    "runtime_enabled": false,
+    "role_template_id": "llm_role_template_coach",
+    "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
+    "fallback_driver_model_ids": [
+      "driver_qwen_3_6_plus"
+    ],
+    "task_bindings": [
+      {
+        "task_id": "profile_card_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "news_story_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "tactical_analysis_note",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "judge_note_reserved",
+        "model_profile_id": "llm_profile_conservative_judge_reserved",
+        "driver_model_id": "driver_glm_5",
+        "fallback_driver_model_ids": [
+          "driver_glm_4_7"
+        ],
+        "enabled": false,
+        "temperature": 0.2,
+        "max_output_tokens": 900
+      }
+    ],
     "prompt_bias_tags": [
-      "prep",
+      "system-adult",
       "timeout-fix",
+      "prep",
+      "review",
       "prep-heavy",
       "identity-keeper",
-      "system-adult",
       "reset-point",
       "culture-builder"
+    ],
+    "env_contract_refs": [
+      "AGENT_MAJOR_REAL_LLM_ENABLED",
+      "AGENT_MAJOR_LLM_PROVIDER",
+      "DASHSCOPE_BASE_URL",
+      "DASHSCOPE_API_KEY"
+    ],
+    "override_ids": [],
+    "ops_notes": [
+      "Runtime judge and arbiter usage stays disabled in v1."
     ]
   },
   "ops_hooks": {

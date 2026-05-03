@@ -1,14 +1,14 @@
 # AstraLLM Roster
 
 ## Active Five
-- HooXi | igl | player_astrallm_hooxi
-- phzy | closer | player_astrallm_phzy
-- jabbi | entry | player_astrallm_jabbi
-- Staehr | support | player_astrallm_staehr
-- ryu | lurker | player_astrallm_ryu
+- HooXi | igl | IGL | 高 | player_astrallm_hooxi
+- phzy | awper | AWPer | 高 | player_astrallm_phzy
+- jabbi | rifler | Rifler / Lurker | 中-高 | player_astrallm_jabbi
+- Staehr | rifler | Rifler / Anchor | 中-高 | player_astrallm_staehr
+- ryu | rifler | Rifler / Flex | 中 | player_astrallm_ryu
 
 ## Coach
-- 正式教练：ruggah (coach_astrallm_ruggah)
+- 正式教练：ruggah (coach_astrallm_ruggah，Coach，可信度 高)
 
 ## Snapshot
 - 阵容版本：2026-05-03-canon-v1

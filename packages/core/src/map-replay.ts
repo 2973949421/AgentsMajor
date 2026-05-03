@@ -1,11 +1,26 @@
 import type { Repositories } from "@agent-major/db";
-import type { Event, MapGame, Match, Round, RoundReport, Summary, Team, TimelineEvent } from "@agent-major/shared";
+import type { Agent, Event, MapGame, Match, Round, RoundReport, Summary, Team, TimelineEvent } from "@agent-major/shared";
 
 export interface RoundReplayItem {
   round: Round;
   roundReport: RoundReport;
   events: Event[];
   timelineEvents: TimelineEvent[];
+}
+
+export interface ReplayAgentIdentity {
+  id: string;
+  teamId: string;
+  displayName: string;
+  role: Agent["role"];
+  secondaryRoles: NonNullable<Agent["secondaryRoles"]>;
+  aliases: string[];
+  materialRef?: {
+    entityId: string;
+    entityType: "player" | "coach";
+    teamSlug: string;
+    runtimeEnabled: false;
+  };
 }
 
 export interface MapReplay {
@@ -15,6 +30,7 @@ export interface MapReplay {
     teamA: Team;
     teamB: Team;
   };
+  agentsById: Record<string, ReplayAgentIdentity>;
   rounds: RoundReplayItem[];
   mapSummary: Summary | null;
   eventCounts: {
@@ -30,6 +46,7 @@ export interface MatchReplay {
     teamA: Team;
     teamB: Team;
   };
+  agentsById: Record<string, ReplayAgentIdentity>;
   mapGames: MapGame[];
   maps: MapReplay[];
   matchSummary: Summary | null;
@@ -48,14 +65,15 @@ export async function readMapReplay(repositories: Repositories, mapGameId: strin
   }
 
   const match = await required(repositories.matches.getById(mapGame.matchId), `Match not found: ${mapGame.matchId}`);
-  const [teamA, teamB, rounds, roundReports, mapEvents, mapTimelineEvents] = (await Promise.all([
+  const [teamA, teamB, agents, rounds, roundReports, mapEvents, mapTimelineEvents] = (await Promise.all([
     required(repositories.teams.getById(match.teamAId), `Team not found: ${match.teamAId}`),
     required(repositories.teams.getById(match.teamBId), `Team not found: ${match.teamBId}`),
+    repositories.agents.listByTeamIds([match.teamAId, match.teamBId]),
     repositories.rounds.listByMapGame(mapGame.id),
     repositories.roundReports.listByMapGame(mapGame.id),
     repositories.events.listByMapGame(mapGame.id),
     repositories.timelineEvents.listByMapGame(mapGame.id)
-  ])) as [Team, Team, Round[], RoundReport[], Event[], TimelineEvent[]];
+  ])) as [Team, Team, Agent[], Round[], RoundReport[], Event[], TimelineEvent[]];
 
   const reportsByRoundId = new Map(roundReports.map((report) => [report.roundId, report]));
   const eventsByRoundId = groupByRoundId(mapEvents, (event) => event.roundId);
@@ -67,6 +85,7 @@ export async function readMapReplay(repositories: Repositories, mapGameId: strin
     match,
     mapGame,
     teams: { teamA, teamB },
+    agentsById: buildAgentsById(agents),
     rounds: completedRounds.map((round) => ({
       round,
       roundReport: reportsByRoundId.get(round.id) as RoundReport,
@@ -88,12 +107,13 @@ export async function readMatchReplay(repositories: Repositories, matchId: strin
     return null;
   }
 
-  const [teamA, teamB, mapGames, matchEvents] = (await Promise.all([
+  const [teamA, teamB, agents, mapGames, matchEvents] = (await Promise.all([
     required(repositories.teams.getById(match.teamAId), `Team not found: ${match.teamAId}`),
     required(repositories.teams.getById(match.teamBId), `Team not found: ${match.teamBId}`),
+    repositories.agents.listByTeamIds([match.teamAId, match.teamBId]),
     repositories.mapGames.listByMatch(match.id),
     repositories.events.listByMatch(match.id)
-  ])) as [Team, Team, MapGame[], Event[]];
+  ])) as [Team, Team, Agent[], MapGame[], Event[]];
   const maps = (
     await Promise.all(
       [...mapGames]
@@ -107,6 +127,7 @@ export async function readMatchReplay(repositories: Repositories, matchId: strin
   return {
     match,
     teams: { teamA, teamB },
+    agentsById: buildAgentsById(agents),
     mapGames,
     maps,
     matchSummary,
@@ -117,6 +138,32 @@ export async function readMatchReplay(repositories: Repositories, matchId: strin
       timeline: maps.reduce((sum, mapReplay) => sum + mapReplay.eventCounts.timeline, 0)
     }
   };
+}
+
+function buildAgentsById(agents: Agent[]): Record<string, ReplayAgentIdentity> {
+  return Object.fromEntries(
+    agents.map((agent) => [
+      agent.id,
+      {
+        id: agent.id,
+        teamId: agent.teamId,
+        displayName: agent.displayName,
+        role: agent.role,
+        secondaryRoles: agent.secondaryRoles ?? [],
+        aliases: agent.materialRef?.aliases ?? [],
+        ...(agent.materialRef
+          ? {
+              materialRef: {
+                entityId: agent.materialRef.entityId,
+                entityType: agent.materialRef.entityType,
+                teamSlug: agent.materialRef.teamSlug,
+                runtimeEnabled: agent.materialRef.runtimeEnabled
+              }
+            }
+          : {})
+      }
+    ])
+  );
 }
 
 function groupByRoundId<T>(items: T[], getRoundId: (item: T) => string | undefined): Map<string, T[]> {

@@ -8,9 +8,216 @@ const processedRoot = path.join(materialsRoot, "processed");
 const teamsRoot = path.join(processedRoot, "teams");
 const indexesRoot = path.join(processedRoot, "indexes");
 const styleRoot = path.join(processedRoot, "style");
+const llmRoot = path.join(processedRoot, "llm");
+const roleSourcePath = path.join(materialsRoot, "raw", "teams", "agent_major_player_roles.md");
 
 const VERSION = "2026-05-03-canon-v1";
 const SNAPSHOT_DATE = "2026-05-02";
+const LLM_BINDING_VERSION = "2026-05-03-llm-binding-v1";
+const LLM_BINDING_SCOPE = "asset_preallocation";
+const LLM_RUNTIME_ENABLED = false;
+const LLM_DRIVER_REGISTRY_REF = "packages/llm/src/model-registry.ts";
+const LLM_ENV_CONTRACT_REFS = [
+  "AGENT_MAJOR_REAL_LLM_ENABLED",
+  "AGENT_MAJOR_LLM_PROVIDER",
+  "DASHSCOPE_BASE_URL",
+  "DASHSCOPE_API_KEY"
+];
+
+const llmModelProfiles = [
+  {
+    id: "llm_profile_strong_reasoning",
+    label: "Strong reasoning",
+    summary: "News, profile cards, round reports, and narrative judgement.",
+    primary_driver_model_id: "driver_qwen_3_max_2026_01_23",
+    fallback_driver_model_ids: ["driver_qwen_3_6_plus"],
+    task_ids: ["profile_card_copy", "news_story_copy", "round_report_material", "tactical_analysis_note"],
+    runtime_enabled: false,
+    default_temperature: 0.4,
+    default_max_output_tokens: 900
+  },
+  {
+    id: "llm_profile_caster_expressive",
+    label: "Caster expressive",
+    summary: "Caster voice, interview voice, and high-emotion broadcast copy.",
+    primary_driver_model_id: "driver_kimi_k2_5",
+    fallback_driver_model_ids: ["driver_qwen_3_6_plus"],
+    task_ids: ["broadcast_caster_line", "interview_voice", "spotlight_moment_copy"],
+    runtime_enabled: false,
+    default_temperature: 0.6,
+    default_max_output_tokens: 500
+  },
+  {
+    id: "llm_profile_barrage_chaos",
+    label: "Barrage chaos",
+    summary: "Live-room barrage, meme lines, short reactions, and chaotic callbacks.",
+    primary_driver_model_id: "driver_minimax_m2_5",
+    fallback_driver_model_ids: ["driver_qwen_3_5_plus"],
+    task_ids: ["barrage_style_line", "meme_reaction_line"],
+    runtime_enabled: false,
+    default_temperature: 0.7,
+    default_max_output_tokens: 450
+  },
+  {
+    id: "llm_profile_conservative_judge_reserved",
+    label: "Conservative judge reserved",
+    summary: "Judge, arbiter, and analysis reservation only. Disabled for v1.",
+    primary_driver_model_id: "driver_glm_5",
+    fallback_driver_model_ids: ["driver_glm_4_7"],
+    task_ids: ["judge_note_reserved", "arbiter_note_reserved"],
+    runtime_enabled: false,
+    default_temperature: 0.2,
+    default_max_output_tokens: 900
+  },
+  {
+    id: "llm_profile_agent_action_reserved",
+    label: "Agent action reserved",
+    summary: "Future agent action planning and repair reservation only. Disabled for v1.",
+    primary_driver_model_id: "driver_qwen_3_coder_next",
+    fallback_driver_model_ids: ["driver_qwen_3_coder_plus"],
+    task_ids: ["agent_action_planning_reserved", "repair_note_reserved"],
+    runtime_enabled: false,
+    default_temperature: 0.3,
+    default_max_output_tokens: 700
+  }
+];
+
+const llmModelProfileMap = new Map(llmModelProfiles.map((profile) => [profile.id, profile]));
+
+const llmRoleBindingTemplates = {
+  igl: {
+    template_id: "llm_role_template_igl",
+    role: "igl",
+    summary: "Strong reasoning first for calling, tactical narrative, news, and review.",
+    preferred_driver_model_id: "driver_qwen_3_max_2026_01_23",
+    fallback_driver_model_ids: ["driver_qwen_3_6_plus"],
+    prompt_bias_tags: ["shotcaller", "system-brain", "tempo-control", "mid-round-logic"],
+    task_bindings: [
+      { task_id: "profile_card_copy", model_profile_id: "llm_profile_strong_reasoning" },
+      { task_id: "news_story_copy", model_profile_id: "llm_profile_strong_reasoning" },
+      { task_id: "tactical_analysis_note", model_profile_id: "llm_profile_strong_reasoning" },
+      { task_id: "broadcast_caster_line", model_profile_id: "llm_profile_caster_expressive" }
+    ],
+    ops_notes: ["Use command perspective and tempo-control framing."]
+  },
+  awper: {
+    template_id: "llm_role_template_awper",
+    role: "awper",
+    summary: "Expressive caster profile plus reasoning for clutch, AWP pressure, and highlight copy.",
+    preferred_driver_model_id: "driver_kimi_k2_5",
+    fallback_driver_model_ids: ["driver_qwen_3_6_plus"],
+    prompt_bias_tags: ["precision-core", "high-leverage", "single-point-pressure", "clutch-risk"],
+    task_bindings: [
+      { task_id: "profile_card_copy", model_profile_id: "llm_profile_strong_reasoning" },
+      { task_id: "news_story_copy", model_profile_id: "llm_profile_strong_reasoning" },
+      { task_id: "broadcast_caster_line", model_profile_id: "llm_profile_caster_expressive" },
+      { task_id: "spotlight_moment_copy", model_profile_id: "llm_profile_caster_expressive" }
+    ],
+    ops_notes: ["Prioritize key-shot, clutch, and single-round pressure hooks."]
+  },
+  star_rifler: {
+    template_id: "llm_role_template_star_rifler",
+    role: "star_rifler",
+    summary: "Expressive star framing with news hooks for headline rifle impact.",
+    preferred_driver_model_id: "driver_kimi_k2_5",
+    fallback_driver_model_ids: ["driver_qwen_3_6_plus"],
+    prompt_bias_tags: ["headline-core", "win-condition", "impact-rifle", "resource-heavy"],
+    task_bindings: [
+      { task_id: "profile_card_copy", model_profile_id: "llm_profile_strong_reasoning" },
+      { task_id: "news_story_copy", model_profile_id: "llm_profile_strong_reasoning" },
+      { task_id: "broadcast_caster_line", model_profile_id: "llm_profile_caster_expressive" },
+      { task_id: "spotlight_moment_copy", model_profile_id: "llm_profile_caster_expressive" }
+    ],
+    ops_notes: ["Use star heat and resource-pressure framing."]
+  },
+  entry: {
+    template_id: "llm_role_template_entry",
+    role: "entry",
+    summary: "Barrage and caster first for opening-duel volatility and live-room effect.",
+    preferred_driver_model_id: "driver_minimax_m2_5",
+    fallback_driver_model_ids: ["driver_qwen_3_5_plus"],
+    prompt_bias_tags: ["frontline-instigator", "first-contact", "space-creator", "high-variance"],
+    task_bindings: [
+      { task_id: "profile_card_copy", model_profile_id: "llm_profile_strong_reasoning" },
+      { task_id: "broadcast_caster_line", model_profile_id: "llm_profile_caster_expressive" },
+      { task_id: "barrage_style_line", model_profile_id: "llm_profile_barrage_chaos" },
+      { task_id: "meme_reaction_line", model_profile_id: "llm_profile_barrage_chaos" }
+    ],
+    ops_notes: ["Prefer first-contact, overpeek, space creation, and instant reaction hooks."]
+  },
+  lurker: {
+    template_id: "llm_role_template_lurker",
+    role: "lurker",
+    summary: "Reasoning plus caster for timing, late-round logic, and map-read storytelling.",
+    preferred_driver_model_id: "driver_qwen_3_max_2026_01_23",
+    fallback_driver_model_ids: ["driver_qwen_3_6_plus"],
+    prompt_bias_tags: ["timing-hunter", "map-reader", "late-round", "flank-punish"],
+    task_bindings: [
+      { task_id: "profile_card_copy", model_profile_id: "llm_profile_strong_reasoning" },
+      { task_id: "news_story_copy", model_profile_id: "llm_profile_strong_reasoning" },
+      { task_id: "tactical_analysis_note", model_profile_id: "llm_profile_strong_reasoning" },
+      { task_id: "broadcast_caster_line", model_profile_id: "llm_profile_caster_expressive" }
+    ],
+    ops_notes: ["Use timing, information gap, and late-round payoff framing."]
+  },
+  support: {
+    template_id: "llm_role_template_support",
+    role: "support",
+    summary: "Stable narrative for utility, trade layers, and team glue copy.",
+    preferred_driver_model_id: "driver_qwen_3_6_plus",
+    fallback_driver_model_ids: ["driver_qwen_3_5_plus"],
+    prompt_bias_tags: ["glue-piece", "utility-worker", "trade-layer", "setup-support"],
+    task_bindings: [
+      { task_id: "profile_card_copy", model_profile_id: "llm_profile_strong_reasoning" },
+      { task_id: "broadcast_caster_line", model_profile_id: "llm_profile_caster_expressive" },
+      { task_id: "barrage_style_line", model_profile_id: "llm_profile_barrage_chaos" }
+    ],
+    ops_notes: ["Keep framing around utility, spacing, and invisible value."]
+  },
+  rifler: {
+    template_id: "llm_role_template_rifler",
+    role: "rifler",
+    summary: "Balanced default player template and fallback for ordinary rifle roles.",
+    preferred_driver_model_id: "driver_qwen_3_6_plus",
+    fallback_driver_model_ids: ["driver_qwen_3_5_plus"],
+    prompt_bias_tags: ["rifle-worker", "round-connector", "site-pressure", "trade-layer"],
+    task_bindings: [
+      { task_id: "profile_card_copy", model_profile_id: "llm_profile_strong_reasoning" },
+      { task_id: "broadcast_caster_line", model_profile_id: "llm_profile_caster_expressive" },
+      { task_id: "barrage_style_line", model_profile_id: "llm_profile_barrage_chaos" }
+    ],
+    ops_notes: ["Use as the default player fallback when no sharper role is available."]
+  },
+  stand_in: {
+    template_id: "llm_role_template_stand_in",
+    role: "stand_in",
+    summary: "Temporary identity template. Avoid overfitting long-term persona.",
+    preferred_driver_model_id: "driver_qwen_3_6_plus",
+    fallback_driver_model_ids: ["driver_qwen_3_5_plus"],
+    prompt_bias_tags: ["temporary-slot", "volatile-interface", "low-context", "adaptation"],
+    task_bindings: [
+      { task_id: "profile_card_copy", model_profile_id: "llm_profile_strong_reasoning" },
+      { task_id: "broadcast_caster_line", model_profile_id: "llm_profile_caster_expressive" },
+      { task_id: "barrage_style_line", model_profile_id: "llm_profile_barrage_chaos" }
+    ],
+    ops_notes: ["Do not lock permanent persona assumptions until canon confirms the slot."]
+  },
+  coach: {
+    template_id: "llm_role_template_coach",
+    role: "coach",
+    summary: "Reasoning and reserved judge profile for tactical explanation, review, and interview context.",
+    preferred_driver_model_id: "driver_qwen_3_max_2026_01_23",
+    fallback_driver_model_ids: ["driver_qwen_3_6_plus"],
+    prompt_bias_tags: ["system-adult", "timeout-fix", "prep", "review"],
+    task_bindings: [
+      { task_id: "profile_card_copy", model_profile_id: "llm_profile_strong_reasoning" },
+      { task_id: "news_story_copy", model_profile_id: "llm_profile_strong_reasoning" },
+      { task_id: "tactical_analysis_note", model_profile_id: "llm_profile_strong_reasoning" },
+      { task_id: "judge_note_reserved", model_profile_id: "llm_profile_conservative_judge_reserved" }
+    ],
+    ops_notes: ["Runtime judge and arbiter usage stays disabled in v1."]
+  }
+};
 
 const styleLabelMap = {
   machine_force_buy_shock: "强起震动",
@@ -54,6 +261,27 @@ const roleDefaults = {
     barrageFocusTags: ["player_targeting", "old_guard"],
     crossCircleTags: ["customer_service_to_cleanup"]
   },
+  awper: {
+    personaTags: ["precision-core", "high-leverage"],
+    playstyleTags: ["awp-control", "single-point-pressure"],
+    casterFocusTags: ["machine_star_carry"],
+    barrageFocusTags: ["player_targeting", "big_dad"],
+    crossCircleTags: ["customer_service_to_cleanup"]
+  },
+  rifler: {
+    personaTags: ["rifle-worker", "round-connector"],
+    playstyleTags: ["rifle-trade", "site-pressure"],
+    casterFocusTags: ["machine_map_point_pressure"],
+    barrageFocusTags: ["player_targeting"],
+    crossCircleTags: ["customer_service_to_cleanup"]
+  },
+  star_rifler: {
+    personaTags: ["headline-core", "win-condition"],
+    playstyleTags: ["impact-rifle", "resource-heavy"],
+    casterFocusTags: ["machine_star_carry"],
+    barrageFocusTags: ["player_targeting"],
+    crossCircleTags: ["band_to_superteam"]
+  },
   entry: {
     personaTags: ["frontline-instigator", "heat-checker"],
     playstyleTags: ["first-contact", "space-creator"],
@@ -89,6 +317,27 @@ const roleDefaults = {
     barrageFocusTags: ["player_targeting"],
     crossCircleTags: ["lifetime_to_rivalry"]
   },
+  anchor: {
+    personaTags: ["site-anchor", "stability-checker"],
+    playstyleTags: ["site-hold", "defensive-proof"],
+    casterFocusTags: ["machine_map_point_pressure"],
+    barrageFocusTags: ["player_targeting"],
+    crossCircleTags: ["customer_service_to_cleanup"]
+  },
+  flex: {
+    personaTags: ["role-adapter", "multi-context"],
+    playstyleTags: ["flex-route", "context-fill"],
+    casterFocusTags: ["machine_map_point_pressure"],
+    barrageFocusTags: ["player_targeting"],
+    crossCircleTags: ["customer_service_to_cleanup"]
+  },
+  stand_in: {
+    personaTags: ["temporary-slot", "volatile-interface"],
+    playstyleTags: ["adaptation", "limited-context"],
+    casterFocusTags: ["machine_special_invite_drama"],
+    barrageFocusTags: ["special_invite", "player_targeting"],
+    crossCircleTags: ["cabinet_to_live_room_chaos"]
+  },
   coach: {
     personaTags: ["system-adult", "reset-point"],
     playstyleTags: ["prep", "timeout-fix"],
@@ -97,6 +346,130 @@ const roleDefaults = {
     crossCircleTags: ["customer_service_to_cleanup"]
   }
 };
+
+const roleResponsibilityMap = {
+  igl: "战术规划 / 回合策略 / 资源分配",
+  awper: "高精度关键论点 / 单点突破 / 高风险高收益调用",
+  entry: "首轮出击 / 激进创意 / 打开局面",
+  star_rifler: "核心输出 / 关键回合 carry",
+  lurker: "反制 / 偷点 / 找对手逻辑漏洞",
+  support: "补全细节 / 修复方案 / 提供上下文",
+  anchor: "防守型论证 / 稳定性校验",
+  rifler: "通用火力 / 回合执行 / 补枪衔接",
+  flex: "多场景适配 / 缺口填补 / 角色切换",
+  stand_in: "临时接入 / 快速适配 / 低上下文执行",
+  closer: "残局处理 / 压力判断 / 终局收束",
+  coach: "战术暂停 / 赛前准备 / 赛后复盘"
+};
+
+function normalizeRoleTag(value) {
+  const lower = value.trim().toLowerCase();
+  if (!lower) {
+    return null;
+  }
+  if (lower.includes("coach")) {
+    return "coach";
+  }
+  if (lower.includes("stand-in") || lower.includes("stand in")) {
+    return "stand_in";
+  }
+  if (lower.includes("igl") || lower.includes("caller")) {
+    return "igl";
+  }
+  if (lower.includes("awper") || lower.includes("awp") || lower.includes("狙")) {
+    return "awper";
+  }
+  if (lower.includes("star rifler") || lower === "star" || lower.includes("young firepower") || lower.includes("playmaker")) {
+    return "star_rifler";
+  }
+  if (lower.includes("entry")) {
+    return "entry";
+  }
+  if (lower.includes("lurker")) {
+    return "lurker";
+  }
+  if (lower.includes("support")) {
+    return "support";
+  }
+  if (lower.includes("anchor")) {
+    return "anchor";
+  }
+  if (lower.includes("flex")) {
+    return "flex";
+  }
+  if (lower.includes("closer")) {
+    return "closer";
+  }
+  if (lower.includes("rifler")) {
+    return "rifler";
+  }
+  return lower.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || null;
+}
+
+function parseRoleParts(rawPosition) {
+  const rawParts = rawPosition.split("/").map((part) => part.trim()).filter(Boolean);
+  const normalizedTags = uniq(rawParts.map(normalizeRoleTag));
+  const primaryRole = normalizedTags[0] ?? "rifler";
+  return {
+    rawParts,
+    normalizedTags,
+    primaryRole,
+    secondaryRoles: normalizedTags.slice(1)
+  };
+}
+
+function roleProfileKey(teamName, inGameId) {
+  return `${teamName.toLowerCase()}::${inGameId.toLowerCase()}`;
+}
+
+function loadRoleProfiles() {
+  if (!fs.existsSync(roleSourcePath)) {
+    return new Map();
+  }
+
+  const profiles = new Map();
+  let currentTeam = null;
+  const lines = fs.readFileSync(roleSourcePath, "utf8").split(/\r?\n/);
+
+  for (const line of lines) {
+    const section = line.match(/^##\s+\d+\.\s+(.+?)\s+←/);
+    if (section) {
+      currentTeam = section[1].trim();
+      continue;
+    }
+
+    if (!currentTeam || !line.startsWith("|")) {
+      continue;
+    }
+
+    const cells = line.split("|").slice(1, -1).map((cell) => cell.trim());
+    if (cells.length < 5 || cells[0] === "成员" || cells[0].startsWith("---")) {
+      continue;
+    }
+
+    const [memberType, inGameId, rawPosition, confidence, notes] = cells;
+    if (!["选手", "教练"].includes(memberType)) {
+      continue;
+    }
+
+    const parsed = parseRoleParts(rawPosition);
+    profiles.set(roleProfileKey(currentTeam, inGameId), {
+      source_path: "raw/teams/agent_major_player_roles.md",
+      source_team_name: currentTeam,
+      member_type: memberType === "教练" ? "coach" : "player",
+      raw_position: rawPosition,
+      raw_position_parts: parsed.rawParts,
+      primary_role: parsed.primaryRole,
+      secondary_roles: parsed.secondaryRoles,
+      position_tags: parsed.normalizedTags,
+      confidence,
+      notes,
+      agent_major_responsibilities: uniq(parsed.normalizedTags.map((tag) => roleResponsibilityMap[tag]).filter(Boolean))
+    });
+  }
+
+  return profiles;
+}
 
 function uniq(values) {
   return [...new Set((values ?? []).filter(Boolean))];
@@ -114,6 +487,70 @@ function writeJson(filePath, value) {
 function writeText(filePath, value) {
   ensureDir(path.dirname(filePath));
   fs.writeFileSync(filePath, `${value.trim()}\n`, "utf8");
+}
+
+function profileForTaskBinding(taskBinding) {
+  const profile = llmModelProfileMap.get(taskBinding.model_profile_id);
+  if (!profile) {
+    throw new Error(`Unknown LLM model profile id: ${taskBinding.model_profile_id}`);
+  }
+  return profile;
+}
+
+function makeLlmTaskBinding(taskBinding) {
+  const profile = profileForTaskBinding(taskBinding);
+  return {
+    task_id: taskBinding.task_id,
+    model_profile_id: profile.id,
+    driver_model_id: profile.primary_driver_model_id,
+    fallback_driver_model_ids: [...profile.fallback_driver_model_ids],
+    enabled: false,
+    temperature: profile.default_temperature,
+    max_output_tokens: profile.default_max_output_tokens
+  };
+}
+
+function resolveLlmRoleTemplate(role, entityType) {
+  return llmRoleBindingTemplates[role]
+    ?? (entityType === "coach" ? llmRoleBindingTemplates.coach : llmRoleBindingTemplates.rifler);
+}
+
+function shouldApplySpotlightOverride(spec) {
+  return spec.heatLevel === "high" && spec.cardPriority <= 20;
+}
+
+function makeSpotlightOverrideId(entityId) {
+  return `llm_override_spotlight_${entityId}`;
+}
+
+function makeFutureDriverBinding({ entityId, entityType, role, promptBiasTags, spec }) {
+  const template = resolveLlmRoleTemplate(role, entityType);
+  const taskBindings = template.task_bindings.map(makeLlmTaskBinding);
+  const overrideIds = [];
+
+  if (shouldApplySpotlightOverride(spec) && !taskBindings.some((item) => item.task_id === "spotlight_moment_copy")) {
+    taskBindings.push(makeLlmTaskBinding({
+      task_id: "spotlight_moment_copy",
+      model_profile_id: "llm_profile_caster_expressive"
+    }));
+    overrideIds.push(makeSpotlightOverrideId(entityId));
+  } else if (shouldApplySpotlightOverride(spec)) {
+    overrideIds.push(makeSpotlightOverrideId(entityId));
+  }
+
+  return {
+    binding_version: LLM_BINDING_VERSION,
+    binding_scope: LLM_BINDING_SCOPE,
+    runtime_enabled: LLM_RUNTIME_ENABLED,
+    role_template_id: template.template_id,
+    preferred_driver_model_id: template.preferred_driver_model_id,
+    fallback_driver_model_ids: [...template.fallback_driver_model_ids],
+    task_bindings: taskBindings,
+    prompt_bias_tags: uniq([...template.prompt_bias_tags, ...promptBiasTags]).slice(0, 12),
+    env_contract_refs: [...LLM_ENV_CONTRACT_REFS],
+    override_ids: overrideIds,
+    ops_notes: template.ops_notes
+  };
 }
 
 function pruneGeneratedAgentFiles(dirPath) {
@@ -2244,8 +2681,12 @@ const teams = [
   })
 ];
 
+const roleProfiles = loadRoleProfiles();
+
 function buildEntity(team, spec, entityType) {
-  const defaults = roleDefaults[spec.role] ?? {};
+  const roleProfile = roleProfiles.get(roleProfileKey(team.agentTeamName, spec.inGameId));
+  const resolvedRole = roleProfile?.primary_role ?? spec.role;
+  const defaults = roleDefaults[resolvedRole] ?? roleDefaults[spec.role] ?? {};
   const entityIdPrefix = entityType === "coach" ? "coach" : "player";
   const entityId = `${entityIdPrefix}_${team.slug.replace(/-/g, "_")}_${spec.slug.replace(/-/g, "_")}`;
   const casterFocusTags = uniq([...defaults.casterFocusTags ?? [], ...spec.casterFocusTags ?? []]);
@@ -2265,8 +2706,21 @@ function buildEntity(team, spec, entityType) {
     real_name: null,
     in_game_id: spec.inGameId,
     display_name: spec.inGameId,
-    role: spec.role,
+    role: resolvedRole,
     status,
+    cs_role_profile: roleProfile ?? {
+      source_path: null,
+      source_team_name: team.agentTeamName,
+      member_type: entityType,
+      raw_position: spec.role,
+      raw_position_parts: [spec.role],
+      primary_role: resolvedRole,
+      secondary_roles: [],
+      position_tags: [resolvedRole],
+      confidence: "unverified",
+      notes: "Generated from local asset fallback because no raw role profile was found.",
+      agent_major_responsibilities: uniq([roleResponsibilityMap[resolvedRole]].filter(Boolean))
+    },
     aliases: uniq(spec.aliases),
     meme_tags: memeTags,
     persona_tags: personaTags,
@@ -2281,11 +2735,13 @@ function buildEntity(team, spec, entityType) {
       narrative_axes: uniq([...newsFocusTags, ...personaTags]).slice(0, 6),
       reserved_memory_slots: ["career-arc", "role-history", "signature-rounds", "rivalries"]
     },
-    future_driver_binding: {
-      preferred_driver_model_id: null,
-      fallback_driver_model_ids: [],
-      prompt_bias_tags: uniq([...playstyleTags, ...personaTags]).slice(0, 8)
-    },
+    future_driver_binding: makeFutureDriverBinding({
+      entityId,
+      entityType,
+      role: resolvedRole,
+      promptBiasTags: uniq([...playstyleTags, ...personaTags]),
+      spec
+    }),
     ops_hooks: {
       heat_level: spec.heatLevel,
       segment_tags: uniq([...memeTags, ...newsFocusTags]).slice(0, 6),
@@ -2393,10 +2849,12 @@ ${renderList(team.canonNotes)}
 }
 
 function renderRosterMarkdown(team) {
-  const playerLines = team.players.map((player) => `${player.display_name} | ${player.role} | ${player.entity_id}`);
+  const playerLines = team.players.map((player) => (
+    `${player.display_name} | ${player.role} | ${player.cs_role_profile.raw_position} | ${player.cs_role_profile.confidence} | ${player.entity_id}`
+  ));
   const coachLine = team.slug === "phaseclan" && team.coach.status === "tbd"
-    ? `- 正式教练：未锁定（保留槽 ${team.coach.entity_id}）`
-    : `- 正式教练：${team.coach.display_name} (${team.coach.entity_id})`;
+    ? `- 正式教练：未锁定（保留槽 ${team.coach.entity_id}，${team.coach.cs_role_profile.raw_position}，可信度 ${team.coach.cs_role_profile.confidence}）`
+    : `- 正式教练：${team.coach.display_name} (${team.coach.entity_id}，${team.coach.cs_role_profile.raw_position}，可信度 ${team.coach.cs_role_profile.confidence})`;
 
   return `
 # ${team.agentTeamName} Roster
@@ -2464,6 +2922,15 @@ function renderEntityMarkdown(team, entity) {
 - 公开 ID：${entity.in_game_id}
 - 法定姓名：待回填
 
+## CS Role Profile
+- 原始位置：${entity.cs_role_profile.raw_position}
+- 主位置：${entity.cs_role_profile.primary_role}
+- 次级位置：${entity.cs_role_profile.secondary_roles.length > 0 ? entity.cs_role_profile.secondary_roles.join(", ") : "none"}
+- 可信度：${entity.cs_role_profile.confidence}
+- Agent Major 职责：${entity.cs_role_profile.agent_major_responsibilities.join("；") || "待补充"}
+- 备注：${entity.cs_role_profile.notes}
+- 来源：${entity.cs_role_profile.source_path ?? "generated-fallback"}
+
 ## Alias
 ${renderList(entity.aliases)}
 
@@ -2484,7 +2951,8 @@ ${renderList(entity.playstyle_tags)}
 
 ## Future Interfaces
 - agent 人格接口：${entity.future_agent_profile.narrative_axes.join(", ")}
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- 模型绑定接口：${entity.future_driver_binding.role_template_id} / ${entity.future_driver_binding.preferred_driver_model_id}
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：${entity.ops_hooks.segment_tags.join(", ")}
 
 ## Canon Notes
@@ -2578,6 +3046,12 @@ function buildEntitiesIndex(enrichedTeams) {
         team_id: player.team_id,
         display_name: player.display_name,
         in_game_id: player.in_game_id,
+        role: player.role,
+        cs_role_profile: {
+          raw_position: player.cs_role_profile.raw_position,
+          primary_role: player.cs_role_profile.primary_role,
+          confidence: player.cs_role_profile.confidence
+        },
         status: player.status,
         json_path: relativeProcessedPath("teams", team.slug, "players", `${entityFileSlug(player)}.agent.json`)
       }));
@@ -2587,6 +3061,12 @@ function buildEntitiesIndex(enrichedTeams) {
         team_id: team.coach.team_id,
         display_name: team.coach.display_name,
         in_game_id: team.coach.in_game_id,
+        role: team.coach.role,
+        cs_role_profile: {
+          raw_position: team.coach.cs_role_profile.raw_position,
+          primary_role: team.coach.cs_role_profile.primary_role,
+          confidence: team.coach.cs_role_profile.confidence
+        },
         status: team.coach.status,
         json_path: relativeProcessedPath("teams", team.slug, "coach", `${team.coach.slug === "coach-tbd" ? "coach-tbd" : entityFileSlug(team.coach)}.agent.json`)
       };
@@ -2634,6 +3114,180 @@ function buildAliasesIndex(enrichedTeams) {
   };
 }
 
+function buildRolesIndex(enrichedTeams) {
+  return {
+    index_id: "roles-index",
+    version: VERSION,
+    source_path: "raw/teams/agent_major_player_roles.md",
+    entries: enrichedTeams.flatMap((team) => {
+      const players = team.players.map((player) => ({
+        team_id: team.teamId,
+        team_slug: team.slug,
+        agent_team_name: team.agentTeamName,
+        entity_id: player.entity_id,
+        entity_type: player.entity_type,
+        display_name: player.display_name,
+        role: player.role,
+        cs_role_profile: player.cs_role_profile
+      }));
+      return [
+        ...players,
+        {
+          team_id: team.teamId,
+          team_slug: team.slug,
+          agent_team_name: team.agentTeamName,
+          entity_id: team.coach.entity_id,
+          entity_type: team.coach.entity_type,
+          display_name: team.coach.display_name,
+          role: team.coach.role,
+          cs_role_profile: team.coach.cs_role_profile
+        }
+      ];
+    })
+  };
+}
+
+function buildLlmModelProfilesRegistry() {
+  return {
+    registry_id: "llm-model-profiles",
+    version: LLM_BINDING_VERSION,
+    binding_scope: LLM_BINDING_SCOPE,
+    runtime_enabled: LLM_RUNTIME_ENABLED,
+    driver_registry_ref: LLM_DRIVER_REGISTRY_REF,
+    env_contract_refs: [...LLM_ENV_CONTRACT_REFS],
+    no_secret_policy: "Only env var names and driver model ids are stored here. Secrets stay in local runtime env files.",
+    profiles: llmModelProfiles
+  };
+}
+
+function buildLlmRoleBindingTemplatesRegistry() {
+  return {
+    registry_id: "llm-role-binding-templates",
+    version: LLM_BINDING_VERSION,
+    binding_scope: LLM_BINDING_SCOPE,
+    runtime_enabled: LLM_RUNTIME_ENABLED,
+    templates: Object.values(llmRoleBindingTemplates).map((template) => ({
+      ...template,
+      runtime_enabled: LLM_RUNTIME_ENABLED,
+      task_bindings: template.task_bindings.map(makeLlmTaskBinding)
+    }))
+  };
+}
+
+function collectEntities(enrichedTeams) {
+  return enrichedTeams.flatMap((team) => [...team.players, team.coach].map((entity) => ({ team, entity })));
+}
+
+function buildAgentBindingOverrides(enrichedTeams) {
+  const overrides = collectEntities(enrichedTeams)
+    .filter(({ entity }) => entity.future_driver_binding.override_ids.length > 0)
+    .map(({ team, entity }) => ({
+      override_id: entity.future_driver_binding.override_ids[0],
+      entity_id: entity.entity_id,
+      team_id: team.teamId,
+      team_slug: team.slug,
+      display_name: entity.display_name,
+      role: entity.role,
+      selection_reason: "heat_level=high and card_priority<=20",
+      applied_task_ids: ["spotlight_moment_copy"],
+      applied_model_profile_ids: ["llm_profile_caster_expressive"],
+      runtime_enabled: LLM_RUNTIME_ENABLED
+    }));
+
+  return {
+    registry_id: "llm-agent-binding-overrides",
+    version: LLM_BINDING_VERSION,
+    binding_scope: LLM_BINDING_SCOPE,
+    runtime_enabled: LLM_RUNTIME_ENABLED,
+    selection_policy: "Generated spotlight overrides for high-heat entities with card_priority <= 20.",
+    overrides
+  };
+}
+
+function buildLlmBindingsIndex(enrichedTeams) {
+  return {
+    index_id: "llm-bindings-index",
+    version: LLM_BINDING_VERSION,
+    binding_scope: LLM_BINDING_SCOPE,
+    runtime_enabled: LLM_RUNTIME_ENABLED,
+    driver_registry_ref: LLM_DRIVER_REGISTRY_REF,
+    model_profiles_path: relativeProcessedPath("llm", "model-profiles.json"),
+    role_binding_templates_path: relativeProcessedPath("llm", "role-binding-templates.json"),
+    agent_binding_overrides_path: relativeProcessedPath("llm", "agent-binding-overrides.json"),
+    entities: collectEntities(enrichedTeams).map(({ team, entity }) => ({
+      entity_id: entity.entity_id,
+      entity_type: entity.entity_type,
+      team_id: team.teamId,
+      team_slug: team.slug,
+      display_name: entity.display_name,
+      role: entity.role,
+      role_template_id: entity.future_driver_binding.role_template_id,
+      preferred_driver_model_id: entity.future_driver_binding.preferred_driver_model_id,
+      fallback_driver_model_ids: entity.future_driver_binding.fallback_driver_model_ids,
+      task_ids: entity.future_driver_binding.task_bindings.map((binding) => binding.task_id),
+      model_profile_ids: uniq(entity.future_driver_binding.task_bindings.map((binding) => binding.model_profile_id)),
+      override_ids: entity.future_driver_binding.override_ids,
+      runtime_enabled: entity.future_driver_binding.runtime_enabled,
+      json_path: relativeProcessedPath(
+        "teams",
+        team.slug,
+        entity.entity_type === "coach" ? "coach" : "players",
+        `${entity.entity_type === "coach" && entity.slug === "coach-tbd" ? "coach-tbd" : entityFileSlug(entity)}.agent.json`
+      )
+    }))
+  };
+}
+
+function renderModelProfilesMarkdown(registry) {
+  const rows = registry.profiles.map((profile) => (
+    `- ${profile.id}: ${profile.summary} Primary=${profile.primary_driver_model_id}; fallback=${profile.fallback_driver_model_ids.join(", ")}; runtime_enabled=${profile.runtime_enabled}.`
+  ));
+  return `
+# LLM Model Profiles
+
+This registry is an asset contract. It stores driver ids and env var names only; no API keys, tokens, or secret values belong here.
+
+## Runtime Boundary
+- Binding scope: ${registry.binding_scope}
+- Runtime enabled: ${registry.runtime_enabled}
+- Driver registry: ${registry.driver_registry_ref}
+- Env refs: ${registry.env_contract_refs.join(", ")}
+
+## Profiles
+${rows.join("\n")}
+`;
+}
+
+function renderRoleBindingTemplatesMarkdown(registry) {
+  const rows = registry.templates.map((template) => (
+    `- ${template.template_id}: role=${template.role}; preferred=${template.preferred_driver_model_id}; tasks=${template.task_bindings.map((binding) => binding.task_id).join(", ")}.`
+  ));
+  return `
+# LLM Role Binding Templates
+
+Role templates are the default maintenance unit. Individual agents inherit from these templates unless a small spotlight override is generated.
+
+${rows.join("\n")}
+`;
+}
+
+function renderAgentBindingOverridesMarkdown(registry) {
+  const rows = registry.overrides.length > 0
+    ? registry.overrides.map((override) => `- ${override.override_id}: ${override.display_name} (${override.entity_id}) -> ${override.applied_task_ids.join(", ")}.`)
+    : ["- No overrides in this version."];
+  return `
+# LLM Agent Binding Overrides
+
+Overrides are intentionally small. They capture product-facing spotlight needs without turning every agent into a hand-maintained model config.
+
+## Selection Policy
+${registry.selection_policy}
+
+## Overrides
+${rows.join("\n")}
+`;
+}
+
 function entityFileSlug(entity) {
   return entity.in_game_id.toLowerCase().replace(/[^a-z0-9-]/g, "").replace(/^-+|-+$/g, "") || entity.display_name.toLowerCase();
 }
@@ -2677,15 +3331,28 @@ for (const team of enrichedTeams) {
 const teamsIndex = buildTeamsIndex(enrichedTeams);
 const entitiesIndex = buildEntitiesIndex(enrichedTeams);
 const aliasesIndex = buildAliasesIndex(enrichedTeams);
+const rolesIndex = buildRolesIndex(enrichedTeams);
+const llmModelProfilesRegistry = buildLlmModelProfilesRegistry();
+const llmRoleBindingTemplatesRegistry = buildLlmRoleBindingTemplatesRegistry();
+const agentBindingOverridesRegistry = buildAgentBindingOverrides(enrichedTeams);
+const llmBindingsIndex = buildLlmBindingsIndex(enrichedTeams);
 const teamAliasJson = buildTeamAliasJson(enrichedTeams);
 const playerAliasJson = buildPlayerAliasJson(enrichedTeams);
 
 writeJson(path.join(indexesRoot, "teams.index.json"), teamsIndex);
 writeJson(path.join(indexesRoot, "entities.index.json"), entitiesIndex);
 writeJson(path.join(indexesRoot, "aliases.index.json"), aliasesIndex);
+writeJson(path.join(indexesRoot, "roles.index.json"), rolesIndex);
+writeJson(path.join(indexesRoot, "llm-bindings.index.json"), llmBindingsIndex);
+writeJson(path.join(llmRoot, "model-profiles.json"), llmModelProfilesRegistry);
+writeText(path.join(llmRoot, "model-profiles.md"), renderModelProfilesMarkdown(llmModelProfilesRegistry));
+writeJson(path.join(llmRoot, "role-binding-templates.json"), llmRoleBindingTemplatesRegistry);
+writeText(path.join(llmRoot, "role-binding-templates.md"), renderRoleBindingTemplatesMarkdown(llmRoleBindingTemplatesRegistry));
+writeJson(path.join(llmRoot, "agent-binding-overrides.json"), agentBindingOverridesRegistry);
+writeText(path.join(llmRoot, "agent-binding-overrides.md"), renderAgentBindingOverridesMarkdown(agentBindingOverridesRegistry));
 writeJson(path.join(styleRoot, "glossary", "team-aliases.json"), teamAliasJson);
 writeText(path.join(styleRoot, "glossary", "team-aliases.md"), renderTeamAliasMarkdown(teamAliasJson));
 writeJson(path.join(styleRoot, "glossary", "player-aliases.json"), playerAliasJson);
 writeText(path.join(styleRoot, "glossary", "player-aliases.md"), renderPlayerAliasMarkdown(playerAliasJson));
 
-console.log(`Built Agent Major materials: ${enrichedTeams.length} teams, ${entitiesIndex.entities.length} entities.`);
+console.log(`Built Agent Major materials: ${enrichedTeams.length} teams, ${entitiesIndex.entities.length} entities, ${llmBindingsIndex.entities.length} LLM bindings.`);

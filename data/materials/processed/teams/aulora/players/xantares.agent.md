@@ -3,10 +3,19 @@
 ## Snapshot
 - 队伍：AuLoRA
 - 类型：player
-- 角色：star
+- 角色：entry
 - 当前状态：active
 - 公开 ID：XANTARES
 - 法定姓名：待回填
+
+## CS Role Profile
+- 原始位置：Entry / Star Rifler
+- 主位置：entry
+- 次级位置：star_rifler
+- 可信度：高
+- Agent Major 职责：首轮出击 / 激进创意 / 打开局面；核心输出 / 关键回合 carry
+- 备注：高爆发步枪、强主动性。
+- 来源：raw/teams/agent_major_player_roles.md
 
 ## Alias
 - XANTARES
@@ -19,20 +28,21 @@
 - 开脸
 
 ## Playstyle Tags
-- high-impact
-- space-winning
+- first-contact
+- space-creator
 - rifle-burst
 - swing-control
 
 ## Broadcast / Barrage / News
-- 解说标签：machine_star_carry
-- 弹幕标签：player_targeting
+- 解说标签：machine_force_buy_shock
+- 弹幕标签：player_targeting, research
 - 新闻标签：upset-watch
-- 跨圈标签：band_to_superteam
+- 跨圈标签：cabinet_to_live_room_chaos
 
 ## Future Interfaces
-- agent 人格接口：upset-watch, headline-core, win-condition, frontline-star
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- agent 人格接口：upset-watch, frontline-instigator, heat-checker, frontline-star
+- 模型绑定接口：llm_role_template_entry / driver_minimax_m2_5
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：土耳其火力, 开脸, upset-watch
 
 ## Canon Notes

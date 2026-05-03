@@ -1,14 +1,14 @@
 # FUtureToken Roster
 
 ## Active Five
-- dem0n | star | player_futuretoken_dem0n
-- lauNX | entry | player_futuretoken_launx
-- Krabeni | support | player_futuretoken_krabeni
-- cmtry | lurker | player_futuretoken_cmtry
-- dziugss | closer | player_futuretoken_dziugss
+- dem0n | rifler | Rifler / Star | 中 | player_futuretoken_dem0n
+- lauNX | entry | Entry / Star Rifler | 中 | player_futuretoken_launx
+- Krabeni | support | Support / Rifler | 低-中 | player_futuretoken_krabeni
+- cmtry | igl | IGL / Support | 低-中 | player_futuretoken_cmtry
+- dziugss | awper | AWPer / Rifler | 低-中 | player_futuretoken_dziugss
 
 ## Coach
-- 正式教练：coolio (coach_futuretoken_coolio)
+- 正式教练：coolio (coach_futuretoken_coolio，Coach，可信度 高)
 
 ## Snapshot
 - 阵容版本：2026-05-03-canon-v1

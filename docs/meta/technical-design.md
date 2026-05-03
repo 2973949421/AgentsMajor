@@ -318,7 +318,19 @@ type Team = {
 type Agent = {
   id: string;
   teamId: string;
-  role: "coach" | "igl" | "entry" | "star" | "lurker" | "support" | "closer";
+  role:
+    | "coach"
+    | "igl"
+    | "awper"
+    | "entry"
+    | "star_rifler"
+    | "lurker"
+    | "support"
+    | "rifler"
+    | "stand_in";
+  secondaryRoles?: string[];
+  roleProfile?: unknown;
+  materialRef?: unknown;
   displayName: string;
   driverModelId: string;
   traits: string[];

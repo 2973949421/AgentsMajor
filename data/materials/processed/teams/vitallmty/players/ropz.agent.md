@@ -8,6 +8,15 @@
 - 公开 ID：ropz
 - 法定姓名：待回填
 
+## CS Role Profile
+- 原始位置：Lurker / late-round rifler
+- 主位置：lurker
+- 次级位置：rifler
+- 可信度：高
+- Agent Major 职责：反制 / 偷点 / 找对手逻辑漏洞；通用火力 / 回合执行 / 补枪衔接
+- 备注：典型 lurker、冷静残局位。
+- 来源：raw/teams/agent_major_player_roles.md
+
 ## Alias
 - ropz
 - 被偷正面
@@ -33,7 +42,8 @@
 
 ## Future Interfaces
 - agent 人格接口：title-favorite, timing-hunter, map-reader, cold-reader, endgame-accountant
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- 模型绑定接口：llm_role_template_lurker / driver_qwen_3_max_2026_01_23
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：残局味, 被偷正面, title-favorite
 
 ## Canon Notes

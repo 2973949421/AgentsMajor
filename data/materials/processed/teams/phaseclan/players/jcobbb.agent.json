@@ -6,8 +6,32 @@
   "real_name": null,
   "in_game_id": "jcobbb",
   "display_name": "jcobbb",
-  "role": "entry",
+  "role": "rifler",
   "status": "active",
+  "cs_role_profile": {
+    "source_path": "raw/teams/agent_major_player_roles.md",
+    "source_team_name": "PhaseClan",
+    "member_type": "player",
+    "raw_position": "Rifler / Flex",
+    "raw_position_parts": [
+      "Rifler",
+      "Flex"
+    ],
+    "primary_role": "rifler",
+    "secondary_roles": [
+      "flex"
+    ],
+    "position_tags": [
+      "rifler",
+      "flex"
+    ],
+    "confidence": "中",
+    "notes": "年轻步枪/灵活位。",
+    "agent_major_responsibilities": [
+      "通用火力 / 回合执行 / 补枪衔接",
+      "多场景适配 / 缺口填补 / 角色切换"
+    ]
+  },
   "aliases": [
     "jcobbb"
   ],
@@ -15,22 +39,21 @@
     "新前线"
   ],
   "persona_tags": [
-    "frontline-instigator",
-    "heat-checker",
+    "rifle-worker",
+    "round-connector",
     "fresh-opener"
   ],
   "playstyle_tags": [
-    "first-contact",
-    "space-creator",
+    "rifle-trade",
+    "site-pressure",
     "entry",
     "chaos-open"
   ],
   "caster_focus_tags": [
-    "machine_force_buy_shock"
+    "machine_map_point_pressure"
   ],
   "barrage_focus_tags": [
-    "player_targeting",
-    "research"
+    "player_targeting"
   ],
   "news_focus_tags": [
     "special_invite",
@@ -38,7 +61,7 @@
     "upset-watch"
   ],
   "cross_circle_tags": [
-    "cabinet_to_live_room_chaos"
+    "customer_service_to_cleanup"
   ],
   "future_agent_profile": {
     "persona_summary": "更年轻的新前线位，适合在 PhaseClan 里承担新鲜冲击点的职责。",
@@ -47,8 +70,8 @@
       "special_invite",
       "money-superteam",
       "upset-watch",
-      "frontline-instigator",
-      "heat-checker",
+      "rifle-worker",
+      "round-connector",
       "fresh-opener"
     ],
     "reserved_memory_slots": [
@@ -59,16 +82,68 @@
     ]
   },
   "future_driver_binding": {
-    "preferred_driver_model_id": null,
-    "fallback_driver_model_ids": [],
+    "binding_version": "2026-05-03-llm-binding-v1",
+    "binding_scope": "asset_preallocation",
+    "runtime_enabled": false,
+    "role_template_id": "llm_role_template_rifler",
+    "preferred_driver_model_id": "driver_qwen_3_6_plus",
+    "fallback_driver_model_ids": [
+      "driver_qwen_3_5_plus"
+    ],
+    "task_bindings": [
+      {
+        "task_id": "profile_card_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "broadcast_caster_line",
+        "model_profile_id": "llm_profile_caster_expressive",
+        "driver_model_id": "driver_kimi_k2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.6,
+        "max_output_tokens": 500
+      },
+      {
+        "task_id": "barrage_style_line",
+        "model_profile_id": "llm_profile_barrage_chaos",
+        "driver_model_id": "driver_minimax_m2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_5_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.7,
+        "max_output_tokens": 450
+      }
+    ],
     "prompt_bias_tags": [
-      "first-contact",
-      "space-creator",
+      "rifle-worker",
+      "round-connector",
+      "site-pressure",
+      "trade-layer",
+      "rifle-trade",
       "entry",
       "chaos-open",
-      "frontline-instigator",
-      "heat-checker",
       "fresh-opener"
+    ],
+    "env_contract_refs": [
+      "AGENT_MAJOR_REAL_LLM_ENABLED",
+      "AGENT_MAJOR_LLM_PROVIDER",
+      "DASHSCOPE_BASE_URL",
+      "DASHSCOPE_API_KEY"
+    ],
+    "override_ids": [],
+    "ops_notes": [
+      "Use as the default player fallback when no sharper role is available."
     ]
   },
   "ops_hooks": {
@@ -81,7 +156,7 @@
     ],
     "card_priority": 34,
     "broadcast_entry_points": [
-      "machine_force_buy_shock"
+      "machine_map_point_pressure"
     ]
   },
   "canon_notes": []

@@ -3,10 +3,19 @@
 ## Snapshot
 - 队伍：FurIA
 - 类型：player
-- 角色：star
+- 角色：star_rifler
 - 当前状态：active
 - 公开 ID：KSCERATO
 - 法定姓名：待回填
+
+## CS Role Profile
+- 原始位置：Star Rifler / Lurker
+- 主位置：star_rifler
+- 次级位置：lurker
+- 可信度：高
+- Agent Major 职责：核心输出 / 关键回合 carry；反制 / 偷点 / 找对手逻辑漏洞
+- 备注：核心步枪与残局强点。
+- 来源：raw/teams/agent_major_player_roles.md
 
 ## Alias
 - KSCERATO
@@ -20,8 +29,8 @@
 - 稳点
 
 ## Playstyle Tags
-- high-impact
-- space-winning
+- impact-rifle
+- resource-heavy
 - anchor-frag
 - multi-kill
 
@@ -33,7 +42,8 @@
 
 ## Future Interfaces
 - agent 人格接口：brazil-heat, headline-core, win-condition, spine-player
-- 模型绑定接口：preferred_driver_model_id / fallback_driver_model_ids / prompt_bias_tags
+- 模型绑定接口：llm_role_template_star_rifler / driver_kimi_k2_5
+- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：巴西大腿, 稳点, brazil-heat
 
 ## Canon Notes

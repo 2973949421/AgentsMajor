@@ -1,14 +1,14 @@
 # AuLoRA Roster
 
 ## Active Five
-- MAJ3R | igl | player_aulora_maj3r
-- XANTARES | star | player_aulora_xantares
-- woxic | closer | player_aulora_woxic
-- soulfly | support | player_aulora_soulfly
-- Wicadia | entry | player_aulora_wicadia
+- MAJ3R | igl | IGL | 高 | player_aulora_maj3r
+- XANTARES | entry | Entry / Star Rifler | 高 | player_aulora_xantares
+- woxic | awper | AWPer | 高 | player_aulora_woxic
+- soulfly | rifler | Rifler / Anchor | 中 | player_aulora_soulfly
+- Wicadia | rifler | Rifler / Entry-support | 中-高 | player_aulora_wicadia
 
 ## Coach
-- 正式教练：Fabre (coach_aulora_fabre)
+- 正式教练：Fabre (coach_aulora_fabre，Coach，可信度 高)
 
 ## Snapshot
 - 阵容版本：2026-05-03-canon-v1

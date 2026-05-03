@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   agentRoles,
+  agentRoleTags,
   agentStates,
   attackApproaches,
   buyTypes,
@@ -64,14 +65,45 @@ export const agentBaseProfileSchema = z.object({
 });
 export type AgentBaseProfile = z.infer<typeof agentBaseProfileSchema>;
 
+export const agentRoleProfileSchema = z.object({
+  sourcePath: z.string().min(1),
+  sourceTeamName: z.string().min(1),
+  memberType: z.enum(["player", "coach"]),
+  rawPosition: z.string().min(1),
+  rawPositionParts: stringArray,
+  primaryRole: z.enum(agentRoles),
+  secondaryRoles: z.array(z.enum(agentRoleTags)),
+  positionTags: z.array(z.enum(agentRoleTags)),
+  confidence: z.string().min(1),
+  notes: z.string().optional(),
+  agentMajorResponsibilities: stringArray
+});
+export type AgentRoleProfile = z.infer<typeof agentRoleProfileSchema>;
+
+export const agentMaterialRefSchema = z.object({
+  entityId: z.string().min(1),
+  entityType: z.enum(["player", "coach"]),
+  teamSlug: z.string().min(1),
+  jsonPath: z.string().min(1),
+  aliases: stringArray.optional(),
+  bindingVersion: z.string().optional(),
+  bindingScope: z.string().optional(),
+  runtimeEnabled: z.literal(false),
+  roleTemplateId: z.string().optional()
+});
+export type AgentMaterialRef = z.infer<typeof agentMaterialRefSchema>;
+
 export const agentSchema = z.object({
   id: z.string().min(1),
   teamId: z.string().min(1),
   driverModelId: z.string().min(1),
   parameterProfileId: z.string().optional(),
   role: z.enum(agentRoles),
+  secondaryRoles: z.array(z.enum(agentRoleTags)).optional(),
   displayName: z.string().min(1),
   baseProfile: agentBaseProfileSchema,
+  roleProfile: agentRoleProfileSchema.optional(),
+  materialRef: agentMaterialRefSchema.optional(),
   currentState: z.enum(agentStates),
   createdAt: isoDateString,
   updatedAt: optionalIsoDateString

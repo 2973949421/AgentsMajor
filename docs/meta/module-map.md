@@ -141,11 +141,19 @@ M21 Web 迁移层（Web Migration Layer）
 
 - 教练（Coach）。
 - 指挥（IGL）。
+- 狙击手（AWPer）。
 - 突破手（Entry）。
-- 明星位（Star）。
+- 核心步枪位（star_rifler）。
 - 潜伏位（Lurker）。
 - 辅助位（Support）。
-- 终结者（Closer）。
+- 步枪位（rifler）。
+- 替补（stand_in）。
+
+Phase 1.7 后：
+
+- `Agent.role` 使用 materials 主角色枚举。
+- `closer` 不再是 primary role，只作为 secondary role tag 表达残局收束特质。
+- 读取旧数据时 `star -> star_rifler`、`closer -> rifler`。
 
 ### 5.4 智能体状态（Agent State）
 
