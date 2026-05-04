@@ -72,6 +72,7 @@ export type TacticalEventVisibility = (typeof tacticalEventVisibilities)[number]
 
 export const eventCategories = [
   "simulation",
+  "system",
   "judge",
   "economy",
   "broadcast",
@@ -123,6 +124,9 @@ export const eventTypes = [
   "article_generated",
   "interview_generated",
   "daily_recap_generated",
+  "llm_call_started",
+  "llm_call_completed",
+  "llm_call_failed",
   "admin_correction_applied",
   "event_revision_created",
   "event_soft_deleted",

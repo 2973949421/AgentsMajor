@@ -14,7 +14,11 @@ describe("Phase 1.5 DashScope OpenAI provider", () => {
         DASHSCOPE_BASE_URL: "https://example.test/v1",
         DASHSCOPE_API_KEY: "local-secret"
       })
-    ).toMatchObject({ enabled: true, casterDriverModelId: "driver_qwen_3_max_2026_01_23" });
+    ).toMatchObject({
+      enabled: true,
+      phase18DriverModelId: "driver_qwen_3_max_2026_01_23",
+      casterDriverModelId: "driver_qwen_3_max_2026_01_23"
+    });
     expect(
       loadAgentMajorLlmConfig({
         AGENT_MAJOR_REAL_LLM_ENABLED: "true",
@@ -61,6 +65,91 @@ describe("Phase 1.5 DashScope OpenAI provider", () => {
     expect(response.data).toEqual({ text: "hello" });
     expect(response.usage).toEqual({ promptTokens: 11, completionTokens: 7, totalTokens: 18 });
     expect(seenBodies[0]).toMatchObject({ model: "kimi-k2.5", stream: false });
+    expect(
+      (seenBodies[0] as { messages?: Array<{ content?: string }> }).messages?.some((message) => /json/i.test(String(message.content)))
+    ).toBe(true);
+  });
+
+  it("includes the exact AgentActionDecision output contract for JSON requests", async () => {
+    const seenBodies: unknown[] = [];
+    const provider = new DashScopeOpenAiProvider({
+      baseUrl: "https://example.test/v1",
+      apiKey: "secret-key",
+      maxRetries: 0,
+      fetchFn: async (_url, init) => {
+        seenBodies.push(JSON.parse(String(init?.body)));
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "{\"action\":\"push A long\",\"confidence\":0.82}" } }],
+            usage: { prompt_tokens: 20, completion_tokens: 8, total_tokens: 28 }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+    });
+
+    await provider.generateStructured({
+      task: "agent_action",
+      driverModelId: "driver_kimi_k2_5",
+      input: { agentId: "agent-1" },
+      schemaName: "AgentActionDecision",
+      responseFormat: "json_object"
+    });
+
+    const promptText = ((seenBodies[0] as { messages?: Array<{ content?: string }> }).messages ?? [])
+      .map((message) => message.content ?? "")
+      .join("\n");
+    expect(promptText).toContain('"action"');
+    expect(promptText).toContain('"confidence"');
+    expect(promptText).toContain("Do not return actionDecision");
+  });
+
+  it("includes team_plan and anti-bias judge JSON contracts", async () => {
+    const seenBodies: unknown[] = [];
+    const provider = new DashScopeOpenAiProvider({
+      baseUrl: "https://example.test/v1",
+      apiKey: "secret-key",
+      maxRetries: 0,
+      fetchFn: async (_url, init) => {
+        seenBodies.push(JSON.parse(String(init?.body)));
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "{\"teamId\":\"team-a\",\"side\":\"attack\",\"primaryIntent\":\"hit A\",\"primaryZoneId\":\"site_a\",\"coordinationSummary\":\"trade together\",\"playerDirectives\":[],\"winCondition\":\"plant\",\"risk\":\"stack\",\"confidence\":0.8}" } }],
+            usage: { prompt_tokens: 20, completion_tokens: 8, total_tokens: 28 }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+    });
+
+    await provider.generateStructured({
+      task: "team_plan",
+      driverModelId: "driver_kimi_k2_5",
+      input: { teamId: "team-a", side: "attack", activeAgents: [] },
+      schemaName: "TeamRoundPlanDecision",
+      responseFormat: "json_object"
+    });
+
+    await provider.generateStructured({
+      task: "judge",
+      driverModelId: "driver_kimi_k2_5",
+      input: { teamAId: "team-a", teamBId: "team-b" },
+      schemaName: "JudgeResult",
+      responseFormat: "json_object"
+    });
+
+    const teamPlanPrompt = ((seenBodies[0] as { messages?: Array<{ content?: string }> }).messages ?? [])
+      .map((message) => message.content ?? "")
+      .join("\n");
+    expect(teamPlanPrompt).toContain("TeamRoundPlanDecision");
+    expect(teamPlanPrompt).toContain("playerDirectives");
+    expect(teamPlanPrompt).toContain("winCondition");
+
+    const judgePrompt = ((seenBodies[1] as { messages?: Array<{ content?: string }> }).messages ?? [])
+      .map((message) => message.content ?? "")
+      .join("\n");
+    expect(judgePrompt).toContain("both teams' winCondition");
+    expect(judgePrompt).toContain("Do not decide from team order");
   });
 
   it("classifies provider and timeout failures without leaking secrets", async () => {

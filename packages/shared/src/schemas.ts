@@ -200,6 +200,33 @@ export const scorePairSchema = z.object({
 });
 export type ScorePair = z.infer<typeof scorePairSchema>;
 
+export const agentActionDecisionSchema = z.object({
+  action: z.string().min(1),
+  confidence: z.number().min(0).max(1),
+  fingerprint: z.string().min(1).optional()
+});
+export type AgentActionDecision = z.infer<typeof agentActionDecisionSchema>;
+
+export const teamRoundPlanDecisionSchema = z.object({
+  teamId: z.string().min(1),
+  side: z.enum(["attack", "defense"]),
+  primaryIntent: z.string().min(1),
+  primaryZoneId: z.string().min(1),
+  secondaryZoneId: z.string().min(1).optional(),
+  coordinationSummary: z.string().min(1),
+  playerDirectives: z.array(
+    z.object({
+      agentId: z.string().min(1),
+      directive: z.string().min(1)
+    })
+  ),
+  winCondition: z.string().min(1),
+  risk: z.string().min(1),
+  confidence: z.number().min(0).max(1),
+  fingerprint: z.string().min(1).optional()
+});
+export type TeamRoundPlanDecision = z.infer<typeof teamRoundPlanDecisionSchema>;
+
 export const agentOutputSchema = z.object({
   id: z.string().min(1),
   agentId: z.string().min(1),

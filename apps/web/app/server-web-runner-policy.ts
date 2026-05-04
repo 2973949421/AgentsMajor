@@ -73,7 +73,7 @@ export function validateWebRunnerRequest(
     return {
       ok: false,
       status: 400,
-      error: "Web runner requires explicit confirmReset=true because it resets the local demo fixture."
+      error: "Web runner requires explicit confirmReset=true because Phase runs may reset completed local fixtures."
     };
   }
 
@@ -93,7 +93,12 @@ export function validateWebRunnerRequest(
 }
 
 function parseMode(value: unknown): WebRunMode | null {
-  if (value === "phase17_showcase_match" || value === "phase15_single_map") {
+  if (
+    value === "phase17_showcase_match" ||
+    value === "phase18_next_round" ||
+    value === "phase18_current_map" ||
+    value === "phase18_full_bo3"
+  ) {
     return value;
   }
 

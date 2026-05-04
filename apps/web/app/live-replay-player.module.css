@@ -1,385 +1,360 @@
 .shell {
-  --bg: #071215;
-  --ink: #fff8df;
-  --muted: #cabf9f;
-  --gold: #f4b846;
-  --goldDeep: #d1952c;
-  --teal: #2fd1bf;
-  --panel: rgba(7, 18, 21, 0.78);
+  --bg: #061015;
+  --bg-deep: #0a171d;
+  --panel: rgba(7, 16, 22, 0.88);
+  --panel-soft: rgba(10, 22, 29, 0.72);
+  --panel-strong: rgba(8, 18, 24, 0.96);
+  --border: rgba(184, 206, 214, 0.18);
+  --border-strong: rgba(244, 184, 70, 0.56);
+  --ink: #f5f4ef;
+  --muted: #9db0b9;
+  --accent: #f4b846;
+  --accent-soft: #ffd98a;
+  --teal: #53cfc1;
+  --danger: #ff9a7b;
   min-height: 100vh;
-  padding: 40px;
+  padding: 12px;
   color: var(--ink);
   background:
-    radial-gradient(circle at 18% 8%, rgba(244, 184, 70, 0.28), transparent 25%),
-    radial-gradient(circle at 82% 18%, rgba(47, 209, 191, 0.18), transparent 24%),
-    linear-gradient(135deg, #071215 0%, #132b2f 52%, #d1952c 140%);
-  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    radial-gradient(circle at top left, rgba(83, 207, 193, 0.14), transparent 26%),
+    radial-gradient(circle at top right, rgba(244, 184, 70, 0.12), transparent 22%),
+    linear-gradient(180deg, #03090c 0%, #071116 100%);
+  font-family: "Segoe UI", "Microsoft YaHei UI", "PingFang SC", sans-serif;
 }
 
-.hero {
+.broadcastShell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 220px;
-  gap: 28px;
-  align-items: end;
-  margin-bottom: 24px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  min-height: calc(100vh - 24px);
+  overflow: visible;
+  border: 1px solid var(--border);
+  background: #081318;
+  box-shadow: 0 30px 64px rgba(0, 0, 0, 0.3);
 }
 
-.kicker,
-.matchPlate span,
-.scoreboard span,
-.stageHeader span,
-.mapComplete span {
-  margin: 0;
-  color: var(--gold);
-  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+.broadcastHud {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(360px, 1.25fr) minmax(180px, 1fr);
+  gap: 14px;
+  align-items: center;
+  min-height: 86px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, rgba(6, 16, 22, 0.96), rgba(6, 16, 22, 0.82)),
+    rgba(6, 16, 22, 0.9);
+}
+
+.hudTeamBlock {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.hudTeamBlock strong {
+  overflow: hidden;
+  font-size: 22px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hudTeamBlockRight {
+  justify-items: end;
+  text-align: right;
+}
+
+.hudCenter {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+
+.hudScoreLine {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+}
+
+.hudScoreLine strong {
+  font-size: clamp(36px, 5vw, 58px);
+  line-height: 0.88;
+  letter-spacing: -0.06em;
+}
+
+.hudMetaLine,
+.mapPillRail {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.hudContext {
+  max-width: 46ch;
+  overflow: hidden;
+  color: var(--muted);
   font-size: 12px;
-  letter-spacing: 0.16em;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+}
+
+.hudBanner,
+.hudMetaLine span,
+.hudScoreLine span,
+.hudScoreLine small,
+.mapPill span,
+.rosterHeader span,
+.rosterRowTop span,
+.tickerCard span,
+.timelineItem span,
+.barrageItem span,
+.roundButton span,
+.supportRate span,
+.replayCard small,
+.opsQuickItem span,
+.opsSummaryItem span,
+.opsMetaLine,
+.stageOverlayBadge,
+.stageBadge span {
+  color: var(--accent);
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
-.hero h1 {
-  max-width: 1040px;
-  margin: 10px 0 14px;
-  font-size: clamp(44px, 7vw, 98px);
-  line-height: 0.9;
+.hudScoreLine small {
+  color: var(--muted);
 }
 
-.subtitle {
-  display: block;
-  max-width: 900px;
-  color: #fff0bd;
-  font-size: 19px;
-  line-height: 1.55;
+.mapPill,
+.roundButton,
+.playbackButtons button,
+.playbackSelect select,
+.mapCompleteToast button,
+.opsDockToggle,
+.opsActionPrimary,
+.opsActionSecondary,
+.opsDisclosure summary {
+  color: var(--ink);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
 }
 
-.matchPlate {
-  display: grid;
-  gap: 8px;
-  padding: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  background: rgba(0, 0, 0, 0.28);
-  box-shadow: 12px 12px 0 rgba(0, 0, 0, 0.22);
+.mapPill {
+  display: inline-grid;
+  gap: 3px;
+  min-width: 92px;
+  padding: 6px 9px;
+  text-align: left;
+  cursor: pointer;
 }
 
-.matchPlate strong {
-  font-size: 56px;
+.mapPill strong {
+  font-size: 15px;
   line-height: 1;
 }
 
-.matchPlate small,
-.scoreMeta,
-.muted {
+.mapPillActive {
+  border-color: var(--border-strong);
+  background: linear-gradient(180deg, rgba(244, 184, 70, 0.2), rgba(244, 184, 70, 0.06));
+}
+
+.mapPillPlaceholder {
+  padding: 7px 10px;
   color: var(--muted);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
 }
 
-.runControls,
-.runControlsCompact {
-  display: grid;
-  gap: 10px;
-  margin-top: 20px;
-}
-
-.runControlsCompact {
-  margin-top: 12px;
-}
-
-.runControls button,
-.runControlsCompact button {
-  min-height: 42px;
-  padding: 0 14px;
-  color: #071215;
-  border: 1px solid var(--gold, #f4b846);
-  background: var(--gold, #f4b846);
-  cursor: pointer;
-  font: inherit;
-}
-
-.runControls button:hover,
-.runControlsCompact button:hover {
-  background: #ffe49b;
-}
-
-.runControlsInput {
-  min-height: 38px;
-  padding: 0 12px;
-  color: var(--paper, #fff7dc);
-  border: 1px solid rgba(244, 184, 70, 0.34);
-  background: rgba(7, 18, 21, 0.72);
-  font: inherit;
-}
-
-.runControls button:disabled,
-.runControlsCompact button:disabled {
-  cursor: not-allowed;
-  opacity: 0.72;
-}
-
-.runControlsMessage,
-.runControlsError {
-  color: var(--muted, #cabf9f);
-  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.runControlsError {
-  color: #ffca7a;
-}
-
-.runProgress {
-  display: grid;
-  gap: 7px;
-  padding: 10px;
-  border: 1px solid rgba(244, 184, 70, 0.24);
-  background: rgba(7, 18, 21, 0.5);
-}
-
-.runProgressMeta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  justify-content: space-between;
-  color: var(--paper, #fff7dc);
-  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-  font-size: 11px;
-}
-
-.runProgressTrack {
-  display: grid;
-  grid-template-columns: repeat(18, minmax(4px, 1fr));
-  gap: 3px;
-}
-
-.runProgressSegment {
-  height: 8px;
-  border: 1px solid rgba(255, 247, 220, 0.16);
-  background: rgba(255, 247, 220, 0.08);
-}
-
-.runProgressSegmentDone {
-  border-color: rgba(244, 184, 70, 0.9);
-  background: #f4b846;
-  box-shadow: 0 0 12px rgba(244, 184, 70, 0.28);
-}
-
-.runProgressSegmentCurrent {
-  border-color: #fff7dc;
-  background: #ffca7a;
-  animation: progressPulse 1s ease-in-out infinite alternate;
-}
-
-.runProgress small {
-  color: var(--muted, #cabf9f);
-  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-  font-size: 11px;
-}
-
-@keyframes progressPulse {
-  from {
-    opacity: 0.56;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.mapTabs {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 18px;
-}
-
-.mapTab,
-.controlBar button,
-.controlBar select,
-.mapComplete button,
-.roundButton {
-  color: var(--ink);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.08);
-  cursor: pointer;
-}
-
-.mapTab {
-  display: grid;
-  gap: 8px;
-  padding: 18px;
-  text-align: left;
-}
-
-.mapTab strong {
-  font-size: 28px;
-}
-
-.mapTab small {
-  color: var(--muted);
-}
-
-.mapTabActive,
-.roundButtonActive {
-  color: #071215;
-  border-color: var(--gold);
-  background: var(--gold);
-}
-
-.mapTabActive small,
-.roundButtonActive small {
-  color: #273034;
-}
-
-.scoreboard {
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: var(--panel);
-  box-shadow: 14px 14px 0 rgba(0, 0, 0, 0.2);
-}
-
-.scoreboard > div:first-child {
-  display: grid;
-  gap: 6px;
-}
-
-.scoreboard strong {
-  font-size: clamp(56px, 9vw, 104px);
-  line-height: 0.95;
-}
-
-.scoreboard small {
-  color: #fff0bd;
-  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-}
-
-.scoreMeta {
-  display: grid;
-  align-content: center;
-  gap: 8px;
-  min-width: 260px;
-  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-  font-size: 13px;
-}
-
-.controlBar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  margin: 18px 0 12px;
-}
-
-.controlBar button,
-.controlBar select,
-.mapComplete button {
-  min-height: 42px;
-  padding: 0 16px;
-  font: inherit;
-}
-
-.controlBar button:hover,
-.mapTab:hover,
-.mapComplete button:hover,
-.roundButton:hover {
-  border-color: var(--gold);
-}
-
-.controlBar button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-
-.controlBar label {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  color: var(--muted);
-}
-
-.progressTrack {
-  height: 10px;
-  margin-bottom: 22px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(0, 0, 0, 0.24);
-}
-
-.progressTrack span {
+.broadcastBody {
   display: block;
-  height: 100%;
-  background: linear-gradient(90deg, var(--gold), var(--teal));
-  transition: width 160ms linear;
+  min-height: 0;
+  padding: 0 10px;
 }
 
-.liveGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.75fr);
-  gap: 22px;
-  margin-bottom: 22px;
-}
-
-.stageCard,
-.panel,
-.mapComplete,
-.emptyState {
-  border: 1px solid rgba(255, 255, 255, 0.2);
+.rosterRail,
+.opsDock,
+.bottomTicker,
+.stagePanel {
+  border: 1px solid var(--border);
   background: var(--panel);
 }
 
-.stageCard,
-.panel {
-  padding: 22px;
+.rosterRail {
+  position: absolute;
+  z-index: 5;
+  top: 18px;
+  left: 16px;
+  width: clamp(210px, 15vw, 250px);
+  max-height: calc(100% - 154px);
+  overflow: auto;
+  padding: 8px;
+  background: rgba(6, 16, 22, 0.76);
+  backdrop-filter: blur(8px);
 }
 
-.stageHeader {
-  display: grid;
-  gap: 14px;
-  margin-bottom: 18px;
+.rosterRailRight {
+  right: 16px;
+  left: auto;
 }
 
-.stageHeader strong {
+.rosterHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+  padding-bottom: 7px;
+  margin-bottom: 7px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rosterHeader strong {
   display: block;
-  margin-top: 6px;
-  font-size: 32px;
-}
-
-.stageHeader small {
-  color: #fff0bd;
+  margin: 3px 0;
   font-size: 17px;
+  line-height: 1.1;
+}
+
+.rosterHeader small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.rosterHeader b {
+  font-size: 30px;
+  line-height: 1;
+}
+
+.rosterList {
+  display: grid;
+  gap: 5px;
+}
+
+.rosterRow {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.rosterRow[data-highlight="impact"] {
+  border-color: rgba(83, 207, 193, 0.52);
+}
+
+.rosterRow[data-highlight="target"] {
+  border-color: rgba(255, 154, 123, 0.54);
+}
+
+.rosterRow[data-highlight="mvp"] {
+  border-color: var(--border-strong);
+  background: linear-gradient(180deg, rgba(244, 184, 70, 0.18), rgba(244, 184, 70, 0.06));
+}
+
+.rosterRowTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.rosterRowTop strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rosterRowMeta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 10px;
+}
+
+.rosterRow small,
+.rosterEmpty,
+.muted,
+.tickerCard strong,
+.timelineItem small,
+.barrageItem small,
+.panel small,
+.replayCard span,
+.mapCompleteToast span,
+.opsDockHeader span,
+.opsHelperText,
+.opsLatestError {
+  color: var(--muted);
+}
+
+.rosterEmpty {
+  padding: 10px;
+  border: 1px dashed var(--border);
   line-height: 1.55;
 }
 
-.virtualMap {
-  position: relative;
-  min-height: 440px;
+.stagePanel {
+  min-width: 0;
+  min-height: 0;
   overflow: hidden;
-  padding: 18px;
+  background: #061016;
+}
+
+.stageViewport {
+  position: relative;
+  width: 100%;
+  height: clamp(540px, 64vh, 760px);
+  min-height: 540px;
+  overflow: hidden;
+}
+
+.virtualMap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
   background:
-    linear-gradient(90deg, rgba(244, 184, 70, 0.08) 1px, transparent 1px),
-    linear-gradient(rgba(244, 184, 70, 0.08) 1px, transparent 1px),
-    rgba(0, 0, 0, 0.22);
-  background-size: 34px 34px;
+    linear-gradient(90deg, rgba(83, 207, 193, 0.07) 1px, transparent 1px),
+    linear-gradient(rgba(83, 207, 193, 0.07) 1px, transparent 1px),
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.04), transparent 40%),
+    rgba(255, 255, 255, 0.02);
+  background-size: 42px 42px, 42px 42px, auto, auto;
+}
+
+.virtualMapPlaceholder::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(244, 184, 70, 0.1), transparent 38%),
+    linear-gradient(180deg, rgba(6, 17, 22, 0.2), rgba(6, 17, 22, 0.78));
 }
 
 .tacticalLines {
   position: absolute;
-  inset: 18px;
-  width: calc(100% - 36px);
-  height: calc(100% - 36px);
-  opacity: 0.86;
+  inset: 28px;
+  width: calc(100% - 56px);
+  height: calc(100% - 56px);
+  opacity: 0.9;
 }
 
 .tacticalLine {
-  stroke: rgba(255, 248, 223, 0.22);
-  stroke-width: 5;
+  stroke: rgba(255, 255, 255, 0.15);
+  stroke-width: 4;
   stroke-linecap: round;
   vector-effect: non-scaling-stroke;
 }
 
 .tacticalLineActive {
-  stroke: var(--gold);
-  filter: drop-shadow(0 0 8px rgba(244, 184, 70, 0.48));
+  stroke: var(--accent);
+  filter: drop-shadow(0 0 10px rgba(244, 184, 70, 0.52));
 }
 
 .tacticalZone {
@@ -387,33 +362,17 @@
   z-index: 1;
   display: grid;
   gap: 4px;
-  width: min(168px, 24vw);
-  min-height: 96px;
-  padding: 12px;
+  width: clamp(132px, 13vw, 172px);
+  min-height: 88px;
+  padding: 10px;
   transform: translate(-50%, -50%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(7, 18, 21, 0.86);
-  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.18);
-}
-
-.tacticalZone span,
-.tacticalZone small,
-.tacticalZone em,
-.barrageItem span,
-.supportRate span,
-.replayCard small {
-  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-}
-
-.tacticalZone span {
-  color: var(--gold);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  border: 1px solid var(--border);
+  background: rgba(7, 17, 22, 0.88);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
 }
 
 .tacticalZone strong {
-  font-size: 18px;
+  font-size: 15px;
   text-transform: capitalize;
 }
 
@@ -425,13 +384,13 @@
 
 .tacticalZone b {
   position: absolute;
-  right: -10px;
-  top: -10px;
+  right: -9px;
+  top: -9px;
   display: grid;
-  min-width: 32px;
-  height: 32px;
+  min-width: 28px;
+  height: 28px;
   place-items: center;
-  color: #071215;
+  color: #081015;
   border-radius: 999px;
   background: var(--teal);
   font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
@@ -439,261 +398,709 @@
 }
 
 .tacticalZone em {
-  color: #ffca7a;
+  color: var(--accent-soft);
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   font-size: 10px;
   font-style: normal;
 }
 
 .tacticalZoneActive {
-  color: #071215;
-  border-color: var(--gold);
-  background: linear-gradient(135deg, var(--gold), #ffe49b);
-  box-shadow: 0 0 28px rgba(244, 184, 70, 0.28);
+  color: #0a1419;
+  border-color: var(--border-strong);
+  background: linear-gradient(180deg, rgba(244, 184, 70, 0.94), rgba(255, 217, 138, 0.92));
 }
 
 .tacticalZoneActive span,
 .tacticalZoneActive small,
 .tacticalZoneActive em {
-  color: #253035;
+  color: #2a353b;
 }
 
 .tacticalZoneWeak {
-  outline: 2px dashed rgba(47, 209, 191, 0.72);
+  outline: 2px dashed rgba(83, 207, 193, 0.72);
   outline-offset: 3px;
 }
 
-.zone {
+.stageOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
   display: grid;
-  align-content: end;
+  align-content: center;
+  justify-items: start;
+  gap: 10px;
+  padding: 28px;
+  background: linear-gradient(180deg, rgba(4, 11, 15, 0.44), rgba(4, 11, 15, 0.7));
+}
+
+.stageOverlay[data-kind="failed"] {
+  background: linear-gradient(180deg, rgba(34, 12, 9, 0.54), rgba(16, 8, 8, 0.78));
+}
+
+.stageOverlayTitle {
+  max-width: 18ch;
+  font-size: clamp(26px, 4vw, 42px);
+  line-height: 1.05;
+}
+
+.stageOverlayText {
+  max-width: 56ch;
+  margin: 0;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.stageBadge {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  z-index: 3;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  background: rgba(6, 16, 22, 0.74);
+  backdrop-filter: blur(8px);
+}
+
+.playbackDock {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 12px;
+  display: flex;
   gap: 8px;
-  min-height: 170px;
-  padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  max-width: min(620px, max(340px, calc(100% - 520px)));
+  padding: 6px 8px;
+  flex-wrap: wrap;
+  transform: translateX(-50%);
+  border: 1px solid var(--border);
+  background: rgba(6, 16, 22, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.playbackButtons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.playbackButtons button,
+.mapCompleteToast button,
+.opsActionPrimary,
+.opsActionSecondary {
+  min-height: 30px;
+  padding: 0 9px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.playbackButtons button:disabled,
+.opsActionPrimary:disabled,
+.opsActionSecondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.playbackMeta {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 10px;
+}
+
+.playbackSelect {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.playbackSelect select {
+  min-height: 30px;
+  padding: 0 8px;
+  font: inherit;
+}
+
+.progressTrack {
+  position: absolute;
+  z-index: 6;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
   background: rgba(255, 255, 255, 0.06);
 }
 
-.zone span {
-  color: var(--gold);
-  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-  font-size: 13px;
+.progressTrack span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--teal));
+  transition: width 160ms linear;
 }
 
-.zone strong {
-  font-size: 24px;
-  text-transform: capitalize;
+.mapCompleteToast {
+  position: absolute;
+  z-index: 7;
+  top: 18px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  transform: translateX(-50%);
+  border: 1px solid var(--border-strong);
+  background: rgba(6, 16, 22, 0.9);
+  backdrop-filter: blur(10px);
 }
 
-.zone small {
-  color: var(--muted);
-  line-height: 1.45;
+.mapCompleteToast strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 16px;
 }
 
-.zoneActive {
-  color: #071215;
-  border-color: var(--gold);
-  background: linear-gradient(135deg, var(--gold), #ffe49b);
-  box-shadow: 0 0 28px rgba(244, 184, 70, 0.28);
+.opsDock {
+  position: fixed;
+  z-index: 8;
+  right: 18px;
+  bottom: 76px;
+  width: min(360px, calc(100% - 48px));
+  max-height: min(42vh, 360px);
+  overflow: auto;
+  padding: 10px;
+  transform: none;
+  background: rgba(6, 16, 22, 0.9);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.34);
 }
 
-.zoneActive span,
-.zoneActive small {
-  color: #253035;
-}
-
-.supportRate {
+.opsDockCollapsed {
+  right: 18px;
+  left: auto;
+  bottom: 92px;
+  width: 52px;
+  min-height: 154px;
+  max-height: 154px;
   display: grid;
-  gap: 10px;
+  justify-items: center;
+  align-content: start;
+  overflow: hidden;
+  padding: 8px 6px;
+  transform: none;
 }
 
-.supportRate > div {
+.opsDockToggle {
+  width: 100%;
+  min-height: 30px;
+  padding: 0 10px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.opsDockHandle {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  align-items: baseline;
-}
-
-.supportRate strong {
-  font-size: 28px;
-}
-
-.supportRate meter {
-  width: 100%;
-  height: 14px;
-  accent-color: var(--gold);
-}
-
-.supportRate small {
+  gap: 10px;
+  align-items: center;
+  min-height: 28px;
+  margin-bottom: 6px;
+  padding: 0 8px;
   color: var(--muted);
+  border: 1px dashed rgba(244, 184, 70, 0.28);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
 }
 
-.sideStack {
-  display: grid;
-  gap: 14px;
+.opsDockHandle:active {
+  cursor: grabbing;
 }
 
-.panel h2 {
-  margin: 0 0 14px;
-  color: var(--gold);
-  font-size: 18px;
-  letter-spacing: 0.08em;
+.opsDockHandle span,
+.opsDockHandle small {
+  color: var(--accent);
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
-.casterLine {
+.opsDockTabLabel {
+  display: none;
+  margin-top: 10px;
+  color: var(--muted);
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  writing-mode: vertical-rl;
+  text-transform: uppercase;
+}
+
+.opsDockCollapsed .opsDockTabLabel {
+  display: block;
+}
+
+.opsDockCollapsed .opsDockContent {
+  display: none;
+}
+
+.opsDockHeader {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 10px;
+}
+
+.opsDockHeader p {
   margin: 0;
-  color: #fff0bd;
-  font-size: 19px;
+  color: var(--accent);
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.opsDockHeader h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.opsQuickGrid,
+.opsSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.opsQuickItem,
+.opsSummaryItem,
+.opsStatusCard {
+  display: grid;
+  gap: 6px;
+  padding: 8px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.opsQuickItem strong,
+.opsSummaryItem strong {
+  font-size: 13px;
+}
+
+.opsLatestError,
+.opsErrorText {
+  color: var(--danger);
+  font-size: 12px;
   line-height: 1.55;
 }
 
-.feedList,
-.timelineList,
-.economyGrid,
-.roundGrid,
-.barrageList {
+.opsControlStack {
   display: grid;
   gap: 10px;
+  margin-top: 10px;
 }
 
-.feedItem,
-.timelineItem,
-.economyRow,
-.barrageItem {
+.runControlsInput {
+  min-height: 36px;
+  padding: 0 10px;
+  color: var(--ink);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  font: inherit;
+}
+
+.opsActionGrid {
   display: grid;
-  gap: 4px;
-  padding: 12px;
-  border-left: 4px solid var(--gold);
-  background: rgba(255, 255, 255, 0.07);
+  gap: 8px;
 }
 
-.feedItem span,
-.timelineItem span,
-.economyRow span,
-.roundButton span,
-.barrageItem span {
-  color: var(--gold);
+.opsActionPrimary {
+  border-color: var(--border-strong);
+  background: linear-gradient(180deg, rgba(244, 184, 70, 0.26), rgba(244, 184, 70, 0.12));
+}
+
+.mapPill:hover,
+.roundButton:hover,
+.playbackButtons button:hover,
+.mapCompleteToast button:hover,
+.opsDockToggle:hover,
+.opsActionPrimary:hover,
+.opsActionSecondary:hover,
+.opsDisclosure summary:hover {
+  border-color: var(--border-strong);
+}
+
+.opsStatusRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.opsStatusRow strong {
+  font-size: 14px;
+}
+
+.opsCallGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  color: var(--muted);
   font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+}
+
+.opsDisclosure {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.opsDisclosure summary {
+  display: block;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.opsDisclosureBody {
+  padding: 0 12px 12px;
+}
+
+.opsTableWrap {
+  overflow-x: auto;
+}
+
+.opsTable {
+  width: 100%;
+  border-collapse: collapse;
   font-size: 12px;
 }
 
-.feedItem small,
-.timelineItem small,
-.economyRow small,
-.barrageItem small {
-  color: var(--muted);
+.opsTable th,
+.opsTable td {
+  padding: 7px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.opsHelperText {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.bottomTicker {
+  min-height: 0;
+  margin: 0 10px 10px;
+  padding: 8px;
+  background: rgba(6, 16, 22, 0.82);
+}
+
+.tickerSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tickerCard {
+  display: grid;
+  gap: 6px;
+  min-height: 64px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.tickerCard strong {
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.detailsTray {
+  margin-top: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.detailsTray summary {
+  padding: 9px 12px;
+  cursor: pointer;
+  color: var(--accent);
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.detailsTrayBody {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 260px;
+  overflow: auto;
+  padding: 0 12px 12px;
+}
+
+.panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.panel h2 {
+  margin: 0;
+  color: var(--accent);
+  font-size: 16px;
+  letter-spacing: 0.06em;
+}
+
+.timelineList,
+.barrageList,
+.roundGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.timelineItem,
+.barrageItem {
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border-left: 3px solid var(--accent);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.timelineItem strong,
+.barrageItem strong {
+  font-size: 13px;
+}
+
+.highlightStack {
+  display: grid;
+  gap: 10px;
 }
 
 .highlightBox {
   display: grid;
   gap: 8px;
-  padding: 16px;
-  color: #071215;
-  background: var(--gold);
+  padding: 10px;
+  border: 1px solid var(--border-strong);
+  background: linear-gradient(180deg, rgba(244, 184, 70, 0.16), rgba(244, 184, 70, 0.07));
+}
+
+.highlightBox strong {
+  font-size: 15px;
 }
 
 .replayCard {
   display: grid;
   gap: 5px;
-  margin-top: 10px;
-  padding: 12px;
-  color: var(--ink);
-  background: rgba(7, 18, 21, 0.88);
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .replayCard b {
-  color: var(--gold);
+  color: var(--accent-soft);
+  font-size: 14px;
 }
 
-.replayCard span {
-  color: #fff0bd;
-  line-height: 1.45;
-}
-
-.detailGrid {
+.supportRate {
   display: grid;
-  grid-template-columns: 1fr 1fr 1.2fr;
-  gap: 22px;
+  gap: 8px;
 }
 
-.economyGrid {
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+.supportRate > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.supportRate strong {
+  font-size: 20px;
+}
+
+.supportRate meter {
+  width: 100%;
+  height: 11px;
+  accent-color: var(--accent);
 }
 
 .roundGrid {
-  max-height: 440px;
-  overflow: auto;
-  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
 }
 
 .roundButton {
   display: grid;
   gap: 4px;
-  min-height: 78px;
-  padding: 10px;
+  min-height: 62px;
+  padding: 8px 10px;
   text-align: left;
+  cursor: pointer;
 }
 
 .roundButton strong {
-  font-size: 21px;
+  font-size: 16px;
 }
 
 .roundButton small {
   color: var(--muted);
+  font-size: 12px;
 }
 
-.mapComplete {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  align-items: center;
-  margin-top: 22px;
-  padding: 22px;
+.roundButtonActive {
+  border-color: var(--border-strong);
+  background: linear-gradient(180deg, rgba(244, 184, 70, 0.18), rgba(244, 184, 70, 0.06));
 }
 
-.mapComplete strong {
-  display: block;
-  margin-top: 8px;
-  font-size: 28px;
-}
-
-.emptyState {
-  max-width: 760px;
-  padding: 40px;
-}
-
-@media (max-width: 1080px) {
-  .shell {
-    padding: 24px;
-  }
-
-  .hero,
-  .scoreboard,
-  .liveGrid,
-  .detailGrid,
-  .mapTabs {
-    grid-template-columns: 1fr;
-  }
-
-  .scoreboard,
-  .mapComplete {
-    display: grid;
-  }
-}
-
-@media (max-width: 620px) {
-  .shell {
-    padding: 16px;
-  }
-
-  .virtualMap,
-  .economyGrid,
-  .roundGrid {
-    grid-template-columns: 1fr;
+@media (max-width: 1440px) {
+  .rosterRail {
+    width: clamp(190px, 15vw, 226px);
   }
 
   .tacticalZone {
-    width: min(136px, 38vw);
-    min-height: 84px;
-    padding: 10px;
+    width: clamp(118px, 12vw, 154px);
+  }
+}
+
+@media (max-width: 1120px) {
+  .broadcastShell {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .broadcastHud {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .hudTeamBlock,
+  .hudTeamBlockRight {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .rosterRail {
+    top: 14px;
+    width: 196px;
+    max-height: 300px;
+  }
+
+  .stageViewport {
+    min-height: 560px;
+  }
+
+  .opsDock {
+    width: min(340px, calc(100% - 40px));
+    max-height: 320px;
+  }
+
+  .tickerSummaryGrid,
+  .detailsTrayBody {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .shell {
+    padding: 8px;
+  }
+
+  .broadcastShell {
+    gap: 8px;
+  }
+
+  .broadcastHud,
+  .broadcastBody {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .hudScoreLine {
+    flex-wrap: wrap;
+  }
+
+  .stageViewport {
+    min-height: 620px;
+  }
+
+  .rosterRail {
+    top: 10px;
+    width: calc(50% - 22px);
+    max-height: 230px;
+    padding: 6px;
+  }
+
+  .rosterRailRight {
+    right: 10px;
+  }
+
+  .rosterHeader strong {
+    font-size: 14px;
+  }
+
+  .rosterHeader b {
+    font-size: 24px;
+  }
+
+  .rosterRowTop strong {
+    font-size: 12px;
+  }
+
+  .rosterRowMeta {
+    display: none;
+  }
+
+  .playbackDock {
+    width: calc(100% - 20px);
+    bottom: 12px;
+  }
+
+  .playbackButtons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .opsQuickGrid,
+  .opsSummaryGrid,
+  .opsCallGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .opsDock {
+    bottom: 112px;
+    width: calc(100% - 24px);
+    max-height: 320px;
+  }
+
+  .opsDockCollapsed {
+    right: 12px;
+    bottom: 82px;
+    width: 48px;
+  }
+
+  .mapCompleteToast {
+    left: 10px;
+    right: 10px;
+    transform: none;
+    display: grid;
   }
 }

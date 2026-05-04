@@ -80,7 +80,7 @@ Phase 1.2 的当前事实：
 Web 页面已经能读取 SQLite 并展示地图 replay。
 ```
 
-当前 demo 输出：
+Phase 1.2 历史 demo 输出（已归档，不再作为当前前端例子）：
 
 ```text
 地图：DUST2
@@ -246,7 +246,7 @@ phase15:match / phase15:replay / phase15:export 已实现。
 llm_calls 与 Artifact 记录已接入。
 真实调用发生在事实事件和 RoundReport 落库之后，不在 SQLite transaction 内等待网络。
 LLM 失败、结构不稳定或质量闸门 rejected 时自动 fallback_template。
-Web 本地 smoke runner 已加默认关闭、localhost、confirmReset、token 和生产禁用保护。
+旧 Phase 1.5 Web smoke runner 曾完成默认关闭、localhost、confirmReset、token 和生产禁用保护；现已从当前前端冻结移除，仅保留 CLI archive/debug 路径。
 LiveReplayData 不暴露 raw LLM response、driverModelId、modelName、llm_calls、Artifact 原文或 API Key。
 ```
 
@@ -282,7 +282,6 @@ Phase 1.5 使用方式：
 ```text
 默认：AGENT_MAJOR_REAL_LLM_ENABLED=false，不访问真实网络。
 真实 CLI smoke：AGENT_MAJOR_REAL_LLM_ENABLED=true 后运行 pnpm phase15:match。
-Web 本地按钮：额外设置 AGENT_MAJOR_WEB_RUNNER_ENABLED=true。
 远程或生产触发 Web runner：必须设置 AGENT_MAJOR_WEB_RUNNER_TOKEN，且仍不建议作为正式任务系统。
 ```
 
@@ -322,7 +321,7 @@ data/materials/processed 已接入运行时 seeding。
 默认 BO3 地图为 DUST2 / INFERNO / MIRAGE。
 新增 phase17:match / phase17:replay / phase17:export。
 Web runner 新增 phase17_showcase_match fake-only 模式。
-Phase 1.5 real LLM 单图路径保留为 phase15_single_map legacy/debug 模式。
+Phase 1.5 real LLM 单图路径已冻结为 CLI-only archive/debug 路径，不再影响当前前端主线。
 ```
 
 角色契约已经升级：
@@ -346,6 +345,20 @@ Phase 1.7 边界：
 完整 16 队 bracket 留给 Phase 2.0。
 ```
 
+### 队员 agent 与本地 LLM 环境判断
+
+当前结论：
+
+```text
+.env.local 已具备 DASHSCOPE_BASE_URL、DASHSCOPE_API_KEY、AGENT_MAJOR_REAL_LLM_ENABLED、AGENT_MAJOR_LLM_PROVIDER、caster/barrage driver ids、timeout/retries 和 Web runner 开关。
+packages/llm/src/model-registry.ts 已注册 qwen / glm / kimi / minimax 多个 driver model ids。
+packages/materials/src/index.ts 会严格校验 16 队角色资产和 future_driver_binding，但运行时仍强制 runtime_enabled=false，并把 showcase runtime Agent.driverModelId 统一写成 driver_fake_phase17。
+packages/core/src/engine.ts 已具备按 agent.driverModelId 驱动 agent_action、按 mvpAgent.driverModelId 驱动 judge 的能力。
+因此，当前资产层和 provider 层已具备条件，但“每个队员由大模型驱动”的 runtime 路由策略、env 契约和安全边界还没有正式落地。
+```
+
+这意味着：现在可以继续跑 `caster_line` 级真实 LLM，也可以准备一场本地 BO3 的 per-agent pilot；但要让 10 名 active player 真正进入 `agent_action` 真实驱动，必须单独进入下一阶段实现 runtime driver binding。
+
 ### P2.2 之后的文档
 
 当前状态：
@@ -361,28 +374,29 @@ P2.3 已补齐 Phase 1 fake provider MVP 和 Phase 1.5 真实 caster_line 需要
 
 ## 4. 当前下一步
 
-当前建议先完成 Phase 1.7 验收收口，再进入 Phase 2.0 的完整赛事设计：
+当前判断已经更新为：
 
 ```text
-1. 恢复本地依赖后跑完 pnpm typecheck / pnpm test / pnpm build。
-2. 对 phase17:match -> phase17:replay -> phase17:export 做 CLI smoke。
-3. 确认 Web replay/export 安全扫描。
-4. 开始 Phase 2.0：完整 16 队 bracket 与赛事调度。
+1. Phase 1.7 已完成验收收口：旧前端例子已冻结。
+2. Phase 1.8 已完成工程收口并暂时冻结：本地真实 LLM BO3 pilot 已打通 CLI + Web、逐回合调试、全量 llm_calls 观测、judge_review 护栏与可重跑链路。
+3. Phase 1.9 已完成 UI 收口并暂时冻结：Phase 1.8 only 观赛主屏、左右悬浮选手栏、可拖动控制台、底部事件详情和 replay guard 体验已成型。
+4. 当前下一步进入 Phase 2.0：完整 16 队 bracket 与赛事调度设计。
+5. 一版节目目标不变：Phase 2.0 仍然是完整 16 队 bracket 与赛事调度的赛事雏形。
 ```
 
-下一步优先补强对象：
+下一步优先对象：
 
 ```text
-1. Phase 1.7 的依赖恢复与完整回归验证。
-2. Phase 2.0 16 队 bracket 的状态机、seed、fixture 和失败恢复设计。
-3. 赛事统计、奖项、新闻和素材库的边界文档。
-4. 公开导出、API、队列与 Web 迁移约束。
+1. Phase 2.0 16 队 bracket 的状态机、seed、fixture、赛事调度和失败恢复设计。
+2. Phase 2.0 如何复用 Phase 1.7 materials、Phase 1.8 real LLM pilot 和 Phase 1.9 观赛主屏。
+3. Phase 2.0 前，只修 Phase 1.8 / 1.9 阻断性 bug，不继续扩展体验或 prompt 质量打磨。
+4. 继续把 prompt、judge 解释标准和多场次分布验证视为后续质量优化项，而不是阻塞 1.8 收口的前置条件。
 ```
 
 当前不建议先做：
 
 ```text
-不把真实 LLM 接入扩展到战术生成和胜负判定。
+不在 Phase 1.8 / 1.9 冻结后继续扩展真实 LLM 范围。
 不先做完整 2D 美术地图。
 不先做完整新闻站、奖项站或 16 队正式赛季实现。
 不先做远端部署和长期在线任务系统。

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import React, { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import {
   ROUND_TRANSITION_MS,
@@ -21,39 +21,101 @@ import {
   type PlayerStatus,
   type ScorePair
 } from "./live-replay-model";
+import {
+  buildBottomTickerViewModel,
+  buildBroadcastHudViewModel,
+  buildOverlayRosterViewModel,
+  buildReplayStageState,
+  type OverlayRosterViewModel,
+  type ReplayStageState
+} from "./phase18-watch-view-model";
+import { buildInitialRunMatchUiState, RunMatchControls, type ReplayGuardState, type RunMatchUiState, type WebRunProgress } from "./run-match-controls";
 import type { PublicWebRunnerPolicy } from "./server-web-runner-policy";
-import { RunMatchControls } from "./run-match-controls";
 import styles from "./live-replay-player.module.css";
 
-interface LiveReplayPlayerProps {
-  replay: LiveReplayData;
-  runnerPolicy: PublicWebRunnerPolicy;
+interface DockPosition {
+  x: number;
+  y: number;
 }
 
-export function LiveReplayPlayer({ replay, runnerPolicy }: LiveReplayPlayerProps) {
-  const maps = useMemo(() => [...replay.maps].sort((left, right) => left.order - right.order), [replay.maps]);
+interface DockDragState {
+  offsetX: number;
+  offsetY: number;
+  width: number;
+  height: number;
+}
+
+interface LiveReplayPlayerProps {
+  matchId: string;
+  replay: LiveReplayData | null;
+  runnerPolicy: PublicWebRunnerPolicy;
+  initialRunProgress?: WebRunProgress | null;
+  initialReplayGuard?: ReplayGuardState;
+}
+
+export function LiveReplayPlayer({
+  matchId,
+  replay,
+  runnerPolicy,
+  initialRunProgress = null,
+  initialReplayGuard = { hidden: false, message: "" }
+}: LiveReplayPlayerProps) {
+  const maps = useMemo(() => (replay ? [...replay.maps].sort((left, right) => left.order - right.order) : []), [replay]);
   const [selectedMapId, setSelectedMapId] = useState(maps[0]?.id ?? "");
   const [selectedRoundIndex, setSelectedRoundIndex] = useState(0);
   const [currentAtMs, setCurrentAtMs] = useState(0);
   const [status, setStatus] = useState<PlayerStatus>("idle");
   const [speed, setSpeed] = useState<PlaybackSpeed>("1x");
   const [revealedMapIds, setRevealedMapIds] = useState<string[]>([]);
+  const [replayGuard, setReplayGuard] = useState<ReplayGuardState>(initialReplayGuard);
+  const [runUiState, setRunUiState] = useState<RunMatchUiState>(() => buildInitialRunMatchUiState(initialRunProgress));
+  const [opsDockCollapsed, setOpsDockCollapsed] = useState(() => !initialRunProgress);
+  const [opsDockPosition, setOpsDockPosition] = useState<DockPosition | null>(null);
+  const [opsDockDragState, setOpsDockDragState] = useState<DockDragState | null>(null);
+  const opsDockRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!maps.some((mapReplay) => mapReplay.id === selectedMapId)) {
+      setSelectedMapId(maps[0]?.id ?? "");
+      setSelectedRoundIndex(0);
+      setCurrentAtMs(0);
+      setStatus("idle");
+    }
+  }, [maps, selectedMapId]);
+
+  useEffect(() => {
+    setRunUiState(buildInitialRunMatchUiState(initialRunProgress));
+  }, [initialRunProgress?.runId, initialRunProgress?.status]);
+
+  useEffect(() => {
+    setReplayGuard(initialReplayGuard);
+  }, [initialReplayGuard.hidden, initialReplayGuard.message]);
 
   const revealedMapSet = useMemo(() => new Set(revealedMapIds), [revealedMapIds]);
   const selectedMap = maps.find((mapReplay) => mapReplay.id === selectedMapId) ?? maps[0] ?? null;
   const rounds = useMemo(() => (selectedMap ? sortRounds(selectedMap.rounds) : []), [selectedMap]);
   const boundedRoundIndex = rounds.length > 0 ? Math.min(selectedRoundIndex, rounds.length - 1) : 0;
-  const currentRound = rounds[boundedRoundIndex];
+  const currentRound = rounds[boundedRoundIndex] ?? null;
   const roundDurationMs = currentRound ? getRoundDurationMs(currentRound) : 0;
   const frame = currentRound ? buildRoundFrame(currentRound, currentAtMs) : null;
   const nextMap = selectedMap ? maps.find((mapReplay) => mapReplay.order === selectedMap.order + 1) : undefined;
-  const selectedMapIdForReveal = selectedMap?.id;
+  const nextHighlightRoundIndex = selectedMap ? findNextHighlightRoundIndex(selectedMap, boundedRoundIndex) : null;
+  const hasReplayFrame = Boolean(selectedMap && currentRound && frame);
 
   useEffect(() => {
     if (selectedRoundIndex !== boundedRoundIndex) {
       setSelectedRoundIndex(boundedRoundIndex);
     }
   }, [boundedRoundIndex, selectedRoundIndex]);
+
+  useEffect(() => {
+    const priorCompletedMapIds = maps.filter((mapReplay) => mapReplay.order < (selectedMap?.order ?? 1) && mapReplay.winnerTeamId).map((mapReplay) => mapReplay.id);
+    if (priorCompletedMapIds.length === 0) {
+      return;
+    }
+
+    setRevealedMapIds((current) => [...new Set([...current, ...priorCompletedMapIds])]);
+  }, [maps, selectedMap?.order]);
 
   useEffect(() => {
     if (status !== "playing" || !currentRound || roundDurationMs <= 0) {
@@ -104,371 +166,492 @@ export function LiveReplayPlayer({ replay, runnerPolicy }: LiveReplayPlayerProps
   }, [boundedRoundIndex, currentAtMs, currentRound, roundDurationMs, selectedMap, speed, status]);
 
   useEffect(() => {
-    if (status !== "completed" || !selectedMapIdForReveal) {
+    if (status !== "completed" || !selectedMap?.id) {
       return;
     }
 
-    setRevealedMapIds((current) => (current.includes(selectedMapIdForReveal) ? current : [...current, selectedMapIdForReveal]));
-  }, [selectedMapIdForReveal, status]);
+    setRevealedMapIds((current) => (current.includes(selectedMap.id) ? current : [...current, selectedMap.id]));
+  }, [selectedMap?.id, status]);
 
-  if (!selectedMap || !currentRound || !frame) {
-    return (
-      <main className={styles.shell}>
-        <section className={styles.emptyState}>
-          <p>Agent Major Phase 1.7</p>
-          <h1>没有可播放地图</h1>
-          <span>当前 match replay 没有 completed map，请先运行 `pnpm phase17:match`。</span>
+  useEffect(() => {
+    if (!replayGuard.hidden) {
+      return;
+    }
+
+    setStatus("idle");
+    setCurrentAtMs(0);
+  }, [replayGuard.hidden]);
+
+  useEffect(() => {
+    if (runUiState.state === "running" || runUiState.state === "failed") {
+      setOpsDockCollapsed(false);
+    }
+  }, [runUiState.state]);
+
+  useEffect(() => {
+    if (!opsDockDragState) {
+      return;
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const maxX = Math.max(8, window.innerWidth - opsDockDragState.width - 8);
+      const maxY = Math.max(8, window.innerHeight - opsDockDragState.height - 8);
+      setOpsDockPosition({
+        x: clamp(event.clientX - opsDockDragState.offsetX, 8, maxX),
+        y: clamp(event.clientY - opsDockDragState.offsetY, 8, maxY)
+      });
+    };
+
+    const handlePointerUp = () => {
+      setOpsDockDragState(null);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+    };
+  }, [opsDockDragState]);
+
+  const stageState = buildReplayStageState({
+    hasReplay: hasReplayFrame,
+    replayGuard,
+    runUiState,
+    selectedMapName: selectedMap?.mapName ?? null
+  });
+  const revealedMatchScore = replay ? getRevealedMatchScore(maps, revealedMapSet, replay) : { teamA: 0, teamB: 0 };
+  const hudView = buildBroadcastHudViewModel({
+    replay,
+    selectedMap,
+    currentRound,
+    stageState,
+    runUiState,
+    bo3Score: revealedMatchScore
+  });
+  const teamAView = buildOverlayRosterViewModel({ replay, selectedMap, currentRound, frame, teamKey: "teamA" });
+  const teamBView = buildOverlayRosterViewModel({ replay, selectedMap, currentRound, frame, teamKey: "teamB" });
+  const bottomTickerView = buildBottomTickerViewModel({ replay, frame, stageState });
+  const roundProgressPercent = frame ? `${Math.round(frame.progress * 100)}%` : "0%";
+  const timeLabel = frame ? `${formatClock(currentAtMs)} / ${formatClock(roundDurationMs)}` : "--:-- / --:--";
+
+  return (
+    <main className={styles.shell}>
+      <section className={styles.broadcastShell}>
+        <header className={styles.broadcastHud}>
+          <div className={styles.hudTeamBlock}>
+            <span className={styles.hudBanner}>{hudView.banner}</span>
+            <strong>{hudView.teamAName}</strong>
+          </div>
+          <div className={styles.hudCenter}>
+            <div className={styles.hudScoreLine}>
+              <span>{hudView.bo3Label}</span>
+              <strong>{hudView.bo3ScoreLabel}</strong>
+              <small>{hudView.runStatusLabel}</small>
+            </div>
+            <div className={styles.hudMetaLine}>
+              <span>{hudView.mapLabel}</span>
+              <span>{hudView.roundLabel}</span>
+              <span>{hudView.runModeLabel}</span>
+            </div>
+            <nav className={styles.mapPillRail} aria-label="地图选择">
+              {maps.length > 0 ? (
+                maps.map((mapReplay) => {
+                  const isActive = selectedMap ? mapReplay.id === selectedMap.id : false;
+                  const isRevealed = revealedMapSet.has(mapReplay.id);
+                  const displayScore = getMapDisplayScore({
+                    mapReplay,
+                    isActive,
+                    isRevealed,
+                    frame
+                  });
+                  return (
+                    <button
+                      key={mapReplay.id}
+                      className={`${styles.mapPill} ${isActive ? styles.mapPillActive : ""}`}
+                      type="button"
+                      aria-pressed={isActive}
+                      onClick={() => handleMapSelect(mapReplay.id)}
+                    >
+                      <span>
+                        M{mapReplay.order} / {mapReplay.mapName}
+                      </span>
+                      <strong>{displayScore ? `${displayScore.teamA}:${displayScore.teamB}` : "--:--"}</strong>
+                    </button>
+                  );
+                })
+              ) : (
+                <span className={styles.mapPillPlaceholder}>当前还没有可浏览的地图回放。</span>
+              )}
+            </nav>
+          </div>
+          <div className={`${styles.hudTeamBlock} ${styles.hudTeamBlockRight}`}>
+            <span className={styles.hudContext}>{hudView.contextLine}</span>
+            <strong>{hudView.teamBName}</strong>
+          </div>
+        </header>
+
+        <section className={styles.broadcastBody}>
+          <section className={styles.stagePanel} aria-label="导播主舞台">
+            <div className={styles.stageViewport}>
+              {frame ? <TacticalMap frame={frame} /> : <StagePlaceholder />}
+              {stageState.kind !== "replay_ready" ? <StageOverlay state={stageState} /> : <StageBadge state={stageState} />}
+              <RosterRail roster={teamAView} side="left" />
+              <RosterRail roster={teamBView} side="right" />
+
+              <div className={styles.playbackDock} aria-label="回放控制">
+                <div className={styles.playbackButtons}>
+                  <button type="button" onClick={handlePlay} disabled={!currentRound || status === "playing"}>
+                    {status === "completed" ? "重播本图" : status === "paused" ? "继续播放" : "开始播放"}
+                  </button>
+                  <button type="button" onClick={() => setStatus("paused")} disabled={status !== "playing"}>
+                    暂停
+                  </button>
+                  <button type="button" onClick={handleReset} disabled={!currentRound}>
+                    重置地图
+                  </button>
+                  <button type="button" onClick={handleHighlightJump} disabled={!currentRound || nextHighlightRoundIndex === null}>
+                    跳到高光
+                  </button>
+                </div>
+                <div className={styles.playbackMeta}>
+                  <span>{timeLabel}</span>
+                  <span>{frame ? `地图比分 ${frame.currentScore.teamA}:${frame.currentScore.teamB}` : "地图比分待定"}</span>
+                </div>
+                <label className={styles.playbackSelect}>
+                  倍速
+                  <select value={speed} onChange={(event) => setSpeed(event.target.value as PlaybackSpeed)}>
+                    {SPEED_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className={styles.progressTrack} role="progressbar" aria-label="当前回合回放进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={frame ? Math.round(frame.progress * 100) : 0}>
+                <span style={{ width: roundProgressPercent }} />
+              </div>
+
+              {status === "completed" && selectedMap ? (
+                <section className={styles.mapCompleteToast}>
+                  <div>
+                    <span>地图播放结束</span>
+                    <strong>
+                      {selectedMap.mapName} / {selectedMap.finalScore.teamA}:{selectedMap.finalScore.teamB}
+                    </strong>
+                  </div>
+                  {nextMap ? (
+                    <button type="button" onClick={() => handleMapSelect(nextMap.id)}>
+                      进入 M{nextMap.order} / {nextMap.mapName}
+                    </button>
+                  ) : (
+                    <span>当前 BO3 暂无下一张已提交地图。</span>
+                  )}
+                </section>
+              ) : null}
+              <section
+                className={`${styles.opsDock} ${opsDockCollapsed ? styles.opsDockCollapsed : ""}`}
+                aria-label="控制台"
+                ref={opsDockRef}
+                style={opsDockPosition ? { left: opsDockPosition.x, top: opsDockPosition.y, right: "auto", bottom: "auto", transform: "none" } : undefined}
+              >
+                <div className={styles.opsDockHandle} onPointerDown={handleOpsDockPointerDown}>
+                  <span>拖动控制台</span>
+                  <small>移动</small>
+                </div>
+                <button type="button" className={styles.opsDockToggle} onClick={() => setOpsDockCollapsed((value) => !value)} aria-expanded={!opsDockCollapsed}>
+                  {opsDockCollapsed ? "展开" : "收起"}
+                </button>
+                <span className={styles.opsDockTabLabel}>控制台</span>
+                <div className={styles.opsDockContent}>
+                  <div className={styles.opsDockHeader}>
+                    <p>控制台</p>
+                    <h2>生成与验收</h2>
+                    <span>可拖动，负责生成、进度和 LLM 明细，不进入主观赛层。</span>
+                  </div>
+                  <RunMatchControls
+                    matchId={matchId}
+                    runnerPolicy={runnerPolicy}
+                    initialProgress={initialRunProgress}
+                    onReplayGuardChange={setReplayGuard}
+                    onUiStateChange={setRunUiState}
+                  />
+                </div>
+              </section>
+            </div>
+          </section>
         </section>
-      </main>
-    );
-  }
 
-  const selectedMapRevealed = revealedMapSet.has(selectedMap.id);
-  const revealedMatchScore = getRevealedMatchScore(maps, revealedMapSet, replay);
-  const matchWinnerName = getRevealedMatchWinnerName(revealedMatchScore, replay);
-  const roundWinnerName = frame.resultWinnerTeamId ? getTeamName(replay, frame.resultWinnerTeamId) : "待揭示";
-  const roundProgressPercent = `${Math.round(frame.progress * 100)}%`;
-  const nextHighlightRoundIndex = findNextHighlightRoundIndex(selectedMap, boundedRoundIndex);
+        <section className={styles.bottomTicker}>
+          <div className={styles.tickerSummaryGrid}>
+            <TickerCard label={bottomTickerView.briefLabel} value={bottomTickerView.briefValue} />
+            <TickerCard label={bottomTickerView.latestKillLabel} value={bottomTickerView.latestKillValue} />
+            <TickerCard label={bottomTickerView.latestHighlightLabel} value={bottomTickerView.latestHighlightValue} />
+          </div>
+          <details className={styles.detailsTray}>
+            <summary>展开事件与高光详情</summary>
+            <div className={styles.detailsTrayBody}>
+              <Panel title="时间线">
+                <div className={styles.timelineList}>
+                  {frame?.visibleEvents.length ? (
+                    frame.visibleEvents
+                      .slice(-8)
+                      .reverse()
+                      .map((event) => (
+                        <div key={event.id} className={styles.timelineItem}>
+                          <span>{formatClock(event.atMs)}</span>
+                          <strong>{event.kind}</strong>
+                          <small>{getEventText(event)}</small>
+                        </div>
+                      ))
+                  ) : (
+                    <span className={styles.muted}>当前切片还没有可见事件。</span>
+                  )}
+                </div>
+              </Panel>
 
-  const handleMapSelect = (mapGameId: string) => {
+              <Panel title="高光与弹幕">
+                <div className={styles.highlightStack}>
+                  {frame?.highlightTags.length ? (
+                    <div className={styles.highlightBox}>
+                      <strong>{frame.highlightTags.join(" / ")}</strong>
+                      <span>MVP：{frame.highlightMvpName ?? frame.highlightMvpAgentId ?? "待定"}</span>
+                      {frame.replayCard ? (
+                        <div className={styles.replayCard}>
+                          <small>回放卡片</small>
+                          <b>{frame.replayCard.title}</b>
+                          <span>{frame.replayCard.summary}</span>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <span className={styles.muted}>当前还没有高光标签。</span>
+                  )}
+                  <div className={styles.barrageList}>
+                    {frame?.barrageMessages.length ? (
+                      frame.barrageMessages.map((message) => (
+                        <div key={message.id} className={styles.barrageItem}>
+                          <span>{formatClock(message.atMs)}</span>
+                          <strong>{message.text}</strong>
+                          <small>{message.intensity}</small>
+                        </div>
+                      ))
+                    ) : (
+                      <span className={styles.muted}>当前切片还没有弹幕信号。</span>
+                    )}
+                  </div>
+                  {frame?.supportRate ? (
+                    <div className={styles.supportRate}>
+                      <div>
+                        <span>{replay?.teams.teamA.shortName ?? "F7B"}</span>
+                        <strong>{frame.supportRate.teamA}%</strong>
+                      </div>
+                      <meter min={0} max={100} value={frame.supportRate.teamA} />
+                      <div>
+                        <span>{replay?.teams.teamB.shortName ?? "VIT"}</span>
+                        <strong>{frame.supportRate.teamB}%</strong>
+                      </div>
+                      <small>{frame.supportRate.label}</small>
+                    </div>
+                  ) : null}
+                </div>
+              </Panel>
+
+              <Panel title="回合索引">
+                <div className={styles.roundGrid}>
+                  {rounds.length ? (
+                    rounds.map((item, index) => (
+                      <RoundButton
+                        key={item.id}
+                        active={index === boundedRoundIndex}
+                        frame={frame}
+                        index={index}
+                        item={item}
+                        mapRevealed={selectedMap ? revealedMapSet.has(selectedMap.id) : false}
+                        replay={replay}
+                        selectedRoundIndex={boundedRoundIndex}
+                        status={status}
+                        onClick={() => handleRoundJump(index)}
+                      />
+                    ))
+                  ) : (
+                    <span className={styles.muted}>当前地图还没有可跳转的局回放。</span>
+                  )}
+                </div>
+              </Panel>
+            </div>
+          </details>
+        </section>
+      </section>
+    </main>
+  );
+
+  function handleMapSelect(mapGameId: string) {
     setSelectedMapId(mapGameId);
     setSelectedRoundIndex(0);
     setCurrentAtMs(0);
     setStatus("idle");
-  };
+  }
 
-  const handlePlay = () => {
+  function handlePlay() {
+    if (!currentRound) {
+      return;
+    }
     if (status === "completed") {
       setSelectedRoundIndex(0);
       setCurrentAtMs(0);
     }
     setStatus("playing");
-  };
+  }
 
-  const handleReset = () => {
+  function handleReset() {
     setSelectedRoundIndex(0);
     setCurrentAtMs(0);
     setStatus("idle");
-  };
+  }
 
-  const handleRoundJump = (index: number) => {
+  function handleRoundJump(index: number) {
     setSelectedRoundIndex(index);
     setCurrentAtMs(0);
     setStatus("paused");
-  };
+  }
 
-  const handleHighlightJump = () => {
+  function handleHighlightJump() {
     if (nextHighlightRoundIndex === null) {
       return;
     }
-
     setSelectedRoundIndex(nextHighlightRoundIndex);
     setCurrentAtMs(0);
     setStatus("paused");
-  };
+  }
 
+  function handleOpsDockPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) {
+      return;
+    }
+
+    const dockElement = opsDockRef.current;
+    if (!dockElement) {
+      return;
+    }
+
+    const dockRect = dockElement.getBoundingClientRect();
+    event.preventDefault();
+    setOpsDockPosition({
+      x: clamp(dockRect.left, 8, Math.max(8, window.innerWidth - dockRect.width - 8)),
+      y: clamp(dockRect.top, 8, Math.max(8, window.innerHeight - dockRect.height - 8))
+    });
+    setOpsDockDragState({
+      offsetX: event.clientX - dockRect.left,
+      offsetY: event.clientY - dockRect.top,
+      width: dockRect.width,
+      height: dockRect.height
+    });
+  }
+}
+
+function StagePlaceholder() {
+  return <div className={`${styles.virtualMap} ${styles.virtualMapPlaceholder}`} aria-hidden="true" />;
+}
+
+function StageBadge({ state }: { state: ReplayStageState }) {
   return (
-    <main className={styles.shell}>
-      <section className={styles.hero}>
+    <div className={styles.stageBadge}>
+      <span>{state.badge}</span>
+    </div>
+  );
+}
+
+function StageOverlay({ state }: { state: ReplayStageState }) {
+  return (
+    <div className={styles.stageOverlay} data-kind={state.kind}>
+      <span className={styles.stageOverlayBadge}>{state.badge}</span>
+      <strong className={styles.stageOverlayTitle}>{state.title}</strong>
+      <p className={styles.stageOverlayText}>{state.description}</p>
+    </div>
+  );
+}
+
+function RosterRail({ roster, side }: { roster: OverlayRosterViewModel; side: "left" | "right" }) {
+  return (
+    <aside className={`${styles.rosterRail} ${side === "right" ? styles.rosterRailRight : ""}`}>
+      <div className={styles.rosterHeader}>
         <div>
-          <p className={styles.kicker}>Agent Major Phase 1.7 / Materials Showcase</p>
-          <h1>
-            {replay.teams.teamA.displayName} vs {replay.teams.teamB.displayName}
-          </h1>
-          <span className={styles.subtitle}>
-            Simulation First, Broadcast Second. 当前页面只消费播放 ViewModel，不重新模拟比赛，也不读取 RawOutput。
-          </span>
+          <span>{roster.shortName}</span>
+          <strong>{roster.displayName}</strong>
+          <small>{roster.sideLabel}</small>
         </div>
-        <aside className={styles.matchPlate}>
-          <span>BO3</span>
-          <strong>
-            {revealedMatchScore.teamA}-{revealedMatchScore.teamB}
-          </strong>
-          <small>胜者：{matchWinnerName}</small>
-          <RunMatchControls matchId={replay.matchId} runnerPolicy={runnerPolicy} compact />
-        </aside>
-      </section>
-
-      <section className={styles.mapTabs} aria-label="地图切换">
-        {maps.map((mapReplay) => {
-          const isActive = mapReplay.id === selectedMap.id;
-          const isRevealed = revealedMapSet.has(mapReplay.id);
-          const displayScore = getMapDisplayScore({
-            mapReplay,
-            isActive,
-            isRevealed,
-            frame
-          });
-          return (
-            <button
-              key={mapReplay.id}
-              className={`${styles.mapTab} ${isActive ? styles.mapTabActive : ""}`}
-              type="button"
-              aria-pressed={isActive}
-              onClick={() => handleMapSelect(mapReplay.id)}
-            >
-              <span>
-                M{mapReplay.order} / {mapReplay.mapName}
-              </span>
-              <strong>{displayScore ? `${displayScore.teamA}:${displayScore.teamB}` : "--:--"}</strong>
-              <small>{getMapStatusLabel(replay, mapReplay, isActive, isRevealed)}</small>
-            </button>
-          );
-        })}
-      </section>
-
-      <section className={styles.scoreboard}>
-        <div>
-          <span>{selectedMap.mapName}</span>
-          <strong>
-            {frame.currentScore.teamA}:{frame.currentScore.teamB}
-          </strong>
-          <small>
-            R{currentRound.roundNumber} / {formatClock(currentAtMs)} / {formatClock(roundDurationMs)}
-          </small>
+        <b>{roster.score}</b>
+      </div>
+      {roster.players.length ? (
+        <div className={styles.rosterList}>
+          {roster.players.map((player) => (
+            <article key={player.id} className={styles.rosterRow} data-highlight={player.highlight}>
+              <div className={styles.rosterRowTop}>
+                <strong>{player.displayName}</strong>
+                <span>{player.roleLabel}</span>
+              </div>
+              <div className={styles.rosterRowMeta}>
+                <span>{player.metaLabel}</span>
+                <span>{player.tokenBankLabel}</span>
+                <span>{player.buyLabel}</span>
+              </div>
+              <small>{player.statusLabel}</small>
+            </article>
+          ))}
         </div>
-        <div className={styles.scoreMeta}>
-          <span>状态：{status}</span>
-          <span>倍速：{speed}</span>
-          <span>当前回合胜者：{roundWinnerName}</span>
-          <span>时间线：{currentRound.timelineEvents.length}</span>
+      ) : (
+        <div className={styles.rosterEmpty}>{roster.emptyMessage ?? "待回放"}</div>
+      )}
+    </aside>
+  );
+}
+
+function TickerCard({ label, value }: { label: string; value: string }) {
+  return (
+    <article className={styles.tickerCard}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </article>
+  );
+}
+
+function TacticalMap({ frame }: { frame: LiveRoundFrame }) {
+  return (
+    <div className={styles.virtualMap}>
+      <svg className={styles.tacticalLines} viewBox={`0 0 ${frame.tacticalMap.canvas.width} ${frame.tacticalMap.canvas.height}`} aria-hidden="true" preserveAspectRatio="none">
+        {frame.tacticalMap.connections.map((connection) => (
+          <line
+            key={`${connection.fromZoneId}-${connection.toZoneId}`}
+            x1={connection.from.x}
+            y1={connection.from.y}
+            x2={connection.to.x}
+            y2={connection.to.y}
+            className={`${styles.tacticalLine} ${connection.active ? styles.tacticalLineActive : ""}`}
+          />
+        ))}
+      </svg>
+      {frame.tacticalMap.zones.map((zone) => (
+        <div
+          key={zone.id}
+          className={`${styles.tacticalZone} ${zone.active ? styles.tacticalZoneActive : ""} ${zone.weak ? styles.tacticalZoneWeak : ""}`}
+          style={{
+            left: `${(zone.position.x / frame.tacticalMap.canvas.width) * 100}%`,
+            top: `${(zone.position.y / frame.tacticalMap.canvas.height) * 100}%`
+          }}
+        >
+          <span>{zone.displayName}</span>
+          <strong>{zone.eventType ?? zone.role}</strong>
+          <small>{zone.active ? zone.impact ?? "当前区域已被真实事件激活。" : "等待本回合事件推进到这里。"}</small>
+          {zone.badge ? <b>{zone.badge}</b> : null}
+          {zone.weak ? <em>回退点位：{zone.requestedZoneId}</em> : null}
         </div>
-      </section>
-
-      <section className={styles.controlBar} aria-label="播放控制">
-        <button type="button" onClick={handlePlay} disabled={status === "playing"}>
-          {status === "completed" ? "重播本图" : status === "paused" ? "继续" : "播放"}
-        </button>
-        <button type="button" onClick={() => setStatus("paused")} disabled={status !== "playing"}>
-          暂停
-        </button>
-        <button type="button" onClick={handleReset}>
-          重置本图
-        </button>
-        <button type="button" onClick={handleHighlightJump} disabled={nextHighlightRoundIndex === null}>
-          跳到高光
-        </button>
-        <label>
-          倍速
-          <select value={speed} onChange={(event) => setSpeed(event.target.value as PlaybackSpeed)}>
-            {SPEED_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
-      </section>
-
-      <section
-        className={styles.progressTrack}
-        role="progressbar"
-        aria-label="当前回合播放进度"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.round(frame.progress * 100)}
-      >
-        <span style={{ width: roundProgressPercent }} />
-      </section>
-
-      <section className={styles.liveGrid}>
-        <article className={styles.stageCard}>
-          <div className={styles.stageHeader}>
-            <div>
-              <span>当前回合</span>
-              <strong>Round {currentRound.roundNumber}</strong>
-            </div>
-            <small>{frame.roundSummary ?? "回合战报将在本局结算后揭示。"}</small>
-          </div>
-
-          <div className={styles.virtualMap}>
-            <svg
-              className={styles.tacticalLines}
-              viewBox={`0 0 ${frame.tacticalMap.canvas.width} ${frame.tacticalMap.canvas.height}`}
-              aria-hidden="true"
-              preserveAspectRatio="none"
-            >
-              {frame.tacticalMap.connections.map((connection) => (
-                <line
-                  key={`${connection.fromZoneId}-${connection.toZoneId}`}
-                  x1={connection.from.x}
-                  y1={connection.from.y}
-                  x2={connection.to.x}
-                  y2={connection.to.y}
-                  className={`${styles.tacticalLine} ${connection.active ? styles.tacticalLineActive : ""}`}
-                />
-              ))}
-            </svg>
-            {frame.tacticalMap.zones.map((zone) => (
-              <div
-                key={zone.id}
-                className={`${styles.tacticalZone} ${zone.active ? styles.tacticalZoneActive : ""} ${zone.weak ? styles.tacticalZoneWeak : ""}`}
-                style={{
-                  left: `${(zone.position.x / frame.tacticalMap.canvas.width) * 100}%`,
-                  top: `${(zone.position.y / frame.tacticalMap.canvas.height) * 100}%`
-                }}
-              >
-                <span>{zone.displayName}</span>
-                <strong>{zone.eventType ?? zone.role}</strong>
-                <small>{zone.active ? zone.impact ?? "控制区已激活" : "等待时间线触发"}</small>
-                {zone.badge ? <b>{zone.badge}</b> : null}
-                {zone.weak ? <em>fallback: {zone.requestedZoneId}</em> : null}
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <aside className={styles.sideStack}>
-          <Panel title="主解说">
-            <p className={styles.casterLine}>{frame.casterLine ?? "解说席等待时间线信号。"}</p>
-          </Panel>
-
-          <Panel title="支持率">
-            {frame.supportRate ? (
-              <div className={styles.supportRate}>
-                <div>
-                  <span>{replay.teams.teamA.shortName}</span>
-                  <strong>{frame.supportRate.teamA}%</strong>
-                </div>
-                <meter min={0} max={100} value={frame.supportRate.teamA} />
-                <div>
-                  <span>{replay.teams.teamB.shortName}</span>
-                  <strong>{frame.supportRate.teamB}%</strong>
-                </div>
-                <small>{frame.supportRate.label}</small>
-              </div>
-            ) : (
-              <span className={styles.muted}>支持率会随比分和经济信号更新。</span>
-            )}
-          </Panel>
-
-          <Panel title="Kill Feed">
-            <div className={styles.feedList}>
-              {frame.killFeed.length > 0 ? (
-                frame.killFeed.map((entry) => (
-                  <div key={entry.id} className={styles.feedItem}>
-                    <span>{formatClock(entry.atMs)}</span>
-                    <strong>{entry.text}</strong>
-                    <small>
-                      {entry.actorName ?? entry.actorAgentId ?? "unknown"} {entry.actorRole ? `(${entry.actorRole})` : ""}{" "}
-                      {entry.targetName ? `-> ${entry.targetName}` : ""} / {entry.zoneId ?? "unknown zone"}
-                    </small>
-                  </div>
-                ))
-              ) : (
-                <span className={styles.muted}>等待击杀播报。</span>
-              )}
-            </div>
-          </Panel>
-
-          <Panel title="弹幕池">
-            <div className={styles.barrageList}>
-              {frame.barrageMessages.length > 0 ? (
-                frame.barrageMessages.map((message) => (
-                  <div key={message.id} className={styles.barrageItem}>
-                    <span>{formatClock(message.atMs)}</span>
-                    <strong>{message.text}</strong>
-                    <small>{message.intensity}</small>
-                  </div>
-                ))
-              ) : (
-                <span className={styles.muted}>弹幕池等待 fallback 生成。</span>
-              )}
-            </div>
-          </Panel>
-
-          <Panel title="高光揭示">
-            {frame.highlightTags.length > 0 ? (
-              <div className={styles.highlightBox}>
-                <strong>{frame.highlightTags.join(" / ")}</strong>
-                <span>MVP: {frame.highlightMvpName ?? frame.highlightMvpAgentId ?? "pending"}</span>
-                {frame.replayCard ? (
-                  <div className={styles.replayCard}>
-                    <small>Replay Card</small>
-                    <b>{frame.replayCard.title}</b>
-                    <span>{frame.replayCard.summary}</span>
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <span className={styles.muted}>高光会在回合后段揭示。</span>
-            )}
-          </Panel>
-        </aside>
-      </section>
-
-      <section className={styles.detailGrid}>
-        <Panel title="经济面板">
-          {frame.economyVisible ? (
-            <div className={styles.economyGrid}>
-              {frame.economyRows.map((row) => (
-                <div key={row.agentId} className={styles.economyRow}>
-                  <span>{row.displayName}</span>
-                  <strong>{row.afterTokenBank}</strong>
-                  <small>
-                    {row.role} / {row.buyType} / {row.spent} spent / LS {row.lossStreak}
-                  </small>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <span className={styles.muted}>经济面板会在 10 秒附近展开。</span>
-          )}
-        </Panel>
-
-        <Panel title="事件流">
-          <div className={styles.timelineList}>
-            {frame.visibleEvents
-              .slice(-8)
-              .reverse()
-              .map((event) => (
-                <div key={event.id} className={styles.timelineItem}>
-                  <span>{formatClock(event.atMs)}</span>
-                  <strong>{event.kind}</strong>
-                  <small>{getEventText(event)}</small>
-                </div>
-              ))}
-          </div>
-        </Panel>
-
-        <Panel title="回合跳转">
-          <div className={styles.roundGrid}>
-            {rounds.map((item, index) => (
-              <RoundButton
-                key={item.id}
-                active={index === boundedRoundIndex}
-                frame={frame}
-                index={index}
-                item={item}
-                mapRevealed={selectedMapRevealed}
-                replay={replay}
-                selectedRoundIndex={boundedRoundIndex}
-                status={status}
-                onClick={() => handleRoundJump(index)}
-              />
-            ))}
-          </div>
-        </Panel>
-      </section>
-
-      {status === "completed" ? (
-        <section className={styles.mapComplete}>
-          <div>
-            <span>地图播放结束</span>
-            <strong>
-              {selectedMap.mapName} / {selectedMap.finalScore.teamA}:{selectedMap.finalScore.teamB}
-            </strong>
-          </div>
-          {nextMap ? (
-            <button type="button" onClick={() => handleMapSelect(nextMap.id)}>
-              确认进入 M{nextMap.order} / {nextMap.mapName}
-            </button>
-          ) : (
-            <span>BO3 已无下一张 completed map。</span>
-          )}
-        </section>
-      ) : null}
-    </main>
+      ))}
+    </div>
   );
 }
 
@@ -493,11 +676,11 @@ function RoundButton({
   onClick
 }: {
   active: boolean;
-  frame: LiveRoundFrame;
+  frame: LiveRoundFrame | null;
   index: number;
   item: LiveReplayRound;
   mapRevealed: boolean;
-  replay: LiveReplayData;
+  replay: LiveReplayData | null;
   selectedRoundIndex: number;
   status: PlayerStatus;
   onClick: () => void;
@@ -513,12 +696,7 @@ function RoundButton({
   });
 
   return (
-    <button
-      className={`${styles.roundButton} ${active ? styles.roundButtonActive : ""}`}
-      type="button"
-      aria-current={active ? "step" : undefined}
-      onClick={onClick}
-    >
+    <button className={`${styles.roundButton} ${active ? styles.roundButtonActive : ""}`} type="button" aria-current={active ? "step" : undefined} onClick={onClick}>
       <span>R{String(item.roundNumber).padStart(2, "0")}</span>
       <strong>{display.scoreLabel}</strong>
       <small>{display.metaLabel}</small>
@@ -527,11 +705,11 @@ function RoundButton({
 }
 
 function getRoundButtonDisplay(input: {
-  frame: LiveRoundFrame;
+  frame: LiveRoundFrame | null;
   index: number;
   item: LiveReplayRound;
   mapRevealed: boolean;
-  replay: LiveReplayData;
+  replay: LiveReplayData | null;
   selectedRoundIndex: number;
   status: PlayerStatus;
 }): { scoreLabel: string; metaLabel: string } {
@@ -546,39 +724,27 @@ function getRoundButtonDisplay(input: {
     };
   }
 
-  if (isCurrentRound) {
+  if (isCurrentRound && input.frame) {
     return {
       scoreLabel: formatScore(input.frame.currentScore),
-      metaLabel: input.frame.resultWinnerTeamId ? getTeamName(input.replay, input.frame.resultWinnerTeamId) : "LIVE"
+      metaLabel: input.frame.resultWinnerTeamId ? getTeamName(input.replay, input.frame.resultWinnerTeamId) : "实时"
     };
   }
 
   return {
     scoreLabel: "--",
-    metaLabel: "待播放"
+    metaLabel: "待生成"
   };
 }
 
-function getMapDisplayScore(input: {
-  mapReplay: LiveReplayMap;
-  isActive: boolean;
-  isRevealed: boolean;
-  frame: LiveRoundFrame;
-}): ScorePair | null {
-  if (input.isActive) {
+function getMapDisplayScore(input: { mapReplay: LiveReplayMap; isActive: boolean; isRevealed: boolean; frame: LiveRoundFrame | null }): ScorePair | null {
+  if (input.isActive && input.frame) {
     return input.frame.currentScore;
   }
   if (input.isRevealed) {
     return input.mapReplay.finalScore;
   }
   return null;
-}
-
-function getMapStatusLabel(replay: LiveReplayData, mapReplay: LiveReplayMap, isActive: boolean, isRevealed: boolean): string {
-  if (isRevealed) {
-    return `${getTeamName(replay, mapReplay.winnerTeamId)} win`;
-  }
-  return isActive ? "播放中 / 待结算" : "待播放";
 }
 
 function getRevealedMatchScore(maps: LiveReplayMap[], revealedMapSet: Set<string>, replay: LiveReplayData): ScorePair {
@@ -599,29 +765,23 @@ function getRevealedMatchScore(maps: LiveReplayMap[], revealedMapSet: Set<string
   );
 }
 
-function getRevealedMatchWinnerName(score: ScorePair, replay: LiveReplayData): string {
-  if (score.teamA >= 2) {
-    return replay.teams.teamA.shortName;
-  }
-  if (score.teamB >= 2) {
-    return replay.teams.teamB.shortName;
-  }
-  return "待揭示";
-}
-
 function formatScore(score: ScorePair): string {
   return `${score.teamA}-${score.teamB}`;
 }
 
-function getTeamName(replay: LiveReplayData, teamId: string | undefined): string {
+function getTeamName(replay: LiveReplayData | null, teamId: string | undefined): string {
   if (!teamId) {
-    return "pending";
+    return "待定";
   }
-  if (teamId === replay.teams.teamA.id) {
+  if (teamId === replay?.teams.teamA.id) {
     return replay.teams.teamA.shortName;
   }
-  if (teamId === replay.teams.teamB.id) {
+  if (teamId === replay?.teams.teamB.id) {
     return replay.teams.teamB.shortName;
   }
   return teamId;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }

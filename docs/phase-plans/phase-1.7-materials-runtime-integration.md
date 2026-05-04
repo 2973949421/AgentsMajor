@@ -180,10 +180,12 @@ Web runner 新增 fake-only 模式：
 phase17_showcase_match
 ```
 
-Phase 1.5 real LLM 单图模式保留为显式 legacy / debug 路径：
+Phase 1.5 real LLM 单图路径冻结为 CLI-only archive / debug 路径，不再从当前前端或 Web runner 暴露：
 
 ```text
-phase15_single_map
+pnpm phase15:match
+pnpm phase15:replay
+pnpm phase15:export
 ```
 
 ## 7. CLI
@@ -247,4 +249,3 @@ Phase 1.6 tacticalContext 在新角色下仍生成。
 Web replay/export 不暴露敏感模型字段或 future binding 全量内容。
 phase13:*、phase15:*、phase16:* 保持兼容。
 ```
-

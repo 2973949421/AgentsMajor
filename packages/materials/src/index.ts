@@ -26,6 +26,14 @@ export const phase17CanonIds = {
   selectedMapIds: ["DUST2", "INFERNO", "MIRAGE"]
 } as const;
 
+export const phase18CanonIds = {
+  tournamentId: "agent_major_phase18_llm_pilot",
+  matchId: "phase18_match_falcon_7b_vs_vitallmty",
+  teamASlug: "falcon-7b",
+  teamBSlug: "vitallmty",
+  selectedMapIds: ["DUST2", "INFERNO", "MIRAGE"]
+} as const;
+
 export const phase17AllowedMapIds = [...phase17CanonIds.selectedMapIds] as const;
 
 export interface ProcessedMaterials {
@@ -88,6 +96,7 @@ export interface RuntimeTeamSeedOptions {
   driverModelId?: string;
   runtimeTeamIdPrefix?: string;
   runtimeAgentIdPrefix?: string;
+  includeCoach?: boolean;
 }
 
 export interface Phase17ShowcaseSeedInput {
@@ -99,6 +108,22 @@ export interface Phase17ShowcaseSeedInput {
 }
 
 export interface Phase17ShowcaseSeedResult {
+  materials: ProcessedMaterials;
+  tournament: Tournament;
+  match: Match;
+  teams: [Team, Team];
+  agents: Agent[];
+  driverModel: DriverModel;
+  selectedMapIds: string[];
+}
+
+export interface Phase18ShowcaseSeedInput {
+  repositories: Repositories;
+  driverModel: DriverModel;
+  projectRoot?: string;
+}
+
+export interface Phase18ShowcaseSeedResult {
   materials: ProcessedMaterials;
   tournament: Tournament;
   match: Match;
@@ -399,7 +424,7 @@ export function buildRuntimeTeamSeed(
   };
 
   const activePlayerEntities = materialTeam.roster.active_players.map((entityId) => requiredEntity(materials, entityId));
-  const coachEntities = materialTeam.roster.head_coach ? [requiredEntity(materials, materialTeam.roster.head_coach)] : [];
+  const coachEntities = options.includeCoach === false ? [] : materialTeam.roster.head_coach ? [requiredEntity(materials, materialTeam.roster.head_coach)] : [];
   const runtimeEntities = [...activePlayerEntities, ...coachEntities];
   const agents = runtimeEntities.map((entity) =>
     buildAgentFromMaterialEntity({
@@ -468,6 +493,67 @@ export async function seedPhase17ShowcaseMatch(input: Phase17ShowcaseSeedInput):
     agents: [...teamASeed.agents, ...teamBSeed.agents],
     driverModel,
     selectedMapIds
+  };
+}
+
+export async function seedPhase18ShowcaseMatch(input: Phase18ShowcaseSeedInput): Promise<Phase18ShowcaseSeedResult> {
+  const materials = loadProcessedMaterials(input.projectRoot);
+  const createdAt = defaultCreatedAt;
+  const tournament: Tournament = {
+    id: phase18CanonIds.tournamentId,
+    name: "Agent Major Phase 1.8 Local Real LLM Pilot",
+    status: "running",
+    format: "single_elimination_16",
+    createdAt,
+    startedAt: createdAt
+  };
+  const teamASeed = buildRuntimeTeamSeed(materials, phase18CanonIds.teamASlug, {
+    tournamentId: tournament.id,
+    createdAt,
+    driverModelId: input.driverModel.id,
+    runtimeTeamIdPrefix: "team_phase18",
+    runtimeAgentIdPrefix: "agent_phase18",
+    includeCoach: false
+  });
+  const teamBSeed = buildRuntimeTeamSeed(materials, phase18CanonIds.teamBSlug, {
+    tournamentId: tournament.id,
+    createdAt,
+    driverModelId: input.driverModel.id,
+    runtimeTeamIdPrefix: "team_phase18",
+    runtimeAgentIdPrefix: "agent_phase18",
+    includeCoach: false
+  });
+  const match: Match = {
+    id: phase18CanonIds.matchId,
+    tournamentId: tournament.id,
+    roundName: "round_of_16",
+    teamAId: teamASeed.team.id,
+    teamBId: teamBSeed.team.id,
+    status: "scheduled",
+    bestOf: 3,
+    teamAMapsWon: 0,
+    teamBMapsWon: 0,
+    scheduledOrder: 1,
+    createdAt
+  };
+
+  await input.repositories.tournaments.save(tournament);
+  await input.repositories.driverModels.save(input.driverModel);
+  await input.repositories.teams.save(teamASeed.team);
+  await input.repositories.teams.save(teamBSeed.team);
+  await input.repositories.matches.save(match);
+  for (const agent of [...teamASeed.agents, ...teamBSeed.agents]) {
+    await input.repositories.agents.save(agent);
+  }
+
+  return {
+    materials,
+    tournament,
+    match,
+    teams: [teamASeed.team, teamBSeed.team],
+    agents: [...teamASeed.agents, ...teamBSeed.agents],
+    driverModel: input.driverModel,
+    selectedMapIds: [...phase18CanonIds.selectedMapIds]
   };
 }
 

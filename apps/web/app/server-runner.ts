@@ -1,22 +1,19 @@
 import { resolve } from "node:path";
 
 import {
-  createLlmCasterBroadcastGenerator,
   createPhase16SimulationEngine,
-  createPhase13SimulationEngine,
+  createPhase18SimulationEngine,
   DashScopeOpenAiProvider,
   defaultDriverModels,
   FakeProvider,
   loadAgentMajorLlmConfig,
-  phase11DemoIds,
-  seedPhase11Demo,
   UnconfiguredJobQueue
 } from "@agent-major/core";
 import { createSqliteRepositories, defaultSqlitePath, type SqliteRepositoryBundle } from "@agent-major/db";
-import { phase17CanonIds, seedPhase17ShowcaseMatch } from "@agent-major/materials";
+import { phase17CanonIds, phase18CanonIds, seedPhase17ShowcaseMatch, seedPhase18ShowcaseMatch } from "@agent-major/materials";
 
-import { loadRootLocalEnv } from "./server-local-env";
 import { ServerLocalArtifactStore } from "./server-artifact-store";
+import { loadRootLocalEnv } from "./server-local-env";
 import { findProjectRoot } from "./server-project-root";
 
 export interface WebRunSingleMapResult {
@@ -49,88 +46,153 @@ export async function runPhase17ShowcaseFromWeb(matchId: string): Promise<WebRun
       jobQueue: new UnconfiguredJobQueue()
     });
     const result = await engine.runCurrentMatch({ matchId: seed.match.id, selectedMapIds: seed.selectedMapIds });
-    const completedMatch = result.match;
-    const mapGames = [...result.mapGames].sort((left, right) => left.order - right.order);
-    const firstMap = mapGames[0];
-    if (!firstMap) {
-      throw new Error("Phase 1.7 showcase generated no maps.");
-    }
-
-    return {
-      matchId: completedMatch.id,
-      mapGameId: firstMap.id,
-      mapGameIds: mapGames.map((mapGame) => mapGame.id),
-      mapName: firstMap.mapName,
-      mapNames: mapGames.map((mapGame) => mapGame.mapName),
-      status: completedMatch.status,
-      score: `${completedMatch.teamAMapsWon}-${completedMatch.teamBMapsWon}`,
-      casterModes: readCasterModes(repositories, mapGames.map((mapGame) => mapGame.id))
-    };
+    return toWebRunResult(repositories, result.match.id, result.match.status, result.match.teamAMapsWon, result.match.teamBMapsWon, result.mapGames);
   } finally {
     repositories.close();
   }
 }
 
-export async function runPhase15SingleMapFromWeb(matchId: string): Promise<WebRunSingleMapResult> {
-  if (matchId !== phase11DemoIds.matchId) {
-    throw new Error(`Web runner only supports the local demo match: ${phase11DemoIds.matchId}`);
+export async function runPhase18NextRoundFromWeb(matchId: string): Promise<WebRunSingleMapResult> {
+  if (matchId !== phase18CanonIds.matchId) {
+    throw new Error(`Phase 1.8 web runner only supports the pilot match: ${phase18CanonIds.matchId}`);
   }
 
+  return runPhase18FromWeb(matchId, "round");
+}
+
+export async function runPhase18CurrentMapFromWeb(matchId: string): Promise<WebRunSingleMapResult> {
+  if (matchId !== phase18CanonIds.matchId) {
+    throw new Error(`Phase 1.8 web runner only supports the pilot match: ${phase18CanonIds.matchId}`);
+  }
+
+  return runPhase18FromWeb(matchId, "map");
+}
+
+export async function runPhase18FullBo3FromWeb(matchId: string): Promise<WebRunSingleMapResult> {
+  if (matchId !== phase18CanonIds.matchId) {
+    throw new Error(`Phase 1.8 web runner only supports the pilot match: ${phase18CanonIds.matchId}`);
+  }
+
+  return runPhase18FromWeb(matchId, "match");
+}
+
+export async function runPhase18ShowcaseFromWeb(matchId: string): Promise<WebRunSingleMapResult> {
+  return runPhase18FullBo3FromWeb(matchId);
+}
+
+async function runPhase18FromWeb(matchId: string, scope: "round" | "map" | "match"): Promise<WebRunSingleMapResult> {
   const projectRoot = findProjectRoot(process.cwd());
-  const llmConfig = loadAgentMajorLlmConfig(loadRootLocalEnv(projectRoot));
+  const env = loadRootLocalEnv(projectRoot, process.env);
+  const llmConfig = loadAgentMajorLlmConfig(env);
   if (!llmConfig.enabled) {
-    throw new Error(`Real LLM disabled: ${llmConfig.disabledReason ?? "not_configured"}`);
+    throw new Error(`Phase 1.8 real player/judge LLM is disabled: ${llmConfig.disabledReason ?? "not_configured"}`);
   }
 
+  const driverModel = requireDriverModel(llmConfig.phase18DriverModelId);
   const repositories = createSqliteRepositories(resolve(projectRoot, defaultSqlitePath));
   try {
-    await resetDemoFixture(repositories);
-    await seedPhase11Demo(repositories);
-    for (const driverModel of defaultDriverModels) {
-      await repositories.driverModels.save(driverModel);
-    }
-
-    const broadcastGenerator = createLlmCasterBroadcastGenerator({
+    const engine = createPhase18SimulationEngine({
+      repositories,
       llmGateway: new DashScopeOpenAiProvider({
         baseUrl: llmConfig.baseUrl ?? "",
         apiKey: llmConfig.apiKey ?? "",
         timeoutMs: llmConfig.timeoutMs,
         maxRetries: llmConfig.maxRetries
       }),
-      driverModelId: llmConfig.casterDriverModelId,
-      fallbackDriverModelId: llmConfig.casterFallbackDriverModelId,
-      repositories,
+      jobQueue: new UnconfiguredJobQueue(),
       artifactStore: new ServerLocalArtifactStore(projectRoot, repositories.artifacts)
     });
 
-    const engine = createPhase13SimulationEngine({
-      repositories,
-      llmGateway: new FakeProvider({ providerId: "phase15-web-fake-match-provider" }),
-      jobQueue: new UnconfiguredJobQueue(),
-      broadcastGenerator
-    });
-
-    await engine.startMatch({ matchId: phase11DemoIds.matchId });
-    await engine.completeVeto({ matchId: phase11DemoIds.matchId, selectedMapIds: ["DUST2"] });
-    await engine.startMap({ mapGameId: phase11DemoIds.mapGameId });
-    await engine.runCurrentMap({ mapGameId: phase11DemoIds.mapGameId });
-
-    const map = await repositories.mapGames.getById(phase11DemoIds.mapGameId);
-    if (!map) {
-      throw new Error(`Generated map not found: ${phase11DemoIds.mapGameId}`);
+    const seed = await ensurePhase18Fixture({ repositories, projectRoot, driverModel, engine });
+    if (scope === "match") {
+      const result = await engine.runCurrentMatch({ matchId: seed.matchId, selectedMapIds: seed.selectedMapIds });
+      return toWebRunResult(repositories, result.match.id, result.match.status, result.match.teamAMapsWon, result.match.teamBMapsWon, result.mapGames);
     }
 
-    return {
-      matchId: phase11DemoIds.matchId,
-      mapGameId: map.id,
-      mapName: map.mapName,
-      status: map.status,
-      score: `${map.teamAScore}-${map.teamBScore}`,
-      casterModes: readCasterModes(repositories, [map.id])
-    };
+    const mapGameId = await selectCurrentPhase18MapGameId(repositories, matchId);
+    await engine.runCurrentMap({
+      mapGameId,
+      ...(scope === "round" ? { mode: "debug", maxRounds: 1 } : {})
+    });
+    return await toWebRunResultFromMatch(repositories, matchId);
   } finally {
     repositories.close();
   }
+}
+
+async function ensurePhase18Fixture(input: {
+  repositories: SqliteRepositoryBundle;
+  projectRoot: string;
+  driverModel: ReturnType<typeof requireDriverModel>;
+  engine: ReturnType<typeof createPhase18SimulationEngine>;
+}): Promise<{ matchId: string; selectedMapIds: string[] }> {
+  const existingMatch = await input.repositories.matches.getById(phase18CanonIds.matchId);
+  if (!existingMatch || existingMatch.status === "completed") {
+    await resetPhase18Fixture(input.repositories);
+    const seed = await seedPhase18ShowcaseMatch({
+      repositories: input.repositories,
+      projectRoot: input.projectRoot,
+      driverModel: input.driverModel
+    });
+    await input.engine.startMatch({ matchId: seed.match.id });
+    await input.engine.completeVeto({ matchId: seed.match.id, selectedMapIds: seed.selectedMapIds });
+    return { matchId: seed.match.id, selectedMapIds: seed.selectedMapIds };
+  }
+
+  const existingMaps = await input.repositories.mapGames.listByMatch(existingMatch.id);
+  if (existingMatch.status !== "running" || existingMaps.length === 0) {
+    await input.engine.startMatch({ matchId: existingMatch.id });
+    await input.engine.completeVeto({ matchId: existingMatch.id, selectedMapIds: [...phase18CanonIds.selectedMapIds] });
+  }
+
+  return { matchId: existingMatch.id, selectedMapIds: [...phase18CanonIds.selectedMapIds] };
+}
+
+async function selectCurrentPhase18MapGameId(repositories: SqliteRepositoryBundle, matchId: string): Promise<string> {
+  const mapGame = (await repositories.mapGames.listByMatch(matchId))
+    .sort((left, right) => left.order - right.order)
+    .find((item) => item.status !== "completed");
+  if (!mapGame) {
+    throw new Error("Phase 1.8 has no remaining map to run.");
+  }
+
+  return mapGame.id;
+}
+
+async function toWebRunResultFromMatch(repositories: SqliteRepositoryBundle, matchId: string): Promise<WebRunSingleMapResult> {
+  const match = await repositories.matches.getById(matchId);
+  if (!match) {
+    throw new Error(`Match not found: ${matchId}`);
+  }
+
+  const mapGames = await repositories.mapGames.listByMatch(match.id);
+  return toWebRunResult(repositories, match.id, match.status, match.teamAMapsWon, match.teamBMapsWon, mapGames);
+}
+
+function toWebRunResult(
+  repositories: SqliteRepositoryBundle,
+  matchId: string,
+  status: string,
+  teamAMapsWon: number,
+  teamBMapsWon: number,
+  mapGames: Array<{ id: string; order: number; mapName: string }>
+): WebRunSingleMapResult {
+  const orderedMapGames = [...mapGames].sort((left, right) => left.order - right.order);
+  const firstMap = orderedMapGames[0];
+  if (!firstMap) {
+    throw new Error("Web runner generated no maps.");
+  }
+
+  return {
+    matchId,
+    mapGameId: firstMap.id,
+    mapGameIds: orderedMapGames.map((mapGame) => mapGame.id),
+    mapName: firstMap.mapName,
+    mapNames: orderedMapGames.map((mapGame) => mapGame.mapName),
+    status,
+    score: `${teamAMapsWon}-${teamBMapsWon}`,
+    casterModes: readCasterModes(repositories, orderedMapGames.map((mapGame) => mapGame.id))
+  };
 }
 
 function readCasterModes(repositories: SqliteRepositoryBundle, mapGameIds: string[]): WebRunSingleMapResult["casterModes"] {
@@ -183,38 +245,47 @@ async function resetPhase17Fixture(repositories: SqliteRepositoryBundle): Promis
   });
 }
 
-function readMapIdsByMatchIds(repositories: SqliteRepositoryBundle, matchIds: string[]): string[] {
-  const placeholders = matchIds.map(() => "?").join(",");
-  return (repositories.sqlite.prepare(`SELECT id FROM map_games WHERE match_id IN (${placeholders})`).all(...matchIds) as Array<{ id: string }>).map(
-    (row) => row.id
-  );
-}
-
-async function resetDemoFixture(repositories: SqliteRepositoryBundle): Promise<void> {
+async function resetPhase18Fixture(repositories: SqliteRepositoryBundle): Promise<void> {
   await repositories.transaction(async () => {
-    const ids = phase11DemoIds;
-    const teamAId = "team_ghost_nav";
-    const teamBId = "team_ghost_fur";
-    const mapRows = repositories.sqlite.prepare("SELECT id FROM map_games WHERE match_id = ?").all(ids.matchId) as Array<{ id: string }>;
-    const mapIds = mapRows.map((row) => row.id);
+    const tournamentId = phase18CanonIds.tournamentId;
+    const matchRows = repositories.sqlite.prepare("SELECT id FROM matches WHERE tournament_id = ?").all(tournamentId) as Array<{ id: string }>;
+    const matchIds = matchRows.map((row) => row.id);
+    const mapIds = matchIds.length > 0 ? readMapIdsByMatchIds(repositories, matchIds) : [];
 
-    repositories.sqlite.prepare("DELETE FROM timeline_events WHERE tournament_id = ?").run(ids.tournamentId);
-    repositories.sqlite.prepare("DELETE FROM summaries WHERE tournament_id = ? OR match_id = ?").run(ids.tournamentId, ids.matchId);
-    repositories.sqlite.prepare("DELETE FROM events WHERE tournament_id = ?").run(ids.tournamentId);
-    repositories.sqlite.prepare("DELETE FROM llm_calls WHERE tournament_id = ? OR driver_model_id = ?").run(ids.tournamentId, ids.driverModelId);
-    repositories.sqlite.prepare("DELETE FROM artifacts WHERE tournament_id = ? OR match_id = ?").run(ids.tournamentId, ids.matchId);
+    repositories.sqlite.prepare("DELETE FROM timeline_events WHERE tournament_id = ?").run(tournamentId);
+    repositories.sqlite.prepare("DELETE FROM summaries WHERE tournament_id = ?").run(tournamentId);
+    repositories.sqlite.prepare("DELETE FROM events WHERE tournament_id = ?").run(tournamentId);
+    repositories.sqlite.prepare("DELETE FROM llm_calls WHERE tournament_id = ?").run(tournamentId);
+    repositories.sqlite.prepare("DELETE FROM artifacts WHERE tournament_id = ?").run(tournamentId);
 
     for (const mapId of mapIds) {
       repositories.sqlite.prepare("DELETE FROM economy_states WHERE map_game_id = ?").run(mapId);
       repositories.sqlite.prepare("DELETE FROM round_reports WHERE map_game_id = ?").run(mapId);
       repositories.sqlite.prepare("DELETE FROM rounds WHERE map_game_id = ?").run(mapId);
     }
+    for (const matchId of matchIds) {
+      repositories.sqlite.prepare("DELETE FROM map_games WHERE match_id = ?").run(matchId);
+    }
 
-    repositories.sqlite.prepare("DELETE FROM map_games WHERE match_id = ?").run(ids.matchId);
-    repositories.sqlite.prepare("DELETE FROM matches WHERE id = ?").run(ids.matchId);
-    repositories.sqlite.prepare("DELETE FROM agents WHERE team_id IN (?, ?)").run(teamAId, teamBId);
-    repositories.sqlite.prepare("DELETE FROM teams WHERE id IN (?, ?)").run(teamAId, teamBId);
-    repositories.sqlite.prepare("DELETE FROM driver_models WHERE id = ?").run(ids.driverModelId);
-    repositories.sqlite.prepare("DELETE FROM tournaments WHERE id = ?").run(ids.tournamentId);
+    repositories.sqlite.prepare("DELETE FROM matches WHERE tournament_id = ?").run(tournamentId);
+    repositories.sqlite.prepare("DELETE FROM agents WHERE team_id IN (SELECT id FROM teams WHERE tournament_id = ?)").run(tournamentId);
+    repositories.sqlite.prepare("DELETE FROM teams WHERE tournament_id = ?").run(tournamentId);
+    repositories.sqlite.prepare("DELETE FROM tournaments WHERE id = ?").run(tournamentId);
   });
+}
+
+function requireDriverModel(driverModelId: string) {
+  const driverModel = defaultDriverModels.find((item) => item.id === driverModelId);
+  if (!driverModel) {
+    throw new Error(`Phase 1.8 web runner requires a known driver model id. Received: ${driverModelId}`);
+  }
+
+  return driverModel;
+}
+
+function readMapIdsByMatchIds(repositories: SqliteRepositoryBundle, matchIds: string[]): string[] {
+  const placeholders = matchIds.map(() => "?").join(",");
+  return (repositories.sqlite.prepare(`SELECT id FROM map_games WHERE match_id IN (${placeholders})`).all(...matchIds) as Array<{ id: string }>).map(
+    (row) => row.id
+  );
 }

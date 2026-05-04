@@ -6,13 +6,15 @@ import { describe, expect, it } from "vitest";
 
 import { getPublicWebRunnerPolicy, validateWebRunnerRequest } from "../app/server-web-runner-policy";
 
-describe("Phase 1.5 web runner policy", () => {
+const showcaseMatchId = "phase17_match_falcon_7b_vs_vitallmty";
+
+describe("Phase 1.7 web runner policy", () => {
   it("keeps the web runner disabled unless explicitly enabled", () => {
     const projectRoot = tempProjectRoot();
 
     expect(getPublicWebRunnerPolicy(projectRoot, {}).enabled).toBe(false);
     expect(
-      validateWebRunnerRequest(localRequest(), { mode: "phase15_single_map", confirmReset: true }, projectRoot, {})
+      validateWebRunnerRequest(localRequest(), { mode: "phase17_showcase_match", confirmReset: true }, projectRoot, {})
     ).toMatchObject({ ok: false, status: 403 });
   });
 
@@ -22,11 +24,48 @@ describe("Phase 1.5 web runner policy", () => {
     expect(
       validateWebRunnerRequest(
         localRequest(),
+        { mode: "phase17_showcase_match", confirmReset: true },
+        projectRoot,
+        { AGENT_MAJOR_WEB_RUNNER_ENABLED: "true" }
+      )
+    ).toEqual({ ok: true, mode: "phase17_showcase_match" });
+    expect(
+      validateWebRunnerRequest(
+        localRequest(),
+        { mode: "phase18_next_round", confirmReset: true },
+        projectRoot,
+        { AGENT_MAJOR_WEB_RUNNER_ENABLED: "true" }
+      )
+    ).toEqual({ ok: true, mode: "phase18_next_round" });
+    expect(
+      validateWebRunnerRequest(
+        localRequest(),
+        { mode: "phase18_current_map", confirmReset: true },
+        projectRoot,
+        { AGENT_MAJOR_WEB_RUNNER_ENABLED: "true" }
+      )
+    ).toEqual({ ok: true, mode: "phase18_current_map" });
+    expect(
+      validateWebRunnerRequest(
+        localRequest(),
+        { mode: "phase18_full_bo3", confirmReset: true },
+        projectRoot,
+        { AGENT_MAJOR_WEB_RUNNER_ENABLED: "true" }
+      )
+    ).toEqual({ ok: true, mode: "phase18_full_bo3" });
+  });
+
+  it("rejects the frozen legacy web mode", () => {
+    const projectRoot = tempProjectRoot();
+
+    expect(
+      validateWebRunnerRequest(
+        localRequest(),
         { mode: "phase15_single_map", confirmReset: true },
         projectRoot,
         { AGENT_MAJOR_WEB_RUNNER_ENABLED: "true" }
       )
-    ).toEqual({ ok: true, mode: "phase15_single_map" });
+    ).toMatchObject({ ok: false, status: 400 });
   });
 
   it("rejects remote access unless a token-protected remote mode is configured", () => {
@@ -35,7 +74,7 @@ describe("Phase 1.5 web runner policy", () => {
     expect(
       validateWebRunnerRequest(
         remoteRequest(),
-        { mode: "phase15_single_map", confirmReset: true },
+        { mode: "phase17_showcase_match", confirmReset: true },
         projectRoot,
         { AGENT_MAJOR_WEB_RUNNER_ENABLED: "true" }
       )
@@ -51,7 +90,7 @@ describe("Phase 1.5 web runner policy", () => {
     expect(
       validateWebRunnerRequest(
         remoteRequest(),
-        { mode: "phase15_single_map", confirmReset: true, adminToken: "local-token" },
+        { mode: "phase17_showcase_match", confirmReset: true, adminToken: "local-token" },
         projectRoot,
         {
           AGENT_MAJOR_WEB_RUNNER_ENABLED: "true",
@@ -59,7 +98,7 @@ describe("Phase 1.5 web runner policy", () => {
           AGENT_MAJOR_WEB_RUNNER_TOKEN: "local-token"
         }
       )
-    ).toEqual({ ok: true, mode: "phase15_single_map" });
+    ).toEqual({ ok: true, mode: "phase17_showcase_match" });
   });
 });
 
@@ -68,7 +107,7 @@ function tempProjectRoot(): string {
 }
 
 function localRequest(): Request {
-  return new Request("http://localhost:3000/api/matches/demo_match_phase11/run", {
+  return new Request(`http://localhost:3000/api/matches/${showcaseMatchId}/run`, {
     method: "POST",
     headers: {
       host: "localhost:3000",
@@ -78,7 +117,7 @@ function localRequest(): Request {
 }
 
 function remoteRequest(): Request {
-  return new Request("http://192.168.1.10:3000/api/matches/demo_match_phase11/run", {
+  return new Request(`http://192.168.1.10:3000/api/matches/${showcaseMatchId}/run`, {
     method: "POST",
     headers: {
       host: "192.168.1.10:3000",

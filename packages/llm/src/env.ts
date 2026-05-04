@@ -6,6 +6,7 @@ export interface AgentMajorLlmConfig {
   providerId: string;
   baseUrl?: string;
   apiKey?: string;
+  phase18DriverModelId: string;
   casterDriverModelId: string;
   casterFallbackDriverModelId: string;
   barrageDriverModelId: string;
@@ -18,6 +19,7 @@ export function loadAgentMajorLlmConfig(env: Record<string, string | undefined> 
   const providerId = normalizeProviderId(env.AGENT_MAJOR_LLM_PROVIDER);
   const baseConfig = {
     providerId,
+    phase18DriverModelId: env.AGENT_MAJOR_PHASE18_DRIVER_MODEL_ID?.trim() || "driver_qwen_3_max_2026_01_23",
     casterDriverModelId: env.AGENT_MAJOR_CASTER_DRIVER_MODEL_ID?.trim() || "driver_qwen_3_max_2026_01_23",
     casterFallbackDriverModelId: env.AGENT_MAJOR_CASTER_FALLBACK_DRIVER_MODEL_ID?.trim() || "driver_qwen_3_6_plus",
     barrageDriverModelId: env.AGENT_MAJOR_BARRAGE_DRIVER_MODEL_ID?.trim() || "driver_minimax_m2_5",

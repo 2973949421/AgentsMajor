@@ -181,6 +181,29 @@ function sanitizeProviderText(value: string): string {
 }
 
 function buildDefaultMessages(request: LlmRequest): LlmMessage[] {
+  if (request.responseFormat === "json_object") {
+    const outputContract = outputContractForSchema(request.schemaName);
+    return [
+      {
+        role: "system",
+        content:
+          "You are a structured generation engine. Return only valid JSON that matches the requested schema. Do not include markdown, code fences, or extra commentary. Do not copy the input object unless the output contract asks for the same field."
+      },
+      {
+        role: "user",
+        content: [
+          `Respond with a JSON object for schema ${request.schemaName}.`,
+          outputContract,
+          JSON.stringify({
+            task: request.task,
+            schemaName: request.schemaName,
+            input: request.input
+          })
+        ].join("\n")
+      }
+    ];
+  }
+
   return [
     {
       role: "system",
@@ -195,6 +218,48 @@ function buildDefaultMessages(request: LlmRequest): LlmMessage[] {
       })
     }
   ];
+}
+
+function outputContractForSchema(schemaName: string): string {
+  if (schemaName === "AgentActionDecision") {
+    return [
+      "Output contract:",
+      "Return exactly one top-level JSON object with these fields:",
+      '{"action":"<one concise tactical action string>","confidence":0.0,"fingerprint":"<optional short stable string>"}',
+      "Required fields: action, confidence.",
+      "Optional field: fingerprint.",
+      "Do not return actionDecision. Do not include roundId, agentId, mapName, role, buyType, sideContext, or other copied input fields.",
+      "confidence must be a number between 0 and 1."
+    ].join("\n");
+  }
+
+  if (schemaName === "TeamRoundPlanDecision") {
+    return [
+      "Output contract:",
+      "Return exactly one top-level JSON object with these fields:",
+      '{"teamId":"<input teamId>","side":"attack|defense","primaryIntent":"<team tactical intent>","primaryZoneId":"<main zone id>","secondaryZoneId":"<optional zone id>","coordinationSummary":"<how the five players coordinate>","playerDirectives":[{"agentId":"<active player id>","directive":"<individual directive aligned to the team plan>"}],"winCondition":"<how this team wins the round>","risk":"<main tactical risk>","confidence":0.0,"fingerprint":"<optional short stable string>"}',
+      "Required fields: teamId, side, primaryIntent, primaryZoneId, coordinationSummary, playerDirectives, winCondition, risk, confidence.",
+      "playerDirectives must include exactly one directive for every active player in the input activeAgents list.",
+      "side must match the input side. confidence must be a number between 0 and 1.",
+      "Do not copy the input object. Do not include opponent restricted plans."
+    ].join("\n");
+  }
+
+  if (schemaName === "JudgeResult") {
+    return [
+      "Output contract:",
+      "Return exactly one top-level JSON object with these fields:",
+      '{"winnerTeamId":"<teamAId or teamBId>","loserTeamId":"<the other team id>","margin":"narrow|standard|decisive","reason":"<brief reason>","mvpAgentId":"<agent id from the winning active roster>","confidence":0.0}',
+      "Required fields: winnerTeamId, loserTeamId, margin, reason, mvpAgentId, confidence.",
+      "winnerTeamId must be one of the input team ids. loserTeamId must be the other team id.",
+      "mvpAgentId must come from the winning team's active agent id list.",
+      "reason must discuss both teams' winCondition and explain why one succeeded while the other failed.",
+      "Do not decide from team order, team name fame, current score lead, or first-listed team bias.",
+      "confidence must be a number between 0 and 1."
+    ].join("\n");
+  }
+
+  return "Output contract: return a JSON object only, using the exact top-level fields required by the named schema.";
 }
 
 async function safeReadJson(response: Response, request: LlmRequest, modelName: string): Promise<unknown> {

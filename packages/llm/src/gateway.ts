@@ -2,8 +2,10 @@ export type LlmModelTier = "cheap" | "standard" | "strong";
 export type LlmResponseFormat = "text" | "json_object";
 
 export type LlmTaskType =
+  | "team_plan"
   | "agent_action"
   | "judge"
+  | "judge_review"
   | "arbiter"
   | "round_report"
   | "event_builder"

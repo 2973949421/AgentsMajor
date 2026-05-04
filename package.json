@@ -31,6 +31,11 @@
     "phase17:match": "pnpm build:cli && node packages/cli/dist/phase17.js match",
     "phase17:replay": "pnpm build:cli && node packages/cli/dist/phase17.js replay",
     "phase17:export": "pnpm build:cli && node packages/cli/dist/phase17.js export",
+    "phase18:round": "pnpm build:cli && node packages/cli/dist/phase18.js round",
+    "phase18:map": "pnpm build:cli && node packages/cli/dist/phase18.js map",
+    "phase18:match": "pnpm build:cli && node packages/cli/dist/phase18.js match",
+    "phase18:replay": "pnpm build:cli && node packages/cli/dist/phase18.js replay",
+    "phase18:export": "pnpm build:cli && node packages/cli/dist/phase18.js export",
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --sort typecheck"
   },

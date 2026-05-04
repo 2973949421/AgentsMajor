@@ -10,7 +10,9 @@ import {
   buildRuntimeTeamSeed,
   loadProcessedMaterials,
   normalizeMaterialRoleProfile,
+  phase18CanonIds,
   phase17CanonIds,
+  seedPhase18ShowcaseMatch,
   seedPhase17ShowcaseMatch
 } from "./index.js";
 
@@ -89,6 +91,31 @@ describe("processed materials runtime package", () => {
       expect(new Set(result.agents.map((agent) => agent.driverModelId))).toEqual(new Set([phase17CanonIds.driverModelId]));
       expect(result.agents.every((agent) => agent.materialRef?.runtimeEnabled === false)).toBe(true);
       expect(JSON.stringify(result.agents.map((agent) => agent.materialRef))).not.toContain("preferred_driver_model_id");
+    } finally {
+      repositories.close();
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("seeds the default Phase 1.8 Falcon-7B vs VitaLLMty pilot with 10 runtime players and no coaches", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-major-materials-phase18-"));
+    const repositories = createSqliteRepositories(join(tempDir, "test.sqlite"));
+    try {
+      const driverModel = {
+        id: "driver_qwen_3_max_2026_01_23",
+        provider: "dashscope_openai_compatible",
+        modelName: "qwen3-max-2026-01-23",
+        capabilities: ["text_generation", "reasoning"],
+        defaultUseCase: ["agent_action", "judge"],
+        enabled: true,
+        createdAt: "2026-05-02T00:00:00.000Z"
+      };
+      const result = await seedPhase18ShowcaseMatch({ repositories, projectRoot, driverModel });
+      expect(result.match.id).toBe(phase18CanonIds.matchId);
+      expect(result.selectedMapIds).toEqual(["DUST2", "INFERNO", "MIRAGE"]);
+      expect(result.agents).toHaveLength(10);
+      expect(result.agents.some((agent) => agent.role === "coach")).toBe(false);
+      expect(new Set(result.agents.map((agent) => agent.driverModelId))).toEqual(new Set([driverModel.id]));
     } finally {
       repositories.close();
       rmSync(tempDir, { recursive: true, force: true });

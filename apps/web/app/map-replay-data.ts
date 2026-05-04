@@ -3,10 +3,10 @@ import { resolve } from "node:path";
 
 import { readMapReplay, readMatchReplay, type MapReplay, type MatchReplay } from "@agent-major/core";
 import { createSqliteRepositories, defaultSqlitePath } from "@agent-major/db";
-import { phase17CanonIds } from "@agent-major/materials";
+import { phase18CanonIds } from "@agent-major/materials";
 
-export const defaultMapGameId = `map_${phase17CanonIds.matchId}_1`;
-export const defaultMatchId = phase17CanonIds.matchId;
+export const defaultMapGameId = `map_${phase18CanonIds.matchId}_1`;
+export const defaultMatchId = phase18CanonIds.matchId;
 
 let sqliteWarningFilterInstalled = false;
 

@@ -18,7 +18,7 @@
 
 ```text
 P 线：已完成到 P2.3，Phase 1 范围内可按 Frozen 执行。
-Phase 线：已推进到 Phase 1.7 Materials runtime integration 与角色契约升级；下一步先做 Phase 1.7 验收收口，再进入 Phase 2.0 完整 16 队赛事雏形。
+Phase 线：Phase 1.8 本地真实 LLM BO3 pilot 与 Phase 1.9 Phase18 观赛主屏 / 调试控制台已完成收口并暂时冻结；下一步进入 Phase 2.0 完整 16 队赛事雏形。
 ```
 
 ## 3. 目录说明
@@ -98,6 +98,8 @@ phase-plans/phase-1.5-real-llm-integration.md
 phase-plans/phase-1.45-contract-code-alignment.md
 phase-plans/phase-1.6-zone-offense-defense-protocol.md
 phase-plans/phase-1.7-materials-runtime-integration.md
+phase-plans/phase-1.8-real-llm-bo3-pilot.md
+phase-plans/phase-1.9-broadcast-ui-main-screen.md
 ```
 
 ## 4. 维护规则

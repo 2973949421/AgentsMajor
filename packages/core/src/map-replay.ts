@@ -118,7 +118,7 @@ export async function readMatchReplay(repositories: Repositories, matchId: strin
     await Promise.all(
       [...mapGames]
         .sort((left, right) => left.order - right.order)
-        .filter((mapGame) => mapGame.status === "completed")
+        .filter((mapGame) => mapGame.status === "completed" || mapGame.currentRoundNumber > 0)
         .map((mapGame) => readMapReplay(repositories, mapGame.id))
     )
   ).filter((mapReplay): mapReplay is MapReplay => mapReplay !== null);
