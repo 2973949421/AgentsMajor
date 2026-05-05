@@ -58,6 +58,56 @@ export const teamSchema = z.object({
 });
 export type Team = z.infer<typeof teamSchema>;
 
+export const teamInitialProposalSchema = z.object({
+  proposalId: z.string().min(1),
+  version: z.string().min(1),
+  teamId: z.string().min(1),
+  teamSlug: z.string().min(1),
+  displayName: z.string().min(1),
+  teamThesis: z.string().min(1),
+  opportunity: z.string().min(1),
+  product: z.string().min(1),
+  engineering: z.string().min(1),
+  business: z.string().min(1),
+  operations: z.string().min(1),
+  scaling: z.string().min(1),
+  moat: z.string().min(1),
+  mustHoldClaims: stringArray,
+  failureModes: stringArray,
+  playerOperatingPrinciples: stringArray,
+  coachWindowPolicies: z.object({
+    timeout: z.string().min(1),
+    halftime: z.string().min(1),
+    postMap: z.string().min(1)
+  }),
+  frontendSummary: z.string().min(1)
+});
+export type TeamInitialProposal = z.infer<typeof teamInitialProposalSchema>;
+
+export const teamInitialProposalSummarySchema = z.object({
+  proposalId: z.string().min(1),
+  version: z.string().min(1),
+  teamThesis: z.string().min(1),
+  opportunity: z.string().min(1),
+  product: z.string().min(1),
+  engineering: z.string().min(1),
+  business: z.string().min(1),
+  operations: z.string().min(1),
+  scaling: z.string().min(1),
+  moat: z.string().min(1),
+  mustHoldClaims: stringArray,
+  failureModes: stringArray,
+  frontendSummary: z.string().min(1)
+});
+export type TeamInitialProposalSummary = z.infer<typeof teamInitialProposalSummarySchema>;
+
+export const teamProposalAnchorSchema = z.object({
+  teamThesis: z.string().min(1),
+  mustHoldClaims: stringArray,
+  playerOperatingPrinciples: stringArray
+});
+export type TeamProposalAnchor = z.infer<typeof teamProposalAnchorSchema>;
+
 export const agentBaseProfileSchema = z.object({
   personalitySummary: z.string().min(1),
   tacticalSummary: z.string().min(1),

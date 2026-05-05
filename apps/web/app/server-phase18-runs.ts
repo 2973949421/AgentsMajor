@@ -121,8 +121,10 @@ export async function syncPhase18SimulationRun(
   run: SimulationRunRecord
 ): Promise<{ run: SimulationRunRecord; facts: Phase18RunFacts }> {
   const facts = await readPhase18RunFacts(repositories, run.runtimeMatchId);
+  const normalizedStatus = deriveSynchronizedRunStatus(run, facts);
   const nextRun: SimulationRunRecord = {
     ...run,
+    status: normalizedStatus,
     ...(facts.mapGameId ? { runtimeMapGameId: facts.mapGameId } : {}),
     latestCommittedRoundNumber: facts.latestCommittedRoundNumber,
     hasFreshReplay: facts.hasFreshReplay
@@ -134,6 +136,19 @@ export async function syncPhase18SimulationRun(
   }
 
   return { run, facts };
+}
+
+function deriveSynchronizedRunStatus(run: SimulationRunRecord, facts: Phase18RunFacts): SimulationRunStatus {
+  if (run.status === "discarded" || run.status === "failed") {
+    return run.status;
+  }
+  if (facts.runtimeMatchStatus === "completed") {
+    return "completed";
+  }
+  if (run.completedAt) {
+    return "completed";
+  }
+  return run.status;
 }
 
 export async function resolvePhase18SelectedRun(

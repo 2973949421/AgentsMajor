@@ -566,11 +566,7 @@ async function finalizePhase18Run(runId: string, latestError?: string): Promise<
     }
 
     const { run, facts } = await syncPhase18SimulationRun(repositories, storedRun);
-    const status: SimulationRunStatus = latestError
-      ? "failed"
-      : facts.runtimeMatchStatus === "completed"
-        ? "completed"
-        : "scheduled";
+    const status: SimulationRunStatus = latestError ? "failed" : "completed";
     await repositories.simulationRuns.save(
       patchSimulationRunRecord(run, {
         status,

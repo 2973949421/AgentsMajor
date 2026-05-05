@@ -25,9 +25,9 @@ describe("processed materials runtime package", () => {
     expect(materials.teams).toHaveLength(16);
     expect(materials.entitiesById.size).toBe(96);
     expect(materials.teamsBySlug.get("falcon-7b")?.players).toHaveLength(5);
-    expect(materials.teamsBySlug.get("falcon-7b")?.strategy?.strategyId).toBe("strategy_falcon_7b_core_v1");
-    expect(materials.teamsBySlug.get("vitallmty")?.strategy?.strategyId).toBe("strategy_vitallmty_core_v1");
-    expect(materials.teamsBySlug.get("neural-vincere")?.strategy).toBeUndefined();
+    expect(materials.teamsBySlug.get("falcon-7b")?.initialProposal?.proposalId).toBe("proposal_falcon_7b_core_v1");
+    expect(materials.teamsBySlug.get("vitallmty")?.initialProposal?.proposalId).toBe("proposal_vitallmty_core_v1");
+    expect(materials.teamsBySlug.get("neural-vincere")?.initialProposal).toBeUndefined();
     expect(materials.mapsBySlug.get("dust2")?.proposition?.mapTheme).toBe("opportunity_positioning");
     expect(materials.mapsBySlug.get("dust2")?.judgeRubric?.coreJudgmentAxis).toBe("opportunity_truth");
   });
@@ -141,9 +141,9 @@ describe("processed materials runtime package", () => {
       expect(result.agents).toHaveLength(10);
       expect(result.agents.some((agent) => agent.role === "coach")).toBe(false);
       expect(new Set(result.agents.map((agent) => agent.driverModelId))).toEqual(new Set([driverModel.id]));
-      expect(result.teams[0].teamProfileId).toBe("strategy_falcon_7b_core_v1");
-      expect(result.teams[1].teamProfileId).toBe("strategy_vitallmty_core_v1");
-      expect((result.teams[0].source as Record<string, unknown>).materialStrategy).toBeTruthy();
+      expect(result.teams[0].teamProfileId).toBe("proposal_falcon_7b_core_v1");
+      expect(result.teams[1].teamProfileId).toBe("proposal_vitallmty_core_v1");
+      expect((result.teams[0].source as Record<string, unknown>).materialInitialProposal).toBeTruthy();
       expect((result.teams[0].source as Record<string, unknown>).headCoachProfile).toBeTruthy();
     } finally {
       repositories.close();

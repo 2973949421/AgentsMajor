@@ -33,6 +33,7 @@ export interface OverlayRosterViewModel {
   sideLabel: string;
   score: number;
   coachLabel?: string;
+  proposalLabel?: string;
   players: OverlayRosterPlayerViewModel[];
   emptyMessage?: string;
 }
@@ -260,6 +261,7 @@ export function buildOverlayRosterViewModel(input: {
   const currentScore = input.frame?.currentScore ?? input.currentRound?.roundReport.scoreBeforeRound ?? { teamA: 0, teamB: 0 };
   const score = input.teamKey === "teamA" ? currentScore.teamA : currentScore.teamB;
   const coachLabel = buildCoachLabel(team);
+  const proposalLabel = buildProposalLabel(team);
   const players = buildOverlayPlayers({
     replay: input.replay,
     currentRound: input.currentRound,
@@ -274,6 +276,7 @@ export function buildOverlayRosterViewModel(input: {
     sideLabel: readSideLabel(input.currentRound, team.id),
     score,
     ...(coachLabel ? { coachLabel } : {}),
+    ...(proposalLabel ? { proposalLabel } : {}),
     players,
     ...(players.length === 0 ? { emptyMessage: "当前还没有已提交的回放局，选手信息会在首局生成后出现。" } : {})
   };
@@ -547,6 +550,16 @@ function buildCoachLabel(team: LiveReplayData["teams"]["teamA"] | LiveReplayData
     return `Coach ${team.coachDisplayName} | ${translateEvidenceText(team.coachDutySummary)}`;
   }
   return team.coachDisplayName ? `Coach ${team.coachDisplayName}` : translateEvidenceText(team.coachDutySummary ?? "");
+}
+
+function buildProposalLabel(team: LiveReplayData["teams"]["teamA"] | LiveReplayData["teams"]["teamB"]): string | undefined {
+  if (team.proposalSummary) {
+    return translateEvidenceText(team.proposalSummary);
+  }
+  if (team.proposalThesis) {
+    return translateEvidenceText(team.proposalThesis);
+  }
+  return undefined;
 }
 
 function resolvePlayerHighlight(agentId: string, frame: LiveRoundFrame | null): OverlayRosterPlayerViewModel["highlight"] {

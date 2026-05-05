@@ -17,7 +17,7 @@
       "team_json_path": "processed/teams/vitallmty/team.json",
       "roster_json_path": "processed/teams/vitallmty/roster.json",
       "hooks_json_path": "processed/teams/vitallmty/hooks.json",
-      "strategy_json_path": "processed/teams/vitallmty/strategy.json"
+      "initial_proposal_json_path": "processed/teams/vitallmty/initial-proposal.json"
     },
     {
       "seed": 2,
@@ -54,7 +54,7 @@
       "team_json_path": "processed/teams/falcon-7b/team.json",
       "roster_json_path": "processed/teams/falcon-7b/roster.json",
       "hooks_json_path": "processed/teams/falcon-7b/hooks.json",
-      "strategy_json_path": "processed/teams/falcon-7b/strategy.json"
+      "initial_proposal_json_path": "processed/teams/falcon-7b/initial-proposal.json"
     },
     {
       "seed": 5,

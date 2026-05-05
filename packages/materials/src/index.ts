@@ -7,6 +7,7 @@ import {
   agentRoles,
   type Agent,
   type AgentBaseProfile,
+  type TeamInitialProposal,
   type AgentMaterialRef,
   type AgentRole,
   type AgentRoleProfile,
@@ -118,31 +119,12 @@ export interface ProcessedMaterialTeam {
   team: Record<string, unknown>;
   roster: MaterialRoster;
   hooks: Record<string, unknown>;
-  strategy?: ProcessedMaterialStrategy;
+  initialProposal?: ProcessedMaterialInitialProposal;
   players: ProcessedMaterialEntity[];
   coachAssets: ProcessedMaterialEntity[];
 }
 
-export interface ProcessedMaterialStrategy {
-  strategyId: string;
-  teamId: string;
-  teamSlug: string;
-  displayName: string;
-  version: string;
-  identitySummary: string;
-  opportunityThesis: string;
-  productThesis: string;
-  engineeringThesis: string;
-  businessThesis: string;
-  operationsThesis: string;
-  scalingThesis: string;
-  moatThesis: string;
-  preferredWinConditions: string[];
-  failureModes: string[];
-  coachOperatingPrinciples: string[];
-  playerOperatingPrinciples: string[];
-  frontendSummary: string;
-  llmStrategyTags: string[];
+export interface ProcessedMaterialInitialProposal extends TeamInitialProposal {
   jsonPath: string;
   raw: Record<string, unknown>;
 }
@@ -241,7 +223,7 @@ interface TeamIndexEntry {
   team_json_path: string;
   roster_json_path: string;
   hooks_json_path: string;
-  strategy_json_path?: string;
+  initial_proposal_json_path?: string;
 }
 
 interface RoleIndexEntry {
@@ -403,7 +385,8 @@ export function loadProcessedMaterials(projectRoot = process.cwd()): ProcessedMa
     const roster = readRoster(materialFilePath(materialsRoot, teamRef.roster_json_path), teamRef.team_slug);
     const hooks = readJsonObject(materialFilePath(materialsRoot, teamRef.hooks_json_path));
     const processedPaths = asOptionalRecord(team.processed_paths);
-    const strategyPath = readOptionalString(teamRef.strategy_json_path) ?? readOptionalString(processedPaths?.strategy);
+    const initialProposalPath =
+      readOptionalString(teamRef.initial_proposal_json_path) ?? readOptionalString(processedPaths?.initial_proposal);
     const teamId = readString(team.team_id, `${teamRef.team_slug}.team_id`);
     const displayName = readString(team.agent_team_name, `${teamRef.team_slug}.agent_team_name`);
     const teamSlug = readString(team.team_slug, `${teamRef.team_slug}.team_slug`);
@@ -414,7 +397,9 @@ export function loadProcessedMaterials(projectRoot = process.cwd()): ProcessedMa
     assert(roster.active_players.length === 5, `${teamRef.team_slug} must have exactly 5 active players.`);
 
     const teamDir = join(teamsRoot, teamRef.team_slug);
-    const strategy = strategyPath ? readStrategy(materialFilePath(materialsRoot, strategyPath), teamRef.team_slug, teamId, displayName) : undefined;
+    const initialProposal = initialProposalPath
+      ? readInitialProposal(materialFilePath(materialsRoot, initialProposalPath), teamRef.team_slug, teamId, displayName)
+      : undefined;
     const players = readEntityDirectory(join(teamDir, "players"), teamRef.team_slug, aliasesByTargetId, rolesByEntityId, llmBindingsByEntityId, llmAssets);
     const coachAssets = readEntityDirectory(join(teamDir, "coach"), teamRef.team_slug, aliasesByTargetId, rolesByEntityId, llmBindingsByEntityId, llmAssets);
     assert(players.length === 5, `${teamRef.team_slug} must have exactly 5 player entities.`);
@@ -440,7 +425,7 @@ export function loadProcessedMaterials(projectRoot = process.cwd()): ProcessedMa
       team,
       roster,
       hooks,
-      ...(strategy ? { strategy } : {}),
+      ...(initialProposal ? { initialProposal } : {}),
       players,
       coachAssets
     };
@@ -515,14 +500,14 @@ export function buildRuntimeTeamSeed(
     displayName: materialTeam.displayName,
     shortName: materialTeam.shortName,
     seed: materialTeam.seed,
-    ...(materialTeam.strategy ? { teamProfileId: materialTeam.strategy.strategyId } : {}),
+    ...(materialTeam.initialProposal ? { teamProfileId: materialTeam.initialProposal.proposalId } : {}),
     source: {
       phase: "1.7-materials-runtime",
       materialTeamId: materialTeam.teamId,
       materialTeamSlug: materialTeam.slug,
       rosterVersion: materialTeam.roster.roster_version,
       headCoachImported: coachEntities.length > 0,
-      ...(materialTeam.strategy ? { materialStrategy: buildMaterialStrategySource(materialTeam.strategy) } : {}),
+      ...(materialTeam.initialProposal ? { materialInitialProposal: buildMaterialInitialProposalSource(materialTeam.initialProposal) } : {}),
       ...(headCoachAsset ? { headCoachProfile: buildHeadCoachSource(headCoachAsset) } : {})
     },
     createdAt
@@ -815,16 +800,26 @@ function buildBaseProfile(entity: ProcessedMaterialEntity): AgentBaseProfile {
   };
 }
 
-function buildMaterialStrategySource(strategy: ProcessedMaterialStrategy): Record<string, unknown> {
+function buildMaterialInitialProposalSource(initialProposal: ProcessedMaterialInitialProposal): TeamInitialProposal {
   return {
-    strategyId: strategy.strategyId,
-    version: strategy.version,
-    identitySummary: strategy.identitySummary,
-    frontendSummary: strategy.frontendSummary,
-    opportunityThesis: strategy.opportunityThesis,
-    preferredWinConditions: strategy.preferredWinConditions,
-    failureModes: strategy.failureModes,
-    llmStrategyTags: strategy.llmStrategyTags
+    proposalId: initialProposal.proposalId,
+    version: initialProposal.version,
+    teamId: initialProposal.teamId,
+    teamSlug: initialProposal.teamSlug,
+    displayName: initialProposal.displayName,
+    teamThesis: initialProposal.teamThesis,
+    opportunity: initialProposal.opportunity,
+    product: initialProposal.product,
+    engineering: initialProposal.engineering,
+    business: initialProposal.business,
+    operations: initialProposal.operations,
+    scaling: initialProposal.scaling,
+    moat: initialProposal.moat,
+    mustHoldClaims: initialProposal.mustHoldClaims,
+    failureModes: initialProposal.failureModes,
+    playerOperatingPrinciples: initialProposal.playerOperatingPrinciples,
+    coachWindowPolicies: initialProposal.coachWindowPolicies,
+    frontendSummary: initialProposal.frontendSummary
   };
 }
 
@@ -852,58 +847,57 @@ function buildMaterialRef(entity: ProcessedMaterialEntity): AgentMaterialRef {
   };
 }
 
-function readStrategy(filePath: string, teamSlug: string, teamId: string, displayName: string): ProcessedMaterialStrategy {
+function readInitialProposal(filePath: string, teamSlug: string, teamId: string, displayName: string): ProcessedMaterialInitialProposal {
   const raw = readJsonObject(filePath);
-  const strategyId = readString(raw.strategy_id, `${teamSlug}.strategy.strategy_id`);
-  const strategyTeamId = readString(raw.team_id, `${teamSlug}.strategy.team_id`);
-  const strategyTeamSlug = readString(raw.team_slug, `${teamSlug}.strategy.team_slug`);
-  const strategyDisplayName = readString(raw.display_name, `${teamSlug}.strategy.display_name`);
-  const version = readString(raw.version, `${teamSlug}.strategy.version`);
-  const identitySummary = readString(raw.identity_summary, `${teamSlug}.strategy.identity_summary`);
-  const opportunityThesis = readString(raw.opportunity_thesis, `${teamSlug}.strategy.opportunity_thesis`);
-  const productThesis = readString(raw.product_thesis, `${teamSlug}.strategy.product_thesis`);
-  const engineeringThesis = readString(raw.engineering_thesis, `${teamSlug}.strategy.engineering_thesis`);
-  const businessThesis = readString(raw.business_thesis, `${teamSlug}.strategy.business_thesis`);
-  const operationsThesis = readString(raw.operations_thesis, `${teamSlug}.strategy.operations_thesis`);
-  const scalingThesis = readString(raw.scaling_thesis, `${teamSlug}.strategy.scaling_thesis`);
-  const moatThesis = readString(raw.moat_thesis, `${teamSlug}.strategy.moat_thesis`);
-  const preferredWinConditions = readStringArray(raw.preferred_win_conditions, `${teamSlug}.strategy.preferred_win_conditions`);
-  const failureModes = readStringArray(raw.failure_modes, `${teamSlug}.strategy.failure_modes`);
-  const coachOperatingPrinciples = readStringArray(
-    raw.coach_operating_principles,
-    `${teamSlug}.strategy.coach_operating_principles`
-  );
+  const proposalId = readString(raw.proposalId, `${teamSlug}.initialProposal.proposalId`);
+  const proposalTeamId = readString(raw.teamId, `${teamSlug}.initialProposal.teamId`);
+  const proposalTeamSlug = readString(raw.teamSlug, `${teamSlug}.initialProposal.teamSlug`);
+  const proposalDisplayName = readString(raw.displayName, `${teamSlug}.initialProposal.displayName`);
+  const version = readString(raw.version, `${teamSlug}.initialProposal.version`);
+  const teamThesis = readString(raw.teamThesis, `${teamSlug}.initialProposal.teamThesis`);
+  const opportunity = readString(raw.opportunity, `${teamSlug}.initialProposal.opportunity`);
+  const product = readString(raw.product, `${teamSlug}.initialProposal.product`);
+  const engineering = readString(raw.engineering, `${teamSlug}.initialProposal.engineering`);
+  const business = readString(raw.business, `${teamSlug}.initialProposal.business`);
+  const operations = readString(raw.operations, `${teamSlug}.initialProposal.operations`);
+  const scaling = readString(raw.scaling, `${teamSlug}.initialProposal.scaling`);
+  const moat = readString(raw.moat, `${teamSlug}.initialProposal.moat`);
+  const mustHoldClaims = readStringArray(raw.mustHoldClaims, `${teamSlug}.initialProposal.mustHoldClaims`);
+  const failureModes = readStringArray(raw.failureModes, `${teamSlug}.initialProposal.failureModes`);
   const playerOperatingPrinciples = readStringArray(
-    raw.player_operating_principles,
-    `${teamSlug}.strategy.player_operating_principles`
+    raw.playerOperatingPrinciples,
+    `${teamSlug}.initialProposal.playerOperatingPrinciples`
   );
-  const frontendSummary = readString(raw.frontend_summary, `${teamSlug}.strategy.frontend_summary`);
-  const llmStrategyTags = readStringArray(raw.llm_strategy_tags, `${teamSlug}.strategy.llm_strategy_tags`);
+  const coachWindowPolicies = asRecord(raw.coachWindowPolicies, `${teamSlug}.initialProposal.coachWindowPolicies`);
+  const frontendSummary = readString(raw.frontendSummary, `${teamSlug}.initialProposal.frontendSummary`);
 
-  assert(strategyTeamId === teamId, `${teamSlug}.strategy.team_id does not match ${teamId}.`);
-  assert(strategyTeamSlug === teamSlug, `${teamSlug}.strategy.team_slug does not match ${teamSlug}.`);
-  assert(strategyDisplayName === displayName, `${teamSlug}.strategy.display_name does not match ${displayName}.`);
+  assert(proposalTeamId === teamId, `${teamSlug}.initialProposal.teamId does not match ${teamId}.`);
+  assert(proposalTeamSlug === teamSlug, `${teamSlug}.initialProposal.teamSlug does not match ${teamSlug}.`);
+  assert(proposalDisplayName === displayName, `${teamSlug}.initialProposal.displayName does not match ${displayName}.`);
 
   return {
-    strategyId,
-    teamId: strategyTeamId,
-    teamSlug: strategyTeamSlug,
-    displayName: strategyDisplayName,
+    proposalId,
+    teamId: proposalTeamId,
+    teamSlug: proposalTeamSlug,
+    displayName: proposalDisplayName,
     version,
-    identitySummary,
-    opportunityThesis,
-    productThesis,
-    engineeringThesis,
-    businessThesis,
-    operationsThesis,
-    scalingThesis,
-    moatThesis,
-    preferredWinConditions,
+    teamThesis,
+    opportunity,
+    product,
+    engineering,
+    business,
+    operations,
+    scaling,
+    moat,
+    mustHoldClaims,
     failureModes,
-    coachOperatingPrinciples,
     playerOperatingPrinciples,
+    coachWindowPolicies: {
+      timeout: readString(coachWindowPolicies.timeout, `${teamSlug}.initialProposal.coachWindowPolicies.timeout`),
+      halftime: readString(coachWindowPolicies.halftime, `${teamSlug}.initialProposal.coachWindowPolicies.halftime`),
+      postMap: readString(coachWindowPolicies.postMap, `${teamSlug}.initialProposal.coachWindowPolicies.postMap`)
+    },
     frontendSummary,
-    llmStrategyTags,
     jsonPath: filePath,
     raw
   };

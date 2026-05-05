@@ -1,9 +1,12 @@
-import type { Repositories } from "@agent-major/db";
+﻿import type { Repositories } from "@agent-major/db";
 import type { LlmGateway, LlmMessage, LlmResponse } from "@agent-major/llm";
 import type { JobQueue } from "@agent-major/queue";
 import {
   agentActionDecisionSchema,
   judgeResultSchema,
+  teamInitialProposalSchema,
+  teamInitialProposalSummarySchema,
+  teamProposalAnchorSchema,
   teamRoundPlanDecisionSchema,
   type Agent,
   type AgentActionDecision,
@@ -24,6 +27,9 @@ import {
   type Summary,
   type TacticalCollision,
   type Team,
+  type TeamInitialProposal,
+  type TeamInitialProposalSummary,
+  type TeamProposalAnchor,
   type TeamRoundPlanDecision,
   type TimelineEvent,
   type TimelineEventKind
@@ -187,7 +193,7 @@ interface Phase18JudgePromptContext {
       teamName: string;
       activeAgents: Array<{ id: string; role: string }>;
       teamPlan?: TeamRoundPlanDecision;
-      teamStrategy?: Record<string, unknown>;
+      initialProposalSummary?: TeamInitialProposalSummary;
       coachContext?: Record<string, unknown>;
     }>;
     teamAId: string;
@@ -1110,7 +1116,7 @@ class Phase12SimulationEngine implements SimulationEngine {
             totalOutputBudget: generation.economyStates.reduce((sum, state) => sum + (state.outputBudget ?? 0), 0),
             outputGate: {
               applied: true,
-              reason: "本地确定性输出闸门：按 active agent 与本回合购买态势限制输出预算。"
+              reason: "本地确定性输出闸门：按 active agent 数量与本回合买型态势限制输出预算。"
             }
           },
           highlightTags,
@@ -1469,15 +1475,15 @@ class Phase12SimulationEngine implements SimulationEngine {
       mapGameId: input.mapGame.id,
       scopeType: "map",
       scopeId: input.mapGame.id,
-      payload: {
-        schemaVersion: 1,
-        mapGameId: input.mapGame.id,
-        summaryId: summary.id,
-        runControlState: "map_review_window",
-        reason: "地图已完成，进入本地回放复盘窗口。"
-      },
-      createdAt: input.completedAt
-    });
+        payload: {
+          schemaVersion: 1,
+          mapGameId: input.mapGame.id,
+          summaryId: summary.id,
+          runControlState: "map_review_window",
+          reason: "地图已完成，进入本地图回放复盘窗口。"
+        },
+        createdAt: input.completedAt
+      });
     if (hasMatchWinner(completedMatch)) {
       await this.completeMatchInCurrentTransaction(completedMatch, input.completedAt);
     }
@@ -1608,13 +1614,13 @@ class Phase12SimulationEngine implements SimulationEngine {
           roundNumber: input.round.roundNumber,
           mapName: input.mapGame.mapName,
           mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName),
+          judgeRubricContext: readPhase18JudgeRubricContext(this.context, input.mapGame.mapName),
           teamId: side.team.id,
           teamName: side.team.displayName,
-          teamStrategy: readTeamMaterialStrategy(side.team),
+          initialProposal: readTeamMaterialInitialProposal(side.team),
           coachContext: readTeamHeadCoachProfile(side.team),
           opponentTeamId: side.opponent.id,
           opponentTeamName: side.opponent.displayName,
-          opponentStrategySummary: readOpponentStrategySummary(side.opponent),
           side: teamSide,
           sideAssignment: input.sideAssignment,
           scoreBeforeRound: input.scoreBeforeRound,
@@ -1644,7 +1650,7 @@ class Phase12SimulationEngine implements SimulationEngine {
         roundNumber: input.round.roundNumber,
         validateResponseData: (data) =>
           validateTeamRoundPlan({
-            plan: teamRoundPlanDecisionSchema.parse(data),
+            plan: teamRoundPlanDecisionSchema.parse(normalizeTeamRoundPlanPayload(data)),
             teamId: side.team.id,
             expectedSide: teamSide,
             activeAgents: side.activeAgents
@@ -1687,11 +1693,10 @@ class Phase12SimulationEngine implements SimulationEngine {
         agentDisplayName: agent.displayName,
         teamId: agent.teamId,
         teamName: agentTeam.displayName,
-        teamStrategy: readTeamMaterialStrategy(agentTeam),
+        proposalAnchor: readTeamProposalAnchor(agentTeam, agent),
         coachContext: readTeamHeadCoachProfile(agentTeam),
         opponentTeamId: opponentTeam.id,
         opponentTeamName: opponentTeam.displayName,
-        opponentStrategySummary: readOpponentStrategySummary(opponentTeam),
         role: agent.role,
         secondaryRoles: agent.secondaryRoles ?? [],
         roleResponsibilities: agent.roleProfile?.agentMajorResponsibilities ?? [],
@@ -2350,8 +2355,13 @@ function buildJudgeReason(input: {
     scoreBeforeRound: input.scoreBeforeRound,
     scoreAfterRound
   });
-  const marginLine = input.margin === "decisive" ? "判定为明确优势回合" : input.margin === "narrow" ? "判定为窄胜回合" : "判定为标准优势回合";
-  return `${winnerName} 在 ${input.mapName} 第 ${input.roundNumber} 回合拿分，${input.mvpAgent.displayName} 是本回合 MVP 判定核心；比分 ${formatScore(input.scoreBeforeRound)} -> ${formatScore(scoreAfterRound)}，${pressureLine}，${marginLine}。`;
+  const marginLine =
+    input.margin === "decisive"
+      ? "判定为明显优势回合"
+      : input.margin === "narrow"
+        ? "判定为窄胜回合"
+        : "判定为标准优势回合";
+  return `${winnerName} 在 ${input.mapName} 第 ${input.roundNumber} 回合拿分，${input.mvpAgent.displayName} 是本回合 MVP 判定核心；比分 ${formatScore(input.scoreBeforeRound)} -> ${formatScore(scoreAfterRound)}；${pressureLine}；${marginLine}。`;
 }
 
 function buildKeyEvents(input: {
@@ -2422,7 +2432,7 @@ function buildKeyEvents(input: {
       actorTeamId: input.winnerTeamId,
       targetTeamId: input.loserTeamId,
       zoneId: "token_economy",
-      impact: `${mvpAgent.displayName} 带队用 ${formatBuyType(winnerBuyType)} 对抗 ${formatBuyType(loserBuyType)}，回合后相对经济变化 ${formatSignedNumber(winnerEconomyDelta - loserEconomyDelta)}。`,
+      impact: `${mvpAgent.displayName} 带队以 ${formatBuyType(winnerBuyType)} 对抗 ${formatBuyType(loserBuyType)}，回合后相对经济变化 ${formatSignedNumber(winnerEconomyDelta - loserEconomyDelta)}。`,
       sourceAgentOutputIds: sourceOutputIds(input.agentOutputs, mvpAgent.id)
     });
   }
@@ -2786,7 +2796,7 @@ function buildCasterSetupLine(input: {
   return {
     speakerRole: "main_caster",
     text: `第 ${input.round.roundNumber} 回合开局，${formatSidePhase(input.sideContext.phase)}，比分 ${formatScore(input.roundReport.scoreBeforeRound)}。${input.teamA.shortName} ${teamABuy} 对 ${input.teamB.shortName} ${teamBBuy}，先看第一波资源分配。`,
-    reason: "基于回合开局、比分、半场和买型信息生成。",
+    reason: "基于回合开局、比分、半场与买型信息生成。",
     tags: ["round_setup", input.sideContext.phase],
     lineRole: "round_setup",
     generationMode: "rule",
@@ -2836,12 +2846,9 @@ function buildSummary(input: {
   const winnerBuyType = input.winnerTeamId === input.teamA.id ? input.teamABuyType : input.teamBBuyType;
   const loserBuyType = input.winnerTeamId === input.teamA.id ? input.teamBBuyType : input.teamABuyType;
   const keyLine = input.keyEvents.slice(0, 2).map((event) => event.impact).join(" ");
-  const sideLine = input.sideContext.activeSide === "teamA" ? `${input.teamA.shortName} 主动侧` : `${input.teamB.shortName} 主动侧`;
+  const sideLine = input.sideContext.activeSide === "teamA" ? `${input.teamA.shortName} 主动进攻` : `${input.teamB.shortName} 主动进攻`;
   const highlightLine = summarizeHighlightTags(input.highlightTags);
-  const tacticalLine = input.tacticalContext
-    ? ` Tactical: attack=${input.tacticalContext.attackPlan.approach} primary=${input.tacticalContext.collision.primaryZoneId} defense=${input.tacticalContext.defenseDeployment.setup} result=${input.tacticalContext.collision.result}.`
-    : "";
-  return `${winnerName} 在 ${input.mapName} 第 ${input.roundNumber} 回合完成收束，比分 ${formatScore(input.scoreBeforeRound)} -> ${formatScore(input.scoreAfterRound)}。${sideLine}，购买对位为 ${formatBuyType(winnerBuyType)} 对 ${formatBuyType(loserBuyType)}。关键事件：${keyLine}${highlightLine}${tacticalLine}`;
+  return `${winnerName} 在 ${input.mapName} 第 ${input.roundNumber} 回合完成收束，比分 ${formatScore(input.scoreBeforeRound)} -> ${formatScore(input.scoreAfterRound)}。${sideLine}，买型对位为 ${formatBuyType(winnerBuyType)} 对 ${formatBuyType(loserBuyType)}。关键事件：${keyLine}${highlightLine}`;
 }
 
 function buildMapSummary(input: {
@@ -3393,7 +3400,7 @@ function buildJudgePromptContext(input: {
       teamId: promptTeamA.id,
       teamName: promptTeamA.displayName,
       activeAgents: promptActiveA,
-      teamStrategy: sanitizeJudgeRecord(readTeamMaterialStrategy(input.teamA), sanitizeReplacements),
+      initialProposalSummary: sanitizeJudgeRecord(readTeamInitialProposalSummary(input.teamA), sanitizeReplacements),
       coachContext: sanitizeJudgeRecord(readTeamHeadCoachProfile(input.teamA), sanitizeReplacements),
       teamPlan: promptTeamPlans?.[promptTeamA.id]
     }),
@@ -3401,7 +3408,7 @@ function buildJudgePromptContext(input: {
       teamId: promptTeamB.id,
       teamName: promptTeamB.displayName,
       activeAgents: promptActiveB,
-      teamStrategy: sanitizeJudgeRecord(readTeamMaterialStrategy(input.teamB), sanitizeReplacements),
+      initialProposalSummary: sanitizeJudgeRecord(readTeamInitialProposalSummary(input.teamB), sanitizeReplacements),
       coachContext: sanitizeJudgeRecord(readTeamHeadCoachProfile(input.teamB), sanitizeReplacements),
       teamPlan: promptTeamPlans?.[promptTeamB.id]
     })
@@ -3463,9 +3470,10 @@ function readPhase18JudgeRubricContext(context: Pick<EngineContext, "phase18MapS
   return readUnknownRecord(mapSemantic?.judgeRubric);
 }
 
-function readTeamMaterialStrategy(team: Team): Record<string, unknown> | undefined {
+function readTeamMaterialInitialProposal(team: Team): TeamInitialProposal | undefined {
   const source = readUnknownRecord(team.source);
-  return readUnknownRecord(source?.materialStrategy);
+  const parsed = teamInitialProposalSchema.safeParse(source?.materialInitialProposal);
+  return parsed.success ? parsed.data : undefined;
 }
 
 function readTeamHeadCoachProfile(team: Team): Record<string, unknown> | undefined {
@@ -3473,20 +3481,75 @@ function readTeamHeadCoachProfile(team: Team): Record<string, unknown> | undefin
   return readUnknownRecord(source?.headCoachProfile);
 }
 
-function readOpponentStrategySummary(team: Team): Record<string, unknown> | undefined {
-  const strategy = readTeamMaterialStrategy(team);
-  if (!strategy) {
+function readTeamInitialProposalSummary(team: Team): TeamInitialProposalSummary | undefined {
+  const initialProposal = readTeamMaterialInitialProposal(team);
+  if (!initialProposal) {
     return undefined;
   }
 
-  const identitySummary = typeof strategy.identitySummary === "string" ? strategy.identitySummary : undefined;
-  const frontendSummary = typeof strategy.frontendSummary === "string" ? strategy.frontendSummary : undefined;
-  const failureModes = Array.isArray(strategy.failureModes) ? strategy.failureModes.filter((item): item is string => typeof item === "string") : [];
-  return removeUndefined({
-    ...(identitySummary ? { identitySummary } : {}),
-    ...(frontendSummary ? { frontendSummary } : {}),
-    ...(failureModes.length > 0 ? { failureModes } : {})
+  return teamInitialProposalSummarySchema.parse({
+    proposalId: initialProposal.proposalId,
+    version: initialProposal.version,
+    teamThesis: initialProposal.teamThesis,
+    opportunity: initialProposal.opportunity,
+    product: initialProposal.product,
+    engineering: initialProposal.engineering,
+    business: initialProposal.business,
+    operations: initialProposal.operations,
+    scaling: initialProposal.scaling,
+    moat: initialProposal.moat,
+    mustHoldClaims: initialProposal.mustHoldClaims,
+    failureModes: initialProposal.failureModes,
+    frontendSummary: initialProposal.frontendSummary
   });
+}
+
+function readTeamProposalAnchor(team: Team, agent: Agent): TeamProposalAnchor | undefined {
+  const initialProposal = readTeamMaterialInitialProposal(team);
+  if (!initialProposal) {
+    return undefined;
+  }
+
+  const playerOperatingPrinciples = pickProposalOperatingPrinciples(initialProposal, agent.role);
+  return teamProposalAnchorSchema.parse({
+    teamThesis: initialProposal.teamThesis,
+    mustHoldClaims: initialProposal.mustHoldClaims,
+    playerOperatingPrinciples
+  });
+}
+
+function pickProposalOperatingPrinciples(initialProposal: TeamInitialProposal, role: Agent["role"]): string[] {
+  const roleKeywords = proposalRoleKeywords(role);
+  const matched = initialProposal.playerOperatingPrinciples.filter((principle) => {
+    const normalized = principle.toLowerCase();
+    return roleKeywords.some((keyword) => normalized.includes(keyword.toLowerCase()));
+  });
+  return matched.length > 0 ? matched : initialProposal.playerOperatingPrinciples.slice(0, 1);
+}
+
+function proposalRoleKeywords(role: Agent["role"]): string[] {
+  switch (role) {
+    case "igl":
+      return ["igl", "指挥"];
+    case "entry":
+      return ["entry", "先手", "打开空间"];
+    case "awper":
+      return ["awper", "狙击", "scope"];
+    case "star_rifler":
+      return ["star rifler", "star", "核心输出", "rifler"];
+    case "lurker":
+      return ["lurker", "侧翼", "隐藏"];
+    case "support":
+      return ["support", "辅助", "补位"];
+    case "rifler":
+      return ["rifler", "枪手", "收束", "closeout"];
+    case "coach":
+      return ["coach", "教练", "暂停", "半场", "复盘"];
+    case "stand_in":
+      return ["stand-in", "替补", "兜底"];
+    default:
+      return [role];
+  }
 }
 
 function readUnknownRecord(value: unknown): Record<string, unknown> | undefined {
@@ -3507,6 +3570,45 @@ function normalizeJudgeResultPayload(data: unknown): unknown {
   return {
     ...record,
     margin
+  };
+}
+
+function normalizeTeamRoundPlanPayload(data: unknown): unknown {
+  const record = readUnknownRecord(data);
+  if (!record || Array.isArray(record.playerDirectives)) {
+    return data;
+  }
+
+  const directivesRecord = readUnknownRecord(record.playerDirectives);
+  if (!directivesRecord) {
+    return data;
+  }
+
+  const playerDirectives = Object.entries(directivesRecord).map(([agentId, directiveValue]) => {
+    if (typeof directiveValue === "string") {
+      return {
+        agentId,
+        directive: directiveValue
+      };
+    }
+
+    const directiveRecord = readUnknownRecord(directiveValue);
+    if (directiveRecord && typeof directiveRecord.directive === "string") {
+      return {
+        agentId,
+        directive: directiveRecord.directive
+      };
+    }
+
+    return {
+      agentId,
+      directive: directiveValue
+    };
+  });
+
+  return {
+    ...record,
+    playerDirectives
   };
 }
 
@@ -3564,8 +3666,9 @@ function buildPhase18StructuredMessages(input: {
       role: "system",
       content: [
         "你是 Agent Major Phase 2.0-pre 的结构化对局引擎。",
-        "只输出 json，不要输出 markdown、代码块、解释、重复输入字段，或夹杂的英文句子。",
-        "除必要英文术语与字段名外，所有自然语言字段必须使用中文。",
+        "你必须只输出 json。不要输出 markdown、代码块、解释、前后缀，或任何 json 之外的文本。",
+        "当 response_format 使用 json_object 时，messages 中必须明确出现 json 一词；因此你必须返回严格合法的 json。",
+        "除必要英文术语、字段名、地图名、选手名外，自然语言内容默认使用中文，避免中英混杂。",
         buildPhase18SchemaContract(input.schemaName),
         buildPhase18TaskInstruction(input.task)
       ].join("\n\n")
@@ -3574,8 +3677,8 @@ function buildPhase18StructuredMessages(input: {
       role: "user",
       content: [
         `任务：${input.task}`,
-        "这不是通用的 Counter-Strike 模拟，也不是自由叙事。必须把给定的比赛资产当作唯一事实来源。",
-        "当上下文存在时，必须围绕 mapSemanticContext、judgeRubricContext、teamStrategy、coachContext、teamPlan、playerDirective、roleResponsibilities、opponentStrategySummary 来回答。",
+        "这不是自由叙事，也不是通用 Counter-Strike 模拟。你必须把给定的比赛资产当作唯一事实来源。",
+        "当上下文存在时，必须围绕 mapSemanticContext、judgeRubricContext、initialProposal、initialProposalSummary、proposalAnchor、coachContext、teamPlan、playerDirective、roleResponsibilities 来回答。",
         contextSummary,
         "结构化输入 json：",
         JSON.stringify(input.requestInput, null, 2)
@@ -3588,35 +3691,34 @@ function buildPhase18SchemaContract(schemaName: string): string {
   if (schemaName === "AgentActionDecision") {
     return [
       "json 输出契约：",
-      '只返回一个顶层对象：{"action":"<简洁战术动作>","confidence":0.0,"fingerprint":"<可选的短稳定标记>"}',
+      '只返回一个顶层对象：{"action":"<简洁战术动作>","confidence":0.0,"fingerprint":"<可选稳定标记>"}',
       "必填字段：action、confidence。",
       "confidence 必须是 0 到 1 之间的数字。",
-      "自然语言字段要中文优先，避免中英混杂。"
+      "自然语言字段用中文表达，不要写成中英混杂句子。"
     ].join("\n");
   }
 
-  if (schemaName === "TeamRoundPlanDecision") {
-    return [
-      "json 输出契约：",
-      '只返回一个顶层对象，字段包括：teamId、side、primaryIntent、primaryZoneId、可选 secondaryZoneId、coordinationSummary、playerDirectives、winCondition、risk、confidence、可选 fingerprint。',
-      "playerDirectives 必须且只能覆盖输入中的每个 active player 一次。",
-      "side 必须与输入 side 一致。confidence 必须是 0 到 1 之间的数字。",
-      "所有可读文本字段请用中文表达，除必要英文术语外不要写英文句子。"
-    ].join("\n");
-  }
-
-    if (schemaName === "JudgeResult") {
+    if (schemaName === "TeamRoundPlanDecision") {
       return [
         "json 输出契约：",
-        '只返回一个顶层对象，字段包括：winnerTeamId、loserTeamId、margin、reason、mvpAgentId、confidence。',
-        "margin 必须严格是 narrow、standard、decisive 三者之一，不要使用 clear、close、solid、dominant 或其他同义词。",
-        "reason 必须明确写出双方队伍，并解释胜方为什么成功、败方为什么失败。",
-        "为便于稳定校验，reason 中请保留成功/失败，或者 succeeded/failed 这类标记。",
-        "winnerTeamId 必须是输入的两队之一，loserTeamId 必须是另外一队。",
-        "mvpAgentId 必须来自胜方的 active roster。",
-        "confidence 必须是 0 到 1 之间的数字。",
-        "自然语言部分尽量全中文，除必要英文标记外不要写混杂英文。"
+        "只返回一个顶层对象，字段包括：teamId、side、primaryIntent、primaryZoneId、可选 secondaryZoneId、coordinationSummary、playerDirectives、winCondition、risk、confidence、可选 fingerprint。",
+        'playerDirectives 必须是数组，例如：[{"agentId":"agent_x","directive":"先控中路再转B点"},{"agentId":"agent_y","directive":"跟进补枪"}]。',
+        "playerDirectives 必须且只能覆盖输入中的每名 active player 一次，不要返回以 agentId 为 key 的对象。",
+        "side 必须与输入 side 一致，confidence 必须是 0 到 1 之间的数字。",
+        "所有可读文本字段默认使用中文。"
       ].join("\n");
+    }
+
+  if (schemaName === "JudgeResult") {
+    return [
+      "json 输出契约：",
+      "只返回一个顶层对象，字段包括：winnerTeamId、loserTeamId、margin、reason、mvpAgentId、confidence。",
+      "margin 必须严格是 narrow、standard、decisive 三者之一，不要使用 clear、close、solid、dominant 等同义词。",
+      "reason 必须明确解释胜方为什么成功、败方为什么失败，并保留‘成功/失败’或 succeeded/failed 这类稳定标记。",
+      "winnerTeamId 必须是输入两队之一，loserTeamId 必须是另一队。",
+      "mvpAgentId 必须来自胜方 active roster，confidence 必须是 0 到 1 之间的数字。",
+      "自然语言部分默认使用中文。"
+    ].join("\n");
   }
 
   return "json 输出契约：只返回一个与指定 schema 完全一致的顶层对象。";
@@ -3624,38 +3726,36 @@ function buildPhase18SchemaContract(schemaName: string): string {
 
 function buildPhase18TaskInstruction(task: "team_plan" | "agent_action" | "judge" | "judge_review"): string {
   switch (task) {
-    case "team_plan":
-      return [
-        "任务说明：",
-        "生成一份真正贴合当前地图命题与队伍长期方案的回合计划。",
-        "不要输出通用的点位强攻或通用防守。计划必须绑定当前子命题、队伍母方案，以及本回合真正的压力点。",
-        "如果是进攻方，就压迫对手最薄弱的命题缺口；如果是防守方，就守住自己的核心命题，不要临时胡编新方案。",
-        "教练窗口只负责修正，不是赛前重写。所有自然语言表达请中文优先。"
-      ].join("\n");
+      case "team_plan":
+        return [
+          "任务说明：",
+          "生成一份真正贴合当前地图命题、裁判规程与队伍唯一方案的回合计划。",
+          "不要输出通用点位模板，也不要临时发明另一套总方案。你必须把 initialProposal 翻译成当前回合的局部执行方案。",
+          "若当前是进攻方，就去打对手方案最脆弱的缺口；若当前是防守方，就守住本队最不可失守的核心成立点。",
+          "playerDirectives 必须输出为数组，每项形如 {agentId, directive}；不要输出对象字典。",
+          "coachContext 只负责修正，不负责赛前重写方案。自然语言内容用中文。"
+        ].join("\n");
     case "agent_action":
       return [
         "任务说明：",
-        "从 roleResponsibilities、teamPlan、playerDirective、teamStrategy 和 coachContext 里，选择一名选手的具体动作。",
-        "不要发明隐藏信息、虚构武器、虚构投掷物库存，也不要写电竞腔的灌水句子。",
-        "动作必须具体到能改变回合，但也要足够简洁，仍然只是一个选手动作。",
-        "自然语言字段必须中文为主，除必要英文术语外不要夹杂英文句子。"
+        "从 roleResponsibilities、teamPlan、playerDirective、proposalAnchor 和 coachContext 里，为这名选手选出一个具体动作。",
+        "选手负责执行，不负责重新发明整队方案。动作必须具体到能影响回合，但保持单个选手动作的粒度。",
+        "不要虚构隐藏情报、装备库存或无根据的故事背景。自然语言内容用中文。"
       ].join("\n");
-      case "judge":
-        return [
-          "任务说明：",
-          "只能根据给定证据和裁判准则判定本回合。",
-          "必须解释进攻方击中了哪个机会缺口，防守方守住或没守住哪个核心命题，并说明为什么这符合当前地图主题。",
-          "reason 里必须同时出现胜方成功、败方失败两层说明；可以使用“成功/失败”，不要写成空泛故事。",
-          "不要按队伍顺序、名气、当前比分领先或叙事惯性来下结论。",
-          "自然语言部分请中文优先，必要英文标记只保留在字段名或判定标记中。"
-        ].join("\n");
+    case "judge":
+      return [
+        "任务说明：",
+        "你只能根据双方 initialProposalSummary、双方 teamPlan、10 名选手动作、地图命题与裁判规程来判定本回合。",
+        "必须解释进攻方打中了什么，防守方守住或没守住什么，并说明这为什么符合当前地图命题。",
+        "reason 必须同时写出胜方成功与败方失败，不能只写单边赞美，也不能按队伍顺序、名气或比分领先做判断。",
+        "自然语言内容用中文。"
+      ].join("\n");
     case "judge_review":
       return [
         "任务说明：",
-        "在同一裁判准则下，带着更强的反偏置要求重新评估上一版裁判结果。",
-        "只有当败方解释完整，而且结论仍然锚定当前子命题与核心判定轴时，才保留原胜方。",
-        "如果上一版只是叙事性判断，请直接纠正。",
-        "自然语言部分请中文优先，除必要英文术语外不要混写英文句子。"
+        "在同一裁判规程下，带着更强的反偏置要求重新评估上一版裁判结果。",
+        "只有当败方解释完整、结论仍然锚定当前子命题与核心裁判轴时，才保留原判。",
+        "如果上一版只是叙事性偏置或理由残缺，请直接纠正。自然语言内容用中文。"
       ].join("\n");
     default:
       return "任务说明：严格按照结构化任务执行。";
@@ -3665,7 +3765,7 @@ function buildPhase18TaskInstruction(task: "team_plan" | "agent_action" | "judge
 function buildPhase18PromptContextSummary(requestInput: unknown): string {
   const record = readUnknownRecord(requestInput);
   if (!record) {
-    return "Context summary: unavailable.";
+    return "上下文摘要：不可用。";
   }
 
   const roundNumber = typeof record.roundNumber === "number" ? record.roundNumber : undefined;
@@ -3673,11 +3773,16 @@ function buildPhase18PromptContextSummary(requestInput: unknown): string {
   const mapSemantic = readUnknownRecord(record.mapSemanticContext);
   const proposition = readUnknownRecord(mapSemantic?.proposition);
   const judgeRubric = readUnknownRecord(record.judgeRubricContext) ?? readUnknownRecord(mapSemantic?.judgeRubric);
-  const teamStrategy = readUnknownRecord(record.teamStrategy);
+  const initialProposal = readUnknownRecord(record.initialProposal);
+  const proposalAnchor = readUnknownRecord(record.proposalAnchor);
   const coachContext = readUnknownRecord(record.coachContext);
-  const opponentStrategySummary = readUnknownRecord(record.opponentStrategySummary);
   const teamPlan = readUnknownRecord(record.teamPlan);
   const playerDirective = readUnknownRecord(record.playerDirective);
+  const evaluationOrder = Array.isArray(record.evaluationOrder)
+    ? record.evaluationOrder
+        .map((entry) => readUnknownRecord(entry))
+        .filter((entry): entry is Record<string, unknown> => Boolean(entry))
+    : [];
 
   const lines = [
     `地图：${mapName ?? "unknown"}`,
@@ -3700,7 +3805,7 @@ function buildPhase18PromptContextSummary(requestInput: unknown): string {
               .filter(([, value]) => typeof value === "string")
               .map(([zoneId, value]) => `${zoneId}=${value}`)
               .slice(0, 8);
-            return zonePairs.length > 0 ? [`区域别名：${zonePairs.join("，")}`] : [];
+            return zonePairs.length > 0 ? [`区域别名：${zonePairs.join("；")}`] : [];
           })(),
           ...(() => {
             const attackFocus = pickStringArray(proposition, "attackFocus");
@@ -3725,12 +3830,20 @@ function buildPhase18PromptContextSummary(requestInput: unknown): string {
           })()
         ]
       : []),
-    ...(teamStrategy
+    ...(initialProposal
       ? [
-          `队伍母方案：${pickString(teamStrategy, "identitySummary") ?? "unknown"}`,
+          `队伍唯一方案：${pickString(initialProposal, "teamThesis") ?? "unknown"}`,
           ...(() => {
-            const failureModes = pickStringArray(teamStrategy, "failureModes");
+            const mustHoldClaims = pickStringArray(initialProposal, "mustHoldClaims");
+            return mustHoldClaims.length > 0 ? [`必须守住：${mustHoldClaims.join(" / ")}`] : [];
+          })(),
+          ...(() => {
+            const failureModes = pickStringArray(initialProposal, "failureModes");
             return failureModes.length > 0 ? [`已知失败模式：${failureModes.join(" / ")}`] : [];
+          })(),
+          ...(() => {
+            const frontendSummary = pickString(initialProposal, "frontendSummary");
+            return frontendSummary ? [`方案摘要：${frontendSummary}`] : [];
           })()
         ]
       : []),
@@ -3741,24 +3854,35 @@ function buildPhase18PromptContextSummary(requestInput: unknown): string {
           }`
         ]
       : []),
-    ...(opponentStrategySummary
+    ...(proposalAnchor
       ? [
-          `对手摘要：${pickString(opponentStrategySummary, "identitySummary") ?? "unknown"}`,
+          `选手方案锚点：${pickString(proposalAnchor, "teamThesis") ?? "unknown"}`,
           ...(() => {
-            const failureModes = pickStringArray(opponentStrategySummary, "failureModes");
-            return failureModes.length > 0 ? [`对手失败模式：${failureModes.join(" / ")}`] : [];
+            const playerOperatingPrinciples = pickStringArray(proposalAnchor, "playerOperatingPrinciples");
+            return playerOperatingPrinciples.length > 0 ? [`选手执行原则：${playerOperatingPrinciples.join(" / ")}`] : [];
           })()
         ]
       : []),
+    ...evaluationOrder.flatMap((entry) => {
+      const initialProposalSummary = readUnknownRecord(entry.initialProposalSummary);
+      const summarizedPlan = readUnknownRecord(entry.teamPlan);
+      const teamName = pickString(entry, "teamName") ?? pickString(entry, "teamId") ?? "unknown";
+      const nextLines = [`裁判待评队伍：${teamName}`];
+      if (initialProposalSummary) {
+        nextLines.push(`方案主张：${pickString(initialProposalSummary, "teamThesis") ?? "unknown"}`);
+      }
+      if (summarizedPlan) {
+        nextLines.push(`当前意图：${pickString(summarizedPlan, "primaryIntent") ?? "unknown"}`);
+      }
+      return nextLines;
+    }),
     ...(teamPlan
       ? [
           `队伍意图：${pickString(teamPlan, "primaryIntent") ?? "unknown"}`,
           `队伍胜利条件：${pickString(teamPlan, "winCondition") ?? "unknown"}`
         ]
       : []),
-    ...(playerDirective
-      ? [`选手指令：${pickString(playerDirective, "directive") ?? "unknown"}`]
-      : [])
+    ...(playerDirective ? [`选手指令：${pickString(playerDirective, "directive") ?? "unknown"}`] : [])
   ];
 
   return `上下文摘要：\n${lines.join("\n")}`;
@@ -3796,7 +3920,7 @@ function buildJudgeEvaluationEntry(input: {
   teamName: string;
   activeAgents: Agent[];
   teamPlan: TeamRoundPlanDecision | undefined;
-  teamStrategy: Record<string, unknown> | undefined;
+  initialProposalSummary: Record<string, unknown> | undefined;
   coachContext: Record<string, unknown> | undefined;
 }): Phase18JudgePromptContext["requestInput"]["evaluationOrder"][number] {
   const entry = removeUndefined({
@@ -3804,7 +3928,7 @@ function buildJudgeEvaluationEntry(input: {
     teamName: input.teamName,
     activeAgents: input.activeAgents.map((agent) => ({ id: agent.id, role: agent.role })),
     teamPlan: input.teamPlan,
-    teamStrategy: input.teamStrategy,
+    initialProposalSummary: input.initialProposalSummary,
     coachContext: input.coachContext
   });
   return entry as Phase18JudgePromptContext["requestInput"]["evaluationOrder"][number];
@@ -4138,7 +4262,6 @@ const WIN_CONDITION_SYNONYMS = [
   "获胜条件",
   "取胜条件",
   "胜负条件",
-  "成立点",
   "计划",
   "方案",
   "命题",
@@ -4150,6 +4273,22 @@ const WIN_CONDITION_SYNONYMS = [
   "痛点",
   "场景",
   "切口",
+  "鑳滃埄鏉′欢",
+  "鑾疯儨鏉′欢",
+  "鍙栬儨鏉′欢",
+  "鑳滆礋鏉′欢",
+  "成立点",
+  "璁″垝",
+  "鏂规",
+  "鍛介",
+  "子命题",
+  "鏍稿績鍒ゆ柇",
+  "鏈轰細缂哄彛",
+  "鐢ㄦ埛瀹氫箟",
+  "鏍稿績鐢ㄦ埛",
+  "鐥涚偣",
+  "鍦烘櫙",
+  "鍒囧彛",
   "价值"
 ];
 const WINNER_EXPLANATION_CUES = [
@@ -4162,6 +4301,7 @@ const WINNER_EXPLANATION_CUES = [
   "held",
   "landed",
   "成功",
+  "打中",
   "打成",
   "打穿",
   "打击",
@@ -4175,7 +4315,21 @@ const WINNER_EXPLANATION_CUES = [
   "塑造",
   "锚定",
   "完成",
-  "成立"
+  "鎴愬姛",
+  "鎵撴垚",
+  "鎵撶┛",
+  "鎵撳嚮",
+  "绮惧噯鎵撳嚮",
+  "鍘嬪埗",
+  "瀹堜綇",
+  "鎷夸笅",
+  "璧㈠緱",
+  "鍏戠幇",
+  "寤虹珛",
+  "塑造",
+  "閿氬畾",
+  "瀹屾垚",
+  "鎴愮珛"
 ];
 const LOSER_EXPLANATION_CUES = [
   "failed",
@@ -4196,10 +4350,24 @@ const LOSER_EXPLANATION_CUES = [
   "被迫",
   "沦为",
   "丢失",
-  "被打击",
+  "被打穿",
   "被压制",
   "没有",
-  "不足"
+  "不足",
+  "澶辫触",
+  "鏈兘",
+  "娌¤兘",
+  "涓嶈兘",
+  "鏃犳硶",
+  "缂轰箯",
+  "鏆撮湶",
+  "琚揩",
+  "娌︿负",
+  "涓㈠け",
+  "被打穿",
+  "被压制",
+  "娌℃湁",
+  "涓嶈冻"
 ];
 const COMMON_PLAN_WORDS = new Set([
   "the",
@@ -4289,7 +4457,10 @@ function extractSpecificPlanKeywords(plan: TeamRoundPlanDecision, team: Team): s
 }
 
 function containsAny(value: string, candidates: string[]): boolean {
-  return candidates.some((candidate) => value.includes(candidate));
+  return candidates.some((candidate) => {
+    const normalizedCandidate = normalizeForJudgeReason(candidate);
+    return normalizedCandidate.length > 0 && value.includes(normalizedCandidate);
+  });
 }
 
 function normalizeForJudgeReason(value: string): string {
@@ -4375,3 +4546,4 @@ function previewText(value: string | undefined): string | undefined {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+

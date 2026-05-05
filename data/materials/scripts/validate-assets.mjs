@@ -137,34 +137,60 @@ function validateFutureDriverBinding(entity) {
   }
 }
 
-function validateTeamStrategy(strategy, teamRef) {
-  assert(strategy.team_id === teamRef.team_id, `${teamRef.team_slug} strategy team_id mismatch.`);
-  assert(strategy.team_slug === teamRef.team_slug, `${teamRef.team_slug} strategy team_slug mismatch.`);
-  assert(typeof strategy.strategy_id === "string" && strategy.strategy_id.length > 0, `${teamRef.team_slug} strategy_id is required.`);
-  assert(typeof strategy.version === "string" && strategy.version.length > 0, `${teamRef.team_slug} strategy version is required.`);
+function validateInitialProposal(initialProposal, teamRef) {
+  assert(initialProposal.teamId === teamRef.team_id, `${teamRef.team_slug} initial proposal teamId mismatch.`);
+  assert(initialProposal.teamSlug === teamRef.team_slug, `${teamRef.team_slug} initial proposal teamSlug mismatch.`);
+  assert(typeof initialProposal.proposalId === "string" && initialProposal.proposalId.length > 0, `${teamRef.team_slug} proposalId is required.`);
+  assert(typeof initialProposal.version === "string" && initialProposal.version.length > 0, `${teamRef.team_slug} proposal version is required.`);
   for (const field of [
-    "display_name",
-    "identity_summary",
-    "opportunity_thesis",
-    "product_thesis",
-    "engineering_thesis",
-    "business_thesis",
-    "operations_thesis",
-    "scaling_thesis",
-    "moat_thesis",
-    "frontend_summary"
+    "displayName",
+    "teamThesis",
+    "opportunity",
+    "product",
+    "engineering",
+    "business",
+    "operations",
+    "scaling",
+    "moat",
+    "frontendSummary"
   ]) {
-    assert(typeof strategy[field] === "string" && strategy[field].length > 0, `${teamRef.team_slug} strategy ${field} is required.`);
+    assert(
+      typeof initialProposal[field] === "string" && initialProposal[field].length > 0,
+      `${teamRef.team_slug} initial proposal ${field} is required.`
+    );
   }
-  for (const field of [
-    "preferred_win_conditions",
-    "failure_modes",
-    "coach_operating_principles",
-    "player_operating_principles",
-    "llm_strategy_tags"
+  for (const field of ["mustHoldClaims", "failureModes", "playerOperatingPrinciples"]) {
+    assert(
+      Array.isArray(initialProposal[field]) && initialProposal[field].length > 0,
+      `${teamRef.team_slug} initial proposal ${field} must be a non-empty array.`
+    );
+    assert(
+      initialProposal[field].every((item) => typeof item === "string" && item.length > 0),
+      `${teamRef.team_slug} initial proposal ${field} must contain non-empty strings.`
+    );
+  }
+  assert(initialProposal.coachWindowPolicies && typeof initialProposal.coachWindowPolicies === "object", `${teamRef.team_slug} coachWindowPolicies is required.`);
+  for (const key of ["timeout", "halftime", "postMap"]) {
+    assert(
+      typeof initialProposal.coachWindowPolicies[key] === "string" && initialProposal.coachWindowPolicies[key].length > 0,
+      `${teamRef.team_slug} initial proposal coachWindowPolicies.${key} is required.`
+    );
+  }
+  for (const forbiddenField of [
+    "map_slug",
+    "proposal_stage",
+    "proposal_version",
+    "dust2_visible_layer",
+    "must_defend",
+    "attack_priorities",
+    "acceptable_tradeoffs",
+    "round_themes",
+    "role_assignments",
+    "coach_windows",
+    "loss_conditions",
+    "success_definition"
   ]) {
-    assert(Array.isArray(strategy[field]) && strategy[field].length > 0, `${teamRef.team_slug} strategy ${field} must be a non-empty array.`);
-    assert(strategy[field].every((item) => typeof item === "string" && item.length > 0), `${teamRef.team_slug} strategy ${field} must contain non-empty strings.`);
+    assert(initialProposal[forbiddenField] === undefined, `${teamRef.team_slug} initial proposal must not contain legacy map-specific field ${forbiddenField}.`);
   }
 }
 
@@ -185,25 +211,39 @@ for (const teamRef of teamsIndex.teams) {
   const teamJson = readJson(teamJsonPath);
   const rosterJson = readJson(rosterJsonPath);
   const hooksJson = readJson(hooksJsonPath);
-  const strategyJsonPath = teamRef.strategy_json_path
-    ? path.join(processedRoot, teamRef.strategy_json_path.replace(/^processed[\\/]/, ""))
+  const initialProposalJsonPath = teamRef.initial_proposal_json_path
+    ? path.join(processedRoot, teamRef.initial_proposal_json_path.replace(/^processed[\\/]/, ""))
     : null;
 
   assert(teamJson.team_id === teamRef.team_id, `Team id mismatch for ${teamRef.team_slug}.`);
   assert(rosterJson.active_players.length === 5, `${teamRef.team_slug} must have 5 active players.`);
-  if (strategyJsonPath) {
-    assert(fs.existsSync(strategyJsonPath), `Missing indexed strategy path for ${teamRef.team_slug}.`);
+  if (initialProposalJsonPath) {
+    assert(fs.existsSync(initialProposalJsonPath), `Missing indexed initial proposal path for ${teamRef.team_slug}.`);
   }
-  if (teamJson.processed_paths?.strategy) {
-    const teamStrategyPath = path.join(processedRoot, String(teamJson.processed_paths.strategy).replace(/^processed[\\/]/, ""));
-    assert(fs.existsSync(teamStrategyPath), `Missing team.processed_paths.strategy for ${teamRef.team_slug}.`);
-    const strategyJson = readJson(teamStrategyPath);
-    validateTeamStrategy(strategyJson, teamRef);
-    if (strategyJsonPath) {
-      assert(teamJson.processed_paths.strategy === teamRef.strategy_json_path, `${teamRef.team_slug} strategy path mismatch between team.json and teams.index.json.`);
+  if (teamJson.processed_paths?.initial_proposal) {
+    const teamInitialProposalPath = path.join(processedRoot, String(teamJson.processed_paths.initial_proposal).replace(/^processed[\\/]/, ""));
+    assert(fs.existsSync(teamInitialProposalPath), `Missing team.processed_paths.initial_proposal for ${teamRef.team_slug}.`);
+    const initialProposalJson = readJson(teamInitialProposalPath);
+    validateInitialProposal(initialProposalJson, teamRef);
+    if (initialProposalJsonPath) {
+      assert(
+        teamJson.processed_paths.initial_proposal === teamRef.initial_proposal_json_path,
+        `${teamRef.team_slug} initial proposal path mismatch between team.json and teams.index.json.`
+      );
     }
   } else {
-    assert(!strategyJsonPath, `${teamRef.team_slug} teams.index.json declares strategy_json_path but team.json.processed_paths.strategy is missing.`);
+    assert(
+      !initialProposalJsonPath,
+      `${teamRef.team_slug} teams.index.json declares initial_proposal_json_path but team.json.processed_paths.initial_proposal is missing.`
+    );
+  }
+
+  if (["falcon-7b", "vitallmty"].includes(teamRef.team_slug)) {
+    assert(Boolean(initialProposalJsonPath), `${teamRef.team_slug} must provide a team-root initial-proposal.json.`);
+    const legacyStrategyPath = path.join(teamDir, "strategy.json");
+    const legacyMapProposalPath = path.join(teamDir, "maps", "dust2", "initial-proposal.json");
+    assert(!fs.existsSync(legacyStrategyPath), `${teamRef.team_slug} legacy strategy.json must be removed.`);
+    assert(!fs.existsSync(legacyMapProposalPath), `${teamRef.team_slug} legacy Dust2 initial-proposal.json must be removed.`);
   }
 
   if (teamRef.team_slug === "phaseclan") {

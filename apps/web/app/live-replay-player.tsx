@@ -736,6 +736,7 @@ function RosterRail({ roster, side }: { roster: OverlayRosterViewModel; side: "l
           <span>{roster.shortName}</span>
           <strong>{roster.displayName}</strong>
           <small>{roster.sideLabel}</small>
+          {roster.proposalLabel ? <small className={styles.rosterCoachLine}>{roster.proposalLabel}</small> : null}
           {roster.coachLabel ? <small className={styles.rosterCoachLine}>{roster.coachLabel}</small> : null}
         </div>
         <b>{roster.score}</b>

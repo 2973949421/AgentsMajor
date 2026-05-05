@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+﻿import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 
@@ -30,22 +30,28 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     expect(firstRound?.roundReport.agentOutputs.every((output) => output.action.startsWith("LLM action"))).toBe(true);
     expect(firstRound?.roundReport.judgeResult.reason).toBe("Ghost NAV win condition succeeded; Ghost FUR win condition failed.");
     expect(firstRound?.roundReport.judgeResult.winnerTeamId).toBe("team_ghost_nav");
+    expect(firstRound?.roundReport.summary).toContain("全甲全弹");
+    expect(firstRound?.roundReport.summary).not.toContain("鍏");
+    expect(firstRound?.roundReport.summary).not.toContain("Tactical:");
     expect(gateway.tasks).toEqual(["team_plan", "team_plan", ...Array<string>(10).fill("agent_action"), "judge"]);
 
     const teamPlanRequest = gateway.requests.find((request) => request.task === "team_plan");
     const teamPlanInput = teamPlanRequest?.input as
       | {
           mapSemanticContext?: { proposition?: { mapTheme?: string } };
-          teamStrategy?: { identitySummary?: string };
+          judgeRubricContext?: { coreJudgmentAxis?: string };
+          initialProposal?: { teamThesis?: string; mustHoldClaims?: string[] };
           coachContext?: { displayName?: string };
         }
       | undefined;
     expect(teamPlanInput?.mapSemanticContext?.proposition?.mapTheme).toBe("opportunity_positioning");
-    expect(teamPlanInput?.teamStrategy?.identitySummary).toContain("Ghost");
+    expect(teamPlanInput?.judgeRubricContext?.coreJudgmentAxis).toBe("opportunity_truth");
+    expect(teamPlanInput?.initialProposal?.teamThesis).toContain("first-user");
+    expect(teamPlanInput?.initialProposal?.mustHoldClaims?.length).toBeGreaterThan(0);
     expect(teamPlanInput?.coachContext?.displayName).toContain("Ghost");
     expect(teamPlanRequest?.messages?.[0]?.content).toContain("json");
     expect(teamPlanRequest?.messages?.[1]?.content).toContain("地图主题：opportunity_positioning");
-    expect(teamPlanRequest?.messages?.[1]?.content).toContain("队伍母方案：Ghost");
+    expect(teamPlanRequest?.messages?.[1]?.content).toContain("队伍唯一方案：");
 
     const firstAgentRequest = gateway.requests.find((request) => request.task === "agent_action");
     const firstAgentInput = firstAgentRequest?.input as
@@ -54,14 +60,17 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
           teamPlan?: { teamId?: string };
           opponentTeamPlan?: unknown;
           mapSemanticContext?: { proposition?: { coreQuestion?: string } };
-          teamStrategy?: { identitySummary?: string };
+          initialProposal?: unknown;
+          proposalAnchor?: { teamThesis?: string; playerOperatingPrinciples?: string[] };
           coachContext?: { dutySummary?: string };
         }
       | undefined;
     expect(firstAgentInput?.teamPlan?.teamId).toBe(firstAgentInput?.teamId);
     expect(firstAgentInput).not.toHaveProperty("opponentTeamPlan");
+    expect(firstAgentInput).not.toHaveProperty("initialProposal");
     expect(firstAgentInput?.mapSemanticContext?.proposition?.coreQuestion).toContain("deserve");
-    expect(firstAgentInput?.teamStrategy?.identitySummary).toContain("Ghost");
+    expect(firstAgentInput?.proposalAnchor?.teamThesis).toContain("first-user");
+    expect(firstAgentInput?.proposalAnchor?.playerOperatingPrinciples?.length).toBeGreaterThan(0);
     expect(firstAgentInput?.coachContext?.dutySummary).toContain("timeout");
     expect(firstAgentRequest?.messages?.[1]?.content).toContain("核心问题：");
     expect(firstAgentRequest?.messages?.[1]?.content).toContain("选手指令：");
@@ -74,7 +83,7 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
           sideAssignment?: unknown;
           teamAName?: string;
           teamBName?: string;
-          evaluationOrder?: Array<{ teamId: string; teamPlan?: unknown; teamStrategy?: unknown; coachContext?: unknown }>;
+          evaluationOrder?: Array<{ teamId: string; teamPlan?: unknown; initialProposalSummary?: unknown; coachContext?: unknown }>;
           agentOutputsByTeam?: Record<string, unknown[]>;
         }
       | undefined;
@@ -85,7 +94,7 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     expect(judgeInput?.teamBName).toBe("Team Bravo");
     expect(judgeInput?.evaluationOrder).toHaveLength(2);
     expect(judgeInput?.evaluationOrder?.every((entry) => entry.teamPlan)).toBe(true);
-    expect(judgeInput?.evaluationOrder?.every((entry) => entry.teamStrategy)).toBe(true);
+    expect(judgeInput?.evaluationOrder?.every((entry) => entry.initialProposalSummary)).toBe(true);
     expect(judgeInput?.evaluationOrder?.every((entry) => entry.coachContext)).toBe(true);
     expect(judgeInput?.evaluationOrder?.[0]?.teamId).toBe("team_alpha");
     expect(Object.keys(judgeInput?.agentOutputsByTeam ?? {}).sort()).toEqual(["team_alpha", "team_bravo"]);
@@ -136,6 +145,21 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     expect(replay?.rounds[0]?.roundReport.judgeResult.reason).toContain("成功");
     expect(replay?.rounds[0]?.roundReport.judgeResult.reason).toContain("未能");
     expect(replay?.rounds[0]?.roundReport.judgeResult.winnerTeamId).toBe("team_ghost_nav");
+  });
+
+  it("normalizes object-shaped playerDirectives in team plans before validation", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(new ObjectDirectiveTeamPlanGateway());
+
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    const replay = await readMapReplay(repositories, phase11DemoIds.mapGameId);
+    const firstRound = replay?.rounds[0];
+    const navPlan = firstRound?.roundReport.llmTeamPlans?.team_ghost_nav;
+    const furPlan = firstRound?.roundReport.llmTeamPlans?.team_ghost_fur;
+
+    expect(Array.isArray(navPlan?.playerDirectives)).toBe(true);
+    expect(navPlan?.playerDirectives).toHaveLength(5);
+    expect(furPlan?.playerDirectives).toHaveLength(5);
+    expect(firstRound?.roundReport.agentOutputs).toHaveLength(10);
   });
 
   it("stops the round on agent_action failure without partial round facts", async () => {
@@ -305,10 +329,35 @@ async function createPhase18DemoEngine(llmGateway: LlmGateway) {
   await repositories.teams.save({
     ...teamA,
     source: {
-      materialStrategy: {
-        identitySummary: "Ghost NAV identity",
-        frontendSummary: "Ghost NAV summary",
-        failureModes: ["slow pivot"]
+      materialInitialProposal: {
+        proposalId: "proposal_team_alpha_core_v1",
+        version: "v1",
+        teamId: teamA.id,
+        teamSlug: "team-alpha",
+        displayName: teamA.displayName,
+        teamThesis: "first-user clarity before system spread",
+        opportunity: "prove the first user and the first painful workflow earlier than the opponent",
+        product: "ship a narrow proof surface before broad platform coverage",
+        engineering: "concentrate engineering effort on the decisive proof path",
+        business: "monetize from the highest urgency entry wedge first",
+        operations: "route field learning back into the single decisive motion",
+        scaling: "scale after the first-user loop is stable",
+        moat: "moat comes from repeated proof in the highest-value lane",
+        mustHoldClaims: ["first-user clarity", "narrow proof wedge"],
+        failureModes: ["slow pivot"],
+        playerOperatingPrinciples: [
+          "IGL: call the decisive proof lane early.",
+          "Entry: open the first-user pressure point.",
+          "AWPer: hold the proof angle that blocks the defense reset.",
+          "Rifler: convert the first opening into stable space.",
+          "Support: keep the structure from breaking during conversion."
+        ],
+        coachWindowPolicies: {
+          timeout: "tighten the first-user proof lane",
+          halftime: "repair the broken proof chain",
+          postMap: "record which proof lane survived the map"
+        },
+        frontendSummary: "Focus on first-user proof before widening the system."
       },
       headCoachProfile: {
         displayName: "Blade Ghost",
@@ -320,10 +369,35 @@ async function createPhase18DemoEngine(llmGateway: LlmGateway) {
   await repositories.teams.save({
     ...teamB,
     source: {
-      materialStrategy: {
-        identitySummary: "Ghost FUR identity",
-        frontendSummary: "Ghost FUR summary",
-        failureModes: ["over-forcing"]
+      materialInitialProposal: {
+        proposalId: "proposal_team_bravo_core_v1",
+        version: "v1",
+        teamId: teamB.id,
+        teamSlug: "team-bravo",
+        displayName: teamB.displayName,
+        teamThesis: "system stability before aggressive expansion",
+        opportunity: "prove the system can hold under pressure before expanding scope",
+        product: "prefer reliable closed-loop surfaces over premature breadth",
+        engineering: "stabilize critical execution paths before adding branches",
+        business: "protect conversion certainty before chasing wider reach",
+        operations: "use consistent process to keep the defense coherent",
+        scaling: "scale after the stable loop survives repeated pressure",
+        moat: "moat comes from reliable execution under attack",
+        mustHoldClaims: ["system stability", "reliable closure"],
+        failureModes: ["over-forcing"],
+        playerOperatingPrinciples: [
+          "IGL: hold the structure before chasing side ideas.",
+          "Entry: test pressure without breaking the back line.",
+          "AWPer: deny the decisive opening lane.",
+          "Lurker: validate side pressure without exposing the core.",
+          "Support: keep the closure path intact during rotations."
+        ],
+        coachWindowPolicies: {
+          timeout: "restore closure discipline",
+          halftime: "repair the lane that leaked pressure",
+          postMap: "record which stability claim failed"
+        },
+        frontendSummary: "Protect system stability and close the round cleanly."
       },
       headCoachProfile: {
         displayName: "Sidde Ghost",
@@ -451,8 +525,49 @@ class ChineseJudgeReasonGateway extends SuccessfulPhase18Gateway {
     const input = request.input as JudgeRequestInput;
     return this.buildJudgeResponse(
       input,
-      `${input.teamAName ?? input.teamAId} 成功执行计划并打击机会缺口；${input.teamBName ?? input.teamBId} 未能守住计划中的核心成立点。`
-    ) as LlmResponse<TData>;
+      `${input.teamAName ?? input.teamAId} 成功执行计划并打中机会缺口；${input.teamBName ?? input.teamBId} 未能守住计划中的核心成立点。`
+      ) as LlmResponse<TData>;
+  }
+}
+
+class ObjectDirectiveTeamPlanGateway extends SuccessfulPhase18Gateway {
+  override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
+    if (request.task !== "team_plan") {
+      return super.generateStructured(request);
+    }
+
+    this.requests.push(request as LlmRequest<unknown>);
+    this.tasks.push(request.task);
+    const input = request.input as {
+      teamId: string;
+      side: "attack" | "defense";
+      activeAgents: Array<{ id: string }>;
+    };
+
+    return {
+      data: {
+        teamId: input.teamId,
+        side: input.side,
+        primaryIntent: input.side === "attack" ? "集中资源打穿主攻缺口" : "守住唯一核心成立点",
+        primaryZoneId: input.side === "attack" ? "site_a" : "site_b",
+        coordinationSummary: "全队围绕同一判断窗口协同推进。",
+        playerDirectives: Object.fromEntries(
+          input.activeAgents.map((agent) => [
+            agent.id,
+            `Object-style directive for ${agent.id} on ${input.side}`
+          ])
+        ),
+        winCondition: `${input.teamId} win condition is disciplined coordination.`,
+        risk: "Over-rotating breaks structure.",
+        confidence: 0.79,
+        fingerprint: `fp_object_plan_${input.teamId}`
+      } as TData,
+      usage: {
+        promptTokens: 17,
+        completionTokens: 14,
+        totalTokens: 31
+      }
+    };
   }
 }
 
@@ -622,3 +737,4 @@ function buildDetailedPromptJudgeReason(input: JudgeRequestInput): string {
 function buildIncompletePromptJudgeReason(input: JudgeRequestInput): string {
   return `${input.teamAName ?? input.teamAId} wins by cleaner trading.`;
 }
+

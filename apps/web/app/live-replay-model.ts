@@ -21,6 +21,8 @@ export interface LiveReplayTeam {
   shortName: string;
   coachDisplayName?: string;
   coachDutySummary?: string;
+  proposalSummary?: string;
+  proposalThesis?: string;
 }
 
 export interface LiveReplayData {
@@ -385,14 +387,19 @@ export function getEventText(event: LiveReplayTimelineEvent): string {
 function toLiveTeam(team: MatchReplay["teams"]["teamA"]): LiveReplayTeam {
   const source = asRecord(team.source);
   const headCoachProfile = asRecord(source?.headCoachProfile);
+  const materialInitialProposal = asRecord(source?.materialInitialProposal);
   const coachDisplayName = readOptionalString(headCoachProfile?.displayName);
   const coachDutySummary = readOptionalString(headCoachProfile?.dutySummary);
+  const proposalSummary = readOptionalString(materialInitialProposal?.frontendSummary);
+  const proposalThesis = readOptionalString(materialInitialProposal?.teamThesis);
   return {
     id: team.id,
     displayName: team.displayName,
     shortName: team.shortName,
     ...(coachDisplayName ? { coachDisplayName } : {}),
-    ...(coachDutySummary ? { coachDutySummary } : {})
+    ...(coachDutySummary ? { coachDutySummary } : {}),
+    ...(proposalSummary ? { proposalSummary } : {}),
+    ...(proposalThesis ? { proposalThesis } : {})
   };
 }
 

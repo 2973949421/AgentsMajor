@@ -88,7 +88,7 @@ function matchReplayFixture(): MatchReplay {
       displayName: "Team A",
       shortName: "A",
       seed: 1,
-      teamProfileId: "strategy_team_a",
+      teamProfileId: "proposal_team_a",
       source: {
         headCoachProfile: {
           displayName: "Coach A",
@@ -103,7 +103,7 @@ function matchReplayFixture(): MatchReplay {
       displayName: "Team B",
       shortName: "B",
       seed: 2,
-      teamProfileId: "strategy_team_b",
+      teamProfileId: "proposal_team_b",
       source: {
         headCoachProfile: {
           displayName: "Coach B",

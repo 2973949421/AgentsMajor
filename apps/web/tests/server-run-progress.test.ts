@@ -6,6 +6,7 @@ import { createSqliteRepositories } from "@agent-major/db";
 import { describe, expect, it } from "vitest";
 
 import { readMapProgressSnapshot, summarizeLlmCalls, type WebRunLlmCallProgress } from "../app/server-run-progress";
+import { syncPhase18SimulationRun } from "../app/server-phase18-runs";
 
 describe("Phase 1.8 web run progress", () => {
   it("tracks the current running map instead of the max round across all maps", () => {
@@ -34,6 +35,53 @@ describe("Phase 1.8 web run progress", () => {
     expect(summary.completedCalls).toBe(12);
     expect(summary.failedCalls).toBe(1);
     expect(summary.runningCalls).toBe(1);
+  });
+
+  it("promotes stale scheduled runs with completedAt and replay facts to completed", async () => {
+    const repositories = createSqliteRepositories(resolve(mkdtempSync(resolve(tmpdir(), "agent-major-web-progress-")), "agent-major.sqlite"));
+    try {
+      seedPhase18ProgressFixture(repositories);
+      const createdAt = "2026-05-04T00:00:00.000Z";
+      await repositories.simulationRuns.save({
+        id: "run-1",
+        fixtureId: "phase18_match_falcon_7b_vs_vitallmty",
+        status: "scheduled",
+        requestedMode: "phase18_next_round",
+        runtimeMatchId: "match-1",
+        runtimeMapGameId: "map-2",
+        baselineCompletedRounds: 12,
+        estimatedTotalRounds: 13,
+        expectedTotalCalls: 13,
+        latestCommittedRoundNumber: 0,
+        hasFreshReplay: false,
+        createdAt,
+        startedAt: createdAt,
+        completedAt: "2026-05-04T00:01:00.000Z"
+      });
+
+      const { run } = await syncPhase18SimulationRun(repositories, {
+        id: "run-1",
+        fixtureId: "phase18_match_falcon_7b_vs_vitallmty",
+        status: "scheduled",
+        requestedMode: "phase18_next_round",
+        runtimeMatchId: "match-1",
+        runtimeMapGameId: "map-2",
+        baselineCompletedRounds: 12,
+        estimatedTotalRounds: 13,
+        expectedTotalCalls: 13,
+        latestCommittedRoundNumber: 0,
+        hasFreshReplay: false,
+        createdAt,
+        startedAt: createdAt,
+        completedAt: "2026-05-04T00:01:00.000Z"
+      });
+
+      expect(run.status).toBe("completed");
+      expect(run.latestCommittedRoundNumber).toBe(1);
+      expect(run.hasFreshReplay).toBe(true);
+    } finally {
+      repositories.close();
+    }
   });
 });
 
