@@ -137,6 +137,37 @@ function validateFutureDriverBinding(entity) {
   }
 }
 
+function validateTeamStrategy(strategy, teamRef) {
+  assert(strategy.team_id === teamRef.team_id, `${teamRef.team_slug} strategy team_id mismatch.`);
+  assert(strategy.team_slug === teamRef.team_slug, `${teamRef.team_slug} strategy team_slug mismatch.`);
+  assert(typeof strategy.strategy_id === "string" && strategy.strategy_id.length > 0, `${teamRef.team_slug} strategy_id is required.`);
+  assert(typeof strategy.version === "string" && strategy.version.length > 0, `${teamRef.team_slug} strategy version is required.`);
+  for (const field of [
+    "display_name",
+    "identity_summary",
+    "opportunity_thesis",
+    "product_thesis",
+    "engineering_thesis",
+    "business_thesis",
+    "operations_thesis",
+    "scaling_thesis",
+    "moat_thesis",
+    "frontend_summary"
+  ]) {
+    assert(typeof strategy[field] === "string" && strategy[field].length > 0, `${teamRef.team_slug} strategy ${field} is required.`);
+  }
+  for (const field of [
+    "preferred_win_conditions",
+    "failure_modes",
+    "coach_operating_principles",
+    "player_operating_principles",
+    "llm_strategy_tags"
+  ]) {
+    assert(Array.isArray(strategy[field]) && strategy[field].length > 0, `${teamRef.team_slug} strategy ${field} must be a non-empty array.`);
+    assert(strategy[field].every((item) => typeof item === "string" && item.length > 0), `${teamRef.team_slug} strategy ${field} must contain non-empty strings.`);
+  }
+}
+
 const entityFileIds = new Set();
 
 for (const teamRef of teamsIndex.teams) {
@@ -154,9 +185,26 @@ for (const teamRef of teamsIndex.teams) {
   const teamJson = readJson(teamJsonPath);
   const rosterJson = readJson(rosterJsonPath);
   const hooksJson = readJson(hooksJsonPath);
+  const strategyJsonPath = teamRef.strategy_json_path
+    ? path.join(processedRoot, teamRef.strategy_json_path.replace(/^processed[\\/]/, ""))
+    : null;
 
   assert(teamJson.team_id === teamRef.team_id, `Team id mismatch for ${teamRef.team_slug}.`);
   assert(rosterJson.active_players.length === 5, `${teamRef.team_slug} must have 5 active players.`);
+  if (strategyJsonPath) {
+    assert(fs.existsSync(strategyJsonPath), `Missing indexed strategy path for ${teamRef.team_slug}.`);
+  }
+  if (teamJson.processed_paths?.strategy) {
+    const teamStrategyPath = path.join(processedRoot, String(teamJson.processed_paths.strategy).replace(/^processed[\\/]/, ""));
+    assert(fs.existsSync(teamStrategyPath), `Missing team.processed_paths.strategy for ${teamRef.team_slug}.`);
+    const strategyJson = readJson(teamStrategyPath);
+    validateTeamStrategy(strategyJson, teamRef);
+    if (strategyJsonPath) {
+      assert(teamJson.processed_paths.strategy === teamRef.strategy_json_path, `${teamRef.team_slug} strategy path mismatch between team.json and teams.index.json.`);
+    }
+  } else {
+    assert(!strategyJsonPath, `${teamRef.team_slug} teams.index.json declares strategy_json_path but team.json.processed_paths.strategy is missing.`);
+  }
 
   if (teamRef.team_slug === "phaseclan") {
     assert(rosterJson.head_coach === null, "PhaseClan head_coach must be null until canon confirms a coach.");

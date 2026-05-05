@@ -1,0 +1,143 @@
+{
+  "asset_id": "map_dust2_opportunity_positioning_v1",
+  "map_slug": "dust2",
+  "display_name": "Dust2",
+  "phase_scope": "phase_2_0_pre",
+  "map_theme": "opportunity_positioning",
+  "core_question": "这个项目到底值不值得做？",
+  "included_dimensions": [
+    "机会判断",
+    "第一用户 / buyer 定义",
+    "真实痛点强度",
+    "高频场景成立性",
+    "切口锋利度",
+    "why now 的成立性"
+  ],
+  "excluded_dimensions": [
+    "完整商业模式",
+    "完整定价体系",
+    "完整增长飞轮",
+    "完整生产级工程架构",
+    "完整长期壁垒设计"
+  ],
+  "display_zone_names": {
+    "spawn_a": "T 出生点",
+    "spawn_b": "CT 出生点",
+    "buyer_mid": "中路",
+    "conversion_site_a": "A 点",
+    "conversion_site_b": "B 点",
+    "pricing_ramp": "A 大",
+    "retention_connector": "A 小",
+    "token_economy": "B 洞"
+  },
+  "zone_semantics": {
+    "buyer_mid": {
+      "display_name": "中路",
+      "meaning": "用户定义、buyer 定义、信息争夺主战区"
+    },
+    "conversion_site_a": {
+      "display_name": "A 点",
+      "meaning": "机会主战场，最主流、最高价值的核心场景落点"
+    },
+    "conversion_site_b": {
+      "display_name": "B 点",
+      "meaning": "备用落点、侧翼场景、差异化切口落点"
+    },
+    "pricing_ramp": {
+      "display_name": "A 大",
+      "meaning": "正面高压通道，用来打正面主场景和强问题"
+    },
+    "retention_connector": {
+      "display_name": "A 小",
+      "meaning": "精准高位切入口，用来打短线强论点与细切口"
+    },
+    "token_economy": {
+      "display_name": "B 洞",
+      "meaning": "隐蔽侧向渗透口，用来打被忽视的细分场景和偷点反制",
+      "note": "仅保留为历史内部 alias，对外必须显示为 B 洞"
+    }
+  },
+  "attack_focus": [
+    "伪需求",
+    "宽用户",
+    "弱痛点",
+    "低频场景",
+    "伪切口",
+    "错误时机"
+  ],
+  "defense_focus": [
+    "核心用户",
+    "核心痛点",
+    "核心高频场景",
+    "最锋利切口",
+    "why now 的依据"
+  ],
+  "regulation_round_themes": [
+    {
+      "round": "R1",
+      "theme": "用户定义战",
+      "judgment": "这事到底先为谁而做。"
+    },
+    {
+      "round": "R2",
+      "theme": "痛点强度战",
+      "judgment": "这个问题到底是不是足够痛。"
+    },
+    {
+      "round": "R3",
+      "theme": "场景成立战",
+      "judgment": "这个场景是否真实存在且高频。"
+    },
+    {
+      "round": "R4",
+      "theme": "切口锋利战",
+      "judgment": "为什么先打这个切口，而不是更大的大词。"
+    },
+    {
+      "round": "R5",
+      "theme": "替代方案战",
+      "judgment": "用户为什么不能继续用现有替代方案。"
+    },
+    {
+      "round": "R6",
+      "theme": "Why Now 收束战",
+      "judgment": "为什么值得现在做，而不是以后再说。"
+    }
+  ],
+  "overtime_round_themes": [
+    {
+      "round": "OT1",
+      "theme": "用户 + 痛点",
+      "judgment": "谁的第一用户和核心痛点更真实。"
+    },
+    {
+      "round": "OT2",
+      "theme": "场景 + 切口",
+      "judgment": "谁的场景更成立、切口更锋利。"
+    },
+    {
+      "round": "OT3",
+      "theme": "替代 + Why Now",
+      "judgment": "谁更能证明现在非做不可。"
+    }
+  ],
+  "coach_windows": [
+    "timeout",
+    "halftime",
+    "post_map_review"
+  ],
+  "frontend_minimum_fields": [
+    "当前地图命题",
+    "当前回合子命题",
+    "当前攻方",
+    "当前守方",
+    "当前主攻区",
+    "当前主守区",
+    "当前回合裁判一句话结论",
+    "当前是否处于 coach 介入窗口"
+  ],
+  "judge_asset_refs": [
+    "processed/maps/dust2/judge-rubric.md",
+    "processed/maps/dust2/judge-rubric.json"
+  ]
+}

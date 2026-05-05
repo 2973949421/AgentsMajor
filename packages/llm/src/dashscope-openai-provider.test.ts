@@ -70,6 +70,67 @@ describe("Phase 1.5 DashScope OpenAI provider", () => {
     ).toBe(true);
   });
 
+  it("extracts a balanced JSON object from a response with stray prose", async () => {
+    const provider = new DashScopeOpenAiProvider({
+      baseUrl: "https://example.test/v1",
+      apiKey: "secret-key",
+      maxRetries: 0,
+      fetchFn: async () =>
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "Here is the JSON:\n{\"text\":\"hello\",\"confidence\":0.7}\nDone." } }],
+            usage: { prompt_tokens: 11, completion_tokens: 7, total_tokens: 18 }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        )
+    });
+
+    const response = await provider.generateStructured<{ text: string; confidence: number }>({
+      task: "broadcast",
+      driverModelId: "driver_kimi_k2_5",
+      input: { roundId: "round-1" },
+      schemaName: "CasterLinePayload",
+      responseFormat: "json_object"
+    });
+
+    expect(response.data).toEqual({ text: "hello", confidence: 0.7 });
+  });
+
+  it("repairs a non-JSON structured response once and keeps the original text", async () => {
+    const seenBodies: unknown[] = [];
+    const provider = new DashScopeOpenAiProvider({
+      baseUrl: "https://example.test/v1",
+      apiKey: "secret-key",
+      maxRetries: 0,
+      fetchFn: async (_url, init) => {
+        seenBodies.push(JSON.parse(String(init?.body)));
+        const content = seenBodies.length === 1 ? "I would attack A with all five players." : "{\"text\":\"repaired\"}";
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content } }],
+            usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+    });
+
+    const response = await provider.generateStructured<{ text: string }>({
+      task: "team_plan",
+      driverModelId: "driver_kimi_k2_5",
+      input: { teamId: "team-a" },
+      schemaName: "TeamRoundPlanDecision",
+      responseFormat: "json_object"
+    });
+
+    expect(response.data).toEqual({ text: "repaired" });
+    expect(response.structuredRepair).toMatchObject({
+      originalRawText: "I would attack A with all five players.",
+      repairRawText: "{\"text\":\"repaired\"}"
+    });
+    expect(seenBodies).toHaveLength(2);
+  });
+
   it("includes the exact AgentActionDecision output contract for JSON requests", async () => {
     const seenBodies: unknown[] = [];
     const provider = new DashScopeOpenAiProvider({

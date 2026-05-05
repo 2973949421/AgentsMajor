@@ -380,17 +380,17 @@ P2.3 已补齐 Phase 1 fake provider MVP 和 Phase 1.5 真实 caster_line 需要
 1. Phase 1.7 已完成验收收口：旧前端例子已冻结。
 2. Phase 1.8 已完成工程收口并暂时冻结：本地真实 LLM BO3 pilot 已打通 CLI + Web、逐回合调试、全量 llm_calls 观测、judge_review 护栏与可重跑链路。
 3. Phase 1.9 已完成 UI 收口并暂时冻结：Phase 1.8 only 观赛主屏、左右悬浮选手栏、可拖动控制台、底部事件详情和 replay guard 体验已成型。
-4. 当前下一步进入 Phase 2.0：完整 16 队 bracket 与赛事调度设计。
-5. 一版节目目标不变：Phase 2.0 仍然是完整 16 队 bracket 与赛事调度的赛事雏形。
+4. 当前下一步进入 Phase 2.0-pre：单图 / 定制 BO3 赛事语义校准。
+5. 一版节目目标不变：Phase 2.0-pre 通过后，再进入完整 16 队 bracket 与赛事调度设计。
 ```
 
 下一步优先对象：
 
 ```text
-1. Phase 2.0 16 队 bracket 的状态机、seed、fixture、赛事调度和失败恢复设计。
-2. Phase 2.0 如何复用 Phase 1.7 materials、Phase 1.8 real LLM pilot 和 Phase 1.9 观赛主屏。
-3. Phase 2.0 前，只修 Phase 1.8 / 1.9 阻断性 bug，不继续扩展体验或 prompt 质量打磨。
-4. 继续把 prompt、judge 解释标准和多场次分布验证视为后续质量优化项，而不是阻塞 1.8 收口的前置条件。
+1. 落地 Phase 2.0-pre 临时高优先级纲领，并围绕单图赛事语义校准补齐当前唯一口径。
+2. 为单张精心设计的地图补齐命题稿、双队初始方案、coach / player / judge 职责协议和裁判评分规程。
+3. 在单图跑顺后，再校准一场定制 BO3，并验证图后方案修正机制和前端表达。
+4. 只有在 Phase 2.0-pre 通过后，才进入完整 16 队 bracket 的状态机、seed、fixture、赛事调度和失败恢复设计。
 ```
 
 当前不建议先做：
@@ -403,7 +403,7 @@ P2.3 已补齐 Phase 1 fake provider MVP 和 Phase 1.5 真实 caster_line 需要
 不在未补边界前继续扩公开 API 和公开导出范围。
 ```
 
-原因是 BO3 match 级事实源、Phase 1.4 播放层、P2.2 2D 战术地图契约、P2.3 转播系统、Phase 1.5 真实 caster_line 链路和 Phase 1.6 区域化攻防协议都已经具备。当前主线不再是补 Phase 1.6，而是把下一阶段会影响事实源、导出边界、API、队列和 Web 迁移的决策先写清楚。
+原因是 BO3 match 级事实源、Phase 1.4 播放层、P2.2 2D 战术地图契约、P2.3 转播系统、Phase 1.5 真实 caster_line 链路和 Phase 1.6 区域化攻防协议都已经具备。当前真正的缺口不是赛事壳，而是“地图命题、队伍方案、攻防协议、裁判规程、图后修正”这套赛事语义内核尚未完成校准，因此应先执行 Phase 2.0-pre，而不是直接扩成 16 队正式赛事。
 
 ## 5. 长期规划判断
 

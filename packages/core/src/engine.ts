@@ -1,5 +1,5 @@
 import type { Repositories } from "@agent-major/db";
-import type { LlmGateway, LlmResponse } from "@agent-major/llm";
+import type { LlmGateway, LlmMessage, LlmResponse } from "@agent-major/llm";
 import type { JobQueue } from "@agent-major/queue";
 import {
   agentActionDecisionSchema,
@@ -63,6 +63,7 @@ export interface EngineContext {
   useLlmAgentActions?: boolean;
   useLlmJudgeResults?: boolean;
   useJudgeBiasGuardrail?: boolean;
+  phase18MapSemanticsByMapName?: Record<string, Record<string, unknown>>;
   eventSourceModule?: string;
 }
 
@@ -179,11 +180,15 @@ interface Phase18JudgePromptContext {
   requestInput: {
     sideAssignment: SideAssignment;
     buyTypesByTeam: Record<string, BuyType>;
+    mapSemanticContext?: Record<string, unknown>;
+    judgeRubricContext?: Record<string, unknown>;
     evaluationOrder: Array<{
       teamId: string;
       teamName: string;
       activeAgents: Array<{ id: string; role: string }>;
       teamPlan?: TeamRoundPlanDecision;
+      teamStrategy?: Record<string, unknown>;
+      coachContext?: Record<string, unknown>;
     }>;
     teamAId: string;
     teamBId: string;
@@ -1096,6 +1101,7 @@ class Phase12SimulationEngine implements SimulationEngine {
           scoreAfterRound: generation.scoreAfterRound,
           judgeResult: generation.judgeResult,
           agentOutputs: generation.agentOutputs,
+          ...(generation.teamPlans ? { llmTeamPlans: generation.teamPlans } : {}),
           keyEvents: generation.keyEvents,
           economyDelta: generation.economyDelta,
           tokenSubmission: {
@@ -1601,10 +1607,14 @@ class Phase12SimulationEngine implements SimulationEngine {
           roundId: input.round.id,
           roundNumber: input.round.roundNumber,
           mapName: input.mapGame.mapName,
+          mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName),
           teamId: side.team.id,
           teamName: side.team.displayName,
+          teamStrategy: readTeamMaterialStrategy(side.team),
+          coachContext: readTeamHeadCoachProfile(side.team),
           opponentTeamId: side.opponent.id,
           opponentTeamName: side.opponent.displayName,
+          opponentStrategySummary: readOpponentStrategySummary(side.opponent),
           side: teamSide,
           sideAssignment: input.sideAssignment,
           scoreBeforeRound: input.scoreBeforeRound,
@@ -1677,12 +1687,16 @@ class Phase12SimulationEngine implements SimulationEngine {
         agentDisplayName: agent.displayName,
         teamId: agent.teamId,
         teamName: agentTeam.displayName,
+        teamStrategy: readTeamMaterialStrategy(agentTeam),
+        coachContext: readTeamHeadCoachProfile(agentTeam),
         opponentTeamId: opponentTeam.id,
         opponentTeamName: opponentTeam.displayName,
+        opponentStrategySummary: readOpponentStrategySummary(opponentTeam),
         role: agent.role,
         secondaryRoles: agent.secondaryRoles ?? [],
         roleResponsibilities: agent.roleProfile?.agentMajorResponsibilities ?? [],
         baseProfile: agent.baseProfile,
+        mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName),
         teamPlan,
         playerDirective,
         buyType,
@@ -1774,6 +1788,8 @@ class Phase12SimulationEngine implements SimulationEngine {
         roundNumber: input.roundNumber,
         mapName: input.mapGame.mapName,
         scoreBeforeRound: input.scoreBeforeRound,
+        mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName),
+        judgeRubricContext: readPhase18JudgeRubricContext(this.context, input.mapGame.mapName),
         ...judgePromptContext.requestInput
       };
       const response = await this.runObservedStructuredCall<JudgeResult>({
@@ -1793,7 +1809,7 @@ class Phase12SimulationEngine implements SimulationEngine {
         roundNumber: input.roundNumber,
         validateResponseData: (data) => {
           try {
-            return judgePromptContext.validateAndTranslate(judgeResultSchema.parse(data));
+            return judgePromptContext.validateAndTranslate(judgeResultSchema.parse(normalizeJudgeResultPayload(data)));
           } catch (error) {
             throw translateJudgePromptError(error, judgePromptContext);
           }
@@ -1904,7 +1920,9 @@ class Phase12SimulationEngine implements SimulationEngine {
           "Re-evaluate this suspicious judge result. You may keep the same winner only if the reason explicitly explains both teams' win conditions and why the loser failed.",
         guardrailReason: input.guardrailReason,
         originalJudgeResult: input.originalJudgeResult,
-        originalJudgeInput: input.judgeRequestInput
+        originalJudgeInput: input.judgeRequestInput,
+        mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName),
+        judgeRubricContext: readPhase18JudgeRubricContext(this.context, input.mapGame.mapName)
       },
       responseFormat: "json_object",
       seed: `judge_review:${input.round.id}`,
@@ -1916,7 +1934,7 @@ class Phase12SimulationEngine implements SimulationEngine {
       roundNumber: input.roundNumber,
       validateResponseData: (data) => {
         try {
-          return input.judgePromptContext.validateAndTranslate(judgeResultSchema.parse(data));
+          return input.judgePromptContext.validateAndTranslate(judgeResultSchema.parse(normalizeJudgeResultPayload(data)));
         } catch (error) {
           throw translateJudgePromptError(error, input.judgePromptContext);
         }
@@ -2004,6 +2022,11 @@ class Phase12SimulationEngine implements SimulationEngine {
         driverModelId: input.driverModelId,
         input: input.requestInput,
         schemaName: input.schemaName,
+        messages: buildPhase18StructuredMessages({
+          task: input.task,
+          schemaName: input.schemaName,
+          requestInput: input.requestInput
+        }),
         responseFormat: input.responseFormat,
         seed: input.seed,
         modelTier: input.modelTier,
@@ -2029,6 +2052,7 @@ class Phase12SimulationEngine implements SimulationEngine {
           ok: true,
           rawText: validatedResponse.rawText,
           usage: validatedResponse.usage,
+          structuredRepair: validatedResponse.structuredRepair,
           data: validatedResponse.data
         }
       });
@@ -2069,7 +2093,10 @@ class Phase12SimulationEngine implements SimulationEngine {
           completedAt,
           latencyMs: Date.parse(completedAt) - Date.parse(startedAt),
           inputTokens: validatedResponse.usage.promptTokens,
-          outputTokens: validatedResponse.usage.completionTokens
+          outputTokens: validatedResponse.usage.completionTokens,
+          repaired: Boolean(validatedResponse.structuredRepair),
+          rawTextPreview: previewText(validatedResponse.structuredRepair?.originalRawText),
+          repairRawTextPreview: previewText(validatedResponse.structuredRepair?.repairRawText)
         },
         createdAt: completedAt
       });
@@ -2077,6 +2104,9 @@ class Phase12SimulationEngine implements SimulationEngine {
     } catch (error) {
       const failedAt = timestamp();
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const diagnostic = readLlmErrorDiagnostic(error);
+      const failedRawText = latestResponse?.rawText ?? diagnostic.rawText;
+      const failedUsage = latestResponse?.usage ?? diagnostic.usage;
       const responseArtifactId = await this.writeLlmArtifact({
         callId: input.callId,
         suffix: "response",
@@ -2091,9 +2121,12 @@ class Phase12SimulationEngine implements SimulationEngine {
           taskType: input.task,
           driverModelId: input.driverModelId,
           ok: false,
-          rawText: latestResponse?.rawText,
-          usage: latestResponse?.usage,
+          rawText: failedRawText,
+          rawTextPreview: previewText(failedRawText),
+          parseCandidatePreview: previewText(diagnostic.parseCandidate),
+          usage: failedUsage,
           data: latestResponse?.data,
+          structuredRepair: latestResponse?.structuredRepair,
           error: errorMessage
         }
       });
@@ -2107,8 +2140,8 @@ class Phase12SimulationEngine implements SimulationEngine {
         promptHash,
         requestArtifactId,
         responseArtifactId,
-        inputTokens: latestResponse?.usage.promptTokens,
-        outputTokens: latestResponse?.usage.completionTokens,
+        inputTokens: failedUsage?.promptTokens,
+        outputTokens: failedUsage?.completionTokens,
         createdAt: startedAt
       }));
       await this.appendEvent({
@@ -2133,8 +2166,11 @@ class Phase12SimulationEngine implements SimulationEngine {
           startedAt,
           failedAt,
           latencyMs: Date.parse(failedAt) - Date.parse(startedAt),
-          inputTokens: latestResponse?.usage.promptTokens,
-          outputTokens: latestResponse?.usage.completionTokens,
+          inputTokens: failedUsage?.promptTokens,
+          outputTokens: failedUsage?.completionTokens,
+          responseArtifactId,
+          rawTextPreview: previewText(failedRawText),
+          parseCandidatePreview: previewText(diagnostic.parseCandidate),
           error: errorMessage
         },
         createdAt: failedAt
@@ -3352,19 +3388,23 @@ function buildJudgePromptContext(input: {
     promptAgentIdByActualAgentId,
     replacements: sanitizeReplacements
   });
-  const evaluationEntries = [
-    {
+  const evaluationEntries: Phase18JudgePromptContext["requestInput"]["evaluationOrder"] = [
+    buildJudgeEvaluationEntry({
       teamId: promptTeamA.id,
       teamName: promptTeamA.displayName,
-      activeAgents: promptActiveA.map((agent) => ({ id: agent.id, role: agent.role })),
-      ...(promptTeamPlans?.[promptTeamA.id] ? { teamPlan: promptTeamPlans[promptTeamA.id] } : {})
-    },
-    {
+      activeAgents: promptActiveA,
+      teamStrategy: sanitizeJudgeRecord(readTeamMaterialStrategy(input.teamA), sanitizeReplacements),
+      coachContext: sanitizeJudgeRecord(readTeamHeadCoachProfile(input.teamA), sanitizeReplacements),
+      teamPlan: promptTeamPlans?.[promptTeamA.id]
+    }),
+    buildJudgeEvaluationEntry({
       teamId: promptTeamB.id,
       teamName: promptTeamB.displayName,
-      activeAgents: promptActiveB.map((agent) => ({ id: agent.id, role: agent.role })),
-      ...(promptTeamPlans?.[promptTeamB.id] ? { teamPlan: promptTeamPlans[promptTeamB.id] } : {})
-    }
+      activeAgents: promptActiveB,
+      teamStrategy: sanitizeJudgeRecord(readTeamMaterialStrategy(input.teamB), sanitizeReplacements),
+      coachContext: sanitizeJudgeRecord(readTeamHeadCoachProfile(input.teamB), sanitizeReplacements),
+      teamPlan: promptTeamPlans?.[promptTeamB.id]
+    })
   ];
   const evaluationOrder = input.roundNumber % 2 === 0 ? [...evaluationEntries].reverse() : evaluationEntries;
 
@@ -3412,6 +3452,362 @@ function buildJudgePromptContext(input: {
     },
     translatePromptText: (value: string) => desanitizeJudgeText(value, desanitizeReplacements)
   };
+}
+
+function readPhase18MapSemanticContext(context: Pick<EngineContext, "phase18MapSemanticsByMapName">, mapName: string): Record<string, unknown> | undefined {
+  return readUnknownRecord(context.phase18MapSemanticsByMapName?.[mapName.toUpperCase()]);
+}
+
+function readPhase18JudgeRubricContext(context: Pick<EngineContext, "phase18MapSemanticsByMapName">, mapName: string): Record<string, unknown> | undefined {
+  const mapSemantic = readPhase18MapSemanticContext(context, mapName);
+  return readUnknownRecord(mapSemantic?.judgeRubric);
+}
+
+function readTeamMaterialStrategy(team: Team): Record<string, unknown> | undefined {
+  const source = readUnknownRecord(team.source);
+  return readUnknownRecord(source?.materialStrategy);
+}
+
+function readTeamHeadCoachProfile(team: Team): Record<string, unknown> | undefined {
+  const source = readUnknownRecord(team.source);
+  return readUnknownRecord(source?.headCoachProfile);
+}
+
+function readOpponentStrategySummary(team: Team): Record<string, unknown> | undefined {
+  const strategy = readTeamMaterialStrategy(team);
+  if (!strategy) {
+    return undefined;
+  }
+
+  const identitySummary = typeof strategy.identitySummary === "string" ? strategy.identitySummary : undefined;
+  const frontendSummary = typeof strategy.frontendSummary === "string" ? strategy.frontendSummary : undefined;
+  const failureModes = Array.isArray(strategy.failureModes) ? strategy.failureModes.filter((item): item is string => typeof item === "string") : [];
+  return removeUndefined({
+    ...(identitySummary ? { identitySummary } : {}),
+    ...(frontendSummary ? { frontendSummary } : {}),
+    ...(failureModes.length > 0 ? { failureModes } : {})
+  });
+}
+
+function readUnknownRecord(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
+}
+
+function normalizeJudgeResultPayload(data: unknown): unknown {
+  const record = readUnknownRecord(data);
+  if (!record) {
+    return data;
+  }
+
+  const margin = normalizeJudgeMargin(record.margin);
+  if (!margin) {
+    return data;
+  }
+
+  return {
+    ...record,
+    margin
+  };
+}
+
+function normalizeJudgeMargin(value: unknown): JudgeResult["margin"] | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const normalized = value.trim().toLowerCase().replace(/[\s_-]+/g, "");
+  switch (normalized) {
+    case "narrow":
+    case "close":
+    case "slight":
+    case "minor":
+    case "thin":
+    case "marginal":
+      return "narrow";
+    case "standard":
+    case "clear":
+    case "solid":
+    case "moderate":
+    case "normal":
+    case "regular":
+      return "standard";
+    case "decisive":
+    case "dominant":
+    case "overwhelming":
+    case "onesided":
+    case "crushing":
+      return "decisive";
+    default:
+      return undefined;
+  }
+}
+
+function sanitizeJudgeRecord(
+  value: Record<string, unknown> | undefined,
+  replacements: Array<{ source: string; target: string }>
+): Record<string, unknown> | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  return sanitizeJudgeValue(value, replacements) as Record<string, unknown>;
+}
+
+function buildPhase18StructuredMessages(input: {
+  task: "team_plan" | "agent_action" | "judge" | "judge_review";
+  schemaName: string;
+  requestInput: unknown;
+}): LlmMessage[] {
+  const contextSummary = buildPhase18PromptContextSummary(input.requestInput);
+  return [
+    {
+      role: "system",
+      content: [
+        "你是 Agent Major Phase 2.0-pre 的结构化对局引擎。",
+        "只输出 json，不要输出 markdown、代码块、解释、重复输入字段，或夹杂的英文句子。",
+        "除必要英文术语与字段名外，所有自然语言字段必须使用中文。",
+        buildPhase18SchemaContract(input.schemaName),
+        buildPhase18TaskInstruction(input.task)
+      ].join("\n\n")
+    },
+    {
+      role: "user",
+      content: [
+        `任务：${input.task}`,
+        "这不是通用的 Counter-Strike 模拟，也不是自由叙事。必须把给定的比赛资产当作唯一事实来源。",
+        "当上下文存在时，必须围绕 mapSemanticContext、judgeRubricContext、teamStrategy、coachContext、teamPlan、playerDirective、roleResponsibilities、opponentStrategySummary 来回答。",
+        contextSummary,
+        "结构化输入 json：",
+        JSON.stringify(input.requestInput, null, 2)
+      ].join("\n\n")
+    }
+  ];
+}
+
+function buildPhase18SchemaContract(schemaName: string): string {
+  if (schemaName === "AgentActionDecision") {
+    return [
+      "json 输出契约：",
+      '只返回一个顶层对象：{"action":"<简洁战术动作>","confidence":0.0,"fingerprint":"<可选的短稳定标记>"}',
+      "必填字段：action、confidence。",
+      "confidence 必须是 0 到 1 之间的数字。",
+      "自然语言字段要中文优先，避免中英混杂。"
+    ].join("\n");
+  }
+
+  if (schemaName === "TeamRoundPlanDecision") {
+    return [
+      "json 输出契约：",
+      '只返回一个顶层对象，字段包括：teamId、side、primaryIntent、primaryZoneId、可选 secondaryZoneId、coordinationSummary、playerDirectives、winCondition、risk、confidence、可选 fingerprint。',
+      "playerDirectives 必须且只能覆盖输入中的每个 active player 一次。",
+      "side 必须与输入 side 一致。confidence 必须是 0 到 1 之间的数字。",
+      "所有可读文本字段请用中文表达，除必要英文术语外不要写英文句子。"
+    ].join("\n");
+  }
+
+    if (schemaName === "JudgeResult") {
+      return [
+        "json 输出契约：",
+        '只返回一个顶层对象，字段包括：winnerTeamId、loserTeamId、margin、reason、mvpAgentId、confidence。',
+        "margin 必须严格是 narrow、standard、decisive 三者之一，不要使用 clear、close、solid、dominant 或其他同义词。",
+        "reason 必须明确写出双方队伍，并解释胜方为什么成功、败方为什么失败。",
+        "为便于稳定校验，reason 中请保留成功/失败，或者 succeeded/failed 这类标记。",
+        "winnerTeamId 必须是输入的两队之一，loserTeamId 必须是另外一队。",
+        "mvpAgentId 必须来自胜方的 active roster。",
+        "confidence 必须是 0 到 1 之间的数字。",
+        "自然语言部分尽量全中文，除必要英文标记外不要写混杂英文。"
+      ].join("\n");
+  }
+
+  return "json 输出契约：只返回一个与指定 schema 完全一致的顶层对象。";
+}
+
+function buildPhase18TaskInstruction(task: "team_plan" | "agent_action" | "judge" | "judge_review"): string {
+  switch (task) {
+    case "team_plan":
+      return [
+        "任务说明：",
+        "生成一份真正贴合当前地图命题与队伍长期方案的回合计划。",
+        "不要输出通用的点位强攻或通用防守。计划必须绑定当前子命题、队伍母方案，以及本回合真正的压力点。",
+        "如果是进攻方，就压迫对手最薄弱的命题缺口；如果是防守方，就守住自己的核心命题，不要临时胡编新方案。",
+        "教练窗口只负责修正，不是赛前重写。所有自然语言表达请中文优先。"
+      ].join("\n");
+    case "agent_action":
+      return [
+        "任务说明：",
+        "从 roleResponsibilities、teamPlan、playerDirective、teamStrategy 和 coachContext 里，选择一名选手的具体动作。",
+        "不要发明隐藏信息、虚构武器、虚构投掷物库存，也不要写电竞腔的灌水句子。",
+        "动作必须具体到能改变回合，但也要足够简洁，仍然只是一个选手动作。",
+        "自然语言字段必须中文为主，除必要英文术语外不要夹杂英文句子。"
+      ].join("\n");
+      case "judge":
+        return [
+          "任务说明：",
+          "只能根据给定证据和裁判准则判定本回合。",
+          "必须解释进攻方击中了哪个机会缺口，防守方守住或没守住哪个核心命题，并说明为什么这符合当前地图主题。",
+          "reason 里必须同时出现胜方成功、败方失败两层说明；可以使用“成功/失败”，不要写成空泛故事。",
+          "不要按队伍顺序、名气、当前比分领先或叙事惯性来下结论。",
+          "自然语言部分请中文优先，必要英文标记只保留在字段名或判定标记中。"
+        ].join("\n");
+    case "judge_review":
+      return [
+        "任务说明：",
+        "在同一裁判准则下，带着更强的反偏置要求重新评估上一版裁判结果。",
+        "只有当败方解释完整，而且结论仍然锚定当前子命题与核心判定轴时，才保留原胜方。",
+        "如果上一版只是叙事性判断，请直接纠正。",
+        "自然语言部分请中文优先，除必要英文术语外不要混写英文句子。"
+      ].join("\n");
+    default:
+      return "任务说明：严格按照结构化任务执行。";
+  }
+}
+
+function buildPhase18PromptContextSummary(requestInput: unknown): string {
+  const record = readUnknownRecord(requestInput);
+  if (!record) {
+    return "Context summary: unavailable.";
+  }
+
+  const roundNumber = typeof record.roundNumber === "number" ? record.roundNumber : undefined;
+  const mapName = typeof record.mapName === "string" ? record.mapName : undefined;
+  const mapSemantic = readUnknownRecord(record.mapSemanticContext);
+  const proposition = readUnknownRecord(mapSemantic?.proposition);
+  const judgeRubric = readUnknownRecord(record.judgeRubricContext) ?? readUnknownRecord(mapSemantic?.judgeRubric);
+  const teamStrategy = readUnknownRecord(record.teamStrategy);
+  const coachContext = readUnknownRecord(record.coachContext);
+  const opponentStrategySummary = readUnknownRecord(record.opponentStrategySummary);
+  const teamPlan = readUnknownRecord(record.teamPlan);
+  const playerDirective = readUnknownRecord(record.playerDirective);
+
+  const lines = [
+    `地图：${mapName ?? "unknown"}`,
+    ...(roundNumber ? [`回合：${roundNumber}`] : []),
+    ...(proposition
+      ? [
+          `地图主题：${pickString(proposition, "mapTheme") ?? "unknown"}`,
+          `核心问题：${pickString(proposition, "coreQuestion") ?? "unknown"}`,
+          ...(() => {
+            const subTheme = resolvePhase18SubTheme(proposition, roundNumber);
+            return subTheme ? [`当前子命题：${subTheme}`] : [];
+          })(),
+          ...(() => {
+            const displayZoneNames = readUnknownRecord(proposition.displayZoneNames);
+            if (!displayZoneNames) {
+              return [];
+            }
+
+            const zonePairs = Object.entries(displayZoneNames)
+              .filter(([, value]) => typeof value === "string")
+              .map(([zoneId, value]) => `${zoneId}=${value}`)
+              .slice(0, 8);
+            return zonePairs.length > 0 ? [`区域别名：${zonePairs.join("，")}`] : [];
+          })(),
+          ...(() => {
+            const attackFocus = pickStringArray(proposition, "attackFocus");
+            return attackFocus.length > 0 ? [`进攻焦点：${attackFocus.join(" / ")}`] : [];
+          })(),
+          ...(() => {
+            const defenseFocus = pickStringArray(proposition, "defenseFocus");
+            return defenseFocus.length > 0 ? [`防守焦点：${defenseFocus.join(" / ")}`] : [];
+          })()
+        ]
+      : []),
+    ...(judgeRubric
+      ? [
+          `裁判轴：${pickString(judgeRubric, "coreJudgmentAxis") ?? "unknown"}`,
+          ...(() => {
+            const reasonMustCover = pickStringArray(judgeRubric, "reasonMustCover");
+            return reasonMustCover.length > 0 ? [`判词必须覆盖：${reasonMustCover.join(" / ")}`] : [];
+          })(),
+          ...(() => {
+            const biasGuardrails = pickStringArray(judgeRubric, "biasGuardrails");
+            return biasGuardrails.length > 0 ? [`反偏置约束：${biasGuardrails.join(" / ")}`] : [];
+          })()
+        ]
+      : []),
+    ...(teamStrategy
+      ? [
+          `队伍母方案：${pickString(teamStrategy, "identitySummary") ?? "unknown"}`,
+          ...(() => {
+            const failureModes = pickStringArray(teamStrategy, "failureModes");
+            return failureModes.length > 0 ? [`已知失败模式：${failureModes.join(" / ")}`] : [];
+          })()
+        ]
+      : []),
+    ...(coachContext
+      ? [
+          `教练窗口：${pickString(coachContext, "displayName") ?? "unknown"} | ${
+            pickString(coachContext, "dutySummary") ?? "no duty summary"
+          }`
+        ]
+      : []),
+    ...(opponentStrategySummary
+      ? [
+          `对手摘要：${pickString(opponentStrategySummary, "identitySummary") ?? "unknown"}`,
+          ...(() => {
+            const failureModes = pickStringArray(opponentStrategySummary, "failureModes");
+            return failureModes.length > 0 ? [`对手失败模式：${failureModes.join(" / ")}`] : [];
+          })()
+        ]
+      : []),
+    ...(teamPlan
+      ? [
+          `队伍意图：${pickString(teamPlan, "primaryIntent") ?? "unknown"}`,
+          `队伍胜利条件：${pickString(teamPlan, "winCondition") ?? "unknown"}`
+        ]
+      : []),
+    ...(playerDirective
+      ? [`选手指令：${pickString(playerDirective, "directive") ?? "unknown"}`]
+      : [])
+  ];
+
+  return `上下文摘要：\n${lines.join("\n")}`;
+}
+
+function resolvePhase18SubTheme(proposition: Record<string, unknown>, roundNumber: number | undefined): string | undefined {
+  if (!roundNumber) {
+    return undefined;
+  }
+
+  const regulationRoundThemes = Array.isArray(proposition.regulationRoundThemes) ? proposition.regulationRoundThemes : [];
+  const overtimeRoundThemes = Array.isArray(proposition.overtimeRoundThemes) ? proposition.overtimeRoundThemes : [];
+  const inRegulation = roundNumber <= 12;
+  const themeSource = inRegulation ? regulationRoundThemes : overtimeRoundThemes;
+  const normalizedRound = inRegulation ? ((roundNumber - 1) % 6) + 1 : ((roundNumber - 13) % 3) + 1;
+  const matchLabel = inRegulation ? `R${normalizedRound}` : `OT${normalizedRound}`;
+  const theme = themeSource.find((entry) => readUnknownRecord(entry)?.round === matchLabel);
+  return pickString(readUnknownRecord(theme), "theme");
+}
+
+function pickString(record: Record<string, unknown> | undefined, key: string): string | undefined {
+  return record && typeof record[key] === "string" ? (record[key] as string) : undefined;
+}
+
+function pickStringArray(record: Record<string, unknown> | undefined, key: string): string[] {
+  if (!record || !Array.isArray(record[key])) {
+    return [];
+  }
+
+  return (record[key] as unknown[]).filter((item): item is string => typeof item === "string");
+}
+
+function buildJudgeEvaluationEntry(input: {
+  teamId: string;
+  teamName: string;
+  activeAgents: Agent[];
+  teamPlan: TeamRoundPlanDecision | undefined;
+  teamStrategy: Record<string, unknown> | undefined;
+  coachContext: Record<string, unknown> | undefined;
+}): Phase18JudgePromptContext["requestInput"]["evaluationOrder"][number] {
+  const entry = removeUndefined({
+    teamId: input.teamId,
+    teamName: input.teamName,
+    activeAgents: input.activeAgents.map((agent) => ({ id: agent.id, role: agent.role })),
+    teamPlan: input.teamPlan,
+    teamStrategy: input.teamStrategy,
+    coachContext: input.coachContext
+  });
+  return entry as Phase18JudgePromptContext["requestInput"]["evaluationOrder"][number];
 }
 
 function buildPromptTeam(actualTeam: Team, promptId: string, displayName: string, shortName: string): Team {
@@ -3623,6 +4019,19 @@ function sanitizeJudgeText(value: string, replacements: Array<{ source: string; 
   return output;
 }
 
+function sanitizeJudgeValue(value: unknown, replacements: Array<{ source: string; target: string }>): unknown {
+  if (typeof value === "string") {
+    return sanitizeJudgeText(value, replacements);
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeJudgeValue(item, replacements));
+  }
+  if (isRecord(value)) {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, sanitizeJudgeValue(item, replacements)]));
+  }
+  return value;
+}
+
 function desanitizeJudgeText(value: string, replacements: Array<{ source: string; target: string }>): string {
   let output = value;
   for (const replacement of replacements) {
@@ -3719,7 +4128,30 @@ function hasWinnerAndLoserPlanExplanation(
   return winnerExplained && loserExplained;
 }
 
-const WIN_CONDITION_SYNONYMS = ["win condition", "winning condition", "condition", "plan", "victory plan"];
+const WIN_CONDITION_SYNONYMS = [
+  "win condition",
+  "winning condition",
+  "condition",
+  "plan",
+  "victory plan",
+  "胜利条件",
+  "获胜条件",
+  "取胜条件",
+  "胜负条件",
+  "成立点",
+  "计划",
+  "方案",
+  "命题",
+  "子命题",
+  "核心判断",
+  "机会缺口",
+  "用户定义",
+  "核心用户",
+  "痛点",
+  "场景",
+  "切口",
+  "价值"
+];
 const WINNER_EXPLANATION_CUES = [
   "succeeded",
   "success",
@@ -3728,7 +4160,22 @@ const WINNER_EXPLANATION_CUES = [
   "won",
   "executed",
   "held",
-  "landed"
+  "landed",
+  "成功",
+  "打成",
+  "打穿",
+  "打击",
+  "精准打击",
+  "压制",
+  "守住",
+  "拿下",
+  "赢得",
+  "兑现",
+  "建立",
+  "塑造",
+  "锚定",
+  "完成",
+  "成立"
 ];
 const LOSER_EXPLANATION_CUES = [
   "failed",
@@ -3738,7 +4185,21 @@ const LOSER_EXPLANATION_CUES = [
   "collapsed",
   "denied",
   "stopped",
-  "lost"
+  "lost",
+  "失败",
+  "未能",
+  "没能",
+  "不能",
+  "无法",
+  "缺乏",
+  "暴露",
+  "被迫",
+  "沦为",
+  "丢失",
+  "被打击",
+  "被压制",
+  "没有",
+  "不足"
 ];
 const COMMON_PLAN_WORDS = new Set([
   "the",
@@ -3873,6 +4334,42 @@ function safeId(value: string): string {
 
 function removeUndefined<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(Object.entries(value).filter(([, item]) => typeof item !== "undefined")) as T;
+}
+
+function readLlmErrorDiagnostic(error: unknown): {
+  rawText?: string;
+  usage?: LlmResponse["usage"];
+  parseCandidate?: string;
+} {
+  if (!isRecord(error)) {
+    return {};
+  }
+
+  return {
+    ...(typeof error.rawText === "string" ? { rawText: error.rawText } : {}),
+    ...(isRecord(error.usage) &&
+    typeof error.usage.promptTokens === "number" &&
+    typeof error.usage.completionTokens === "number" &&
+    typeof error.usage.totalTokens === "number"
+      ? {
+          usage: {
+            promptTokens: error.usage.promptTokens,
+            completionTokens: error.usage.completionTokens,
+            totalTokens: error.usage.totalTokens
+          }
+        }
+      : {}),
+    ...(typeof error.parseCandidate === "string" ? { parseCandidate: error.parseCandidate } : {})
+  };
+}
+
+function previewText(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  return trimmed.length > 800 ? `${trimmed.slice(0, 800)}...` : trimmed;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

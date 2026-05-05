@@ -18,7 +18,7 @@
 
 ```text
 P 线：已完成到 P2.3，Phase 1 范围内可按 Frozen 执行。
-Phase 线：Phase 1.8 本地真实 LLM BO3 pilot 与 Phase 1.9 Phase18 观赛主屏 / 调试控制台已完成收口并暂时冻结；下一步进入 Phase 2.0 完整 16 队赛事雏形。
+Phase 线：Phase 1.8 本地真实 LLM BO3 pilot 与 Phase 1.9 Phase18 观赛主屏 / 调试控制台已完成收口并暂时冻结；当前下一步进入 Phase 2.0-pre 单图 / 定制 BO3 赛事语义校准。
 ```
 
 ## 3. 目录说明
@@ -100,6 +100,17 @@ phase-plans/phase-1.6-zone-offense-defense-protocol.md
 phase-plans/phase-1.7-materials-runtime-integration.md
 phase-plans/phase-1.8-real-llm-bo3-pilot.md
 phase-plans/phase-1.9-broadcast-ui-main-screen.md
+phase-plans/phase-2.0-pre-semantic-calibration-charter.md
+```
+
+说明：
+
+```text
+Phase 2.0-pre 的地图级资产与队伍地图方案已转入 data/materials/processed/ 下维护。
+其中 Dust2 当前资产位于：
+- data/materials/processed/maps/dust2/
+- data/materials/processed/teams/falcon-7b/maps/dust2/
+- data/materials/processed/teams/vitallmty/maps/dust2/
 ```
 
 ## 4. 维护规则

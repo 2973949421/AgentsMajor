@@ -41,7 +41,8 @@
   "processed_paths": {
     "team": "processed/teams/falcon-7b/team.json",
     "roster": "processed/teams/falcon-7b/roster.json",
-    "hooks": "processed/teams/falcon-7b/hooks.json"
+    "hooks": "processed/teams/falcon-7b/hooks.json",
+    "strategy": "processed/teams/falcon-7b/strategy.json"
   },
   "version": "2026-05-03-canon-v1",
   "canon_notes": [

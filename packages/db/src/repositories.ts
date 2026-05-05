@@ -14,6 +14,7 @@ import type {
   Match,
   Round,
   RoundReport,
+  SimulationRun,
   Summary,
   Team,
   TimelineEvent,
@@ -31,6 +32,7 @@ import {
   matchSchema,
   roundReportSchema,
   roundSchema,
+  simulationRunSchema,
   summarySchema,
   teamSchema,
   timelineEventSchema,
@@ -75,6 +77,10 @@ export interface AgentRepository extends Repository<Agent> {
 }
 export interface DriverModelRepository extends Repository<DriverModel> {}
 export interface MatchRepository extends Repository<Match> {}
+export interface SimulationRunRepository extends Repository<SimulationRun> {
+  listByFixtureId(fixtureId: string): Promise<SimulationRun[]>;
+  getByRuntimeMatchId(runtimeMatchId: string): Promise<SimulationRun | null>;
+}
 export interface MapGameRepository extends Repository<MapGame> {
   listByMatch(matchId: string): Promise<MapGame[]>;
 }
@@ -118,6 +124,7 @@ export interface Repositories {
   agents: AgentRepository;
   driverModels: DriverModelRepository;
   matches: MatchRepository;
+  simulationRuns: SimulationRunRepository;
   mapGames: MapGameRepository;
   rounds: RoundRepository;
   roundReports: RoundReportRepository;
@@ -180,6 +187,7 @@ export function createSqliteRepositories(filePath = defaultSqlitePath): SqliteRe
     agents: new AgentSqliteRepository(sqlite),
     driverModels: new DriverModelSqliteRepository(sqlite),
     matches: new MatchSqliteRepository(sqlite),
+    simulationRuns: new SimulationRunSqliteRepository(sqlite),
     mapGames: new MapGameSqliteRepository(sqlite),
     rounds: new RoundSqliteRepository(sqlite),
     roundReports: new RoundReportSqliteRepository(sqlite),
@@ -258,6 +266,23 @@ CREATE TABLE IF NOT EXISTS matches (
   started_at text,
   completed_at text
 );
+CREATE TABLE IF NOT EXISTS simulation_runs (
+  id text PRIMARY KEY NOT NULL,
+  fixture_id text NOT NULL,
+  status text NOT NULL,
+  requested_mode text NOT NULL,
+  runtime_match_id text NOT NULL REFERENCES matches(id),
+  runtime_map_game_id text,
+  baseline_completed_rounds integer DEFAULT 0 NOT NULL,
+  estimated_total_rounds integer DEFAULT 0 NOT NULL,
+  expected_total_calls integer DEFAULT 0 NOT NULL,
+  latest_committed_round_number integer DEFAULT 0 NOT NULL,
+  has_fresh_replay integer DEFAULT 0 NOT NULL,
+  latest_error text,
+  created_at text NOT NULL,
+  started_at text,
+  completed_at text
+);
 CREATE TABLE IF NOT EXISTS map_games (
   id text PRIMARY KEY NOT NULL,
   match_id text NOT NULL REFERENCES matches(id),
@@ -302,6 +327,7 @@ CREATE TABLE IF NOT EXISTS round_reports (
   score_after_round_json text NOT NULL,
   judge_result_json text NOT NULL,
   agent_outputs_json text NOT NULL,
+  llm_team_plans_json text,
   key_events_json text NOT NULL,
   economy_delta_json text NOT NULL,
   token_submission_json text NOT NULL,
@@ -436,6 +462,8 @@ CREATE TABLE IF NOT EXISTS admin_audit_logs (
 CREATE INDEX IF NOT EXISTS teams_tournament_idx ON teams(tournament_id);
 CREATE INDEX IF NOT EXISTS agents_team_idx ON agents(team_id);
 CREATE INDEX IF NOT EXISTS matches_tournament_idx ON matches(tournament_id);
+CREATE INDEX IF NOT EXISTS simulation_runs_fixture_idx ON simulation_runs(fixture_id, created_at);
+CREATE UNIQUE INDEX IF NOT EXISTS simulation_runs_runtime_match_unique ON simulation_runs(runtime_match_id);
 CREATE UNIQUE INDEX IF NOT EXISTS map_games_match_order_unique ON map_games(match_id, map_order);
 CREATE UNIQUE INDEX IF NOT EXISTS rounds_map_number_unique ON rounds(map_game_id, round_number);
 CREATE UNIQUE INDEX IF NOT EXISTS events_global_sequence_unique ON events(global_sequence);
@@ -445,6 +473,7 @@ CREATE INDEX IF NOT EXISTS economy_states_agent_round_idx ON economy_states(agen
 CREATE INDEX IF NOT EXISTS summaries_scope_idx ON summaries(scope_type, scope_id, created_at);
 `);
   ensureSqliteColumn(sqlite, "round_reports", "tactical_context_json", "text");
+  ensureSqliteColumn(sqlite, "round_reports", "llm_team_plans_json", "text");
   ensureSqliteColumn(sqlite, "agents", "secondary_roles_json", "text");
   ensureSqliteColumn(sqlite, "agents", "role_profile_json", "text");
   ensureSqliteColumn(sqlite, "agents", "material_ref_json", "text");
@@ -613,6 +642,65 @@ class MatchSqliteRepository implements MatchRepository {
   }
 }
 
+class SimulationRunSqliteRepository implements SimulationRunRepository {
+  constructor(private readonly sqlite: SqliteDatabase) {}
+
+  async getById(id: string): Promise<SimulationRun | null> {
+    const row = this.sqlite.prepare("SELECT * FROM simulation_runs WHERE id = ?").get(id) as Row | undefined;
+    return row ? simulationRunSchema.parse(mapSimulationRun(row)) : null;
+  }
+
+  async listByFixtureId(fixtureId: string): Promise<SimulationRun[]> {
+    return (
+      this.sqlite
+        .prepare("SELECT * FROM simulation_runs WHERE fixture_id = ? ORDER BY created_at DESC, id DESC")
+        .all(fixtureId) as Row[]
+    ).map((row) => simulationRunSchema.parse(mapSimulationRun(row)));
+  }
+
+  async getByRuntimeMatchId(runtimeMatchId: string): Promise<SimulationRun | null> {
+    const row = this.sqlite.prepare("SELECT * FROM simulation_runs WHERE runtime_match_id = ?").get(runtimeMatchId) as Row | undefined;
+    return row ? simulationRunSchema.parse(mapSimulationRun(row)) : null;
+  }
+
+    async save(entity: SimulationRun): Promise<void> {
+      const item = simulationRunSchema.parse(entity);
+      this.sqlite
+        .prepare(
+        `INSERT INTO simulation_runs (
+          id, fixture_id, status, requested_mode, runtime_match_id, runtime_map_game_id, baseline_completed_rounds,
+          estimated_total_rounds, expected_total_calls, latest_committed_round_number, has_fresh_replay, latest_error,
+          created_at, started_at, completed_at
+        ) VALUES (
+          @id, @fixtureId, @status, @requestedMode, @runtimeMatchId, @runtimeMapGameId, @baselineCompletedRounds,
+          @estimatedTotalRounds, @expectedTotalCalls, @latestCommittedRoundNumber, @hasFreshReplay, @latestError,
+          @createdAt, @startedAt, @completedAt
+        )
+         ON CONFLICT(id) DO UPDATE SET
+         fixture_id = excluded.fixture_id,
+         status = excluded.status,
+         requested_mode = excluded.requested_mode,
+         runtime_match_id = excluded.runtime_match_id,
+         runtime_map_game_id = excluded.runtime_map_game_id,
+         baseline_completed_rounds = excluded.baseline_completed_rounds,
+         estimated_total_rounds = excluded.estimated_total_rounds,
+         expected_total_calls = excluded.expected_total_calls,
+         latest_committed_round_number = excluded.latest_committed_round_number,
+         has_fresh_replay = excluded.has_fresh_replay,
+           latest_error = excluded.latest_error,
+           created_at = excluded.created_at,
+           started_at = excluded.started_at,
+           completed_at = excluded.completed_at`
+        )
+        .run(
+          toNullable({
+            ...item,
+            hasFreshReplay: item.hasFreshReplay ? 1 : 0
+          })
+        );
+    }
+  }
+
 class MapGameSqliteRepository implements MapGameRepository {
   constructor(private readonly sqlite: SqliteDatabase) {}
 
@@ -711,14 +799,14 @@ class RoundReportSqliteRepository implements RoundReportRepository {
     const item = roundReportSchema.parse(entity);
     this.sqlite
       .prepare(
-        `INSERT INTO round_reports (id, tournament_id, match_id, map_game_id, round_id, round_number, map_name, winner_team_id, score_before_round_json, score_after_round_json, judge_result_json, agent_outputs_json, key_events_json, economy_delta_json, token_submission_json, highlight_tags_json, tactical_context_json, summary, event_projection_json, created_at)
-         VALUES (@id, @tournamentId, @matchId, @mapGameId, @roundId, @roundNumber, @mapName, @winnerTeamId, @scoreBeforeRoundJson, @scoreAfterRoundJson, @judgeResultJson, @agentOutputsJson, @keyEventsJson, @economyDeltaJson, @tokenSubmissionJson, @highlightTagsJson, @tacticalContextJson, @summary, @eventProjectionJson, @createdAt)
+        `INSERT INTO round_reports (id, tournament_id, match_id, map_game_id, round_id, round_number, map_name, winner_team_id, score_before_round_json, score_after_round_json, judge_result_json, agent_outputs_json, llm_team_plans_json, key_events_json, economy_delta_json, token_submission_json, highlight_tags_json, tactical_context_json, summary, event_projection_json, created_at)
+         VALUES (@id, @tournamentId, @matchId, @mapGameId, @roundId, @roundNumber, @mapName, @winnerTeamId, @scoreBeforeRoundJson, @scoreAfterRoundJson, @judgeResultJson, @agentOutputsJson, @llmTeamPlansJson, @keyEventsJson, @economyDeltaJson, @tokenSubmissionJson, @highlightTagsJson, @tacticalContextJson, @summary, @eventProjectionJson, @createdAt)
          ON CONFLICT(id) DO UPDATE SET
          tournament_id = excluded.tournament_id, match_id = excluded.match_id, map_game_id = excluded.map_game_id,
          round_id = excluded.round_id, round_number = excluded.round_number, map_name = excluded.map_name,
          winner_team_id = excluded.winner_team_id, score_before_round_json = excluded.score_before_round_json,
          score_after_round_json = excluded.score_after_round_json, judge_result_json = excluded.judge_result_json,
-         agent_outputs_json = excluded.agent_outputs_json, key_events_json = excluded.key_events_json,
+         agent_outputs_json = excluded.agent_outputs_json, llm_team_plans_json = excluded.llm_team_plans_json, key_events_json = excluded.key_events_json,
          economy_delta_json = excluded.economy_delta_json, token_submission_json = excluded.token_submission_json,
          highlight_tags_json = excluded.highlight_tags_json, tactical_context_json = excluded.tactical_context_json, summary = excluded.summary,
          event_projection_json = excluded.event_projection_json, created_at = excluded.created_at`
@@ -730,6 +818,7 @@ class RoundReportSqliteRepository implements RoundReportRepository {
           scoreAfterRoundJson: JSON.stringify(item.scoreAfterRound),
           judgeResultJson: JSON.stringify(item.judgeResult),
           agentOutputsJson: JSON.stringify(item.agentOutputs),
+          llmTeamPlansJson: stringifyOptional(item.llmTeamPlans),
           keyEventsJson: JSON.stringify(item.keyEvents),
           economyDeltaJson: JSON.stringify(item.economyDelta),
           tokenSubmissionJson: JSON.stringify(item.tokenSubmission),
@@ -1124,6 +1213,26 @@ function mapMatch(row: Row) {
   });
 }
 
+function mapSimulationRun(row: Row) {
+  return removeUndefined({
+    id: asString(row.id),
+    fixtureId: asString(row.fixture_id),
+    status: asString(row.status),
+    requestedMode: asString(row.requested_mode),
+    runtimeMatchId: asString(row.runtime_match_id),
+    runtimeMapGameId: nullableString(row.runtime_map_game_id),
+    baselineCompletedRounds: asNumber(row.baseline_completed_rounds),
+    estimatedTotalRounds: asNumber(row.estimated_total_rounds),
+    expectedTotalCalls: asNumber(row.expected_total_calls),
+    latestCommittedRoundNumber: asNumber(row.latest_committed_round_number),
+    hasFreshReplay: asBoolean(row.has_fresh_replay),
+    latestError: nullableString(row.latest_error),
+    createdAt: asString(row.created_at),
+    startedAt: nullableString(row.started_at),
+    completedAt: nullableString(row.completed_at)
+  });
+}
+
 function mapMapGame(row: Row) {
   return removeUndefined({
     id: asString(row.id),
@@ -1175,6 +1284,7 @@ function mapRoundReport(row: Row) {
     scoreAfterRound: parseJson(row.score_after_round_json),
     judgeResult: parseJson(row.judge_result_json),
     agentOutputs: parseJson(row.agent_outputs_json),
+    ...optionalObject("llmTeamPlans", parseOptionalJson(row.llm_team_plans_json)),
     keyEvents: parseJson(row.key_events_json),
     economyDelta: parseJson(row.economy_delta_json),
     tokenSubmission: parseJson(row.token_submission_json),
@@ -1355,6 +1465,17 @@ function nullableString(value: unknown): string | undefined {
 
 function nullableNumber(value: unknown): number | undefined {
   return typeof value === "number" ? value : undefined;
+}
+
+function asBoolean(value: unknown): boolean {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "number") {
+    return value !== 0;
+  }
+
+  throw new Error(`Expected boolean but received ${typeof value}`);
 }
 
 function parseJson<T = unknown>(value: unknown): T {

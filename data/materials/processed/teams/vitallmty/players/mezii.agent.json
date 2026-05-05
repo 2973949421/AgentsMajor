@@ -31,9 +31,8 @@
     "confidence": "中-高",
     "notes": "多功能补位，偏团队型步枪位。",
     "agent_major_responsibilities": [
-      "补全细节 / 修复方案 / 提供上下文",
-      "防守型论证 / 稳定性校验",
-      "多场景适配 / 缺口填补 / 角色切换"
+      "Gap fixing / closure completion / stable execution",
+      "Protect system integrity and low-error delivery across role switches"
     ]
   },
   "aliases": [
@@ -146,7 +145,7 @@
     ],
     "override_ids": [],
     "ops_notes": [
-      "Keep framing around utility, spacing, and invisible value."
+      "Emphasize completion, low-error execution, and multi-role stability."
     ]
   },
   "ops_hooks": {

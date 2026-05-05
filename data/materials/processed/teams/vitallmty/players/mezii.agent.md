@@ -1,21 +1,23 @@
 # mezii
 
 ## Snapshot
-- 队伍：VitaLLMty
-- 类型：player
-- 角色：support
-- 当前状态：active
-- 公开 ID：mezii
-- 法定姓名：待回填
+- Team: VitaLLMty
+- Type: player
+- Role: support
+- Status: active
+- Public ID: mezii
+- Legal Name: TBD
 
 ## CS Role Profile
-- 原始位置：Support / Anchor / flex rifler
-- 主位置：support
-- 次级位置：anchor, flex
-- 可信度：中-高
-- Agent Major 职责：补全细节 / 修复方案 / 提供上下文；防守型论证 / 稳定性校验；多场景适配 / 缺口填补 / 角色切换
-- 备注：多功能补位，偏团队型步枪位。
-- 来源：raw/teams/agent_major_player_roles.md
+- Raw Position: Support / Anchor / flex rifler
+- Primary Role: support
+- Secondary Roles: anchor, flex
+- Confidence: 中-高
+- Agent Major Responsibilities:
+- Gap fixing / closure completion / stable execution
+- Protect system integrity and low-error delivery across role switches
+- Notes: 多功能补位，偏团队型步枪位。
+- Source: raw/teams/agent_major_player_roles.md
 
 ## Alias
 - mezii
@@ -32,17 +34,12 @@
 - spacing
 - late-support
 
-## Broadcast / Barrage / News
-- 解说标签：machine_map_point_pressure
-- 弹幕标签：player_targeting
-- 新闻标签：title-favorite
-- 跨圈标签：customer_service_to_cleanup
-
 ## Future Interfaces
-- agent 人格接口：title-favorite, glue-piece, utility-worker, glue-player, quiet-fixer
-- 模型绑定接口：llm_role_template_support / driver_qwen_3_6_plus
-- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
-- 产品运营接口：补位工兵, title-favorite
+- agent narrative axes: title-favorite, glue-piece, utility-worker, glue-player, quiet-fixer
+- model binding: llm_role_template_support / driver_qwen_3_6_plus
+- prompt bias tags: glue-piece, utility-worker, trade-layer, setup-support, utility-setup, spacing, late-support, glue-player, quiet-fixer
+- ops notes:
+- Emphasize completion, low-error execution, and multi-role stability.
 
 ## Canon Notes
-- 当前以公开比赛 ID 为主，等待后续补 legal name 与更细人物画像。
+- none

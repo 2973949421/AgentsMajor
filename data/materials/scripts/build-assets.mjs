@@ -568,6 +568,11 @@ function relativeProcessedPath(...segments) {
   return path.posix.join("processed", ...segments);
 }
 
+function existingStrategyRelativePath(teamSlug) {
+  const strategyPath = path.join(teamsRoot, teamSlug, "strategy.json");
+  return fs.existsSync(strategyPath) ? relativeProcessedPath("teams", teamSlug, "strategy.json") : undefined;
+}
+
 function renderList(items) {
   return items.map((item) => `- ${item}`).join("\n");
 }
@@ -2763,6 +2768,7 @@ function enrichTeam(team) {
 }
 
 function makeTeamJson(team) {
+  const strategyPath = existingStrategyRelativePath(team.slug);
   return {
     team_id: team.teamId,
     team_slug: team.slug,
@@ -2782,7 +2788,8 @@ function makeTeamJson(team) {
     processed_paths: {
       team: relativeProcessedPath("teams", team.slug, "team.json"),
       roster: relativeProcessedPath("teams", team.slug, "roster.json"),
-      hooks: relativeProcessedPath("teams", team.slug, "hooks.json")
+      hooks: relativeProcessedPath("teams", team.slug, "hooks.json"),
+      ...(strategyPath ? { strategy: strategyPath } : {})
     },
     version: VERSION,
     canon_notes: team.canonNotes
@@ -3029,7 +3036,8 @@ function buildTeamsIndex(enrichedTeams) {
       canon_role: team.canonRole,
       team_json_path: relativeProcessedPath("teams", team.slug, "team.json"),
       roster_json_path: relativeProcessedPath("teams", team.slug, "roster.json"),
-      hooks_json_path: relativeProcessedPath("teams", team.slug, "hooks.json")
+      hooks_json_path: relativeProcessedPath("teams", team.slug, "hooks.json"),
+      ...(existingStrategyRelativePath(team.slug) ? { strategy_json_path: existingStrategyRelativePath(team.slug) } : {})
     }))
   };
 }

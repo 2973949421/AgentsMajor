@@ -23,18 +23,24 @@ interface PrivateWebRunnerPolicy extends PublicWebRunnerPolicy {
 }
 
 export interface WebRunnerRequestBody {
+  action?: unknown;
   mode?: unknown;
+  resetScope?: unknown;
   confirmReset?: unknown;
   adminToken?: unknown;
+  runId?: unknown;
 }
 
 export type WebRunnerRequestValidation =
-  | { ok: true; mode: WebRunMode }
+  | { ok: true; action: "run"; mode: WebRunMode }
+  | { ok: true; action: "reset"; resetScope: WebRunResetScope }
   | {
       ok: false;
       status: number;
       error: string;
     };
+
+export type WebRunResetScope = "round" | "map" | "match";
 
 export function getPublicWebRunnerPolicy(
   projectRoot = findProjectRoot(process.cwd()),
@@ -64,11 +70,6 @@ export function validateWebRunnerRequest(
     };
   }
 
-  const mode = parseMode(body.mode);
-  if (!mode) {
-    return { ok: false, status: 400, error: "Unsupported run mode." };
-  }
-
   if (body.confirmReset !== true) {
     return {
       ok: false,
@@ -89,7 +90,25 @@ export function validateWebRunnerRequest(
     return { ok: false, status: 401, error: "Invalid web runner token." };
   }
 
-  return { ok: true, mode };
+  const action = parseAction(body.action);
+  if (action === "reset") {
+    const resetScope = parseResetScope(body.resetScope);
+    if (!resetScope) {
+      return { ok: false, status: 400, error: "Unsupported reset scope." };
+    }
+    return { ok: true, action, resetScope };
+  }
+
+  const mode = parseMode(body.mode);
+  if (!mode) {
+    return { ok: false, status: 400, error: "Unsupported run mode." };
+  }
+
+  return { ok: true, action: "run", mode };
+}
+
+function parseAction(value: unknown): "run" | "reset" {
+  return value === "reset" ? "reset" : "run";
 }
 
 function parseMode(value: unknown): WebRunMode | null {
@@ -99,6 +118,14 @@ function parseMode(value: unknown): WebRunMode | null {
     value === "phase18_current_map" ||
     value === "phase18_full_bo3"
   ) {
+    return value;
+  }
+
+  return null;
+}
+
+function parseResetScope(value: unknown): WebRunResetScope | null {
+  if (value === "round" || value === "map" || value === "match") {
     return value;
   }
 

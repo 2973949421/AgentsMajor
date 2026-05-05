@@ -1050,11 +1050,11 @@ Support rate is an entertainment metric, not betting odds.
 
 ## 23. 当前建议
 
-Phase 1.8 / 1.9 已完成工程和 UI 收口，当前不要继续扩展真实 LLM pilot 或观赛界面细节；下一步先做完整 16 队 bracket 与赛事调度边界，不要先做复杂新闻站。
+Phase 1.8 / 1.9 已完成工程和 UI 收口，当前不要继续扩展真实 LLM pilot 或观赛界面细节；下一步先执行 Phase 2.0-pre 单图 / 定制 BO3 赛事语义校准，不要先做复杂新闻站。
 
 P / Phase 的具体协作规则以 `docs/meta/p-phase-delivery-framework.md` 为准。P0-P4 是模块契约优先级，Phase 0-4 是工程交付阶段，二者互相勾稽但不一一对应。
 
-当前推进状态是：P0 / P1 / P2.1 / P2.2 已冻结，P2.3 在 Phase 1 范围内可按 Frozen 执行，Phase 1.0 / 1.1 / 1.2 / 1.3 / 1.4 / 1.45 / 1.5 / 1.6 / 1.7 / 1.8 / 1.9 已完成。项目已经从“工程骨架和单回合 replay”推进到“BO3 match replay + 极简伪直播播放器 + 可消费的赛事语义事件 + 2D 战术地图消费契约 + 转播包装层 + 真实 caster_line 小范围接入 + deterministic tactical protocol + materials runtime integration + 本地真实 LLM BO3 pilot + Phase 1.8 only 观赛主屏”。下一步主线应进入 Phase 2.0 的 16 队 bracket 与赛事调度边界设计，而不是继续扩展 Phase 1.8 / 1.9。
+当前推进状态是：P0 / P1 / P2.1 / P2.2 已冻结，P2.3 在 Phase 1 范围内可按 Frozen 执行，Phase 1.0 / 1.1 / 1.2 / 1.3 / 1.4 / 1.45 / 1.5 / 1.6 / 1.7 / 1.8 / 1.9 已完成。项目已经从“工程骨架和单回合 replay”推进到“BO3 match replay + 极简伪直播播放器 + 可消费的赛事语义事件 + 2D 战术地图消费契约 + 转播包装层 + 真实 caster_line 小范围接入 + deterministic tactical protocol + materials runtime integration + 本地真实 LLM BO3 pilot + Phase 1.8 only 观赛主屏”。下一步主线应先进入 Phase 2.0-pre 的单图 / 定制 BO3 赛事语义校准，而不是直接扩展到完整 16 队 bracket。
 
 P2.1 之后的工作模式仍然是“代码主线，文档随行”：只有当实现会改变核心契约时，才先补文档再写代码。核心契约包括 EventType / payload、RoundReport、状态机、Token 经济、DriverModel 接口、SQLite 核心表和 Event -> TimelineEvent 投影。Repository 内部实现、fake provider 样例、CLI 输出、极简页面布局和测试 seed 不应阻塞代码推进。
 
@@ -1077,7 +1077,7 @@ P2.1 之后的工作模式仍然是“代码主线，文档随行”：只有当
 已完成：Phase 1.7 materials runtime integration 与角色契约升级。
 已完成：Phase 1.8 本地真实 LLM BO3 pilot，暂时冻结。
 已完成：Phase 1.9 Phase18 观赛主屏 / 调试控制台，暂时冻结。
-当前：Phase 2.0 完整 16 队 bracket 与赛事调度边界设计。
+当前：Phase 2.0-pre 单图 / 定制 BO3 赛事语义校准。
 ```
 
 先用 fake provider 是关键，它能让 UI、状态机、数据库、回放全部先跑起来，不被 LLM 成本和不稳定性拖住。

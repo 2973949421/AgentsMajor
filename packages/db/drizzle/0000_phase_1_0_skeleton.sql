@@ -66,6 +66,24 @@ CREATE TABLE `matches` (
   `completed_at` text
 );
 --> statement-breakpoint
+CREATE TABLE `simulation_runs` (
+  `id` text PRIMARY KEY NOT NULL,
+  `fixture_id` text NOT NULL,
+  `status` text NOT NULL,
+  `requested_mode` text NOT NULL,
+  `runtime_match_id` text NOT NULL,
+  `runtime_map_game_id` text,
+  `baseline_completed_rounds` integer DEFAULT 0 NOT NULL,
+  `estimated_total_rounds` integer DEFAULT 0 NOT NULL,
+  `expected_total_calls` integer DEFAULT 0 NOT NULL,
+  `latest_committed_round_number` integer DEFAULT 0 NOT NULL,
+  `has_fresh_replay` integer DEFAULT false NOT NULL,
+  `latest_error` text,
+  `created_at` text NOT NULL,
+  `started_at` text,
+  `completed_at` text
+);
+--> statement-breakpoint
 CREATE TABLE `map_games` (
   `id` text PRIMARY KEY NOT NULL,
   `match_id` text NOT NULL,

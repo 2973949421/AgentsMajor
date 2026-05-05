@@ -1,5 +1,17 @@
-import type { EconomyRow, LiveReplayAgent, LiveReplayData, LiveReplayMap, LiveReplayRound, LiveRoundFrame, ScorePair } from "./live-replay-model";
+import type {
+  EconomyRow,
+  LiveAgentOutput,
+  LiveReplayAgent,
+  LiveReplayData,
+  LiveReplayMap,
+  LiveReplayRound,
+  LiveRoundFrame,
+  LiveTeamPlan,
+  ScorePair
+} from "./live-replay-model";
 import type { ReplayGuardState, RunMatchUiState, WebRunLlmCallProgress, WebRunProgress } from "./run-match-controls";
+
+type TeamDirective = LiveTeamPlan["playerDirectives"][number];
 
 export interface BroadcastHudViewModel {
   banner: string;
@@ -20,6 +32,7 @@ export interface OverlayRosterViewModel {
   shortName: string;
   sideLabel: string;
   score: number;
+  coachLabel?: string;
   players: OverlayRosterPlayerViewModel[];
   emptyMessage?: string;
 }
@@ -29,6 +42,7 @@ export interface OverlayRosterPlayerViewModel {
   displayName: string;
   roleLabel: string;
   metaLabel: string;
+  dutyLabel: string;
   tokenBankLabel: string;
   buyLabel: string;
   statusLabel: string;
@@ -57,6 +71,57 @@ export interface OpsDockViewModel {
   latestError?: string;
   summaryItems: Array<{ label: string; value: string }>;
   llmCalls: WebRunLlmCallProgress[];
+}
+
+export interface RoundEvidenceViewModel {
+  roundLabel: string;
+  factChainLabel: string;
+  teamPlans: TeamPlanEvidenceViewModel[];
+  playerActions: PlayerActionEvidenceViewModel[];
+  judge: JudgeEvidenceViewModel | null;
+  emptyMessage?: string;
+}
+
+export interface TeamPlanEvidenceViewModel {
+  teamId: string;
+  teamName: string;
+  sideLabel: string;
+  primaryIntent: string;
+  primaryIntentRaw: string;
+  zonesLabel: string;
+  coordinationSummary: string;
+  coordinationSummaryRaw: string;
+  winCondition: string;
+  winConditionRaw: string;
+  risk: string;
+  riskRaw: string;
+  confidenceLabel: string;
+  directives: Array<{ agentId: string; displayName: string; directive: string; directiveRaw: string }>;
+}
+
+export interface PlayerActionEvidenceViewModel {
+  agentId: string;
+  teamId: string;
+  teamName: string;
+  displayName: string;
+  roleLabel: string;
+  dutyLabel: string;
+  directiveLabel: string;
+  directiveLabelRaw: string;
+  action: string;
+  actionRaw: string;
+  confidenceLabel: string;
+  fingerprintLabel: string;
+}
+
+export interface JudgeEvidenceViewModel {
+  winnerLabel: string;
+  loserLabel: string;
+  marginLabel: string;
+  mvpLabel: string;
+  confidenceLabel: string;
+  reason: string;
+  reasonRaw: string;
 }
 
 export type MatchHudViewModel = BroadcastHudViewModel;
@@ -169,7 +234,7 @@ export function buildBroadcastHudViewModel(input: {
     banner: "Phase 1.8 / 真实 LLM 导播视角",
     teamAName: teamA.displayName,
     teamBName: teamB.displayName,
-    bo3Label: "BO3",
+    bo3Label: input.replay?.maps.length === 1 ? "DUST2 单图" : "BO3",
     bo3ScoreLabel: `${input.bo3Score.teamA}-${input.bo3Score.teamB}`,
     mapLabel: input.selectedMap ? `M${input.selectedMap.order} / ${input.selectedMap.mapName}` : mapLabelFromProgress(input.runUiState?.progress),
     roundLabel: input.currentRound
@@ -194,6 +259,7 @@ export function buildOverlayRosterViewModel(input: {
   const team = input.replay?.teams[input.teamKey] ?? FALLBACK_TEAMS[input.teamKey];
   const currentScore = input.frame?.currentScore ?? input.currentRound?.roundReport.scoreBeforeRound ?? { teamA: 0, teamB: 0 };
   const score = input.teamKey === "teamA" ? currentScore.teamA : currentScore.teamB;
+  const coachLabel = buildCoachLabel(team);
   const players = buildOverlayPlayers({
     replay: input.replay,
     currentRound: input.currentRound,
@@ -207,6 +273,7 @@ export function buildOverlayRosterViewModel(input: {
     shortName: team.shortName,
     sideLabel: readSideLabel(input.currentRound, team.id),
     score,
+    ...(coachLabel ? { coachLabel } : {}),
     players,
     ...(players.length === 0 ? { emptyMessage: "当前还没有已提交的回放局，选手信息会在首局生成后出现。" } : {})
   };
@@ -259,6 +326,38 @@ export function buildOpsDockViewModel(runUiState: RunMatchUiState | null): OpsDo
   };
 }
 
+export function buildRoundEvidenceViewModel(input: {
+  replay: LiveReplayData | null;
+  currentRound: LiveReplayRound | null;
+}): RoundEvidenceViewModel {
+  if (!input.replay || !input.currentRound) {
+    return {
+      roundLabel: "回合待生成",
+      factChainLabel: "暂无已提交事实",
+      teamPlans: [],
+      playerActions: [],
+      judge: null,
+      emptyMessage: "当前还没有可审计的已提交回合。"
+    };
+  }
+
+  const roundReport = input.currentRound.roundReport;
+  const teamPlans = buildTeamPlanEvidence(input.replay, roundReport.llmTeamPlans);
+  const playerActions = buildPlayerActionEvidence(input.replay, roundReport.agentOutputs, roundReport.llmTeamPlans);
+  const judge = buildJudgeEvidence(input.replay, roundReport);
+
+  return {
+    roundLabel: `R${input.currentRound.roundNumber}`,
+    factChainLabel: `队伍计划 ${teamPlans.length}/2 · 选手行动 ${playerActions.length}/10 · 裁判 ${judge ? "1/1" : "0/1"}`,
+    teamPlans,
+    playerActions,
+    judge,
+    ...(teamPlans.length === 0 && playerActions.length === 0 && !judge
+      ? { emptyMessage: "当前回合还没有可审计的 LLM 事实链。" }
+      : {})
+  };
+}
+
 export function buildMatchHudViewModel(input: Parameters<typeof buildBroadcastHudViewModel>[0]): MatchHudViewModel {
   return buildBroadcastHudViewModel(input);
 }
@@ -296,6 +395,103 @@ function buildOverlayPlayers(input: {
     .map((agent) => toFallbackPlayer(agent));
 }
 
+function buildTeamPlanEvidence(
+  replay: LiveReplayData,
+  teamPlans: Record<string, LiveTeamPlan> | undefined
+): TeamPlanEvidenceViewModel[] {
+  if (!teamPlans) {
+    return [];
+  }
+
+  const teamOrder = [replay.teams.teamA.id, replay.teams.teamB.id];
+  return Object.values(teamPlans)
+    .sort((left, right) => teamOrder.indexOf(left.teamId) - teamOrder.indexOf(right.teamId))
+    .map((plan) => ({
+      teamId: plan.teamId,
+      teamName: teamNameById(replay, plan.teamId),
+      sideLabel: plan.side === "attack" ? "进攻方" : "防守方",
+      primaryIntent: translateEvidenceText(plan.primaryIntent),
+      primaryIntentRaw: plan.primaryIntent,
+      zonesLabel: [plan.primaryZoneId, plan.secondaryZoneId]
+        .filter((value): value is string => Boolean(value))
+        .map(translateZoneId)
+        .join(" / "),
+      coordinationSummary: translateEvidenceText(plan.coordinationSummary),
+      coordinationSummaryRaw: plan.coordinationSummary,
+      winCondition: translateEvidenceText(plan.winCondition),
+      winConditionRaw: plan.winCondition,
+      risk: translateEvidenceText(plan.risk),
+      riskRaw: plan.risk,
+      confidenceLabel: formatConfidence(plan.confidence),
+      directives: plan.playerDirectives.map((directive: TeamDirective) => ({
+        agentId: directive.agentId,
+        displayName: replay.agentsById[directive.agentId]?.displayName ?? directive.agentId,
+        directive: translateEvidenceText(directive.directive),
+        directiveRaw: directive.directive
+      }))
+    }));
+}
+
+function buildPlayerActionEvidence(
+  replay: LiveReplayData,
+  agentOutputs: LiveAgentOutput[],
+  teamPlans: Record<string, LiveTeamPlan> | undefined
+): PlayerActionEvidenceViewModel[] {
+  const planByTeamId = teamPlans ?? {};
+  const teamOrder = new Map([
+    [replay.teams.teamA.id, 0],
+    [replay.teams.teamB.id, 1]
+  ]);
+
+  return [...agentOutputs]
+    .sort((left, right) => (teamOrder.get(left.teamId) ?? 99) - (teamOrder.get(right.teamId) ?? 99) || left.agentId.localeCompare(right.agentId))
+    .map((output) => {
+      const agent = replay.agentsById[output.agentId];
+      const directive = planByTeamId[output.teamId]?.playerDirectives.find((item: TeamDirective) => item.agentId === output.agentId)?.directive;
+      return {
+        agentId: output.agentId,
+        teamId: output.teamId,
+        teamName: teamNameById(replay, output.teamId),
+        displayName: agent?.displayName ?? output.agentId,
+        roleLabel: translateToken(agent?.role ?? output.role),
+        dutyLabel: buildDutyLabel(agent),
+        directiveLabel: translateEvidenceText(directive ?? "这个已提交回合没有写入队伍计划事实；旧回合不会伪回填。"),
+        directiveLabelRaw: directive ?? "",
+        action: translateEvidenceText(output.action),
+        actionRaw: output.action,
+        confidenceLabel: formatConfidence(output.confidence),
+        fingerprintLabel: output.rawFingerprint
+      };
+    });
+}
+
+function buildJudgeEvidence(
+  replay: LiveReplayData,
+  roundReport: LiveReplayRound["roundReport"]
+): JudgeEvidenceViewModel {
+  const judge = roundReport.judgeResult;
+  const mvpAgent = replay.agentsById[judge.mvpAgentId];
+  return {
+    winnerLabel: teamNameById(replay, judge.winnerTeamId),
+    loserLabel: teamNameById(replay, judge.loserTeamId),
+    marginLabel: translateMargin(judge.margin),
+    mvpLabel: mvpAgent?.displayName ?? judge.mvpAgentId,
+    confidenceLabel: formatConfidence(judge.confidence),
+    reason: translateEvidenceText(judge.reason),
+    reasonRaw: judge.reason
+  };
+}
+
+function teamNameById(replay: LiveReplayData, teamId: string): string {
+  if (replay.teams.teamA.id === teamId) {
+    return replay.teams.teamA.displayName;
+  }
+  if (replay.teams.teamB.id === teamId) {
+    return replay.teams.teamB.displayName;
+  }
+  return teamId;
+}
+
 function toOverlayPlayer(row: EconomyRow, agent: LiveReplayAgent | undefined, frame: LiveRoundFrame | null): OverlayRosterPlayerViewModel {
   const highlight = resolvePlayerHighlight(row.agentId, frame);
   return {
@@ -303,6 +499,7 @@ function toOverlayPlayer(row: EconomyRow, agent: LiveReplayAgent | undefined, fr
     displayName: row.displayName,
     roleLabel: translateToken(row.role),
     metaLabel: buildCompactMetaLabel(agent),
+    dutyLabel: buildDutyLabel(agent),
     tokenBankLabel: `$${row.afterTokenBank}`,
     buyLabel: translateBuyType(row.buyType),
     statusLabel: buildPlayerStatusLabel(row.teamId, frame, highlight),
@@ -316,6 +513,7 @@ function toFallbackPlayer(agent: LiveReplayAgent): OverlayRosterPlayerViewModel 
     displayName: agent.displayName,
     roleLabel: translateToken(agent.role),
     metaLabel: buildCompactMetaLabel(agent),
+    dutyLabel: buildDutyLabel(agent),
     tokenBankLabel: "$--",
     buyLabel: "待购买",
     statusLabel: "待回放",
@@ -330,6 +528,25 @@ function buildCompactMetaLabel(agent: LiveReplayAgent | undefined): string {
 
   const preferred = agent.secondaryRoles[0] ? translateToken(agent.secondaryRoles[0]) : agent.aliases[0];
   return preferred ?? "角色稳定";
+}
+
+function buildDutyLabel(agent: LiveReplayAgent | undefined): string {
+  if (!agent) {
+    return "职责待同步";
+  }
+
+  return translateEvidenceText(agent.roleResponsibilities[0] ?? "执行稳定职责");
+}
+
+function buildCoachLabel(team: LiveReplayData["teams"]["teamA"] | LiveReplayData["teams"]["teamB"]): string | undefined {
+  if (!team.coachDisplayName && !team.coachDutySummary) {
+    return undefined;
+  }
+
+  if (team.coachDisplayName && team.coachDutySummary) {
+    return `Coach ${team.coachDisplayName} | ${translateEvidenceText(team.coachDutySummary)}`;
+  }
+  return team.coachDisplayName ? `Coach ${team.coachDisplayName}` : translateEvidenceText(team.coachDutySummary ?? "");
 }
 
 function resolvePlayerHighlight(agentId: string, frame: LiveRoundFrame | null): OverlayRosterPlayerViewModel["highlight"] {
@@ -409,6 +626,12 @@ function formatRunStatusLabelFromUi(runUiState: RunMatchUiState | null, fallback
   if (runUiState?.state === "running") {
     return "生成中";
   }
+  if (runUiState?.state === "paused") {
+    return "已暂停";
+  }
+  if (runUiState?.state === "stopped") {
+    return "已停止跟踪";
+  }
   if (runUiState?.state === "failed") {
     return "失败";
   }
@@ -445,6 +668,156 @@ function translateToken(value: string): string {
 
 function translateBuyType(value: string): string {
   return BUY_LABELS[value] ?? normalizeLabel(value);
+}
+
+function translateMargin(value: string): string {
+  switch (value) {
+    case "narrow":
+      return "小胜";
+    case "standard":
+      return "标准胜";
+    case "decisive":
+      return "决定性胜利";
+    default:
+      return normalizeLabel(value);
+  }
+}
+
+function formatConfidence(value: number): string {
+  return `${Math.round(value * 100)}%`;
+}
+
+function translateEvidenceText(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  const replacements: Array<[RegExp, string]> = [
+    [/\bopens space\b/gi, "打开空间"],
+    [/\bopen space\b/gi, "打开空间"],
+    [/\bthe first[- ]user claim\b/gi, "首位用户主张"],
+    [/\bfirst[- ]user claim\b/gi, "首位用户主张"],
+    [/\bfirst[- ]user\b/gi, "首位用户"],
+    [/\bprove\b/gi, "验证"],
+    [/\bsharper\b/gi, "更优"],
+    [/\bclaim\b/gi, "主张"],
+    [/\bfrom\b/gi, "从"],
+    [/\band\b/gi, "并且"],
+    [/\bif\b/gi, "如果"],
+    [/\bwhen\b/gi, "当"],
+    [/\bthen\b/gi, "然后"],
+    [/\bopens\b/gi, "打开"],
+    [/\bopen\b/gi, "打开"],
+    [/\bcloses\b/gi, "收束"],
+    [/\bclose\b/gi, "收束"],
+    [/\btests\b/gi, "试探"],
+    [/\btest\b/gi, "试探"],
+    [/\bholds\b/gi, "坚守"],
+    [/\bhold\b/gi, "坚守"],
+    [/\bpushes\b/gi, "推进"],
+    [/\bpush\b/gi, "推进"],
+    [/\brotates\b/gi, "转点"],
+    [/\brotate\b/gi, "转点"],
+    [/\bexecutes\b/gi, "执行"],
+    [/\bexecute\b/gi, "执行"],
+    [/\bcalls\b/gi, "呼叫"],
+    [/\bcall\b/gi, "呼叫"],
+    [/\bwaits\b/gi, "等待"],
+    [/\bwait\b/gi, "等待"],
+    [/\bforces\b/gi, "逼迫"],
+    [/\bforce\b/gi, "逼迫"],
+    [/\bspots\b/gi, "点位"],
+    [/\bangles\b/gi, "枪线"],
+    [/\bangle\b/gi, "枪线"],
+    [/\battack side\b/gi, "进攻方"],
+    [/\bdefense side\b/gi, "防守方"],
+    [/\battacking team\b/gi, "进攻方"],
+    [/\bdefending team\b/gi, "防守方"],
+    [/\battack\b/gi, "进攻"],
+    [/\bdefense\b/gi, "防守"],
+    [/\bsite a\b/gi, "A点"],
+    [/\ba site\b/gi, "A点"],
+    [/\bsite b\b/gi, "B点"],
+    [/\bb site\b/gi, "B点"],
+    [/\bbomb\b/gi, "炸弹"],
+    [/\bplant\b/gi, "安放"],
+    [/\bdefuse\b/gi, "拆弹"],
+    [/\bdetonate\b/gi, "爆炸"],
+    [/\beliminate\b/gi, "全歼"],
+    [/\bwipe\b/gi, "全歼"],
+    [/\bkills?\b/gi, "击杀"],
+    [/\brotate\b/gi, "转点"],
+    [/\bhold\b/gi, "守住"],
+    [/\bpeek\b/gi, "探头"],
+    [/\bpush\b/gi, "强推"],
+    [/\bhit\b/gi, "进攻"],
+    [/\btrade\b/gi, "补枪"],
+    [/\bflash\b/gi, "闪光"],
+    [/\bsmoke\b/gi, "烟雾"],
+    [/\bmolotov\b/gi, "燃烧弹"],
+    [/\butility\b/gi, "道具"],
+    [/\bentry\b/gi, "破点"],
+    [/\bawper\b/gi, "狙击手"],
+    [/\bawp\b/gi, "狙击"],
+    [/\brifler\b/gi, "步枪手"],
+    [/\bsupport\b/gi, "辅助"],
+    [/\banchor\b/gi, "据点手"],
+    [/\blurker\b/gi, "游走手"],
+    [/\bigl\b/gi, "指挥"],
+    [/\bconnector\b/gi, "连接区"],
+    [/\bmid\b/gi, "中路"],
+    [/\blong\b/gi, "长道"],
+    [/\bshort\b/gi, "短道"],
+    [/\bdefault\b/gi, "默认位"],
+    [/\bpressure\b/gi, "压制"],
+    [/\bwin condition\b/gi, "胜利条件"],
+    [/\bsucceeded\b/gi, "成功"],
+    [/\bfailed\b/gi, "失败"],
+    [/\bconfidence\b/gi, "置信度"],
+    [/\breason\b/gi, "判词"],
+    [/\bleverage\b/gi, "高价值"],
+    [/\bspace\b/gi, "空间"],
+    [/\bcontrol\b/gi, "控制"],
+    [/\bexecute\b/gi, "执行"],
+    [/\bslow\b/gi, "慢速"],
+    [/\bfast\b/gi, "快速"]
+  ];
+
+  let output = trimmed;
+  for (const [pattern, replacement] of replacements) {
+    output = output.replace(pattern, replacement);
+  }
+
+  return output;
+}
+
+function translateZoneId(value: string): string {
+  switch (value.toLowerCase()) {
+    case "site_a":
+    case "a_site":
+    case "a":
+      return "A点";
+    case "site_b":
+    case "b_site":
+    case "b":
+      return "B点";
+    case "mid":
+    case "middle":
+      return "中路";
+    case "connector":
+      return "连接区";
+    case "long":
+      return "长道";
+    case "short":
+      return "短道";
+    case "ramp":
+      return "斜坡";
+    case "spawn":
+      return "出生点";
+    default:
+      return translateEvidenceText(normalizeLabel(value));
+  }
 }
 
 function normalizeLabel(value: string): string {

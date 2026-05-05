@@ -1,0 +1,121 @@
+{
+  "asset_id": "judge_rubric_dust2_v1",
+  "map_slug": "dust2",
+  "phase_scope": "phase_2_0_pre",
+  "core_judgment_axis": "opportunity_truth",
+  "core_question": "这个项目到底值不值得做？",
+  "evidence_layers": {
+    "primary": [
+      "当前地图命题",
+      "当前回合子命题",
+      "当前攻守身份",
+      "当前主攻区 / 主守区",
+      "双方本回合 team plan",
+      "双方 10 名 player action",
+      "当前回合关键事件与摘要",
+      "当前比分、经济状态、buy type"
+    ],
+    "secondary": [
+      "两队本图前已携带的初始方案包摘录",
+      "前几回合已暴露出的机会缺口",
+      "半场换边前后的图内趋势",
+      "暂停窗口内 coach 的明确修正意见"
+    ],
+    "weak_context": [
+      "队伍人设",
+      "角色标签",
+      "历史 hooks",
+      "转播包装语"
+    ],
+    "forbidden": [
+      "队名强弱印象",
+      "现实世界名气",
+      "teamA / teamB 固定顺序",
+      "当前比分领先",
+      "文本长度与华丽度",
+      "与机会命题无关的商业、增长、品牌大词"
+    ]
+  },
+  "axes": [
+    {
+      "key": "ICP_clarity",
+      "question": "第一用户 / buyer 是否清楚、聚焦、可信。"
+    },
+    {
+      "key": "pain_severity",
+      "question": "痛点是否真实、尖锐、持续。"
+    },
+    {
+      "key": "scenario_specificity",
+      "question": "场景是否具体、真实、高频。"
+    },
+    {
+      "key": "wedge_sharpness",
+      "question": "切口是否足够锋利，是否真能先打穿。"
+    },
+    {
+      "key": "timing_credibility",
+      "question": "为什么是现在，而不是以后再说。"
+    }
+  ],
+  "round_judgment_flow": [
+    "确认当前子命题",
+    "确认攻守任务",
+    "检查攻方是否打中真实缺口",
+    "检查守方是否守住核心成立点",
+    "回到 Dust2 五维主轴",
+    "形成 winner / loser / margin / confidence / reason"
+  ],
+  "margin_guidance": {
+    "1-2": "微弱优势，本回合双方都还成立，但一方更贴题。",
+    "3-4": "明确优势，一方打穿了对手关键点或稳稳守住本方关键点。",
+    "5": "压制优势，一方在当前子命题上形成显著碾压。"
+  },
+  "confidence_guidance": {
+    "0.50-0.64": "证据偏薄，但已有倾向。",
+    "0.65-0.79": "证据较清楚，回合可判。",
+    "0.80-0.90": "证据明确，主轴成立清楚。",
+    "0.90+": "仅在当前回合出现明显打穿或明显崩塌时使用。"
+  },
+  "reason_must_cover": [
+    "当前子命题是什么",
+    "攻方打了对手哪个机会缺口",
+    "守方守了或没守住哪个核心成立点",
+    "为什么这个结论符合 Dust2 的机会定位命题"
+  ],
+  "bias_guardrails": [
+    "顺序偏置",
+    "名气偏置",
+    "领先偏置",
+    "文风偏置",
+    "大词偏置"
+  ],
+  "review_trigger": {
+    "same_team_streak_at_least": 3,
+    "requires_high_confidence": true,
+    "requires_missing_loser_explanation_or_theme_anchor": true
+  },
+  "coach_consumption_windows": [
+    "timeout",
+    "halftime",
+    "post_map_review"
+  ],
+  "output_fields": [
+    "winnerTeamId",
+    "loserTeamId",
+    "margin",
+    "confidence",
+    "reason"
+  ],
+  "recommended_extra_fields": [
+    "currentSubTheme",
+    "attackingTeamId",
+    "defendingTeamId",
+    "attackedOpportunityGap",
+    "defendedCoreProposition",
+    "mainAttackZone",
+    "mainDefenseZone",
+    "decisiveEvidence",
+    "reviewTriggered"
+  ]
+}

@@ -225,6 +225,12 @@
   font-size: 12px;
 }
 
+.rosterCoachLine {
+  display: block;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
 .rosterHeader b {
   font-size: 30px;
   line-height: 1;
@@ -293,6 +299,11 @@
 .opsHelperText,
 .opsLatestError {
   color: var(--muted);
+}
+
+.rosterDuty {
+  display: block;
+  line-height: 1.45;
 }
 
 .rosterEmpty {
@@ -724,6 +735,20 @@
   gap: 8px;
 }
 
+.opsUtilityGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.opsControlStack[data-calibration="dust2-only"] .opsActionGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.opsControlStack[data-calibration="dust2-only"] .opsActionGrid button:last-child {
+  display: none;
+}
+
 .opsActionPrimary {
   border-color: var(--border-strong);
   background: linear-gradient(180deg, rgba(244, 184, 70, 0.26), rgba(244, 184, 70, 0.12));
@@ -779,6 +804,34 @@
   overflow-x: auto;
 }
 
+.opsHistoryList {
+  display: grid;
+  gap: 8px;
+}
+
+.opsHistoryButton {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 10px;
+  color: var(--ink);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.opsHistoryButton:hover {
+  border-color: var(--border-strong);
+}
+
+.opsHistoryMeta {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .opsTable {
   width: 100%;
   border-collapse: collapse;
@@ -791,6 +844,20 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   text-align: left;
   white-space: nowrap;
+}
+
+.opsCallPreview {
+  max-width: 420px;
+  max-height: 160px;
+  margin: 8px 0 0;
+  padding: 8px;
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
 }
 
 .opsHelperText {
@@ -867,6 +934,148 @@
   color: var(--accent);
   font-size: 16px;
   letter-spacing: 0.06em;
+}
+
+.evidencePanel {
+  grid-column: 1 / -1;
+}
+
+.evidenceStack {
+  display: grid;
+  gap: 14px;
+}
+
+.evidenceSummary {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(83, 207, 193, 0.28);
+  background: rgba(83, 207, 193, 0.06);
+}
+
+.evidenceSummary span,
+.evidenceSectionHeader span,
+.teamPlanHeader span,
+.actionEvidenceRow > div > span,
+.judgeEvidenceMeta span {
+  color: var(--accent);
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.evidenceSection {
+  display: grid;
+  gap: 10px;
+}
+
+.evidenceSectionHeader,
+.teamPlanHeader,
+.judgeEvidenceMeta {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.teamPlanGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.teamPlanCard,
+.actionEvidenceRow,
+.judgeEvidenceCard {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.teamPlanCard p,
+.actionEvidenceRow p,
+.judgeEvidenceCard p {
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.55;
+}
+
+.teamPlanCard small,
+.actionEvidenceRow small,
+.evidenceSummary small,
+.evidenceSectionHeader small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.directiveList,
+.actionEvidenceList {
+  display: grid;
+  gap: 8px;
+}
+
+.directiveList div {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border-left: 3px solid var(--teal);
+  background: rgba(83, 207, 193, 0.05);
+}
+
+.directiveList b,
+.actionEvidenceRow strong,
+.teamPlanHeader strong {
+  color: var(--ink);
+}
+
+.directiveList span {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.evidenceRawDetails {
+  padding-top: 4px;
+}
+
+.evidenceRawDetails summary {
+  cursor: pointer;
+  color: var(--accent-soft);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.evidenceRawBlock {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.evidenceRawBlock small {
+  color: var(--muted);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.actionEvidenceList {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.actionEvidenceRow > div {
+  display: grid;
+  gap: 3px;
+}
+
+.judgeEvidenceCard {
+  border-color: rgba(244, 184, 70, 0.3);
+  background: linear-gradient(180deg, rgba(244, 184, 70, 0.08), rgba(255, 255, 255, 0.03));
 }
 
 .timelineList,
@@ -1081,7 +1290,10 @@
 
   .opsQuickGrid,
   .opsSummaryGrid,
-  .opsCallGrid {
+  .opsCallGrid,
+  .teamPlanGrid,
+  .actionEvidenceList,
+  .opsUtilityGrid {
     grid-template-columns: 1fr;
   }
 

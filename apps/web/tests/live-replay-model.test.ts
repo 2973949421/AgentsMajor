@@ -237,6 +237,15 @@ function roundItem(roundNumber: number, timelineEvents: LiveReplayTimelineEvent[
       mapName: "DUST2",
       scoreBeforeRound: { teamA: roundNumber - 1, teamB: 0 },
       scoreAfterRound: { teamA: roundNumber, teamB: 0 },
+      judgeResult: {
+        winnerTeamId: "team-a",
+        loserTeamId: "team-b",
+        margin: "standard",
+        reason: "Team A converted the round while Team B failed to hold.",
+        mvpAgentId: "agent-a",
+        confidence: 0.82
+      },
+      agentOutputs: [],
       keyEvents: [],
       economyDelta: {
         agents: [],

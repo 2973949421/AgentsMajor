@@ -5,8 +5,16 @@ import { fileURLToPath } from "node:url";
 import { createPhase18SimulationEngine, readMatchReplay, type MatchReplay } from "@agent-major/core";
 import { createSqliteRepositories, defaultSqlitePath } from "@agent-major/db";
 import { DashScopeOpenAiProvider, defaultDriverModels, loadAgentMajorLlmConfig } from "@agent-major/llm";
-import { phase18CanonIds, seedPhase18ShowcaseMatch } from "@agent-major/materials";
+import {
+  buildPhase18RuntimeMatchId,
+  loadProcessedMaterials,
+  phase18CanonIds,
+  phase20PrePilotMapIds,
+  seedPhase18ShowcaseMatch,
+  type ProcessedMaterials
+} from "@agent-major/materials";
 import { UnconfiguredJobQueue } from "@agent-major/queue";
+import type { SimulationRun } from "@agent-major/shared";
 
 import { ensureDataDirectories } from "./data-init.js";
 import { exportMatchReplay } from "./export-match-replay.js";
@@ -15,18 +23,27 @@ import { LocalArtifactStore } from "./local-artifact-store.js";
 
 export type Phase18Command = "round" | "map" | "match" | "replay" | "export";
 
+export interface Phase18CommandOptions {
+  runId?: string;
+}
+
 export interface Phase18CommandResult {
   command: Phase18Command;
   lines: string[];
   exportPath?: string;
 }
 
+const estimatedMaxRoundsPerMap = 18;
+const phase18CallsPerRound = 13;
+
 export async function runPhase18Command(
   command: Phase18Command,
   projectRoot = findProjectRoot(process.cwd()),
-  env: EnvRecord = process.env
+  env: EnvRecord = process.env,
+  options: Phase18CommandOptions = {}
 ): Promise<Phase18CommandResult> {
   ensureDataDirectories(projectRoot);
+  const materials = loadProcessedMaterials(projectRoot);
   const mergedEnv = loadLocalEnv(projectRoot, ".env.local", env);
   const llmConfig = loadAgentMajorLlmConfig(mergedEnv);
   if (!llmConfig.enabled) {
@@ -48,9 +65,11 @@ export async function runPhase18Command(
         maxRetries: llmConfig.maxRetries
       }),
       jobQueue: new UnconfiguredJobQueue(),
-      artifactStore: new LocalArtifactStore(projectRoot, repositories.artifacts)
+      artifactStore: new LocalArtifactStore(projectRoot, repositories.artifacts),
+      phase18MapSemanticsByMapName: buildPhase18MapSemantics(materials)
     });
 
+    let selectedRun: SimulationRun | null = null;
     if (command === "round" || command === "map" || command === "match") {
       const seed = await ensureRunnablePhase18Fixture({
         repositories,
@@ -58,25 +77,44 @@ export async function runPhase18Command(
         driverModel,
         engine,
         resetCompleted: true,
-        resetBeforeRun: false
+        resetBeforeRun: false,
+        runId: options.runId,
+        mode: command
       });
-      if (command === "match") {
-        await engine.runCurrentMatch({ matchId: seed.matchId, selectedMapIds: seed.selectedMapIds });
-      } else {
-        const mapGameId = await selectCurrentPhase18MapGameId(repositories);
-        await engine.runCurrentMap({
-          mapGameId,
-          ...(command === "round" ? { mode: "debug", maxRounds: 1 } : {})
-        });
+      selectedRun = await repositories.simulationRuns.getById(seed.runId);
+
+      try {
+        if (command === "match") {
+          await engine.runCurrentMatch({ matchId: seed.matchId, selectedMapIds: seed.selectedMapIds });
+        } else {
+          const mapGameId = await selectCurrentPhase18MapGameId(repositories, seed.matchId);
+          await engine.runCurrentMap({
+            mapGameId,
+            ...(command === "round" ? { mode: "debug", maxRounds: 1 } : {})
+          });
+        }
+        await finalizePhase18Run(repositories, seed.runId, "completed");
+      } catch (error) {
+        await finalizePhase18Run(repositories, seed.runId, "failed", error instanceof Error ? error.message : String(error));
+        throw error;
       }
+    } else {
+      selectedRun = await resolvePhase18CliRun(repositories, options.runId);
     }
 
-    const replay = await readMatchReplay(repositories, phase18CanonIds.matchId);
     const llmStatusLine = `Phase 1.8 real player/judge LLM: enabled (${driverModel.id})`;
+    if (!selectedRun) {
+      return {
+        command,
+        lines: [llmStatusLine, "No Phase 1.8 run found. Run `pnpm phase18:round` or `pnpm phase18:match` first."]
+      };
+    }
+
+    const replay = await readMatchReplay(repositories, selectedRun.runtimeMatchId);
     if (!replay || replay.mapGames.length === 0) {
       return {
         command,
-        lines: [llmStatusLine, "No Phase 1.8 match replay found. Run `pnpm phase18:round` or `pnpm phase18:match` first."]
+        lines: [llmStatusLine, `Run ${selectedRun.id} exists, but no replay facts have been committed yet.`]
       };
     }
     if (command === "export" && !isCompletedMatchReplay(replay)) {
@@ -86,7 +124,7 @@ export async function runPhase18Command(
       };
     }
 
-    const lines = [llmStatusLine, ...formatMatchReplayLines(replay)];
+    const lines = [llmStatusLine, `Run: ${selectedRun.id}`, ...formatMatchReplayLines(replay)];
     if (command === "export") {
       const exportPath = exportMatchReplay(projectRoot, replay);
       return {
@@ -109,33 +147,86 @@ export async function ensureRunnablePhase18Fixture(input: {
   engine: ReturnType<typeof createPhase18SimulationEngine>;
   resetCompleted: boolean;
   resetBeforeRun: boolean;
-}): Promise<{ matchId: string; selectedMapIds: string[] }> {
-  const existingMatch = await input.repositories.matches.getById(phase18CanonIds.matchId);
-  if (input.resetBeforeRun || !existingMatch || (input.resetCompleted && existingMatch.status === "completed")) {
-    await resetPhase18Fixture(input.repositories);
+  runId: string | undefined;
+  mode: "round" | "map" | "match";
+}): Promise<{ runId: string; matchId: string; runtimeMatchId: string; selectedMapIds: string[] }> {
+  const selectedMapIds = [...phase20PrePilotMapIds];
+  const now = new Date().toISOString();
+  const requestedMode = input.mode;
+  const existingRun = await resolvePhase18CliRun(input.repositories, input.runId);
+  const existingRunFacts = existingRun ? await readPhase18CliFacts(input.repositories, existingRun.runtimeMatchId) : null;
+  const existingRunHasRemainingMap = existingRun ? hasRemainingPhase18Map(input.repositories, existingRun.runtimeMatchId) : false;
+  const reusableRun =
+    !input.resetBeforeRun &&
+    existingRun &&
+    existingRun.status !== "discarded" &&
+    existingRunFacts?.runtimeMatchStatus !== "completed" &&
+    existingRunHasRemainingMap &&
+    (existingRun.status === "scheduled" ||
+      existingRun.status === "running" ||
+      existingRun.status === "failed" ||
+      existingRun.status === "completed")
+      ? existingRun
+      : null;
+  const runId = reusableRun?.id ?? createPhase18RunId();
+  const runtimeMatchId = reusableRun?.runtimeMatchId ?? buildPhase18RuntimeMatchId(runId, phase18CanonIds.fixtureId);
+  let existingMatch = await input.repositories.matches.getById(runtimeMatchId);
+  let ensuredSelectedMapIds: string[] = selectedMapIds;
+  if (!existingMatch) {
     const seed = await seedPhase18ShowcaseMatch({
       repositories: input.repositories,
       projectRoot: input.projectRoot,
-      driverModel: input.driverModel
+      driverModel: input.driverModel,
+      runtimeMatchId,
+      selectedMapIds
     });
     await input.engine.startMatch({ matchId: seed.match.id });
     await input.engine.completeVeto({ matchId: seed.match.id, selectedMapIds: seed.selectedMapIds });
-    return { matchId: seed.match.id, selectedMapIds: seed.selectedMapIds };
+    existingMatch = seed.match;
+    ensuredSelectedMapIds = seed.selectedMapIds;
   }
 
   const existingMaps = await input.repositories.mapGames.listByMatch(existingMatch.id);
-  if (existingMatch.status !== "running" || existingMaps.length === 0) {
-    await input.engine.startMatch({ matchId: existingMatch.id });
-    await input.engine.completeVeto({ matchId: existingMatch.id, selectedMapIds: [...phase18CanonIds.selectedMapIds] });
+  if (!fixtureMatchesSelectedMaps(existingMaps, ensuredSelectedMapIds)) {
+    throw new Error(`Phase 1.8 run ${runId} has stale map selection and can no longer be continued.`);
   }
 
-  return { matchId: existingMatch.id, selectedMapIds: [...phase18CanonIds.selectedMapIds] };
+  if (existingMatch.status !== "running" || existingMaps.length === 0) {
+    await input.engine.startMatch({ matchId: existingMatch.id });
+    await input.engine.completeVeto({ matchId: existingMatch.id, selectedMapIds: ensuredSelectedMapIds });
+  }
+
+  const facts = await readPhase18CliFacts(input.repositories, runtimeMatchId);
+  const remainingRounds = await estimatePhase18RemainingRounds(input.repositories, runtimeMatchId, requestedMode);
+  const run: SimulationRun = {
+    id: runId,
+    fixtureId: phase18CanonIds.fixtureId,
+    status: "running",
+    requestedMode: mapCommandToSimulationRunMode(requestedMode),
+    runtimeMatchId,
+    ...(facts.mapGameId ? { runtimeMapGameId: facts.mapGameId } : reusableRun?.runtimeMapGameId ? { runtimeMapGameId: reusableRun.runtimeMapGameId } : {}),
+    baselineCompletedRounds: facts.completedRounds,
+    estimatedTotalRounds: facts.completedRounds + remainingRounds,
+    expectedTotalCalls: remainingRounds * phase18CallsPerRound,
+    latestCommittedRoundNumber: facts.latestCommittedRoundNumber,
+    hasFreshReplay: facts.hasFreshReplay,
+    latestError: undefined,
+    createdAt: reusableRun?.createdAt ?? now,
+    startedAt: now,
+    completedAt: undefined
+  };
+  await input.repositories.simulationRuns.save(run);
+
+  return { runId, matchId: existingMatch.id, runtimeMatchId, selectedMapIds: ensuredSelectedMapIds };
 }
 
-export async function selectCurrentPhase18MapGameId(repositories: ReturnType<typeof createSqliteRepositories>): Promise<string> {
-  const match = await repositories.matches.getById(phase18CanonIds.matchId);
+export async function selectCurrentPhase18MapGameId(
+  repositories: ReturnType<typeof createSqliteRepositories>,
+  matchId: string
+): Promise<string> {
+  const match = await repositories.matches.getById(matchId);
   if (!match) {
-    throw new Error(`Phase 1.8 match not found: ${phase18CanonIds.matchId}`);
+    throw new Error(`Phase 1.8 match not found: ${matchId}`);
   }
 
   const nextMap = (await repositories.mapGames.listByMatch(match.id))
@@ -148,39 +239,54 @@ export async function selectCurrentPhase18MapGameId(repositories: ReturnType<typ
   return nextMap.id;
 }
 
-async function resetPhase18Fixture(repositories: ReturnType<typeof createSqliteRepositories>): Promise<void> {
-  await repositories.transaction(async () => {
-    const tournamentId = phase18CanonIds.tournamentId;
-    const matchRows = repositories.sqlite.prepare("SELECT id FROM matches WHERE tournament_id = ?").all(tournamentId) as Array<{ id: string }>;
-    const matchIds = matchRows.map((row) => row.id);
-    const mapIds = matchIds.length > 0 ? readIdsByMatchIds(repositories, matchIds) : [];
-
-    repositories.sqlite.prepare("DELETE FROM timeline_events WHERE tournament_id = ?").run(tournamentId);
-    repositories.sqlite.prepare("DELETE FROM summaries WHERE tournament_id = ?").run(tournamentId);
-    repositories.sqlite.prepare("DELETE FROM events WHERE tournament_id = ?").run(tournamentId);
-    repositories.sqlite.prepare("DELETE FROM llm_calls WHERE tournament_id = ?").run(tournamentId);
-    repositories.sqlite.prepare("DELETE FROM artifacts WHERE tournament_id = ?").run(tournamentId);
-    for (const mapId of mapIds) {
-      repositories.sqlite.prepare("DELETE FROM economy_states WHERE map_game_id = ?").run(mapId);
-      repositories.sqlite.prepare("DELETE FROM round_reports WHERE map_game_id = ?").run(mapId);
-      repositories.sqlite.prepare("DELETE FROM rounds WHERE map_game_id = ?").run(mapId);
-    }
-    for (const matchId of matchIds) {
-      repositories.sqlite.prepare("DELETE FROM map_games WHERE match_id = ?").run(matchId);
-    }
-
-    repositories.sqlite.prepare("DELETE FROM matches WHERE tournament_id = ?").run(tournamentId);
-    repositories.sqlite.prepare("DELETE FROM agents WHERE team_id IN (SELECT id FROM teams WHERE tournament_id = ?)").run(tournamentId);
-    repositories.sqlite.prepare("DELETE FROM teams WHERE tournament_id = ?").run(tournamentId);
-    repositories.sqlite.prepare("DELETE FROM tournaments WHERE id = ?").run(tournamentId);
-  });
+function fixtureMatchesSelectedMaps(
+  maps: Array<{ mapName: string; order: number }>,
+  selectedMapIds: string[]
+): boolean {
+  const orderedMapNames = [...maps].sort((left, right) => left.order - right.order).map((mapGame) => mapGame.mapName.toUpperCase());
+  return orderedMapNames.length === selectedMapIds.length && orderedMapNames.every((mapName, index) => mapName === selectedMapIds[index]);
 }
 
-function readIdsByMatchIds(repositories: ReturnType<typeof createSqliteRepositories>, matchIds: string[]): string[] {
-  const placeholders = matchIds.map(() => "?").join(",");
-  return (repositories.sqlite.prepare(`SELECT id FROM map_games WHERE match_id IN (${placeholders})`).all(...matchIds) as Array<{ id: string }>).map(
-    (row) => row.id
-  );
+function buildPhase18MapSemantics(materials: ProcessedMaterials): Record<string, Record<string, unknown>> {
+  const output: Record<string, Record<string, unknown>> = {};
+  for (const map of materials.maps) {
+    if (!map.proposition && !map.judgeRubric) {
+      continue;
+    }
+
+    output[map.slug.toUpperCase()] = {
+      ...(map.proposition
+        ? {
+            proposition: {
+              mapTheme: map.proposition.mapTheme,
+              coreQuestion: map.proposition.coreQuestion,
+              attackFocus: map.proposition.attackFocus,
+              defenseFocus: map.proposition.defenseFocus,
+              regulationRoundThemes: map.proposition.regulationRoundThemes,
+              overtimeRoundThemes: map.proposition.overtimeRoundThemes,
+              coachWindows: map.proposition.coachWindows,
+              displayZoneNames: map.proposition.displayZoneNames,
+              frontendMinimumFields: map.proposition.frontendMinimumFields
+            }
+          }
+        : {}),
+      ...(map.judgeRubric
+        ? {
+            judgeRubric: {
+              coreJudgmentAxis: map.judgeRubric.coreJudgmentAxis,
+              coreQuestion: map.judgeRubric.coreQuestion,
+              axes: map.judgeRubric.axes,
+              roundJudgmentFlow: map.judgeRubric.roundJudgmentFlow,
+              reasonMustCover: map.judgeRubric.reasonMustCover,
+              biasGuardrails: map.judgeRubric.biasGuardrails,
+              coachConsumptionWindows: map.judgeRubric.coachConsumptionWindows
+            }
+          }
+        : {})
+    };
+  }
+
+  return output;
 }
 
 function requireDriverModel(driverModelId: string) {
@@ -216,12 +322,177 @@ function isCompletedMatchReplay(replay: MatchReplay): boolean {
   return replay.match.status === "completed" && replay.matchSummary !== null && replay.maps.length === replay.match.teamAMapsWon + replay.match.teamBMapsWon;
 }
 
+async function resolvePhase18CliRun(
+  repositories: ReturnType<typeof createSqliteRepositories>,
+  runId?: string
+): Promise<SimulationRun | null> {
+  if (runId) {
+    return repositories.simulationRuns.getById(runId);
+  }
+
+  const runs = await repositories.simulationRuns.listByFixtureId(phase18CanonIds.fixtureId);
+  return runs.find((run) => run.status !== "discarded") ?? null;
+}
+
+async function estimatePhase18RemainingRounds(
+  repositories: ReturnType<typeof createSqliteRepositories>,
+  runtimeMatchId: string,
+  mode: "round" | "map" | "match"
+): Promise<number> {
+  if (mode === "round") {
+    return 1;
+  }
+
+  const mapRows = repositories.sqlite
+    .prepare(
+      `SELECT map_order AS mapOrder, status, current_round_number AS currentRoundNumber
+       FROM map_games
+       WHERE match_id = ?
+       ORDER BY map_order ASC`
+    )
+    .all(runtimeMatchId) as Array<{
+      mapOrder?: unknown;
+      status?: unknown;
+      currentRoundNumber?: unknown;
+    }>;
+  const maps = mapRows.map((row) => ({
+    mapOrder: typeof row.mapOrder === "number" ? row.mapOrder : 0,
+    status: typeof row.status === "string" ? row.status : "scheduled",
+    currentRoundNumber: typeof row.currentRoundNumber === "number" ? row.currentRoundNumber : 0
+  }));
+  const currentMap = maps.find((mapGame) => mapGame.status !== "completed") ?? maps.at(-1);
+  const currentMapRemaining = currentMap ? Math.max(1, estimatedMaxRoundsPerMap - currentMap.currentRoundNumber) : estimatedMaxRoundsPerMap;
+
+  if (mode === "map") {
+    return currentMapRemaining;
+  }
+
+  const completedMaps = maps.filter((mapGame) => mapGame.status === "completed").length;
+  return currentMapRemaining + Math.max(0, phase20PrePilotMapIds.length - completedMaps - 1) * estimatedMaxRoundsPerMap;
+}
+
+function hasRemainingPhase18Map(repositories: ReturnType<typeof createSqliteRepositories>, runtimeMatchId: string): boolean {
+  const row = repositories.sqlite
+    .prepare("SELECT COUNT(*) AS count FROM map_games WHERE match_id = ? AND status <> 'completed'")
+    .get(runtimeMatchId) as { count?: unknown } | undefined;
+  return typeof row?.count === "number" && row.count > 0;
+}
+
+async function readPhase18CliFacts(
+  repositories: ReturnType<typeof createSqliteRepositories>,
+  runtimeMatchId: string
+): Promise<{
+  runtimeMatchStatus: string | null;
+  mapGameId: string | null;
+  completedRounds: number;
+  latestCommittedRoundNumber: number;
+  hasFreshReplay: boolean;
+}> {
+  const match = await repositories.matches.getById(runtimeMatchId);
+  const countRow = repositories.sqlite
+    .prepare("SELECT COUNT(*) AS count FROM round_reports WHERE match_id = ?")
+    .get(runtimeMatchId) as { count?: unknown } | undefined;
+  const mapRows = repositories.sqlite
+    .prepare(
+      `SELECT id, map_order AS mapOrder, status
+       FROM map_games
+       WHERE match_id = ?
+       ORDER BY map_order ASC`
+    )
+    .all(runtimeMatchId) as Array<{ id?: unknown; mapOrder?: unknown; status?: unknown }>;
+  const currentMap =
+    mapRows
+      .map((row) => ({
+        id: typeof row.id === "string" ? row.id : "",
+        mapOrder: typeof row.mapOrder === "number" ? row.mapOrder : 0,
+        status: typeof row.status === "string" ? row.status : "scheduled"
+      }))
+      .find((mapGame) => mapGame.status !== "completed") ??
+    mapRows
+      .map((row) => ({
+        id: typeof row.id === "string" ? row.id : "",
+        mapOrder: typeof row.mapOrder === "number" ? row.mapOrder : 0,
+        status: typeof row.status === "string" ? row.status : "scheduled"
+      }))
+      .at(-1) ??
+    null;
+  const latestRow =
+    currentMap && currentMap.id
+      ? ((repositories.sqlite
+          .prepare("SELECT COALESCE(MAX(round_number), 0) AS value FROM round_reports WHERE map_game_id = ?")
+          .get(currentMap.id) as { value?: unknown } | undefined) ?? undefined)
+      : undefined;
+  const completedRounds = typeof countRow?.count === "number" ? countRow.count : 0;
+
+  return {
+    runtimeMatchStatus: match?.status ?? null,
+    mapGameId: currentMap?.id || null,
+    completedRounds,
+    latestCommittedRoundNumber: typeof latestRow?.value === "number" ? latestRow.value : 0,
+    hasFreshReplay: completedRounds > 0
+  };
+}
+
+async function finalizePhase18Run(
+  repositories: ReturnType<typeof createSqliteRepositories>,
+  runId: string,
+  status: "completed" | "failed",
+  latestError?: string
+): Promise<void> {
+  const run = await repositories.simulationRuns.getById(runId);
+  if (!run) {
+    return;
+  }
+
+  const facts = await readPhase18CliFacts(repositories, run.runtimeMatchId);
+  await repositories.simulationRuns.save({
+    ...run,
+    status,
+    runtimeMapGameId: facts.mapGameId ?? run.runtimeMapGameId,
+    latestCommittedRoundNumber: facts.latestCommittedRoundNumber,
+    hasFreshReplay: facts.hasFreshReplay,
+    latestError,
+    completedAt: new Date().toISOString()
+  });
+}
+
+function mapCommandToSimulationRunMode(command: "round" | "map" | "match"): "phase18_next_round" | "phase18_current_map" | "phase18_full_bo3" {
+  switch (command) {
+    case "round":
+      return "phase18_next_round";
+    case "map":
+      return "phase18_current_map";
+    case "match":
+    default:
+      return "phase18_full_bo3";
+  }
+}
+
+function createPhase18RunId(now = Date.now()): string {
+  return `phase18_run_${now.toString(36)}`;
+}
+
 async function main(): Promise<void> {
-  const command = parseCommand(process.argv[2]);
-  const result = await runPhase18Command(command);
+  const parsed = parseArgs(process.argv.slice(2));
+  const result = await runPhase18Command(parsed.command, undefined, process.env, parsed.options);
   for (const line of result.lines) {
     console.log(line);
   }
+}
+
+function parseArgs(argv: string[]): { command: Phase18Command; options: Phase18CommandOptions } {
+  const [first, ...rest] = argv;
+  const command = parseCommand(first);
+  const options: Phase18CommandOptions = {};
+  for (let index = 0; index < rest.length; index += 1) {
+    const token = rest[index];
+    const nextToken = rest[index + 1];
+    if ((token === "--run-id" || token === "--runId") && typeof nextToken === "string") {
+      options.runId = nextToken;
+      index += 1;
+    }
+  }
+  return { command, options };
 }
 
 function parseCommand(value: string | undefined): Phase18Command {

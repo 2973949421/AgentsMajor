@@ -58,14 +58,14 @@ const dust2Layout: TacticalMapLayout = {
   canvas: CANVAS,
   fallbackZoneId: "buyer_mid",
   zones: [
-    zone("spawn_a", "NAV 出发点", "spawn", 120, 520, 44),
-    zone("spawn_b", "FUR 出发点", "spawn", 880, 120, 44),
-    zone("buyer_mid", "买家中路", "mid", 500, 320, 62),
-    zone("conversion_site_a", "转化 A 点", "site", 760, 230, 58),
-    zone("conversion_site_b", "转化 B 点", "site", 270, 225, 58),
-    zone("retention_connector", "留存连接区", "connector", 510, 210, 46),
-    zone("pricing_ramp", "定价斜坡", "utility", 665, 420, 48),
-    zone("token_economy", "Token 经济区", "economy", 500, 585, 52)
+    zone("spawn_a", "T 出生点", "spawn", 120, 520, 44),
+    zone("spawn_b", "CT 出生点", "spawn", 880, 120, 44),
+    zone("buyer_mid", "中路", "mid", 500, 320, 62),
+    zone("conversion_site_a", "A 点", "site", 760, 230, 58),
+    zone("conversion_site_b", "B 点", "site", 270, 225, 58),
+    zone("retention_connector", "A 小", "connector", 510, 210, 46),
+    zone("pricing_ramp", "A 大", "utility", 665, 420, 48),
+    zone("token_economy", "B 洞", "economy", 500, 585, 52)
   ],
   connections: [
     connection("spawn_a", "buyer_mid", "attack"),
@@ -85,14 +85,14 @@ const infernoLayout: TacticalMapLayout = {
   canvas: CANVAS,
   fallbackZoneId: "buyer_mid",
   zones: [
-    zone("spawn_a", "NAV 出发点", "spawn", 130, 500, 44),
-    zone("spawn_b", "FUR 出发点", "spawn", 860, 150, 44),
-    zone("buyer_mid", "买家中路", "mid", 470, 345, 60),
+    zone("spawn_a", "A 队出发点", "spawn", 130, 500, 44),
+    zone("spawn_b", "B 队出发点", "spawn", 860, 150, 44),
+    zone("buyer_mid", "核心中路", "mid", 470, 345, 60),
     zone("conversion_site_a", "转化 A 点", "site", 740, 170, 58),
     zone("conversion_site_b", "转化 B 点", "site", 725, 500, 58),
-    zone("retention_connector", "留存连接区", "connector", 590, 330, 48),
-    zone("pricing_ramp", "定价斜坡", "utility", 320, 440, 48),
-    zone("token_economy", "Token 经济区", "economy", 500, 585, 52)
+    zone("retention_connector", "连接区", "connector", 590, 330, 48),
+    zone("pricing_ramp", "斜坡", "utility", 320, 440, 48),
+    zone("token_economy", "经济区", "economy", 500, 585, 52)
   ],
   connections: [
     connection("spawn_a", "pricing_ramp", "attack"),
@@ -112,14 +112,14 @@ const mirageLayout: TacticalMapLayout = {
   canvas: CANVAS,
   fallbackZoneId: "buyer_mid",
   zones: [
-    zone("spawn_a", "NAV 出发点", "spawn", 110, 500, 44),
-    zone("spawn_b", "FUR 出发点", "spawn", 880, 145, 44),
-    zone("buyer_mid", "买家中路", "mid", 500, 315, 64),
+    zone("spawn_a", "A 队出发点", "spawn", 110, 500, 44),
+    zone("spawn_b", "B 队出发点", "spawn", 880, 145, 44),
+    zone("buyer_mid", "核心中路", "mid", 500, 315, 64),
     zone("conversion_site_a", "转化 A 点", "site", 720, 235, 58),
     zone("conversion_site_b", "转化 B 点", "site", 280, 235, 58),
-    zone("retention_connector", "留存连接区", "connector", 545, 215, 48),
-    zone("pricing_ramp", "定价斜坡", "utility", 650, 450, 48),
-    zone("token_economy", "Token 经济区", "economy", 500, 585, 52)
+    zone("retention_connector", "连接区", "connector", 545, 215, 48),
+    zone("pricing_ramp", "斜坡", "utility", 650, 450, 48),
+    zone("token_economy", "经济区", "economy", 500, 585, 52)
   ],
   connections: [
     connection("spawn_a", "pricing_ramp", "attack"),
@@ -146,7 +146,7 @@ const defaultLayout: TacticalMapLayout = {
     zone("conversion_site_b", "转化 B 点", "site", 270, 230, 58),
     zone("retention_connector", "连接区", "connector", 515, 215, 48),
     zone("pricing_ramp", "准备斜坡", "utility", 650, 440, 48),
-    zone("token_economy", "Token 经济区", "economy", 500, 585, 52)
+    zone("token_economy", "经济区", "economy", 500, 585, 52)
   ],
   connections: [
     connection("spawn_a", "buyer_mid", "attack"),

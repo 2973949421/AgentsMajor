@@ -28,8 +28,8 @@
     "confidence": "高",
     "notes": "典型 lurker、冷静残局位。",
     "agent_major_responsibilities": [
-      "反制 / 偷点 / 找对手逻辑漏洞",
-      "通用火力 / 回合执行 / 补枪衔接"
+      "Hidden-vulnerability hunting / side-route validation / route correction",
+      "Collect information calmly and convert it into late-round counters"
     ]
   },
   "aliases": [
@@ -169,7 +169,7 @@
       "llm_override_spotlight_player_vitallmty_ropz"
     ],
     "ops_notes": [
-      "Use timing, information gap, and late-round payoff framing."
+      "Use timing, information-gap capture, route correction, and late payoff framing."
     ]
   },
   "ops_hooks": {

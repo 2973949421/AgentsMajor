@@ -25,7 +25,8 @@
     "confidence": "高",
     "notes": "公开资料长期标注为 Vitality 指挥。",
     "agent_major_responsibilities": [
-      "战术规划 / 回合策略 / 资源分配"
+      "Tempo calling / attack-axis switches / pressure routing",
+      "Turn chaos into forward momentum and keep the team moving"
     ]
   },
   "aliases": [
@@ -170,7 +171,7 @@
       "llm_override_spotlight_player_vitallmty_apex"
     ],
     "ops_notes": [
-      "Use command perspective and tempo-control framing."
+      "Use pressure-calling, attack-axis choice, and momentum framing."
     ]
   },
   "ops_hooks": {

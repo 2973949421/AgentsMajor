@@ -28,8 +28,8 @@
     "confidence": "高",
     "notes": "常见定位为突破/高主动性步枪手。",
     "agent_major_responsibilities": [
-      "首轮出击 / 激进创意 / 打开局面",
-      "通用火力 / 回合执行 / 补枪衔接"
+      "Fast probing / first-wave pressure / opening creation",
+      "Use maximum initiative to test scenario strength and opponent imbalance"
     ]
   },
   "aliases": [
@@ -171,7 +171,7 @@
       "llm_override_spotlight_player_vitallmty_flamez"
     ],
     "ops_notes": [
-      "Prefer first-contact, overpeek, space creation, and instant reaction hooks."
+      "Emphasize aggressive probing, fastest scenario testing, and space creation."
     ]
   },
   "ops_hooks": {

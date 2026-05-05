@@ -24,7 +24,8 @@
     "confidence": "高",
     "notes": "Vitality 教练。",
     "agent_major_responsibilities": [
-      "战术暂停 / 赛前准备 / 赛后复盘"
+      "Timeout correction / halftime reset / post-match review",
+      "Repair system drift / preserve reliability standards / ship reusable reviews"
     ]
   },
   "aliases": [
@@ -147,7 +148,7 @@
     ],
     "override_ids": [],
     "ops_notes": [
-      "Runtime judge and arbiter usage stays disabled in v1."
+      "Use timeout resets, reliability correction, and post-match review framing."
     ]
   },
   "ops_hooks": {

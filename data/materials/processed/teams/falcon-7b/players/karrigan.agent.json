@@ -24,7 +24,8 @@
     "confidence": "高",
     "notes": "经典指挥位。",
     "agent_major_responsibilities": [
-      "战术规划 / 回合策略 / 资源分配"
+      "Priority setting / resource allocation / late-round closure",
+      "Resolve internal conflict / consolidate key judgment / stabilize team tempo"
     ]
   },
   "aliases": [
@@ -167,7 +168,7 @@
       "llm_override_spotlight_player_falcon_7b_karrigan"
     ],
     "ops_notes": [
-      "Use command perspective and tempo-control framing."
+      "Use priority-setting, resource allocation, and late-round closure framing."
     ]
   },
   "ops_hooks": {

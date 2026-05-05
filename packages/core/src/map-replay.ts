@@ -1,5 +1,5 @@
 import type { Repositories } from "@agent-major/db";
-import type { Agent, Event, MapGame, Match, Round, RoundReport, Summary, Team, TimelineEvent } from "@agent-major/shared";
+import type { Agent, AgentRoleProfile, Event, MapGame, Match, Round, RoundReport, Summary, Team, TimelineEvent } from "@agent-major/shared";
 
 export interface RoundReplayItem {
   round: Round;
@@ -14,6 +14,7 @@ export interface ReplayAgentIdentity {
   displayName: string;
   role: Agent["role"];
   secondaryRoles: NonNullable<Agent["secondaryRoles"]>;
+  roleResponsibilities: NonNullable<AgentRoleProfile["agentMajorResponsibilities"]>;
   aliases: string[];
   materialRef?: {
     entityId: string;
@@ -150,6 +151,7 @@ function buildAgentsById(agents: Agent[]): Record<string, ReplayAgentIdentity> {
         displayName: agent.displayName,
         role: agent.role,
         secondaryRoles: agent.secondaryRoles ?? [],
+        roleResponsibilities: agent.roleProfile?.agentMajorResponsibilities ?? [],
         aliases: agent.materialRef?.aliases ?? [],
         ...(agent.materialRef
           ? {

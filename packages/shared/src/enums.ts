@@ -30,6 +30,12 @@ export const runControlStates = [
 ] as const;
 export type RunControlState = (typeof runControlStates)[number];
 
+export const simulationRunStatuses = ["scheduled", "running", "completed", "failed", "discarded"] as const;
+export type SimulationRunStatus = (typeof simulationRunStatuses)[number];
+
+export const simulationRunModes = ["phase18_next_round", "phase18_current_map", "phase18_full_bo3"] as const;
+export type SimulationRunMode = (typeof simulationRunModes)[number];
+
 export const agentRoles = ["coach", "igl", "awper", "entry", "star_rifler", "lurker", "support", "rifler", "stand_in"] as const;
 export type AgentRole = (typeof agentRoles)[number];
 

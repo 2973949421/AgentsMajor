@@ -28,8 +28,8 @@
     "confidence": "高",
     "notes": "核心步枪、后期收割与残局位。",
     "agent_major_responsibilities": [
-      "核心输出 / 关键回合 carry",
-      "残局处理 / 压力判断 / 终局收束"
+      "Core output / quality bar / round closeout",
+      "Convert winning windows and pressure rounds into finished results"
     ]
   },
   "aliases": [
@@ -161,7 +161,7 @@
       "llm_override_spotlight_player_falcon_7b_niko"
     ],
     "ops_notes": [
-      "Use star heat and resource-pressure framing."
+      "Use quality-bar, core damage, and closeout-pressure framing."
     ]
   },
   "ops_hooks": {

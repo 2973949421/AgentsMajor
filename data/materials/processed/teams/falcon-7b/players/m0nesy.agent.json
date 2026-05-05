@@ -28,8 +28,8 @@
     "confidence": "高",
     "notes": "主狙与明星位。",
     "agent_major_responsibilities": [
-      "高精度关键论点 / 单点突破 / 高风险高收益调用",
-      "核心输出 / 关键回合 carry"
+      "High-leverage proof / precision shots / decisive conversion",
+      "Break single points and take over clutch rounds under pressure"
     ]
   },
   "aliases": [
@@ -158,7 +158,7 @@
       "llm_override_spotlight_player_falcon_7b_m0nesy"
     ],
     "ops_notes": [
-      "Prioritize key-shot, clutch, and single-round pressure hooks."
+      "Prioritize decisive proof, precision, and clutch takeover framing."
     ]
   },
   "ops_hooks": {

@@ -3,10 +3,10 @@ import { resolve } from "node:path";
 
 import { readMapReplay, readMatchReplay, type MapReplay, type MatchReplay } from "@agent-major/core";
 import { createSqliteRepositories, defaultSqlitePath } from "@agent-major/db";
-import { phase18CanonIds } from "@agent-major/materials";
+import { phase18CanonIds, phase20PrePilotMapIds } from "@agent-major/materials";
 
-export const defaultMapGameId = `map_${phase18CanonIds.matchId}_1`;
-export const defaultMatchId = phase18CanonIds.matchId;
+export const defaultMapGameId = `map_${phase18CanonIds.fixtureId}_1`;
+export const defaultMatchId = phase18CanonIds.fixtureId;
 
 let sqliteWarningFilterInstalled = false;
 
@@ -38,6 +38,24 @@ export async function loadMatchReplay(matchId: string = defaultMatchId): Promise
   } finally {
     repositories.close();
   }
+}
+
+export function normalizePhase18PilotReplay(replay: MatchReplay | null): MatchReplay | null {
+  if (!replay || replay.match.id !== phase18CanonIds.matchId) {
+    return replay;
+  }
+
+  const allowedMapIds = new Set(phase20PrePilotMapIds.map((mapId) => mapId.toUpperCase()));
+  const hasUnexpectedScheduledMap = replay.mapGames.some((mapGame) => !allowedMapIds.has(mapGame.mapName.toUpperCase()));
+  if (hasUnexpectedScheduledMap) {
+    return null;
+  }
+
+  return {
+    ...replay,
+    mapGames: replay.mapGames.filter((mapGame) => allowedMapIds.has(mapGame.mapName.toUpperCase())),
+    maps: replay.maps.filter((mapReplay) => allowedMapIds.has(mapReplay.mapGame.mapName.toUpperCase()))
+  };
 }
 
 function getProjectRoot(): string {

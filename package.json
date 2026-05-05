@@ -36,6 +36,8 @@
     "phase18:match": "pnpm build:cli && node packages/cli/dist/phase18.js match",
     "phase18:replay": "pnpm build:cli && node packages/cli/dist/phase18.js replay",
     "phase18:export": "pnpm build:cli && node packages/cli/dist/phase18.js export",
+    "phase18:clean:dry": "node scripts/clean-phase18-runs.mjs",
+    "phase18:clean": "node scripts/clean-phase18-runs.mjs --apply",
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --sort typecheck"
   },

@@ -18,6 +18,8 @@ import {
   rotatePolicies,
   runControlStates,
   sideAssignmentHalves,
+  simulationRunModes,
+  simulationRunStatuses,
   tacticalCollisionResults,
   tacticalEventVisibilities,
   timelineEventKinds,
@@ -140,6 +142,25 @@ export const matchSchema = z.object({
   completedAt: optionalIsoDateString
 });
 export type Match = z.infer<typeof matchSchema>;
+
+export const simulationRunSchema = z.object({
+  id: z.string().min(1),
+  fixtureId: z.string().min(1),
+  status: z.enum(simulationRunStatuses),
+  requestedMode: z.enum(simulationRunModes),
+  runtimeMatchId: z.string().min(1),
+  runtimeMapGameId: z.string().optional(),
+  baselineCompletedRounds: z.number().int().nonnegative(),
+  estimatedTotalRounds: z.number().int().nonnegative(),
+  expectedTotalCalls: z.number().int().nonnegative(),
+  latestCommittedRoundNumber: z.number().int().nonnegative(),
+  hasFreshReplay: z.boolean(),
+  latestError: z.string().optional(),
+  createdAt: isoDateString,
+  startedAt: optionalIsoDateString,
+  completedAt: optionalIsoDateString
+});
+export type SimulationRun = z.infer<typeof simulationRunSchema>;
 
 export const mapGameSchema = z.object({
   id: z.string().min(1),
@@ -461,6 +482,7 @@ export const roundReportSchema = z.object({
   scoreAfterRound: scorePairSchema,
   judgeResult: judgeResultSchema,
   agentOutputs: z.array(agentOutputSchema),
+  llmTeamPlans: z.record(teamRoundPlanDecisionSchema).optional(),
   keyEvents: z.array(roundKeyEventSchema),
   economyDelta: economyDeltaSchema,
   tokenSubmission: tokenSubmissionSchema,

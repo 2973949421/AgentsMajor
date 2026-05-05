@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { createPhase18SimulationEngine, defaultDriverModels, FakeProvider, UnconfiguredJobQueue } from "@agent-major/core";
 import { createSqliteRepositories } from "@agent-major/db";
-import { phase18CanonIds } from "@agent-major/materials";
+import { buildPhase18RuntimeMatchId, phase18CanonIds, phase20PrePilotMapIds } from "@agent-major/materials";
 import { describe, expect, it } from "vitest";
 
 import { ensureRunnablePhase18Fixture, selectCurrentPhase18MapGameId } from "./phase18.js";
@@ -22,21 +22,25 @@ describe("Phase 1.8 CLI helpers", () => {
         driverModel: defaultDriverModels[0]!,
         engine: harness.engine,
         resetCompleted: true,
-        resetBeforeRun: false
+        resetBeforeRun: false,
+        runId: undefined,
+        mode: "round"
       });
 
-      expect(seed.matchId).toBe(phase18CanonIds.matchId);
-      expect(seed.selectedMapIds).toEqual(phase18CanonIds.selectedMapIds);
+      expect(seed.runId).toMatch(/^phase18_run_/);
+      expect(seed.runtimeMatchId).toBe(buildPhase18RuntimeMatchId(seed.runId, phase18CanonIds.fixtureId));
+      expect(seed.matchId).toBe(seed.runtimeMatchId);
+      expect(seed.selectedMapIds).toEqual([...phase20PrePilotMapIds]);
 
       const maps = (await harness.repositories.mapGames.listByMatch(seed.matchId)).sort((left, right) => left.order - right.order);
-      expect(maps.map((mapGame) => mapGame.mapName)).toEqual(phase18CanonIds.selectedMapIds);
-      await expect(selectCurrentPhase18MapGameId(harness.repositories)).resolves.toBe(maps[0]?.id);
+      expect(maps.map((mapGame) => mapGame.mapName)).toEqual([...phase20PrePilotMapIds]);
+      await expect(selectCurrentPhase18MapGameId(harness.repositories, seed.matchId)).resolves.toBe(maps[0]?.id);
     } finally {
       harness.repositories.close();
     }
   });
 
-  it("keeps an in-progress fixture and advances to the next unfinished map", async () => {
+  it("starts a fresh run when the current Dust2-only calibration has no remaining map", async () => {
     const harness = createHarness();
     try {
       const seed = await ensureRunnablePhase18Fixture({
@@ -45,12 +49,14 @@ describe("Phase 1.8 CLI helpers", () => {
         driverModel: defaultDriverModels[0]!,
         engine: harness.engine,
         resetCompleted: true,
-        resetBeforeRun: false
+        resetBeforeRun: false,
+        runId: undefined,
+        mode: "round"
       });
       const match = await harness.repositories.matches.getById(seed.matchId);
       const maps = (await harness.repositories.mapGames.listByMatch(seed.matchId)).sort((left, right) => left.order - right.order);
-      if (!match || maps.length < 2) {
-        throw new Error("Expected a seeded Phase 1.8 fixture with at least two maps.");
+      if (!match || maps.length !== 1) {
+        throw new Error("Expected a seeded Phase 2.0-pre fixture with exactly one map.");
       }
 
       await harness.repositories.matches.save({ ...match, status: "running", startedAt: match.startedAt ?? match.createdAt });
@@ -64,12 +70,6 @@ describe("Phase 1.8 CLI helpers", () => {
         startedAt: maps[0]!.startedAt ?? maps[0]!.createdAt,
         completedAt: maps[0]!.completedAt ?? maps[0]!.createdAt
       });
-      await harness.repositories.mapGames.save({
-        ...maps[1]!,
-        status: "running",
-        currentRoundNumber: 2,
-        startedAt: maps[1]!.startedAt ?? maps[1]!.createdAt
-      });
 
       const resumed = await ensureRunnablePhase18Fixture({
         repositories: harness.repositories,
@@ -77,11 +77,18 @@ describe("Phase 1.8 CLI helpers", () => {
         driverModel: defaultDriverModels[0]!,
         engine: harness.engine,
         resetCompleted: true,
-        resetBeforeRun: false
+        resetBeforeRun: false,
+        runId: seed.runId,
+        mode: "round"
       });
 
-      expect(resumed.matchId).toBe(seed.matchId);
-      await expect(selectCurrentPhase18MapGameId(harness.repositories)).resolves.toBe(maps[1]?.id);
+      expect(resumed.runId).not.toBe(seed.runId);
+      expect(resumed.matchId).not.toBe(seed.matchId);
+      expect(resumed.runtimeMatchId).toBe(buildPhase18RuntimeMatchId(resumed.runId, phase18CanonIds.fixtureId));
+      expect(resumed.selectedMapIds).toEqual(["DUST2"]);
+      const resumedMaps = (await harness.repositories.mapGames.listByMatch(resumed.matchId)).sort((left, right) => left.order - right.order);
+      expect(resumedMaps.map((mapGame) => mapGame.mapName)).toEqual(["DUST2"]);
+      await expect(selectCurrentPhase18MapGameId(harness.repositories, resumed.matchId)).resolves.toBe(resumedMaps[0]?.id);
     } finally {
       harness.repositories.close();
     }

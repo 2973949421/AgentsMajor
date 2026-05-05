@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildRoundFrame, type LiveReplayData, type LiveReplayRound, type LiveReplayTimelineEvent } from "../app/live-replay-model";
-import { buildBottomTickerViewModel, buildOverlayRosterViewModel, buildReplayStageState } from "../app/phase18-watch-view-model";
+import { buildBottomTickerViewModel, buildOverlayRosterViewModel, buildReplayStageState, buildRoundEvidenceViewModel } from "../app/phase18-watch-view-model";
 
 describe("Phase 1.9 watch view model", () => {
   it("maps roster panels from replay agents, economy rows, aliases, and highlight data", () => {
@@ -28,12 +28,14 @@ describe("Phase 1.9 watch view model", () => {
     expect(teamA.players[0]).toMatchObject({
       displayName: "kyousuke",
       roleLabel: "Entry",
+      dutyLabel: "打开空间",
       tokenBankLabel: "$6400",
       buyLabel: "长枪满配",
       highlight: "mvp"
     });
     expect(teamA.players[0]?.metaLabel).toBe("Closer");
     expect(teamB.players[0]?.highlight).toBe("target");
+    expect(teamA.coachLabel).toContain("Coach zonic");
   });
 
   it("keeps replay-hidden, failed, generating, and waiting states inside the same stage contract", () => {
@@ -108,6 +110,30 @@ describe("Phase 1.9 watch view model", () => {
     expect(ticker.latestKillValue).toContain("kyousuke");
     expect(ticker.latestHighlightValue).toContain("entry_swing");
   });
+
+  it("maps round evidence from team plans, agent outputs, and judge result", () => {
+    const replay = replayFixture();
+    const currentRound = replay.maps[0]?.rounds[0] as LiveReplayRound;
+
+    const evidence = buildRoundEvidenceViewModel({ replay, currentRound });
+
+    expect(evidence.factChainLabel).toBe("队伍计划 2/2 · 选手行动 10/10 · 裁判 1/1");
+    expect(evidence.teamPlans[0]).toMatchObject({
+      teamName: "Falcon-7B",
+      sideLabel: "进攻方",
+      winCondition: "验证 更优 首位用户"
+    });
+    expect(evidence.playerActions[0]).toMatchObject({
+      displayName: "kyousuke",
+      action: "kyousuke 打开空间 从 A 长道.",
+      directiveLabel: "打开 A 长道 并且 试探 首位用户主张."
+    });
+    expect(evidence.judge).toMatchObject({
+      winnerLabel: "Falcon-7B",
+      loserLabel: "VitaLLMty",
+      mvpLabel: "kyousuke"
+    });
+  });
 });
 
 function replayFixture(): LiveReplayData {
@@ -117,8 +143,8 @@ function replayFixture(): LiveReplayData {
   return {
     matchId: "phase18_match_falcon_7b_vs_vitallmty",
     teams: {
-      teamA: { id: "team-a", displayName: "Falcon-7B", shortName: "F7B" },
-      teamB: { id: "team-b", displayName: "VitaLLMty", shortName: "VIT" }
+      teamA: { id: "team-a", displayName: "Falcon-7B", shortName: "F7B", coachDisplayName: "zonic", coachDutySummary: "暂停修正 / 半场整理 / 赛后复盘" },
+      teamB: { id: "team-b", displayName: "VitaLLMty", shortName: "VIT", coachDisplayName: "XTQZZZ", coachDutySummary: "暂停修正 / 半场整理 / 赛后复盘" }
     },
     agentsById,
     maps: [
@@ -194,6 +220,16 @@ function roundFixture(agentsById: LiveReplayData["agentsById"]): LiveReplayRound
       winnerTeamId: "team-a",
       scoreBeforeRound: { teamA: 0, teamB: 0 },
       scoreAfterRound: { teamA: 1, teamB: 0 },
+      judgeResult: {
+        winnerTeamId: "team-a",
+        loserTeamId: "team-b",
+        margin: "standard",
+        reason: "Falcon-7B succeeded through sharper first-user proof; VitaLLMty failed to hold the counter claim.",
+        mvpAgentId: "agent-a-1",
+        confidence: 0.82
+      },
+      agentOutputs: buildAgentOutputs(),
+      llmTeamPlans: buildTeamPlans(),
       keyEvents: [],
       economyDelta: {
         agents: buildEconomyRows(),
@@ -206,20 +242,89 @@ function roundFixture(agentsById: LiveReplayData["agentsById"]): LiveReplayRound
   };
 }
 
+function buildTeamPlans() {
+  return {
+    "team-a": {
+      teamId: "team-a",
+      side: "attack" as const,
+      primaryIntent: "pressure first-user clarity",
+      primaryZoneId: "conversion_site_a",
+      secondaryZoneId: "buyer_mid",
+      coordinationSummary: "Falcon-7B compresses A long with mid support.",
+      playerDirectives: [
+        { agentId: "agent-a-1", directive: "Open A long and test the first-user claim." },
+        { agentId: "agent-a-2", directive: "Hold the angle after entry." },
+        { agentId: "agent-a-3", directive: "Close the conversion proof." },
+        { agentId: "agent-a-4", directive: "Trade and stabilize spacing." },
+        { agentId: "agent-a-5", directive: "Call the mid-round pivot." }
+      ],
+      winCondition: "prove sharper first user",
+      risk: "over-indexing on star entries",
+      confidence: 0.74
+    },
+    "team-b": {
+      teamId: "team-b",
+      side: "defense" as const,
+      primaryIntent: "hold core user definition",
+      primaryZoneId: "conversion_site_a",
+      secondaryZoneId: "token_economy",
+      coordinationSummary: "VitaLLMty anchors A and keeps B cave as information control.",
+      playerDirectives: [
+        { agentId: "agent-b-1", directive: "Hold A long with high confidence." },
+        { agentId: "agent-b-2", directive: "Watch B cave drift." },
+        { agentId: "agent-b-3", directive: "Probe mid timing." },
+        { agentId: "agent-b-4", directive: "Support A short." },
+        { agentId: "agent-b-5", directive: "Call the first rotation." }
+      ],
+      winCondition: "force Falcon into a broad user claim",
+      risk: "late B response",
+      confidence: 0.71
+    }
+  };
+}
+
+function buildAgentOutputs() {
+  return [
+    agentOutput("agent-a-1", "team-a", "entry_fragger", "kyousuke opens space from A long."),
+    agentOutput("agent-a-2", "team-a", "awper", "m0NESY holds the follow-up angle."),
+    agentOutput("agent-a-3", "team-a", "rifler", "NiKo converts the proof window."),
+    agentOutput("agent-a-4", "team-a", "support", "TeSeS trades the second contact."),
+    agentOutput("agent-a-5", "team-a", "igl", "karrigan calls the mid pivot."),
+    agentOutput("agent-b-1", "team-b", "awper", "ZywOo anchors A long."),
+    agentOutput("agent-b-2", "team-b", "lurker", "ropz watches B cave."),
+    agentOutput("agent-b-3", "team-b", "entry_fragger", "flameZ probes mid."),
+    agentOutput("agent-b-4", "team-b", "support", "mezii supports A short."),
+    agentOutput("agent-b-5", "team-b", "igl", "apEX calls the retake.")
+  ];
+}
+
+function agentOutput(agentId: string, teamId: string, role: string, action: string) {
+  return {
+    id: `out-${agentId}`,
+    agentId,
+    teamId,
+    role,
+    driverModelId: "driver_qwen_3_max_2026_01_23",
+    action,
+    confidence: 0.8,
+    rawFingerprint: `fp-${agentId}`
+  };
+}
+
 function replayFixtureAgents() {
   return Object.fromEntries(
     [
-      ["agent-a-1", "kyousuke", "entry_fragger", ["closer"], ["spearhead"]],
-      ["agent-a-2", "m0NESY", "awper", ["trader"], ["scope"]],
-      ["agent-a-3", "NiKo", "rifler", ["anchor"], []],
-      ["agent-a-4", "TeSeS", "support", ["space"], []],
-      ["agent-a-5", "karrigan", "igl", ["macro"], ["captain"]],
-      ["agent-b-1", "ZywOo", "awper", ["lurker"], []],
-      ["agent-b-2", "ropz", "lurker", ["closer"], []],
-      ["agent-b-3", "flameZ", "entry_fragger", ["space"], []],
-      ["agent-b-4", "mezii", "support", ["trade"], []],
-      ["agent-b-5", "apEX", "igl", ["pace"], ["caller"]]
-    ].map(([id, displayName, role, secondaryRoles, aliases], index) => [
+      ["agent-a-1", "kyousuke", "entry_fragger", ["closer"], ["spearhead"], ["打开空间", "试探机会窗口"]],
+      ["agent-a-2", "m0NESY", "awper", ["trader"], ["scope"], ["精准定点"]],
+      ["agent-a-3", "NiKo", "rifler", ["anchor"], [], ["关键回合收束"]],
+      ["agent-a-4", "TeSeS", "support", ["space"], [], ["结构缝合"]],
+      ["agent-a-5", "karrigan", "igl", ["macro"], ["captain"], ["优先级排序"]],
+      ["agent-b-1", "ZywOo", "awper", ["lurker"], [], ["高可靠托底"]],
+      ["agent-b-2", "ropz", "lurker", ["closer"], [], ["隐藏漏洞捕捉"]],
+      ["agent-b-3", "flameZ", "entry_fragger", ["space"], [], ["快速试错"]],
+      ["agent-b-4", "mezii", "support", ["trade"], [], ["闭环完善"]],
+      ["agent-b-5", "apEX", "igl", ["pace"], ["caller"], ["节奏选择"]]
+    ].map(([id, displayName, role, secondaryRoles, aliases, roleResponsibilities], index) => [
       id,
       {
         id,
@@ -227,6 +332,7 @@ function replayFixtureAgents() {
         displayName,
         role,
         secondaryRoles,
+        roleResponsibilities,
         aliases
       }
     ])

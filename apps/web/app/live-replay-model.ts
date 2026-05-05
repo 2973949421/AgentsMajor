@@ -19,6 +19,8 @@ export interface LiveReplayTeam {
   id: string;
   displayName: string;
   shortName: string;
+  coachDisplayName?: string;
+  coachDutySummary?: string;
 }
 
 export interface LiveReplayData {
@@ -37,6 +39,7 @@ export interface LiveReplayAgent {
   displayName: string;
   role: string;
   secondaryRoles: string[];
+  roleResponsibilities: string[];
   aliases: string[];
 }
 
@@ -65,6 +68,9 @@ export interface LiveReplayRoundReport {
   winnerTeamId: string;
   scoreBeforeRound: ScorePair;
   scoreAfterRound: ScorePair;
+  judgeResult: LiveJudgeResult;
+  agentOutputs: LiveAgentOutput[];
+  llmTeamPlans?: Record<string, LiveTeamPlan>;
   keyEvents: LiveRoundKeyEvent[];
   economyDelta: {
     agents: EconomyRow[];
@@ -76,6 +82,10 @@ export interface LiveReplayRoundReport {
   highlightTags: string[];
   summary: string;
 }
+
+export type LiveJudgeResult = SourceRoundReport["judgeResult"];
+export type LiveAgentOutput = SourceRoundReport["agentOutputs"][number];
+export type LiveTeamPlan = NonNullable<SourceRoundReport["llmTeamPlans"]>[string];
 
 export interface LiveReplayTimelineEvent {
   id: string;
@@ -373,10 +383,16 @@ export function getEventText(event: LiveReplayTimelineEvent): string {
 }
 
 function toLiveTeam(team: MatchReplay["teams"]["teamA"]): LiveReplayTeam {
+  const source = asRecord(team.source);
+  const headCoachProfile = asRecord(source?.headCoachProfile);
+  const coachDisplayName = readOptionalString(headCoachProfile?.displayName);
+  const coachDutySummary = readOptionalString(headCoachProfile?.dutySummary);
   return {
     id: team.id,
     displayName: team.displayName,
-    shortName: team.shortName
+    shortName: team.shortName,
+    ...(coachDisplayName ? { coachDisplayName } : {}),
+    ...(coachDutySummary ? { coachDutySummary } : {})
   };
 }
 
@@ -409,6 +425,7 @@ function toLiveAgentsById(agentsById: MatchReplay["agentsById"] | null | undefin
         displayName: agent.displayName,
         role: agent.role,
         secondaryRoles: agent.secondaryRoles ?? [],
+        roleResponsibilities: agent.roleResponsibilities ?? [],
         aliases: agent.aliases ?? []
       }
     ])
@@ -425,6 +442,9 @@ function toLiveRound(item: RoundReplayItem, agentsById: Record<string, LiveRepla
       winnerTeamId: item.roundReport.winnerTeamId,
       scoreBeforeRound: item.roundReport.scoreBeforeRound,
       scoreAfterRound: item.roundReport.scoreAfterRound,
+      judgeResult: item.roundReport.judgeResult,
+      agentOutputs: item.roundReport.agentOutputs,
+      ...(item.roundReport.llmTeamPlans ? { llmTeamPlans: item.roundReport.llmTeamPlans } : {}),
       keyEvents: item.roundReport.keyEvents.map((event: LiveReplayRound["roundReport"]["keyEvents"][number]) => ({
         id: event.id,
         type: event.type,

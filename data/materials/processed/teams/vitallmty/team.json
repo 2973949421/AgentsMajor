@@ -39,7 +39,8 @@
   "processed_paths": {
     "team": "processed/teams/vitallmty/team.json",
     "roster": "processed/teams/vitallmty/roster.json",
-    "hooks": "processed/teams/vitallmty/hooks.json"
+    "hooks": "processed/teams/vitallmty/hooks.json",
+    "strategy": "processed/teams/vitallmty/strategy.json"
   },
   "version": "2026-05-03-canon-v1",
   "canon_notes": [

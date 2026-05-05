@@ -1,0 +1,92 @@
+{
+  "proposal_id": "proposal_falcon_7b_dust2_initial_v1",
+  "team_id": "team_falcon_7b",
+  "team_slug": "falcon-7b",
+  "display_name": "Falcon-7B",
+  "map_slug": "dust2",
+  "proposal_stage": "initial",
+  "proposal_version": "2026-05-04-phase-2.0-pre-v1",
+  "package_overview": {
+    "opportunity": "高密度 AI 项目团队缺的不是更多模型能力，而是机会收束能力。",
+    "mvp": "机会战情台，优先收束 ICP、痛点、场景、替代方案和 why now。",
+    "engineering": "证据归并、争议点显化、路线并排比较和 go / no-go 决策输出。",
+    "business": "高客单切入高密度 AI 产品团队、创始团队和内部创新小组。",
+    "growth": "从 founder office、AI 产品负责人和新业务负责人切入。",
+    "scale": "后续扩展多 workspace、多模板、多角色审批和跨项目复盘。",
+    "moat": "高价值机会判断案例库、争议路径记忆和组织级决策复盘沉淀。"
+  },
+  "dust2_visible_layer": {
+    "core_user": "5-20 人的高密度 AI 产品 / 工程 / 运营混编小队",
+    "buyer": "创始人 / AI 产品负责人 / 新业务总负责人",
+    "core_pain": "想法太多、角色太强、证据太散，导致团队很难形成单一可执行机会判断。",
+    "high_frequency_scenario": [
+      "每周 roadmap 评审",
+      "新方向 go / no-go 评估",
+      "多条 AI 机会并行时的优先级取舍"
+    ],
+    "wedge": "机会战情台，只收束 ICP、痛点、场景、替代方案和 why now。",
+    "why_now": "多模型、多 agent、多工具并发进入团队后，决策债比执行债增长更快。"
+  },
+  "must_defend": [
+    "这不是大而空的战略 deck",
+    "核心用户不是所有团队，而是高密度 AI 项目小队",
+    "切口不是全套管理，而是周级机会收束"
+  ],
+  "attack_priorities": [
+    "对手只做兜底层是否太晚",
+    "如果根因是机会选错，售后再强也只是补锅",
+    "对手是否过于依赖生产后问题，导致 Dust2 命题后置",
+    "对手是否更像止血层，而不是最值得先做的第一枪"
+  ],
+  "acceptable_tradeoffs": [
+    "不在 Dust2 展开完整定价",
+    "不在 Dust2 展开完整增长飞轮",
+    "不在 Dust2 展开完整生产架构"
+  ],
+  "round_themes": [
+    {
+      "round": "R1",
+      "focus": "先锚定高密度 AI 项目小队，不面向所有知识工作者。"
+    },
+    {
+      "round": "R2",
+      "focus": "证明机会判断反复横跳比单点功能缺失更早、更痛。"
+    },
+    {
+      "round": "R3",
+      "focus": "主打每周 roadmap / go-no-go 评审的高频场景。"
+    },
+    {
+      "round": "R4",
+      "focus": "强调只做机会收束台，不做全功能 PM 工具。"
+    },
+    {
+      "round": "R5",
+      "focus": "现有文档、Slack、白板和会议纪要无法真正收束机会判断。"
+    },
+    {
+      "round": "R6",
+      "focus": "多模型和多 agent 工具爆炸后，决策债比执行债更先失控。"
+    }
+  ],
+  "role_assignments": {
+    "igl": "karrigan 负责决定本回合主攻缺口或主守成立点，避免方案发散。",
+    "entry": "kyousuke 先手冲击对手 ICP 和切口边界。",
+    "awper": "m0NESY 提供高精度关键证据，一枪定住 why now。",
+    "star_rifler": "NiKo 在关键回合完成 headline 级收口。",
+    "support_anchor": "TeSeS 补齐边界、修正大词、稳住 MVP 切口。 "
+  },
+  "coach_windows": {
+    "timeout": "如果用户写宽或平台写大，zonic 立刻收窄 ICP 和 MVP 边界。",
+    "halftime": "如果上半场被打成会议工具，下半场强化“决策债是真痛点”的口径。",
+    "post_map": "输出机会判断修正版，重点检查用户过宽和切口过大问题。"
+  },
+  "loss_conditions": [
+    "用户定义重新变回所有 AI 团队",
+    "痛点被判定为低频或伪痛点",
+    "场景被打成普通开会，不构成强购买时刻",
+    "切口被认为只是咨询 deck，而不是可产品化入口",
+    "Why Now 无法证明决策债先于执行债爆发"
+  ],
+  "success_definition": "证明“先判断打什么”本身就是值得优先解决的问题，并且本队用户边界清楚、切口够小、机会真实。"
+}

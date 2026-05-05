@@ -2,6 +2,7 @@ import { NextResponse } from "next/server.js";
 
 import { toLiveReplayData } from "../../../../live-replay-model";
 import { loadMatchReplay } from "../../../../map-replay-data";
+import { toPublicReplayPayload } from "../../../public-replay-payload";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,5 +26,5 @@ export async function GET(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Public replay routes only expose the live-safe format." }, { status: 400 });
   }
 
-  return NextResponse.json(toLiveReplayData(replay));
+  return NextResponse.json(toPublicReplayPayload(toLiveReplayData(replay)));
 }

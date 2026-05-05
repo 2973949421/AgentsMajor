@@ -25,38 +25,76 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     const firstRound = replay.rounds[0];
     expect(firstRound?.round.teamAActiveAgentIds).toHaveLength(5);
     expect(firstRound?.round.teamBActiveAgentIds).toHaveLength(5);
+    expect(Object.keys(firstRound?.roundReport.llmTeamPlans ?? {}).sort()).toEqual(["team_ghost_fur", "team_ghost_nav"]);
     expect(firstRound?.roundReport.agentOutputs).toHaveLength(10);
     expect(firstRound?.roundReport.agentOutputs.every((output) => output.action.startsWith("LLM action"))).toBe(true);
     expect(firstRound?.roundReport.judgeResult.reason).toBe("Ghost NAV win condition succeeded; Ghost FUR win condition failed.");
     expect(firstRound?.roundReport.judgeResult.winnerTeamId).toBe("team_ghost_nav");
     expect(gateway.tasks).toEqual(["team_plan", "team_plan", ...Array<string>(10).fill("agent_action"), "judge"]);
 
+    const teamPlanRequest = gateway.requests.find((request) => request.task === "team_plan");
+    const teamPlanInput = teamPlanRequest?.input as
+      | {
+          mapSemanticContext?: { proposition?: { mapTheme?: string } };
+          teamStrategy?: { identitySummary?: string };
+          coachContext?: { displayName?: string };
+        }
+      | undefined;
+    expect(teamPlanInput?.mapSemanticContext?.proposition?.mapTheme).toBe("opportunity_positioning");
+    expect(teamPlanInput?.teamStrategy?.identitySummary).toContain("Ghost");
+    expect(teamPlanInput?.coachContext?.displayName).toContain("Ghost");
+    expect(teamPlanRequest?.messages?.[0]?.content).toContain("json");
+    expect(teamPlanRequest?.messages?.[1]?.content).toContain("地图主题：opportunity_positioning");
+    expect(teamPlanRequest?.messages?.[1]?.content).toContain("队伍母方案：Ghost");
+
     const firstAgentRequest = gateway.requests.find((request) => request.task === "agent_action");
-    const firstAgentInput = firstAgentRequest?.input as { teamId?: string; teamPlan?: { teamId?: string }; opponentTeamPlan?: unknown } | undefined;
+    const firstAgentInput = firstAgentRequest?.input as
+      | {
+          teamId?: string;
+          teamPlan?: { teamId?: string };
+          opponentTeamPlan?: unknown;
+          mapSemanticContext?: { proposition?: { coreQuestion?: string } };
+          teamStrategy?: { identitySummary?: string };
+          coachContext?: { dutySummary?: string };
+        }
+      | undefined;
     expect(firstAgentInput?.teamPlan?.teamId).toBe(firstAgentInput?.teamId);
     expect(firstAgentInput).not.toHaveProperty("opponentTeamPlan");
+    expect(firstAgentInput?.mapSemanticContext?.proposition?.coreQuestion).toContain("deserve");
+    expect(firstAgentInput?.teamStrategy?.identitySummary).toContain("Ghost");
+    expect(firstAgentInput?.coachContext?.dutySummary).toContain("timeout");
+    expect(firstAgentRequest?.messages?.[1]?.content).toContain("核心问题：");
+    expect(firstAgentRequest?.messages?.[1]?.content).toContain("选手指令：");
 
     const judgeRequest = gateway.requests.find((request) => request.task === "judge");
     const judgeInput = judgeRequest?.input as
       | {
+          mapSemanticContext?: { proposition?: { mapTheme?: string } };
+          judgeRubricContext?: { coreJudgmentAxis?: string };
           sideAssignment?: unknown;
           teamAName?: string;
           teamBName?: string;
-          evaluationOrder?: Array<{ teamId: string; teamPlan?: unknown }>;
+          evaluationOrder?: Array<{ teamId: string; teamPlan?: unknown; teamStrategy?: unknown; coachContext?: unknown }>;
           agentOutputsByTeam?: Record<string, unknown[]>;
         }
       | undefined;
+    expect(judgeInput?.mapSemanticContext?.proposition?.mapTheme).toBe("opportunity_positioning");
+    expect(judgeInput?.judgeRubricContext?.coreJudgmentAxis).toBe("opportunity_truth");
     expect(judgeInput?.sideAssignment).toBeDefined();
     expect(judgeInput?.teamAName).toBe("Team Alpha");
     expect(judgeInput?.teamBName).toBe("Team Bravo");
     expect(judgeInput?.evaluationOrder).toHaveLength(2);
     expect(judgeInput?.evaluationOrder?.every((entry) => entry.teamPlan)).toBe(true);
+    expect(judgeInput?.evaluationOrder?.every((entry) => entry.teamStrategy)).toBe(true);
+    expect(judgeInput?.evaluationOrder?.every((entry) => entry.coachContext)).toBe(true);
     expect(judgeInput?.evaluationOrder?.[0]?.teamId).toBe("team_alpha");
     expect(Object.keys(judgeInput?.agentOutputsByTeam ?? {}).sort()).toEqual(["team_alpha", "team_bravo"]);
     expect(JSON.stringify(judgeInput)).not.toContain("Ghost NAV");
     expect(JSON.stringify(judgeInput)).not.toContain("Ghost FUR");
     expect(JSON.stringify(judgeInput)).not.toContain("team_ghost_nav");
     expect(JSON.stringify(judgeInput)).not.toContain("team_ghost_fur");
+    expect(judgeRequest?.messages?.[1]?.content).toContain("裁判轴：opportunity_truth");
+    expect(judgeRequest?.messages?.[1]?.content).toContain("反偏置约束：");
 
     const llmCalls = repositories.sqlite.prepare("SELECT COUNT(*) AS count FROM llm_calls").get() as { count: number };
     expect(llmCalls.count).toBe(13);
@@ -77,6 +115,27 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
       .map((request) => request.input as { evaluationOrder?: Array<{ teamId: string }> });
     expect(judgeInputs[0]?.evaluationOrder?.[0]?.teamId).toBe("team_alpha");
     expect(judgeInputs[1]?.evaluationOrder?.[0]?.teamId).toBe("team_bravo");
+  });
+
+  it("normalizes common judge margin synonyms without weakening winner validation", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(new ClearMarginJudgeGateway());
+
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    const replay = await readMapReplay(repositories, phase11DemoIds.mapGameId);
+
+    expect(replay?.rounds[0]?.roundReport.judgeResult.margin).toBe("standard");
+    expect(replay?.rounds[0]?.roundReport.judgeResult.winnerTeamId).toBe("team_ghost_nav");
+  });
+
+  it("accepts Chinese judge reasons that explain winner success and loser failure paths", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(new ChineseJudgeReasonGateway());
+
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    const replay = await readMapReplay(repositories, phase11DemoIds.mapGameId);
+
+    expect(replay?.rounds[0]?.roundReport.judgeResult.reason).toContain("成功");
+    expect(replay?.rounds[0]?.roundReport.judgeResult.reason).toContain("未能");
+    expect(replay?.rounds[0]?.roundReport.judgeResult.winnerTeamId).toBe("team_ghost_nav");
   });
 
   it("stops the round on agent_action failure without partial round facts", async () => {
@@ -204,10 +263,75 @@ async function createPhase18DemoEngine(llmGateway: LlmGateway) {
   const engine = createPhase18SimulationEngine({
     repositories,
     llmGateway,
-    jobQueue: new UnconfiguredJobQueue()
+    jobQueue: new UnconfiguredJobQueue(),
+    phase18MapSemanticsByMapName: {
+      DUST2: {
+        proposition: {
+          mapTheme: "opportunity_positioning",
+          coreQuestion: "Does this project deserve to exist right now?",
+          attackFocus: ["fake demand", "weak pain"],
+          defenseFocus: ["core user", "core pain"],
+          regulationRoundThemes: [{ round: "R1", theme: "ICP", judgment: "Who is the first user?" }],
+          overtimeRoundThemes: [{ round: "OT1", theme: "ICP+Pain", judgment: "Whose opportunity is more real?" }],
+          coachWindows: ["timeout", "halftime"],
+          displayZoneNames: { buyer_mid: "Mid", conversion_site_a: "A Site" },
+          frontendMinimumFields: ["current subtheme", "main attack zone", "main defense zone"]
+        },
+        judgeRubric: {
+          coreJudgmentAxis: "opportunity_truth",
+          coreQuestion: "Does this project deserve to exist right now?",
+          axes: [{ key: "ICP_clarity", question: "Is the first user clear?" }],
+          roundJudgmentFlow: ["confirm subtheme", "check attack hit", "check defense hold"],
+          reasonMustCover: ["subtheme", "attack gap", "defense core"],
+          biasGuardrails: ["team order bias", "fame bias"],
+          coachConsumptionWindows: ["timeout", "halftime"]
+        }
+      }
+    }
   });
 
   await seedPhase11Demo(repositories);
+  const seededMatch = await repositories.matches.getById(phase11DemoIds.matchId);
+  if (!seededMatch) {
+    throw new Error("Expected seeded match.");
+  }
+  const [teamA, teamB] = await Promise.all([
+    repositories.teams.getById(seededMatch.teamAId),
+    repositories.teams.getById(seededMatch.teamBId)
+  ]);
+  if (!teamA || !teamB) {
+    throw new Error("Expected seeded teams.");
+  }
+  await repositories.teams.save({
+    ...teamA,
+    source: {
+      materialStrategy: {
+        identitySummary: "Ghost NAV identity",
+        frontendSummary: "Ghost NAV summary",
+        failureModes: ["slow pivot"]
+      },
+      headCoachProfile: {
+        displayName: "Blade Ghost",
+        dutySummary: "timeout correction / halftime reset",
+        personaSummary: "reset the team during pressure"
+      }
+    }
+  });
+  await repositories.teams.save({
+    ...teamB,
+    source: {
+      materialStrategy: {
+        identitySummary: "Ghost FUR identity",
+        frontendSummary: "Ghost FUR summary",
+        failureModes: ["over-forcing"]
+      },
+      headCoachProfile: {
+        displayName: "Sidde Ghost",
+        dutySummary: "timeout correction / halftime reset",
+        personaSummary: "stabilize tempo and trade discipline"
+      }
+    }
+  });
   await engine.startMatch({ matchId: phase11DemoIds.matchId });
   await engine.completeVeto({ matchId: phase11DemoIds.matchId, selectedMapIds: ["DUST2"] });
   await engine.startMap({ mapGameId: phase11DemoIds.mapGameId });
@@ -275,12 +399,17 @@ class SuccessfulPhase18Gateway implements LlmGateway {
     return this.buildJudgeResponse(request.input as JudgeRequestInput, buildPromptJudgeReason(request.input as JudgeRequestInput)) as LlmResponse<TData>;
   }
 
-  protected buildJudgeResponse<TData = unknown>(input: JudgeRequestInput, reason: string, confidence = 0.88): LlmResponse<TData> {
+  protected buildJudgeResponse<TData = unknown>(
+    input: JudgeRequestInput,
+    reason: string,
+    confidence = 0.88,
+    margin: string = "standard"
+  ): LlmResponse<TData> {
     return {
       data: {
         winnerTeamId: input.teamAId,
         loserTeamId: input.teamBId,
-        margin: "standard",
+        margin,
         reason,
         mvpAgentId: input.activeTeamAAgentIds[0],
         confidence
@@ -291,6 +420,39 @@ class SuccessfulPhase18Gateway implements LlmGateway {
         totalTokens: 50
       }
     };
+  }
+}
+
+class ClearMarginJudgeGateway extends SuccessfulPhase18Gateway {
+  override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
+    if (request.task !== "judge") {
+      return super.generateStructured(request);
+    }
+
+    this.requests.push(request as LlmRequest<unknown>);
+    this.tasks.push(request.task);
+    return this.buildJudgeResponse(
+      request.input as JudgeRequestInput,
+      buildPromptJudgeReason(request.input as JudgeRequestInput),
+      0.88,
+      "clear"
+    ) as LlmResponse<TData>;
+  }
+}
+
+class ChineseJudgeReasonGateway extends SuccessfulPhase18Gateway {
+  override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
+    if (request.task !== "judge") {
+      return super.generateStructured(request);
+    }
+
+    this.requests.push(request as LlmRequest<unknown>);
+    this.tasks.push(request.task);
+    const input = request.input as JudgeRequestInput;
+    return this.buildJudgeResponse(
+      input,
+      `${input.teamAName ?? input.teamAId} 成功执行计划并打击机会缺口；${input.teamBName ?? input.teamBId} 未能守住计划中的核心成立点。`
+    ) as LlmResponse<TData>;
   }
 }
 

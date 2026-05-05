@@ -10,6 +10,7 @@ import {
   buildRuntimeTeamSeed,
   loadProcessedMaterials,
   normalizeMaterialRoleProfile,
+  phase20PrePilotMapIds,
   phase18CanonIds,
   phase17CanonIds,
   seedPhase18ShowcaseMatch,
@@ -24,6 +25,30 @@ describe("processed materials runtime package", () => {
     expect(materials.teams).toHaveLength(16);
     expect(materials.entitiesById.size).toBe(96);
     expect(materials.teamsBySlug.get("falcon-7b")?.players).toHaveLength(5);
+    expect(materials.teamsBySlug.get("falcon-7b")?.strategy?.strategyId).toBe("strategy_falcon_7b_core_v1");
+    expect(materials.teamsBySlug.get("vitallmty")?.strategy?.strategyId).toBe("strategy_vitallmty_core_v1");
+    expect(materials.teamsBySlug.get("neural-vincere")?.strategy).toBeUndefined();
+    expect(materials.mapsBySlug.get("dust2")?.proposition?.mapTheme).toBe("opportunity_positioning");
+    expect(materials.mapsBySlug.get("dust2")?.judgeRubric?.coreJudgmentAxis).toBe("opportunity_truth");
+  });
+
+  it("keeps Falcon-7B and VitaLLMty responsibilities generic and non-empty", () => {
+    const materials = loadProcessedMaterials(projectRoot);
+    const targetedTeams = [materials.teamsBySlug.get("falcon-7b"), materials.teamsBySlug.get("vitallmty")];
+    const forbiddenPattern = /(DUST2|INFERNO|MIRAGE|Dust2|A 大|A 小|B 洞|A 点|B 点|中路)/;
+
+    for (const team of targetedTeams) {
+      expect(team).toBeTruthy();
+      if (!team) {
+        continue;
+      }
+      for (const entity of [...team.players, ...team.coachAssets]) {
+        expect(entity.roleProfile.agentMajorResponsibilities.length).toBeGreaterThan(0);
+        for (const responsibility of entity.roleProfile.agentMajorResponsibilities) {
+          expect(forbiddenPattern.test(responsibility)).toBe(false);
+        }
+      }
+    }
   });
 
   it("does not import PhaseClan Coach TBD as a runtime coach when head_coach is null", () => {
@@ -116,6 +141,38 @@ describe("processed materials runtime package", () => {
       expect(result.agents).toHaveLength(10);
       expect(result.agents.some((agent) => agent.role === "coach")).toBe(false);
       expect(new Set(result.agents.map((agent) => agent.driverModelId))).toEqual(new Set([driverModel.id]));
+      expect(result.teams[0].teamProfileId).toBe("strategy_falcon_7b_core_v1");
+      expect(result.teams[1].teamProfileId).toBe("strategy_vitallmty_core_v1");
+      expect((result.teams[0].source as Record<string, unknown>).materialStrategy).toBeTruthy();
+      expect((result.teams[0].source as Record<string, unknown>).headCoachProfile).toBeTruthy();
+    } finally {
+      repositories.close();
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("can seed the current Phase 2.0-pre Dust2-only pilot without changing team assets", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-major-materials-phase20pre-"));
+    const repositories = createSqliteRepositories(join(tempDir, "test.sqlite"));
+    try {
+      const driverModel = {
+        id: "driver_qwen_3_max_2026_01_23",
+        provider: "dashscope_openai_compatible",
+        modelName: "qwen3-max-2026-01-23",
+        capabilities: ["text_generation", "reasoning"],
+        defaultUseCase: ["agent_action", "judge"],
+        enabled: true,
+        createdAt: "2026-05-02T00:00:00.000Z"
+      };
+      const result = await seedPhase18ShowcaseMatch({
+        repositories,
+        projectRoot,
+        driverModel,
+        selectedMapIds: [...phase20PrePilotMapIds]
+      });
+      expect(result.match.id).toBe(phase18CanonIds.matchId);
+      expect(result.selectedMapIds).toEqual(["DUST2"]);
+      expect(result.agents).toHaveLength(10);
     } finally {
       repositories.close();
       rmSync(tempDir, { recursive: true, force: true });

@@ -1,21 +1,23 @@
 # kyousuke
 
 ## Snapshot
-- 队伍：Falcon-7B
-- 类型：player
-- 角色：entry
-- 当前状态：active
-- 公开 ID：kyousuke
-- 法定姓名：待回填
+- Team: Falcon-7B
+- Type: player
+- Role: entry
+- Status: active
+- Public ID: kyousuke
+- Legal Name: TBD
 
 ## CS Role Profile
-- 原始位置：Entry / star rifler
-- 主位置：entry
-- 次级位置：star_rifler
-- 可信度：中
-- Agent Major 职责：首轮出击 / 激进创意 / 打开局面；核心输出 / 关键回合 carry
-- 备注：新锐火力位，项目中可设为突破/爆发位。
-- 来源：raw/teams/agent_major_player_roles.md
+- Raw Position: Entry / star rifler
+- Primary Role: entry
+- Secondary Roles: star_rifler
+- Confidence: 中
+- Agent Major Responsibilities:
+- First-contact probing / space opening / weakness exposure
+- Use early collisions to test opportunity windows and risk boundaries
+- Notes: 新锐火力位，项目中可设为突破/爆发位。
+- Source: raw/teams/agent_major_player_roles.md
 
 ## Alias
 - kyousuke
@@ -32,17 +34,12 @@
 - entry-burst
 - follow-up-space
 
-## Broadcast / Barrage / News
-- 解说标签：machine_force_buy_shock
-- 弹幕标签：player_targeting, research
-- 新闻标签：upset-watch
-- 跨圈标签：cabinet_to_live_room_chaos
-
 ## Future Interfaces
-- agent 人格接口：upset-watch, frontline-instigator, heat-checker, fresh-edge
-- 模型绑定接口：llm_role_template_entry / driver_minimax_m2_5
-- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
-- 产品运营接口：新刃口, upset-watch
+- agent narrative axes: upset-watch, frontline-instigator, heat-checker, fresh-edge
+- model binding: llm_role_template_entry / driver_minimax_m2_5
+- prompt bias tags: frontline-instigator, first-contact, space-creator, high-variance, entry-burst, follow-up-space, heat-checker, fresh-edge
+- ops notes:
+- Emphasize first-contact probing, space opening, and opportunity testing.
 
 ## Canon Notes
-- 当前以公开比赛 ID 为主，等待后续补 legal name 与更细人物画像。
+- none

@@ -41,6 +41,12 @@ export interface LlmResponse<TData = unknown> {
   usage: LlmUsage;
   rawText?: string;
   artifactIds?: string[];
+  structuredRepair?: {
+    originalRawText: string;
+    repairRawText: string;
+    repairUsage: LlmUsage;
+    parseError: string;
+  };
 }
 
 export interface LlmGateway {

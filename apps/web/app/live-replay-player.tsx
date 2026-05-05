@@ -25,11 +25,20 @@ import {
   buildBottomTickerViewModel,
   buildBroadcastHudViewModel,
   buildOverlayRosterViewModel,
+  buildRoundEvidenceViewModel,
   buildReplayStageState,
   type OverlayRosterViewModel,
+  type RoundEvidenceViewModel,
   type ReplayStageState
 } from "./phase18-watch-view-model";
-import { buildInitialRunMatchUiState, RunMatchControls, type ReplayGuardState, type RunMatchUiState, type WebRunProgress } from "./run-match-controls";
+import {
+  buildInitialRunMatchUiState,
+  RunMatchControls,
+  type ReplayGuardState,
+  type RunMatchHistoryEntry,
+  type RunMatchUiState,
+  type WebRunProgress
+} from "./run-match-controls";
 import type { PublicWebRunnerPolicy } from "./server-web-runner-policy";
 import styles from "./live-replay-player.module.css";
 
@@ -50,6 +59,7 @@ interface LiveReplayPlayerProps {
   replay: LiveReplayData | null;
   runnerPolicy: PublicWebRunnerPolicy;
   initialRunProgress?: WebRunProgress | null;
+  initialRunHistory?: RunMatchHistoryEntry[];
   initialReplayGuard?: ReplayGuardState;
 }
 
@@ -58,6 +68,7 @@ export function LiveReplayPlayer({
   replay,
   runnerPolicy,
   initialRunProgress = null,
+  initialRunHistory = [],
   initialReplayGuard = { hidden: false, message: "" }
 }: LiveReplayPlayerProps) {
   const maps = useMemo(() => (replay ? [...replay.maps].sort((left, right) => left.order - right.order) : []), [replay]);
@@ -234,6 +245,7 @@ export function LiveReplayPlayer({
   const teamAView = buildOverlayRosterViewModel({ replay, selectedMap, currentRound, frame, teamKey: "teamA" });
   const teamBView = buildOverlayRosterViewModel({ replay, selectedMap, currentRound, frame, teamKey: "teamB" });
   const bottomTickerView = buildBottomTickerViewModel({ replay, frame, stageState });
+  const evidenceView = buildRoundEvidenceViewModel({ replay, currentRound });
   const roundProgressPercent = frame ? `${Math.round(frame.progress * 100)}%` : "0%";
   const timeLabel = frame ? `${formatClock(currentAtMs)} / ${formatClock(roundDurationMs)}` : "--:-- / --:--";
 
@@ -309,8 +321,8 @@ export function LiveReplayPlayer({
                   <button type="button" onClick={() => setStatus("paused")} disabled={status !== "playing"}>
                     暂停
                   </button>
-                  <button type="button" onClick={handleReset} disabled={!currentRound}>
-                    重置地图
+                  <button type="button" onClick={handleResetRound} disabled={!currentRound}>
+                    重置本回合
                   </button>
                   <button type="button" onClick={handleHighlightJump} disabled={!currentRound || nextHighlightRoundIndex === null}>
                     跳到高光
@@ -377,8 +389,11 @@ export function LiveReplayPlayer({
                     matchId={matchId}
                     runnerPolicy={runnerPolicy}
                     initialProgress={initialRunProgress}
+                    initialRunHistory={initialRunHistory}
                     onReplayGuardChange={setReplayGuard}
                     onUiStateChange={setRunUiState}
+                    onResetCurrentMapView={handleResetCurrentMapView}
+                    onResetMatchView={handleResetMatchView}
                   />
                 </div>
               </section>
@@ -393,8 +408,10 @@ export function LiveReplayPlayer({
             <TickerCard label={bottomTickerView.latestHighlightLabel} value={bottomTickerView.latestHighlightValue} />
           </div>
           <details className={styles.detailsTray}>
-            <summary>展开事件与高光详情</summary>
+            <summary>展开本回合证据链与事件详情</summary>
             <div className={styles.detailsTrayBody}>
+              <RoundEvidencePanel evidence={evidenceView} />
+
               <Panel title="时间线">
                 <div className={styles.timelineList}>
                   {frame?.visibleEvents.length ? (
@@ -508,7 +525,19 @@ export function LiveReplayPlayer({
     setStatus("playing");
   }
 
-  function handleReset() {
+  function handleResetRound() {
+    setCurrentAtMs(0);
+    setStatus("idle");
+  }
+
+  function handleResetCurrentMapView() {
+    setSelectedRoundIndex(0);
+    setCurrentAtMs(0);
+    setStatus("idle");
+  }
+
+  function handleResetMatchView() {
+    setSelectedMapId(maps[0]?.id ?? "");
     setSelectedRoundIndex(0);
     setCurrentAtMs(0);
     setStatus("idle");
@@ -554,6 +583,129 @@ export function LiveReplayPlayer({
   }
 }
 
+function RoundEvidencePanel({ evidence }: { evidence: RoundEvidenceViewModel }) {
+  return (
+    <Panel className={styles.evidencePanel} title={`本回合证据链 / ${evidence.roundLabel}`}>
+      <div className={styles.evidenceStack}>
+        <div className={styles.evidenceSummary}>
+          <span>{evidence.factChainLabel}</span>
+          <small>用于判断真实 LLM 是否完成了队伍计划、选手行动、裁判判词到已提交回放结果的事实链。</small>
+        </div>
+        {evidence.emptyMessage ? <span className={styles.muted}>{evidence.emptyMessage}</span> : null}
+
+        <section className={styles.evidenceSection}>
+          <div className={styles.evidenceSectionHeader}>
+            <span>队伍计划</span>
+            <small>{evidence.teamPlans.length ? "team_plan" : "旧回合未写入 team_plan"}</small>
+          </div>
+          {evidence.teamPlans.length ? (
+            <div className={styles.teamPlanGrid}>
+              {evidence.teamPlans.map((plan) => (
+                <article key={plan.teamId} className={styles.teamPlanCard}>
+                  <div className={styles.teamPlanHeader}>
+                    <strong>{plan.teamName}</strong>
+                    <span>
+                      {plan.sideLabel} / {plan.confidenceLabel}
+                    </span>
+                  </div>
+                  <p>{plan.primaryIntent}</p>
+                  <small>区域：{plan.zonesLabel || "未指定"}</small>
+                  <small>协同：{plan.coordinationSummary}</small>
+                  <small>胜利条件：{plan.winCondition}</small>
+                  <small>风险：{plan.risk}</small>
+                  <div className={styles.directiveList}>
+                    {plan.directives.map((directive) => (
+                      <div key={directive.agentId}>
+                        <b>{directive.displayName}</b>
+                        <span>{directive.directive}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <details className={styles.evidenceRawDetails}>
+                    <summary>查看原文</summary>
+                    <div className={styles.evidenceRawBlock}>
+                      <small>原文意图：{plan.primaryIntentRaw}</small>
+                      <small>原文协同：{plan.coordinationSummaryRaw}</small>
+                      <small>原文胜利条件：{plan.winConditionRaw}</small>
+                      <small>原文风险：{plan.riskRaw}</small>
+                      <div className={styles.directiveList}>
+                        {plan.directives.map((directive) => (
+                          <div key={`${directive.agentId}-raw`}>
+                            <b>{directive.displayName}</b>
+                            <span>{directive.directiveRaw}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </details>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <span className={styles.muted}>当前已提交回合没有队伍计划事实；旧回合不会伪回填，新成功回合会写入这里。</span>
+          )}
+        </section>
+
+        <section className={styles.evidenceSection}>
+          <div className={styles.evidenceSectionHeader}>
+            <span>10 名选手行动</span>
+            <small>agent_action</small>
+          </div>
+          <div className={styles.actionEvidenceList}>
+            {evidence.playerActions.map((action) => (
+              <article key={action.agentId} className={styles.actionEvidenceRow}>
+                <div>
+                  <span>{action.teamName}</span>
+                  <strong>{action.displayName}</strong>
+                  <small>
+                    {action.roleLabel} / {action.confidenceLabel}
+                  </small>
+                </div>
+                <p>{action.action}</p>
+                <small>长期职责：{action.dutyLabel}</small>
+                <small>本回合指令：{action.directiveLabel}</small>
+                <details className={styles.evidenceRawDetails}>
+                  <summary>查看原文</summary>
+                  <div className={styles.evidenceRawBlock}>
+                    <small>原文行动：{action.actionRaw}</small>
+                    <small>原文指令：{action.directiveLabelRaw}</small>
+                    <small>调试指纹：{action.fingerprintLabel}</small>
+                  </div>
+                </details>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {evidence.judge ? (
+          <section className={styles.evidenceSection}>
+            <div className={styles.evidenceSectionHeader}>
+              <span>裁判判词</span>
+              <small>judge</small>
+            </div>
+            <article className={styles.judgeEvidenceCard}>
+              <div className={styles.judgeEvidenceMeta}>
+                <span>胜方：{evidence.judge.winnerLabel}</span>
+                <span>败方：{evidence.judge.loserLabel}</span>
+                <span>幅度：{evidence.judge.marginLabel}</span>
+                <span>MVP：{evidence.judge.mvpLabel}</span>
+                <span>置信度：{evidence.judge.confidenceLabel}</span>
+              </div>
+              <p>{evidence.judge.reason}</p>
+              <details className={styles.evidenceRawDetails}>
+                <summary>查看原文</summary>
+                <div className={styles.evidenceRawBlock}>
+                  <small>{evidence.judge.reasonRaw}</small>
+                </div>
+              </details>
+            </article>
+          </section>
+        ) : null}
+      </div>
+    </Panel>
+  );
+}
+
 function StagePlaceholder() {
   return <div className={`${styles.virtualMap} ${styles.virtualMapPlaceholder}`} aria-hidden="true" />;
 }
@@ -584,6 +736,7 @@ function RosterRail({ roster, side }: { roster: OverlayRosterViewModel; side: "l
           <span>{roster.shortName}</span>
           <strong>{roster.displayName}</strong>
           <small>{roster.sideLabel}</small>
+          {roster.coachLabel ? <small className={styles.rosterCoachLine}>{roster.coachLabel}</small> : null}
         </div>
         <b>{roster.score}</b>
       </div>
@@ -600,6 +753,7 @@ function RosterRail({ roster, side }: { roster: OverlayRosterViewModel; side: "l
                 <span>{player.tokenBankLabel}</span>
                 <span>{player.buyLabel}</span>
               </div>
+              <small className={styles.rosterDuty}>{player.dutyLabel}</small>
               <small>{player.statusLabel}</small>
             </article>
           ))}
@@ -655,9 +809,9 @@ function TacticalMap({ frame }: { frame: LiveRoundFrame }) {
   );
 }
 
-function Panel({ title, children }: { title: string; children: ReactNode }) {
+function Panel({ title, children, className = "" }: { title: string; children: ReactNode; className?: string | undefined }) {
   return (
-    <article className={styles.panel}>
+    <article className={`${styles.panel} ${className}`}>
       <h2>{title}</h2>
       {children}
     </article>

@@ -19,6 +19,9 @@ export class LlmProviderError extends Error {
   readonly driverModelId: string;
   readonly modelName: string | undefined;
   readonly statusCode: number | undefined;
+  readonly rawText: string | undefined;
+  readonly usage: LlmUsage | undefined;
+  readonly parseCandidate: string | undefined;
 
   constructor(input: {
     message: string;
@@ -27,6 +30,9 @@ export class LlmProviderError extends Error {
     driverModelId: string;
     modelName?: string;
     statusCode?: number;
+    rawText?: string;
+    usage?: LlmUsage;
+    parseCandidate?: string;
   }) {
     super(input.message);
     this.name = "LlmProviderError";
@@ -36,6 +42,9 @@ export class LlmProviderError extends Error {
     this.driverModelId = input.driverModelId;
     this.modelName = input.modelName;
     this.statusCode = input.statusCode;
+    this.rawText = input.rawText;
+    this.usage = input.usage;
+    this.parseCandidate = input.parseCandidate;
   }
 }
 
@@ -124,12 +133,36 @@ export class DashScopeOpenAiProvider implements LlmGateway {
 
       const json = await safeReadJson(response, input.request, input.modelName);
       const rawText = extractMessageContent(json, input.request, input.modelName);
-      const data = input.request.responseFormat === "json_object" ? parseJsonContent(rawText, input.request, input.modelName) : rawText;
-      return {
-        data: data as TData,
-        usage: extractUsage(json),
-        rawText
-      };
+      const usage = extractUsage(json);
+      if (input.request.responseFormat !== "json_object") {
+        return {
+          data: rawText as TData,
+          usage,
+          rawText
+        };
+      }
+
+      try {
+        return {
+          data: parseJsonContent(rawText, input.request, input.modelName) as TData,
+          usage,
+          rawText
+        };
+      } catch (error) {
+        if (!(error instanceof LlmProviderError)) {
+          throw error;
+        }
+
+        const repaired = await this.repairJsonContent<TData>({
+          url: input.url,
+          request: input.request,
+          modelName: input.modelName,
+          originalRawText: rawText,
+          originalUsage: usage,
+          parseError: error.message
+        });
+        return repaired;
+      }
     } catch (error) {
       if (isAbortError(error)) {
         throw new LlmProviderError({
@@ -154,6 +187,87 @@ export class DashScopeOpenAiProvider implements LlmGateway {
       });
     } finally {
       clearTimeout(timeout);
+    }
+  }
+
+  private async repairJsonContent<TData>(input: {
+    url: string;
+    request: LlmRequest;
+    modelName: string;
+    originalRawText: string;
+    originalUsage: LlmUsage;
+    parseError: string;
+  }): Promise<LlmResponse<TData>> {
+    const outputContract = outputContractForSchema(input.request.schemaName);
+    const body = compactObject({
+      model: input.modelName,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You repair structured outputs. Return only one valid json object. Do not include markdown, code fences, prose, comments, or copied input."
+        },
+        {
+          role: "user",
+          content: [
+            `Repair this response into valid JSON for schema ${input.request.schemaName}.`,
+            outputContract,
+            "Original non-JSON response:",
+            input.originalRawText
+          ].join("\n")
+        }
+      ],
+      stream: false,
+      temperature: 0,
+      max_tokens: input.request.maxOutputTokens ?? resolveDriverModelConfig(input.request.driverModelId).defaultMaxOutputTokens,
+      response_format: { type: "json_object" }
+    });
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    const response = await this.fetchFn(input.url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${this.apiKey}`
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    }).finally(() => clearTimeout(timeout));
+
+    if (!response.ok) {
+      throw await this.providerHttpError(response, input.request, input.modelName);
+    }
+
+    const json = await safeReadJson(response, input.request, input.modelName);
+    const repairRawText = extractMessageContent(json, input.request, input.modelName);
+    const repairUsage = extractUsage(json);
+    try {
+      return {
+        data: parseJsonContent(repairRawText, input.request, input.modelName) as TData,
+        usage: combineUsage(input.originalUsage, repairUsage),
+        rawText: repairRawText,
+        structuredRepair: {
+          originalRawText: input.originalRawText,
+          repairRawText,
+          repairUsage,
+          parseError: input.parseError
+        }
+      };
+    } catch (error) {
+      if (error instanceof LlmProviderError) {
+        throw new LlmProviderError({
+          message: error.message,
+          errorType: error.errorType,
+          retryable: false,
+          driverModelId: input.request.driverModelId,
+          modelName: input.modelName,
+          rawText: input.originalRawText,
+          usage: input.originalUsage,
+          ...(error.parseCandidate ? { parseCandidate: error.parseCandidate } : {})
+        });
+      }
+      throw error;
     }
   }
 
@@ -187,12 +301,12 @@ function buildDefaultMessages(request: LlmRequest): LlmMessage[] {
       {
         role: "system",
         content:
-          "You are a structured generation engine. Return only valid JSON that matches the requested schema. Do not include markdown, code fences, or extra commentary. Do not copy the input object unless the output contract asks for the same field."
+          "You are a structured generation engine. Return only valid json that matches the requested schema. Do not include markdown, code fences, or extra commentary. Do not copy the input object unless the output contract asks for the same field."
       },
       {
         role: "user",
         content: [
-          `Respond with a JSON object for schema ${request.schemaName}.`,
+          `Respond with a json object for schema ${request.schemaName}.`,
           outputContract,
           JSON.stringify({
             task: request.task,
@@ -205,10 +319,10 @@ function buildDefaultMessages(request: LlmRequest): LlmMessage[] {
   }
 
   return [
-    {
-      role: "system",
-      content: "You are a structured text generation engine. Follow the user task exactly."
-    },
+      {
+        role: "system",
+        content: "You are a structured text generation engine. Follow the user task exactly."
+      },
     {
       role: "user",
       content: JSON.stringify({
@@ -251,6 +365,9 @@ function outputContractForSchema(schemaName: string): string {
       "Return exactly one top-level JSON object with these fields:",
       '{"winnerTeamId":"<teamAId or teamBId>","loserTeamId":"<the other team id>","margin":"narrow|standard|decisive","reason":"<brief reason>","mvpAgentId":"<agent id from the winning active roster>","confidence":0.0}',
       "Required fields: winnerTeamId, loserTeamId, margin, reason, mvpAgentId, confidence.",
+      "margin must be exactly one of: narrow, standard, decisive. Do not use clear, close, solid, dominant, or other synonyms.",
+      "reason must explicitly name both teams and explain the winner success path plus the loser failure path.",
+      "For stable validation, include succeeded and failed, or Chinese equivalents 成功 and 失败/未能, in reason.",
       "winnerTeamId must be one of the input team ids. loserTeamId must be the other team id.",
       "mvpAgentId must come from the winning team's active agent id list.",
       "reason must discuss both teams' winCondition and explain why one succeeded while the other failed.",
@@ -295,7 +412,7 @@ function extractMessageContent(value: unknown, request: LlmRequest, modelName: s
 }
 
 function parseJsonContent(rawText: string, request: LlmRequest, modelName: string): unknown {
-  const candidate = stripJsonFence(rawText);
+  const candidate = extractJsonObjectCandidate(rawText);
   try {
     return JSON.parse(candidate);
   } catch {
@@ -304,7 +421,9 @@ function parseJsonContent(rawText: string, request: LlmRequest, modelName: strin
       errorType: "invalid_response",
       retryable: false,
       driverModelId: request.driverModelId,
-      modelName
+      modelName,
+      rawText,
+      parseCandidate: candidate
     });
   }
 }
@@ -342,6 +461,64 @@ function stripJsonFence(value: string): string {
   const trimmed = value.trim();
   const fenceMatch = /^```(?:json)?\s*([\s\S]*?)\s*```$/i.exec(trimmed);
   return fenceMatch?.[1]?.trim() ?? trimmed;
+}
+
+function extractJsonObjectCandidate(value: string): string {
+  const trimmed = stripJsonFence(value);
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+    return trimmed;
+  }
+
+  const extracted = extractFirstBalancedJsonObject(trimmed);
+  return extracted ?? trimmed;
+}
+
+function extractFirstBalancedJsonObject(value: string): string | undefined {
+  const start = value.indexOf("{");
+  if (start < 0) {
+    return undefined;
+  }
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = start; index < value.length; index += 1) {
+    const char = value[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === "\\") {
+      escaped = inString;
+      continue;
+    }
+    if (char === "\"") {
+      inString = !inString;
+      continue;
+    }
+    if (inString) {
+      continue;
+    }
+    if (char === "{") {
+      depth += 1;
+    }
+    if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return value.slice(start, index + 1).trim();
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function combineUsage(left: LlmUsage, right: LlmUsage): LlmUsage {
+  return {
+    promptTokens: left.promptTokens + right.promptTokens,
+    completionTokens: left.completionTokens + right.completionTokens,
+    totalTokens: left.totalTokens + right.totalTokens
+  };
 }
 
 function numberField(record: Record<string, unknown>, key: string): number {

@@ -1,0 +1,46 @@
+{
+  "strategy_id": "strategy_falcon_7b_core_v1",
+  "team_id": "team_falcon_7b",
+  "team_slug": "falcon-7b",
+  "display_name": "Falcon-7B",
+  "version": "2026-05-04-phase20pre-v1",
+  "identity_summary": "Falcon-7B 是一支高密度明星阵容队，长期依靠高标准判断、集中资源、关键位兑现和强收束能力取胜。",
+  "opportunity_thesis": "优先选择高价值、高确定性、能够迅速建立领先叙事的机会，不追求铺得过宽，而追求第一性判断和先手优势。",
+  "product_thesis": "产品路线强调核心体验先打穿，优先做能体现差异化判断力与兑现速度的主路径，不把资源分散在低杠杆功能上。",
+  "engineering_thesis": "工程路线偏向强约束执行、关键链路可靠和高质量交付，以少而精的主干系统支撑高压比赛中的稳定输出。",
+  "business_thesis": "商业路线偏向高价值客户和高质量转化，强调品牌势能、头部样板和资源集中后的放大效应。",
+  "operations_thesis": "运营路线强调节奏控制、关键节点放大和战果复用，用少数高影响动作拉开认知差距，而不是靠大规模噪声堆量。",
+  "scaling_thesis": "规模化路线建立在关键决策模板化、执行链条标准化和核心判断口径统一上，先保证顶层质量，再向外扩张。",
+  "moat_thesis": "长期壁垒来自高门槛判断、明星级执行密度、强势品牌叙事以及关键场合持续兑现后形成的信任复利。",
+  "preferred_win_conditions": [
+    "率先锁定最值得打的高价值方向",
+    "把资源集中到最强的主路径和关键位",
+    "在高压局面下仍能完成强收束和终局兑现",
+    "用头部样板和品牌势能放大比赛战果"
+  ],
+  "failure_modes": [
+    "判断过重导致推进迟缓",
+    "多核心同时发力时资源分配失衡",
+    "过度追求完美标准而错失窗口",
+    "明星位兑现不足时整体叙事快速反噬"
+  ],
+  "coach_operating_principles": [
+    "在暂停和半场窗口收束争议，恢复统一判断口径",
+    "优先修复主路径执行偏差，不扩写临时支线",
+    "赛后沉淀关键失误和关键兑现的可复用模板"
+  ],
+  "player_operating_principles": [
+    "IGL 负责优先级排序、资源分配和终局拍板",
+    "核心输出位负责把最强主张打成比赛事实",
+    "先手位负责打开空间并暴露对手的真实漏洞",
+    "补位与支撑位负责保证方案闭环和执行稳定"
+  ],
+  "frontend_summary": "高密度明星阵容，偏好高价值机会、集中资源和关键位终局兑现。",
+  "llm_strategy_tags": [
+    "money-superteam",
+    "high-standards",
+    "resource-concentration",
+    "decisive-closeout",
+    "headline-pressure"
+  ]
+}

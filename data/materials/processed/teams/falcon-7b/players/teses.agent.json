@@ -31,9 +31,8 @@
     "confidence": "中-高",
     "notes": "团队步枪、补位和锚点。",
     "agent_major_responsibilities": [
-      "补全细节 / 修复方案 / 提供上下文",
-      "防守型论证 / 稳定性校验",
-      "通用火力 / 回合执行 / 补枪衔接"
+      "Structural glue / execution stability / gap repair",
+      "Hold the baseline and provide support fire when the plan starts to drift"
     ]
   },
   "aliases": [
@@ -147,7 +146,7 @@
     ],
     "override_ids": [],
     "ops_notes": [
-      "Keep framing around utility, spacing, and invisible value."
+      "Emphasize structure repair, completion, and stable execution value."
     ]
   },
   "ops_hooks": {

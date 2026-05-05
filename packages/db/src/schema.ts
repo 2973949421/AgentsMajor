@@ -87,6 +87,31 @@ export const matches = sqliteTable(
   })
 );
 
+export const simulationRuns = sqliteTable(
+  "simulation_runs",
+  {
+    id: text("id").primaryKey(),
+    fixtureId: text("fixture_id").notNull(),
+    status: text("status").notNull(),
+    requestedMode: text("requested_mode").notNull(),
+    runtimeMatchId: text("runtime_match_id").notNull().references(() => matches.id),
+    runtimeMapGameId: text("runtime_map_game_id"),
+    baselineCompletedRounds: integer("baseline_completed_rounds").notNull().default(0),
+    estimatedTotalRounds: integer("estimated_total_rounds").notNull().default(0),
+    expectedTotalCalls: integer("expected_total_calls").notNull().default(0),
+    latestCommittedRoundNumber: integer("latest_committed_round_number").notNull().default(0),
+    hasFreshReplay: integer("has_fresh_replay", { mode: "boolean" }).notNull().default(false),
+    latestError: text("latest_error"),
+    createdAt: text("created_at").notNull(),
+    startedAt: text("started_at"),
+    completedAt: text("completed_at")
+  },
+  (table) => ({
+    fixtureIdx: index("simulation_runs_fixture_idx").on(table.fixtureId, table.createdAt),
+    runtimeMatchUnique: uniqueIndex("simulation_runs_runtime_match_unique").on(table.runtimeMatchId)
+  })
+);
+
 export const mapGames = sqliteTable(
   "map_games",
   {
@@ -145,9 +170,10 @@ export const roundReports = sqliteTable("round_reports", {
   winnerTeamId: text("winner_team_id").notNull().references(() => teams.id),
   scoreBeforeRoundJson: text("score_before_round_json", { mode: "json" }).notNull(),
   scoreAfterRoundJson: text("score_after_round_json", { mode: "json" }).notNull(),
-  judgeResultJson: text("judge_result_json", { mode: "json" }).notNull(),
-  agentOutputsJson: text("agent_outputs_json", { mode: "json" }).notNull(),
-  keyEventsJson: text("key_events_json", { mode: "json" }).notNull(),
+    judgeResultJson: text("judge_result_json", { mode: "json" }).notNull(),
+    agentOutputsJson: text("agent_outputs_json", { mode: "json" }).notNull(),
+    llmTeamPlansJson: text("llm_team_plans_json", { mode: "json" }),
+    keyEventsJson: text("key_events_json", { mode: "json" }).notNull(),
   economyDeltaJson: text("economy_delta_json", { mode: "json" }).notNull(),
   tokenSubmissionJson: text("token_submission_json", { mode: "json" }).notNull(),
   highlightTagsJson: text("highlight_tags_json", { mode: "json" }),

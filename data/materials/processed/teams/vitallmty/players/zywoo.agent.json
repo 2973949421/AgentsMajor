@@ -28,8 +28,8 @@
     "confidence": "高",
     "notes": "队伍核心主狙与超级明星位。",
     "agent_major_responsibilities": [
-      "高精度关键论点 / 单点突破 / 高风险高收益调用",
-      "核心输出 / 关键回合 carry"
+      "Reliable bailout / precision conversion / pressure-time takeover",
+      "Close critical rounds and keep the system alive under strain"
     ]
   },
   "aliases": [
@@ -160,7 +160,7 @@
       "llm_override_spotlight_player_vitallmty_zywoo"
     ],
     "ops_notes": [
-      "Prioritize key-shot, clutch, and single-round pressure hooks."
+      "Prioritize reliability proof, precision, and pressure-time takeover framing."
     ]
   },
   "ops_hooks": {

@@ -28,8 +28,8 @@
     "confidence": "中",
     "notes": "新锐火力位，项目中可设为突破/爆发位。",
     "agent_major_responsibilities": [
-      "首轮出击 / 激进创意 / 打开局面",
-      "核心输出 / 关键回合 carry"
+      "First-contact probing / space opening / weakness exposure",
+      "Use early collisions to test opportunity windows and risk boundaries"
     ]
   },
   "aliases": [
@@ -151,7 +151,7 @@
     ],
     "override_ids": [],
     "ops_notes": [
-      "Prefer first-contact, overpeek, space creation, and instant reaction hooks."
+      "Emphasize first-contact probing, space opening, and opportunity testing."
     ]
   },
   "ops_hooks": {

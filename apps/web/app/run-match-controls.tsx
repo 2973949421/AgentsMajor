@@ -5,12 +5,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import type { PublicWebRunnerPolicy } from "./server-web-runner-policy";
 import styles from "./live-replay-player.module.css";
 
-const phase18MatchId = "phase18_match_falcon_7b_vs_vitallmty";
+const phase18FixtureId = "phase18_match_falcon_7b_vs_vitallmty";
 
-export type RunState = "idle" | "running" | "success" | "failed";
+export type RunState = "idle" | "running" | "paused" | "stopped" | "success" | "failed";
 export type RunMode = "phase18_next_round" | "phase18_current_map" | "phase18_full_bo3";
 type AnyRunMode = RunMode | "phase17_showcase_match";
-export type RunStatus = "running" | "completed" | "failed";
+type ResetScope = "round" | "map" | "match";
+export type RunStatus = "scheduled" | "running" | "completed" | "failed" | "discarded";
 
 export interface ReplayGuardState {
   hidden: boolean;
@@ -29,14 +30,37 @@ export interface WebRunLlmCallProgress {
   inputTokens?: number;
   outputTokens?: number;
   error?: string;
+  responseArtifactId?: string;
+  rawTextPreview?: string;
+  parseCandidatePreview?: string;
+  repairRawTextPreview?: string;
+  repaired?: boolean;
+}
+
+export interface RunMatchHistoryEntry {
+  runId: string;
+  fixtureId: string;
+  runtimeMatchId: string;
+  requestedMode: RunMode;
+  status: RunStatus;
+  mapLabel: string;
+  completedRounds: number;
+  latestCommittedRoundNumber: number;
+  hasFreshReplay: boolean;
+  createdAt: string;
+  scoreLabel: string;
+  latestError?: string;
 }
 
 export interface WebRunProgress {
   runId: string;
   mode: AnyRunMode;
   matchId: string;
+  fixtureId: string;
+  runtimeMatchId: string;
   targetMatchId: string;
   status: RunStatus;
+  mapGameId: string;
   mapGameIds: string[];
   mapName: string;
   estimatedTotalRounds: number;
@@ -45,6 +69,7 @@ export interface WebRunProgress {
   hasFreshReplay: boolean;
   currentRoundNumber: number | null;
   currentMapOrder: number | null;
+  latestCommittedRoundNumber: number;
   casterLines: number;
   progressPercent: number;
   llmSummary: {
@@ -55,6 +80,7 @@ export interface WebRunProgress {
     runningCalls: number;
   };
   llmCalls: WebRunLlmCallProgress[];
+  recentRuns: RunMatchHistoryEntry[];
   error?: string;
   result?: {
     status: string;
@@ -73,16 +99,30 @@ interface RunMatchControlsProps {
   matchId: string;
   runnerPolicy: PublicWebRunnerPolicy;
   initialProgress?: WebRunProgress | null;
+  initialRunHistory?: RunMatchHistoryEntry[];
   onReplayGuardChange?: (guard: ReplayGuardState) => void;
   onUiStateChange?: (uiState: RunMatchUiState) => void;
+  onResetCurrentMapView?: () => void;
+  onResetMatchView?: () => void;
+}
+
+interface RunRoutePayload {
+  error?: string;
+  summary?: string;
+  progress?: WebRunProgress;
+  replayUrl?: string;
+  progressUrl?: string;
 }
 
 export function RunMatchControls({
   matchId,
   runnerPolicy,
   initialProgress = null,
+  initialRunHistory = [],
   onReplayGuardChange,
-  onUiStateChange
+  onUiStateChange,
+  onResetCurrentMapView,
+  onResetMatchView
 }: RunMatchControlsProps) {
   const initialUiState = useMemo(() => buildInitialRunMatchUiState(initialProgress), [initialProgress]);
   const [state, setState] = useState<RunState>(initialUiState.state);
@@ -90,6 +130,9 @@ export function RunMatchControls({
   const [adminToken, setAdminToken] = useState("");
   const [progress, setProgress] = useState<WebRunProgress | null>(initialUiState.progress);
   const [requestedMode, setRequestedMode] = useState<RunMode | null>(initialUiState.requestedMode);
+  const [trackingPaused, setTrackingPaused] = useState(false);
+  const [trackingStopped, setTrackingStopped] = useState(false);
+  const [history, setHistory] = useState<RunMatchHistoryEntry[]>(initialProgress?.recentRuns ?? initialRunHistory);
 
   useEffect(() => {
     const next = buildInitialRunMatchUiState(initialProgress);
@@ -97,7 +140,8 @@ export function RunMatchControls({
     setMessage(next.message);
     setProgress(next.progress);
     setRequestedMode(next.requestedMode);
-  }, [initialProgress?.runId, initialProgress?.status]);
+    setHistory(initialProgress?.recentRuns ?? initialRunHistory);
+  }, [initialProgress?.runId, initialProgress?.status, initialRunHistory]);
 
   useEffect(() => {
     onUiStateChange?.({
@@ -109,19 +153,18 @@ export function RunMatchControls({
   }, [message, onUiStateChange, progress, requestedMode, state]);
 
   useEffect(() => {
-    if (state !== "running" || !progress?.runId) {
+    if (state !== "running" || trackingPaused || trackingStopped || !progress?.runId) {
       return;
     }
 
     let cancelled = false;
     const poll = async () => {
       try {
-        const progressMatchId = progress.targetMatchId || progress.matchId;
-        const response = await fetch(`/api/matches/${encodeURIComponent(progressMatchId)}/run?runId=${encodeURIComponent(progress.runId)}`, {
+        const response = await fetch(`/api/matches/${encodeURIComponent(matchId)}/run?runId=${encodeURIComponent(progress.runId)}`, {
           method: "GET",
           cache: "no-store"
         });
-        const payload = (await response.json().catch(() => ({}))) as { error?: string; progress?: WebRunProgress };
+        const payload = (await response.json().catch(() => ({}))) as RunRoutePayload;
         if (!response.ok) {
           throw new Error(payload.error ?? `Progress failed with HTTP ${response.status}`);
         }
@@ -131,12 +174,13 @@ export function RunMatchControls({
 
         const nextProgress = payload.progress;
         setProgress(nextProgress);
-        if (nextProgress.status === "completed") {
+        setHistory(nextProgress.recentRuns);
+        if (nextProgress.status === "completed" || nextProgress.status === "scheduled") {
           setState("success");
           setMessage(buildCompletedMessage(nextProgress));
           window.setTimeout(() => {
-            window.location.assign(buildReplayUrl(nextProgress.targetMatchId));
-          }, 700);
+            window.location.assign(buildReplayUrl(nextProgress.runId));
+          }, 600);
           return;
         }
         if (nextProgress.status === "failed") {
@@ -157,17 +201,22 @@ export function RunMatchControls({
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [progress?.matchId, progress?.runId, progress?.targetMatchId, state]);
+  }, [matchId, progress?.runId, state, trackingPaused, trackingStopped]);
 
   useEffect(() => {
     if (!onReplayGuardChange) {
       return;
     }
 
-    if (state === "running") {
+    if (progress?.status === "running") {
       onReplayGuardChange({
         hidden: true,
-        message: "Phase 1.8 当前仍在生成，新回放事实提交前会继续隐藏旧 replay。"
+        message:
+          state === "paused"
+            ? "当前生成已暂停本地跟踪，新 replay 在恢复跟踪或重新进入页面前继续隐藏。"
+            : state === "stopped"
+              ? "当前生成已停止本地跟踪；如后端仍在运行，请等待它自然结束后再重新进入。"
+              : "当前 run 仍在生成中，新回放事实提交之前不会展示该 run 的 replay。"
       });
       return;
     }
@@ -176,22 +225,28 @@ export function RunMatchControls({
       onReplayGuardChange({
         hidden: true,
         message: progress?.error
-          ? `Phase 1.8 本次运行在提交新回放前失败：${progress.error}`
-          : "Phase 1.8 本次运行在提交新回放前失败。"
+          ? `本次 run 在提交任何 replay 事实之前失败：${progress.error}`
+          : "本次 run 在提交任何 replay 事实之前失败。"
       });
       return;
     }
 
     onReplayGuardChange({ hidden: false, message: "" });
-  }, [onReplayGuardChange, progress?.error, progress?.hasFreshReplay, state]);
+  }, [onReplayGuardChange, progress?.error, progress?.hasFreshReplay, progress?.status, state]);
 
   const helperText =
     message ||
-    "默认从“生成下一局”开始做单局验收。确认路径稳定后，再扩大到整张图和整场 BO3。";
+    "默认从“生成下一局”开始做单局验收。需要连续验证时，再扩展到当前地图或整场 BO3。";
+
+  const activeRunStatusLabel = progress
+    ? state === "paused" || state === "stopped"
+      ? formatLocalStateLabel(state)
+      : formatRunStatusLabel(progress.status)
+    : formatLocalStateLabel(state);
 
   const runSummaryItems = progress
     ? [
-        { label: "运行状态", value: formatRunStatusLabel(progress.status) },
+        { label: "运行状态", value: activeRunStatusLabel },
         { label: "已提交局数", value: String(progress.completedRounds) },
         { label: "当前地图", value: progress.currentMapOrder ? `M${progress.currentMapOrder}` : "--" },
         { label: "当前回合", value: progress.currentRoundNumber ? `R${progress.currentRoundNumber}` : "--" },
@@ -211,7 +266,7 @@ export function RunMatchControls({
     return (
       <section className={styles.opsControlStack}>
         <div className={styles.opsStatusCard}>
-          <strong>本地运行器未开启</strong>
+          <strong>本地运行器未启用</strong>
           <span className={styles.opsMetaLine}>{formatDisabledReason(runnerPolicy.disabledReason)}</span>
         </div>
       </section>
@@ -226,7 +281,7 @@ export function RunMatchControls({
           type="password"
           value={adminToken}
           onChange={(event) => setAdminToken(event.target.value)}
-          placeholder="本地运行令牌"
+          placeholder="本地运行口令"
           autoComplete="off"
         />
       ) : null}
@@ -243,6 +298,52 @@ export function RunMatchControls({
         </button>
       </div>
 
+      <div className={styles.opsUtilityGrid}>
+        <button
+          type="button"
+          className={styles.opsActionSecondary}
+          onClick={() => void handleReset("round")}
+          disabled={state === "running" || !progress?.runId}
+        >
+          重置本回合
+        </button>
+        <button
+          type="button"
+          className={styles.opsActionSecondary}
+          onClick={() => void handleReset("map")}
+          disabled={state === "running" || !progress?.runId}
+        >
+          重置当前地图
+        </button>
+        <button
+          type="button"
+          className={styles.opsActionSecondary}
+          onClick={() => void handleReset("match")}
+          disabled={state === "running" || !progress?.runId}
+        >
+          重置整场 BO3
+        </button>
+      </div>
+
+      <div className={styles.opsUtilityGrid}>
+        <button
+          type="button"
+          className={styles.opsActionSecondary}
+          onClick={handleToggleTracking}
+          disabled={!progress?.runId || (progress.status !== "running" && state !== "paused" && state !== "stopped")}
+        >
+          {state === "paused" || state === "stopped" ? "继续跟踪" : "暂停跟踪"}
+        </button>
+        <button
+          type="button"
+          className={styles.opsActionSecondary}
+          onClick={handleStopTracking}
+          disabled={!progress?.runId || progress.status !== "running"}
+        >
+          停止跟踪
+        </button>
+      </div>
+
       <div className={styles.opsSummaryGrid}>
         {runSummaryItems.map((item) => (
           <div key={item.label} className={styles.opsSummaryItem}>
@@ -255,7 +356,21 @@ export function RunMatchControls({
       {progress ? (
         <div className={styles.opsStatusCard} aria-label="match run progress">
           <div className={styles.opsStatusRow}>
-            <strong>{progress.status === "running" ? "实时进度" : progress.status === "failed" ? "运行失败" : "运行完成"}</strong>
+            <strong>
+              {state === "paused"
+                ? "已暂停跟踪"
+                : state === "stopped"
+                  ? "已停止跟踪"
+                  : progress.status === "running"
+                    ? "实时进度"
+                    : progress.status === "failed"
+                      ? "运行失败"
+                      : progress.status === "discarded"
+                        ? "该 run 已废弃"
+                        : progress.status === "scheduled"
+                          ? "等待重新生成"
+                          : "运行完成"}
+            </strong>
             <span className={styles.opsMetaLine}>
               {progress.currentMapOrder ? `M${progress.currentMapOrder}` : "--"} / {progress.currentRoundNumber ? `R${progress.currentRoundNumber}` : "--"}
             </span>
@@ -294,12 +409,15 @@ export function RunMatchControls({
                       <td>{formatTaskType(call.taskType)}</td>
                       <td>{formatLlmActor(call)}</td>
                       <td>{call.driverModelId}</td>
-                      <td>{formatLlmStatus(call.status)}</td>
+                      <td>{call.repaired ? `${formatLlmStatus(call.status)} / 已修复` : formatLlmStatus(call.status)}</td>
                       <td>{typeof call.latencyMs === "number" ? `${call.latencyMs} ms` : "--"}</td>
                       <td>
                         {typeof call.inputTokens === "number" || typeof call.outputTokens === "number"
                           ? `${call.inputTokens ?? 0}/${call.outputTokens ?? 0}`
                           : call.error ?? "--"}
+                        {call.rawTextPreview ? <pre className={styles.opsCallPreview}>{call.rawTextPreview}</pre> : null}
+                        {call.parseCandidatePreview ? <pre className={styles.opsCallPreview}>{call.parseCandidatePreview}</pre> : null}
+                        {call.repairRawTextPreview ? <pre className={styles.opsCallPreview}>{call.repairRawTextPreview}</pre> : null}
                       </td>
                     </tr>
                   ))}
@@ -312,36 +430,151 @@ export function RunMatchControls({
         </div>
       </details>
 
+      <details className={styles.opsDisclosure}>
+        <summary>最近运行实例</summary>
+        <div className={styles.opsDisclosureBody}>
+          {history.length > 0 ? (
+            <div className={styles.opsHistoryList}>
+              {history.map((item) => (
+                <button key={item.runId} type="button" className={styles.opsHistoryButton} onClick={() => window.location.assign(buildReplayUrl(item.runId))}>
+                  <strong>{shortRunId(item.runId)}</strong>
+                  <span>{item.mapLabel}</span>
+                  <span className={styles.opsHistoryMeta}>
+                    {formatRunStatusLabel(item.status)} · 已提交 {item.completedRounds} 局 · 比分 {item.scoreLabel}
+                  </span>
+                  {item.latestError ? <span className={styles.opsErrorText}>{item.latestError}</span> : null}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <span className={styles.opsMetaLine}>当前还没有可浏览的历史 run。</span>
+          )}
+        </div>
+      </details>
+
       <span className={state === "failed" ? styles.opsErrorText : styles.opsHelperText}>{helperText}</span>
     </section>
   );
 
   async function handleRun(mode: RunMode) {
+    setTrackingPaused(false);
+    setTrackingStopped(false);
     setState("running");
-    setProgress(null);
     setRequestedMode(mode);
     setMessage(runStartMessage(mode));
     try {
-      const response = await fetch(`/api/matches/${encodeURIComponent(matchId || phase18MatchId)}/run`, {
+      const response = await fetch(`/api/matches/${encodeURIComponent(matchId || phase18FixtureId)}/run`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           mode,
+          runId: progress?.runId ?? initialProgress?.runId ?? null,
           confirmReset: true,
           ...(adminToken.trim() ? { adminToken: adminToken.trim() } : {})
         })
       });
-      const payload = (await response.json().catch(() => ({}))) as { error?: string; summary?: string; progress?: WebRunProgress };
+      const payload = (await response.json().catch(() => ({}))) as RunRoutePayload;
       if (!response.ok) {
         throw new Error(payload.error ?? `Run failed with HTTP ${response.status}`);
       }
 
-      setProgress(payload.progress ?? null);
+      if (payload.replayUrl) {
+        window.history.replaceState(null, "", payload.replayUrl);
+      }
+      if (payload.progress) {
+        setProgress(payload.progress);
+        setHistory(payload.progress.recentRuns);
+      } else {
+        setProgress(null);
+      }
       setMessage(payload.summary ?? "本地运行已启动。");
     } catch (error) {
       setState("failed");
       setMessage(error instanceof Error ? error.message : "未知运行错误。");
     }
+  }
+
+  async function handleReset(resetScope: ResetScope) {
+    setTrackingPaused(false);
+    setTrackingStopped(false);
+    setMessage(
+      resetScope === "round"
+        ? "正在重置本回合..."
+        : resetScope === "map"
+          ? "正在重置当前地图..."
+          : "正在重置整场 BO3..."
+    );
+
+    try {
+      const response = await fetch(`/api/matches/${encodeURIComponent(matchId || phase18FixtureId)}/run`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          action: "reset",
+          resetScope,
+          runId: progress?.runId ?? null,
+          confirmReset: true,
+          ...(adminToken.trim() ? { adminToken: adminToken.trim() } : {})
+        })
+      });
+      const payload = (await response.json().catch(() => ({}))) as RunRoutePayload;
+      if (!response.ok) {
+        throw new Error(payload.error ?? `Reset failed with HTTP ${response.status}`);
+      }
+
+      setRequestedMode(null);
+      setState("idle");
+      setMessage(payload.summary ?? "已完成重置。");
+      if (payload.progress) {
+        setProgress(payload.progress);
+        setHistory(payload.progress.recentRuns);
+      } else {
+        setProgress(null);
+      }
+      if (resetScope === "map") {
+        onResetCurrentMapView?.();
+      } else if (resetScope === "match") {
+        onResetMatchView?.();
+      }
+
+      window.setTimeout(() => {
+        window.location.assign(payload.replayUrl ?? buildFixtureUrl(matchId));
+      }, 200);
+    } catch (error) {
+      setState("failed");
+      setMessage(error instanceof Error ? error.message : "重置失败。");
+    }
+  }
+
+  function handleToggleTracking() {
+    if (!progress?.runId) {
+      return;
+    }
+
+    if (state === "paused" || state === "stopped") {
+      setTrackingPaused(false);
+      setTrackingStopped(false);
+      setState("running");
+      setMessage("继续跟踪当前生成进度。");
+      return;
+    }
+
+    if (state === "running") {
+      setTrackingPaused(true);
+      setState("paused");
+      setMessage("已暂停本地跟踪；后端如仍在运行，可稍后恢复。");
+    }
+  }
+
+  function handleStopTracking() {
+    if (!progress?.runId || progress.status !== "running") {
+      return;
+    }
+
+    setTrackingPaused(false);
+    setTrackingStopped(true);
+    setState("stopped");
+    setMessage("已停止本地跟踪当前生成；如后端仍在执行，请等待它自然结束。");
   }
 }
 
@@ -373,6 +606,15 @@ export function buildInitialRunMatchUiState(initialProgress: WebRunProgress | nu
     };
   }
 
+  if (initialProgress.status === "scheduled" || initialProgress.status === "discarded") {
+    return {
+      state: "idle",
+      requestedMode: isPhase18Mode(initialProgress.mode) ? initialProgress.mode : null,
+      progress: initialProgress,
+      message: initialProgress.status === "discarded" ? "当前 run 已废弃；下一次生成会创建新的 run。" : "当前 run 已重置，等待下一次生成。"
+    };
+  }
+
   return {
     state: "success",
     requestedMode: isPhase18Mode(initialProgress.mode) ? initialProgress.mode : null,
@@ -381,7 +623,14 @@ export function buildInitialRunMatchUiState(initialProgress: WebRunProgress | nu
   };
 }
 
-function buildReplayUrl(matchId: string): string {
+function buildReplayUrl(runId: string): string {
+  return `/?runId=${encodeURIComponent(runId)}`;
+}
+
+function buildFixtureUrl(matchId: string): string {
+  if (matchId === phase18FixtureId) {
+    return "/";
+  }
   return `/?matchId=${encodeURIComponent(matchId)}`;
 }
 
@@ -447,12 +696,16 @@ function formatLlmStatus(status: WebRunLlmCallProgress["status"]): string {
   }
 }
 
-function formatRunStatusLabel(status: WebRunProgress["status"]): string {
+function formatRunStatusLabel(status: RunStatus): string {
   switch (status) {
+    case "scheduled":
+      return "待生成";
     case "running":
       return "生成中";
     case "failed":
       return "失败";
+    case "discarded":
+      return "已废弃";
     case "completed":
     default:
       return "完成";
@@ -463,6 +716,10 @@ function formatLocalStateLabel(state: RunState): string {
   switch (state) {
     case "running":
       return "生成中";
+    case "paused":
+      return "已暂停";
+    case "stopped":
+      return "已停止跟踪";
     case "failed":
       return "失败";
     case "success":
@@ -478,11 +735,15 @@ function formatDisabledReason(reason: PublicWebRunnerPolicy["disabledReason"]): 
     case "web_runner_production_disabled":
       return "生产模式下已禁用";
     case "web_runner_production_requires_token":
-      return "生产模式下必须提供令牌";
+      return "生产模式下必须提供口令";
     case "web_runner_remote_requires_token":
-      return "远程访问必须提供令牌";
+      return "远程访问必须提供口令";
     case "web_runner_disabled":
     default:
       return "请设置 AGENT_MAJOR_WEB_RUNNER_ENABLED=true";
   }
+}
+
+function shortRunId(runId: string): string {
+  return runId.length > 24 ? runId.slice(-24) : runId;
 }

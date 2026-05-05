@@ -88,6 +88,13 @@ function matchReplayFixture(): MatchReplay {
       displayName: "Team A",
       shortName: "A",
       seed: 1,
+      teamProfileId: "strategy_team_a",
+      source: {
+        headCoachProfile: {
+          displayName: "Coach A",
+          dutySummary: "暂停修正 / 半场整理 / 赛后复盘"
+        }
+      },
       createdAt: "2026-05-01T00:00:00.000Z"
     },
     teamB: {
@@ -96,6 +103,13 @@ function matchReplayFixture(): MatchReplay {
       displayName: "Team B",
       shortName: "B",
       seed: 2,
+      teamProfileId: "strategy_team_b",
+      source: {
+        headCoachProfile: {
+          displayName: "Coach B",
+          dutySummary: "暂停修正 / 半场整理 / 赛后复盘"
+        }
+      },
       createdAt: "2026-05-01T00:00:00.000Z"
     }
   };
@@ -106,6 +120,7 @@ function matchReplayFixture(): MatchReplay {
       displayName: "apEX",
       role: "igl",
       secondaryRoles: [],
+      roleResponsibilities: ["节奏选择 / 进攻轴切换 / 压力调度"],
       aliases: ["captain"],
       materialRef: {
         entityId: "player_vitallmty_apex",

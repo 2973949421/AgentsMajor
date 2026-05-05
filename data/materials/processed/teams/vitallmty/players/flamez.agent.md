@@ -1,21 +1,23 @@
 # flameZ
 
 ## Snapshot
-- 队伍：VitaLLMty
-- 类型：player
-- 角色：entry
-- 当前状态：active
-- 公开 ID：flameZ
-- 法定姓名：待回填
+- Team: VitaLLMty
+- Type: player
+- Role: entry
+- Status: active
+- Public ID: flameZ
+- Legal Name: TBD
 
 ## CS Role Profile
-- 原始位置：Entry / aggressive rifler
-- 主位置：entry
-- 次级位置：rifler
-- 可信度：高
-- Agent Major 职责：首轮出击 / 激进创意 / 打开局面；通用火力 / 回合执行 / 补枪衔接
-- 备注：常见定位为突破/高主动性步枪手。
-- 来源：raw/teams/agent_major_player_roles.md
+- Raw Position: Entry / aggressive rifler
+- Primary Role: entry
+- Secondary Roles: rifler
+- Confidence: 高
+- Agent Major Responsibilities:
+- Fast probing / first-wave pressure / opening creation
+- Use maximum initiative to test scenario strength and opponent imbalance
+- Notes: 常见定位为突破/高主动性步枪手。
+- Source: raw/teams/agent_major_player_roles.md
 
 ## Alias
 - flameZ
@@ -36,17 +38,12 @@
 - entry-burst
 - confidence-peek
 
-## Broadcast / Barrage / News
-- 解说标签：machine_force_buy_shock
-- 弹幕标签：player_targeting, research
-- 新闻标签：research-chaos
-- 跨圈标签：cabinet_to_live_room_chaos
-
 ## Future Interfaces
-- agent 人格接口：research-chaos, frontline-instigator, heat-checker, chaos-trigger, research-prototype
-- 模型绑定接口：llm_role_template_entry / driver_minimax_m2_5
-- 模型运行状态：v1 asset preallocation only，runtime_enabled=false
-- 产品运营接口：研发样本, 火÷, 影响研发, research-chaos
+- agent narrative axes: research-chaos, frontline-instigator, heat-checker, chaos-trigger, research-prototype
+- model binding: llm_role_template_entry / driver_minimax_m2_5
+- prompt bias tags: frontline-instigator, first-contact, space-creator, high-variance, entry-burst, confidence-peek, heat-checker, chaos-trigger, research-prototype
+- ops notes:
+- Emphasize aggressive probing, fastest scenario testing, and space creation.
 
 ## Canon Notes
-- 当前以公开比赛 ID 为主，等待后续补 legal name 与更细人物画像。
+- none

@@ -28,6 +28,7 @@ export const phase17CanonIds = {
 
 export const phase18CanonIds = {
   tournamentId: "agent_major_phase18_llm_pilot",
+  fixtureId: "phase18_match_falcon_7b_vs_vitallmty",
   matchId: "phase18_match_falcon_7b_vs_vitallmty",
   teamASlug: "falcon-7b",
   teamBSlug: "vitallmty",
@@ -35,6 +36,7 @@ export const phase18CanonIds = {
 } as const;
 
 export const phase17AllowedMapIds = [...phase17CanonIds.selectedMapIds] as const;
+export const phase20PrePilotMapIds = ["DUST2"] as const;
 
 export interface ProcessedMaterials {
   projectRoot: string;
@@ -49,10 +51,62 @@ export interface ProcessedMaterials {
   };
   teams: ProcessedMaterialTeam[];
   teamsBySlug: Map<string, ProcessedMaterialTeam>;
+  maps: ProcessedMaterialMap[];
+  mapsBySlug: Map<string, ProcessedMaterialMap>;
   entitiesById: Map<string, ProcessedMaterialEntity>;
   rolesByEntityId: Map<string, RoleIndexEntry>;
   llmBindingsByEntityId: Map<string, LlmBindingIndexEntry>;
   aliasesByTargetId: Map<string, string[]>;
+}
+
+export interface ProcessedMaterialMap {
+  slug: string;
+  proposition?: ProcessedMapProposition;
+  judgeRubric?: ProcessedMapJudgeRubric;
+}
+
+export interface ProcessedMapRoundTheme {
+  round: string;
+  theme: string;
+  judgment: string;
+}
+
+export interface ProcessedMapProposition {
+  assetId: string;
+  mapSlug: string;
+  displayName: string;
+  phaseScope: string;
+  mapTheme: string;
+  coreQuestion: string;
+  attackFocus: string[];
+  defenseFocus: string[];
+  regulationRoundThemes: ProcessedMapRoundTheme[];
+  overtimeRoundThemes: ProcessedMapRoundTheme[];
+  coachWindows: string[];
+  frontendMinimumFields: string[];
+  displayZoneNames: Record<string, string>;
+  jsonPath: string;
+  raw: Record<string, unknown>;
+}
+
+export interface ProcessedJudgeAxis {
+  key: string;
+  question: string;
+}
+
+export interface ProcessedMapJudgeRubric {
+  assetId: string;
+  mapSlug: string;
+  phaseScope: string;
+  coreJudgmentAxis: string;
+  coreQuestion: string;
+  axes: ProcessedJudgeAxis[];
+  roundJudgmentFlow: string[];
+  reasonMustCover: string[];
+  biasGuardrails: string[];
+  coachConsumptionWindows: string[];
+  jsonPath: string;
+  raw: Record<string, unknown>;
 }
 
 export interface ProcessedMaterialTeam {
@@ -64,8 +118,33 @@ export interface ProcessedMaterialTeam {
   team: Record<string, unknown>;
   roster: MaterialRoster;
   hooks: Record<string, unknown>;
+  strategy?: ProcessedMaterialStrategy;
   players: ProcessedMaterialEntity[];
   coachAssets: ProcessedMaterialEntity[];
+}
+
+export interface ProcessedMaterialStrategy {
+  strategyId: string;
+  teamId: string;
+  teamSlug: string;
+  displayName: string;
+  version: string;
+  identitySummary: string;
+  opportunityThesis: string;
+  productThesis: string;
+  engineeringThesis: string;
+  businessThesis: string;
+  operationsThesis: string;
+  scalingThesis: string;
+  moatThesis: string;
+  preferredWinConditions: string[];
+  failureModes: string[];
+  coachOperatingPrinciples: string[];
+  playerOperatingPrinciples: string[];
+  frontendSummary: string;
+  llmStrategyTags: string[];
+  jsonPath: string;
+  raw: Record<string, unknown>;
 }
 
 export interface ProcessedMaterialEntity {
@@ -121,6 +200,8 @@ export interface Phase18ShowcaseSeedInput {
   repositories: Repositories;
   driverModel: DriverModel;
   projectRoot?: string;
+  selectedMapIds?: string[];
+  runtimeMatchId?: string;
 }
 
 export interface Phase18ShowcaseSeedResult {
@@ -137,6 +218,10 @@ export interface Phase17ShowcaseSelection {
   teamASlug: string;
   teamBSlug: string;
   selectedMapIds: string[];
+}
+
+export function buildPhase18RuntimeMatchId(runId: string, fixtureId = phase18CanonIds.fixtureId): string {
+  return `${fixtureId}__run_${runId}`;
 }
 
 interface MaterialRoster {
@@ -156,6 +241,7 @@ interface TeamIndexEntry {
   team_json_path: string;
   roster_json_path: string;
   hooks_json_path: string;
+  strategy_json_path?: string;
 }
 
 interface RoleIndexEntry {
@@ -265,6 +351,7 @@ export function loadProcessedMaterials(projectRoot = process.cwd()): ProcessedMa
   const llmBindingEntries = readArray<LlmBindingIndexEntry>(llmBindingsIndex.entities, "llm-bindings.index.json entities");
   const aliasEntries = readArray<Record<string, unknown>>(aliasesIndex.entries, "aliases.index.json entries");
   const teamDirs = readdirSync(teamsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  const maps = readProcessedMaps(materialsRoot);
 
   assert(teamDirs.length === 16, `Expected 16 processed team directories, found ${teamDirs.length}.`);
   assert(teamRefs.length === 16, `Expected 16 teams in teams.index.json, found ${teamRefs.length}.`);
@@ -315,6 +402,8 @@ export function loadProcessedMaterials(projectRoot = process.cwd()): ProcessedMa
     const team = readJsonObject(materialFilePath(materialsRoot, teamRef.team_json_path));
     const roster = readRoster(materialFilePath(materialsRoot, teamRef.roster_json_path), teamRef.team_slug);
     const hooks = readJsonObject(materialFilePath(materialsRoot, teamRef.hooks_json_path));
+    const processedPaths = asOptionalRecord(team.processed_paths);
+    const strategyPath = readOptionalString(teamRef.strategy_json_path) ?? readOptionalString(processedPaths?.strategy);
     const teamId = readString(team.team_id, `${teamRef.team_slug}.team_id`);
     const displayName = readString(team.agent_team_name, `${teamRef.team_slug}.agent_team_name`);
     const teamSlug = readString(team.team_slug, `${teamRef.team_slug}.team_slug`);
@@ -325,6 +414,7 @@ export function loadProcessedMaterials(projectRoot = process.cwd()): ProcessedMa
     assert(roster.active_players.length === 5, `${teamRef.team_slug} must have exactly 5 active players.`);
 
     const teamDir = join(teamsRoot, teamRef.team_slug);
+    const strategy = strategyPath ? readStrategy(materialFilePath(materialsRoot, strategyPath), teamRef.team_slug, teamId, displayName) : undefined;
     const players = readEntityDirectory(join(teamDir, "players"), teamRef.team_slug, aliasesByTargetId, rolesByEntityId, llmBindingsByEntityId, llmAssets);
     const coachAssets = readEntityDirectory(join(teamDir, "coach"), teamRef.team_slug, aliasesByTargetId, rolesByEntityId, llmBindingsByEntityId, llmAssets);
     assert(players.length === 5, `${teamRef.team_slug} must have exactly 5 player entities.`);
@@ -350,6 +440,7 @@ export function loadProcessedMaterials(projectRoot = process.cwd()): ProcessedMa
       team,
       roster,
       hooks,
+      ...(strategy ? { strategy } : {}),
       players,
       coachAssets
     };
@@ -373,6 +464,7 @@ export function loadProcessedMaterials(projectRoot = process.cwd()): ProcessedMa
   }
 
   const teamsBySlug = new Map(teams.map((team) => [team.slug, team]));
+  const mapsBySlug = new Map(maps.map((map) => [map.slug, map]));
   return {
     projectRoot: root,
     materialsRoot,
@@ -386,6 +478,8 @@ export function loadProcessedMaterials(projectRoot = process.cwd()): ProcessedMa
     },
     teams,
     teamsBySlug,
+    maps,
+    mapsBySlug,
     entitiesById,
     rolesByEntityId,
     llmBindingsByEntityId,
@@ -407,24 +501,33 @@ export function buildRuntimeTeamSeed(
   const runtimeTeamIdPrefix = options.runtimeTeamIdPrefix ?? "team_phase17";
   const runtimeAgentIdPrefix = options.runtimeAgentIdPrefix ?? "agent_phase17";
   const teamId = `${runtimeTeamIdPrefix}_${slugId(teamSlug)}`;
+  const activePlayerEntities = materialTeam.roster.active_players.map((entityId) => requiredEntity(materials, entityId));
+  const coachEntities =
+    options.includeCoach === false
+      ? []
+      : materialTeam.roster.head_coach
+        ? [requiredEntity(materials, materialTeam.roster.head_coach)]
+        : [];
+  const headCoachAsset = materialTeam.roster.head_coach ? requiredEntity(materials, materialTeam.roster.head_coach) : materialTeam.coachAssets[0];
   const team: Team = {
     id: teamId,
     tournamentId,
     displayName: materialTeam.displayName,
     shortName: materialTeam.shortName,
     seed: materialTeam.seed,
+    ...(materialTeam.strategy ? { teamProfileId: materialTeam.strategy.strategyId } : {}),
     source: {
       phase: "1.7-materials-runtime",
       materialTeamId: materialTeam.teamId,
       materialTeamSlug: materialTeam.slug,
       rosterVersion: materialTeam.roster.roster_version,
-      headCoachImported: typeof materialTeam.roster.head_coach === "string"
+      headCoachImported: coachEntities.length > 0,
+      ...(materialTeam.strategy ? { materialStrategy: buildMaterialStrategySource(materialTeam.strategy) } : {}),
+      ...(headCoachAsset ? { headCoachProfile: buildHeadCoachSource(headCoachAsset) } : {})
     },
     createdAt
   };
 
-  const activePlayerEntities = materialTeam.roster.active_players.map((entityId) => requiredEntity(materials, entityId));
-  const coachEntities = options.includeCoach === false ? [] : materialTeam.roster.head_coach ? [requiredEntity(materials, materialTeam.roster.head_coach)] : [];
   const runtimeEntities = [...activePlayerEntities, ...coachEntities];
   const agents = runtimeEntities.map((entity) =>
     buildAgentFromMaterialEntity({
@@ -498,6 +601,7 @@ export async function seedPhase17ShowcaseMatch(input: Phase17ShowcaseSeedInput):
 
 export async function seedPhase18ShowcaseMatch(input: Phase18ShowcaseSeedInput): Promise<Phase18ShowcaseSeedResult> {
   const materials = loadProcessedMaterials(input.projectRoot);
+  const selectedMapIds = normalizePhase18SelectedMapIds(input.selectedMapIds);
   const createdAt = defaultCreatedAt;
   const tournament: Tournament = {
     id: phase18CanonIds.tournamentId,
@@ -524,7 +628,7 @@ export async function seedPhase18ShowcaseMatch(input: Phase18ShowcaseSeedInput):
     includeCoach: false
   });
   const match: Match = {
-    id: phase18CanonIds.matchId,
+    id: input.runtimeMatchId ?? phase18CanonIds.matchId,
     tournamentId: tournament.id,
     roundName: "round_of_16",
     teamAId: teamASeed.team.id,
@@ -553,7 +657,7 @@ export async function seedPhase18ShowcaseMatch(input: Phase18ShowcaseSeedInput):
     teams: [teamASeed.team, teamBSeed.team],
     agents: [...teamASeed.agents, ...teamBSeed.agents],
     driverModel: input.driverModel,
-    selectedMapIds: [...phase18CanonIds.selectedMapIds]
+    selectedMapIds
   };
 }
 
@@ -696,8 +800,7 @@ function buildAgentFromMaterialEntity(input: {
 }
 
 function buildBaseProfile(entity: ProcessedMaterialEntity): AgentBaseProfile {
-  const futureProfile = asOptionalRecord(entity.raw.future_agent_profile);
-  const personaSummary = readOptionalString(futureProfile?.persona_summary) ?? `${entity.displayName} canonical Phase 1.7 materials persona.`;
+  const personaSummary = readPersonaSummary(entity);
   const responsibilities = entity.roleProfile.agentMajorResponsibilities.join(" ");
   return {
     personalitySummary: personaSummary,
@@ -709,6 +812,28 @@ function buildBaseProfile(entity: ProcessedMaterialEntity): AgentBaseProfile {
       ...entity.roleProfile.positionTags,
       entity.role
     ])
+  };
+}
+
+function buildMaterialStrategySource(strategy: ProcessedMaterialStrategy): Record<string, unknown> {
+  return {
+    strategyId: strategy.strategyId,
+    version: strategy.version,
+    identitySummary: strategy.identitySummary,
+    frontendSummary: strategy.frontendSummary,
+    opportunityThesis: strategy.opportunityThesis,
+    preferredWinConditions: strategy.preferredWinConditions,
+    failureModes: strategy.failureModes,
+    llmStrategyTags: strategy.llmStrategyTags
+  };
+}
+
+function buildHeadCoachSource(entity: ProcessedMaterialEntity): Record<string, unknown> {
+  return {
+    entityId: entity.entityId,
+    displayName: entity.displayName,
+    dutySummary: entity.roleProfile.agentMajorResponsibilities.join(" / "),
+    personaSummary: readPersonaSummary(entity)
   };
 }
 
@@ -727,6 +852,63 @@ function buildMaterialRef(entity: ProcessedMaterialEntity): AgentMaterialRef {
   };
 }
 
+function readStrategy(filePath: string, teamSlug: string, teamId: string, displayName: string): ProcessedMaterialStrategy {
+  const raw = readJsonObject(filePath);
+  const strategyId = readString(raw.strategy_id, `${teamSlug}.strategy.strategy_id`);
+  const strategyTeamId = readString(raw.team_id, `${teamSlug}.strategy.team_id`);
+  const strategyTeamSlug = readString(raw.team_slug, `${teamSlug}.strategy.team_slug`);
+  const strategyDisplayName = readString(raw.display_name, `${teamSlug}.strategy.display_name`);
+  const version = readString(raw.version, `${teamSlug}.strategy.version`);
+  const identitySummary = readString(raw.identity_summary, `${teamSlug}.strategy.identity_summary`);
+  const opportunityThesis = readString(raw.opportunity_thesis, `${teamSlug}.strategy.opportunity_thesis`);
+  const productThesis = readString(raw.product_thesis, `${teamSlug}.strategy.product_thesis`);
+  const engineeringThesis = readString(raw.engineering_thesis, `${teamSlug}.strategy.engineering_thesis`);
+  const businessThesis = readString(raw.business_thesis, `${teamSlug}.strategy.business_thesis`);
+  const operationsThesis = readString(raw.operations_thesis, `${teamSlug}.strategy.operations_thesis`);
+  const scalingThesis = readString(raw.scaling_thesis, `${teamSlug}.strategy.scaling_thesis`);
+  const moatThesis = readString(raw.moat_thesis, `${teamSlug}.strategy.moat_thesis`);
+  const preferredWinConditions = readStringArray(raw.preferred_win_conditions, `${teamSlug}.strategy.preferred_win_conditions`);
+  const failureModes = readStringArray(raw.failure_modes, `${teamSlug}.strategy.failure_modes`);
+  const coachOperatingPrinciples = readStringArray(
+    raw.coach_operating_principles,
+    `${teamSlug}.strategy.coach_operating_principles`
+  );
+  const playerOperatingPrinciples = readStringArray(
+    raw.player_operating_principles,
+    `${teamSlug}.strategy.player_operating_principles`
+  );
+  const frontendSummary = readString(raw.frontend_summary, `${teamSlug}.strategy.frontend_summary`);
+  const llmStrategyTags = readStringArray(raw.llm_strategy_tags, `${teamSlug}.strategy.llm_strategy_tags`);
+
+  assert(strategyTeamId === teamId, `${teamSlug}.strategy.team_id does not match ${teamId}.`);
+  assert(strategyTeamSlug === teamSlug, `${teamSlug}.strategy.team_slug does not match ${teamSlug}.`);
+  assert(strategyDisplayName === displayName, `${teamSlug}.strategy.display_name does not match ${displayName}.`);
+
+  return {
+    strategyId,
+    teamId: strategyTeamId,
+    teamSlug: strategyTeamSlug,
+    displayName: strategyDisplayName,
+    version,
+    identitySummary,
+    opportunityThesis,
+    productThesis,
+    engineeringThesis,
+    businessThesis,
+    operationsThesis,
+    scalingThesis,
+    moatThesis,
+    preferredWinConditions,
+    failureModes,
+    coachOperatingPrinciples,
+    playerOperatingPrinciples,
+    frontendSummary,
+    llmStrategyTags,
+    jsonPath: filePath,
+    raw
+  };
+}
+
 function readRoster(filePath: string, teamSlug: string): MaterialRoster {
   const roster = readJsonObject(filePath);
   const headCoach = roster.head_coach;
@@ -741,6 +923,11 @@ function readRoster(filePath: string, teamSlug: string): MaterialRoster {
     ...(sourceSnapshotDate ? { source_snapshot_date: sourceSnapshotDate } : {}),
     canon_notes: readStringArray(roster.canon_notes, `${teamSlug}.roster.canon_notes`)
   };
+}
+
+function readPersonaSummary(entity: ProcessedMaterialEntity): string {
+  const futureProfile = asOptionalRecord(entity.raw.future_agent_profile);
+  return readOptionalString(futureProfile?.persona_summary) ?? `${entity.displayName} canonical Phase 1.7 materials persona.`;
 }
 
 function assertTeamHooks(hooks: Record<string, unknown>, teamId: string, teamSlug: string): void {
@@ -862,6 +1049,84 @@ function readProcessedLlmAssets(projectRoot: string, materialsRoot: string, llmB
     roleTemplatesById,
     overridesById
   };
+}
+
+function readProcessedMaps(materialsRoot: string): ProcessedMaterialMap[] {
+  const mapsRoot = join(materialsRoot, "processed", "maps");
+  if (!existsSync(mapsRoot)) {
+    return [];
+  }
+
+  return readdirSync(mapsRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => {
+      const slug = entry.name.toLowerCase();
+      const mapRoot = join(mapsRoot, entry.name);
+      const propositionPath = join(mapRoot, "map-proposition.json");
+      const judgeRubricPath = join(mapRoot, "judge-rubric.json");
+      return {
+        slug,
+        ...(existsSync(propositionPath) ? { proposition: readMapProposition(propositionPath, slug) } : {}),
+        ...(existsSync(judgeRubricPath) ? { judgeRubric: readMapJudgeRubric(judgeRubricPath, slug) } : {})
+      };
+    });
+}
+
+function readMapProposition(filePath: string, expectedMapSlug: string): ProcessedMapProposition {
+  const raw = readJsonObject(filePath);
+  const mapSlug = readString(raw.map_slug, `${filePath}.map_slug`);
+  assert(mapSlug === expectedMapSlug, `${filePath}.map_slug mismatch. Expected ${expectedMapSlug}, received ${mapSlug}.`);
+  const displayZoneNames = asRecord(raw.display_zone_names, `${filePath}.display_zone_names`);
+  return {
+    assetId: readString(raw.asset_id, `${filePath}.asset_id`),
+    mapSlug,
+    displayName: readString(raw.display_name, `${filePath}.display_name`),
+    phaseScope: readString(raw.phase_scope, `${filePath}.phase_scope`),
+    mapTheme: readString(raw.map_theme, `${filePath}.map_theme`),
+    coreQuestion: readString(raw.core_question, `${filePath}.core_question`),
+    attackFocus: readStringArray(raw.attack_focus, `${filePath}.attack_focus`),
+    defenseFocus: readStringArray(raw.defense_focus, `${filePath}.defense_focus`),
+    regulationRoundThemes: readMapRoundThemes(raw.regulation_round_themes, `${filePath}.regulation_round_themes`),
+    overtimeRoundThemes: readMapRoundThemes(raw.overtime_round_themes, `${filePath}.overtime_round_themes`),
+    coachWindows: readStringArray(raw.coach_windows, `${filePath}.coach_windows`),
+    frontendMinimumFields: readStringArray(raw.frontend_minimum_fields, `${filePath}.frontend_minimum_fields`),
+    displayZoneNames: Object.fromEntries(
+      Object.entries(displayZoneNames).map(([key, value]) => [key, readString(value, `${filePath}.display_zone_names.${key}`)])
+    ),
+    jsonPath: filePath,
+    raw
+  };
+}
+
+function readMapJudgeRubric(filePath: string, expectedMapSlug: string): ProcessedMapJudgeRubric {
+  const raw = readJsonObject(filePath);
+  const mapSlug = readString(raw.map_slug, `${filePath}.map_slug`);
+  assert(mapSlug === expectedMapSlug, `${filePath}.map_slug mismatch. Expected ${expectedMapSlug}, received ${mapSlug}.`);
+  return {
+    assetId: readString(raw.asset_id, `${filePath}.asset_id`),
+    mapSlug,
+    phaseScope: readString(raw.phase_scope, `${filePath}.phase_scope`),
+    coreJudgmentAxis: readString(raw.core_judgment_axis, `${filePath}.core_judgment_axis`),
+    coreQuestion: readString(raw.core_question, `${filePath}.core_question`),
+    axes: readArray<Record<string, unknown>>(raw.axes, `${filePath}.axes`).map((axis, index) => ({
+      key: readString(axis.key, `${filePath}.axes[${index}].key`),
+      question: readString(axis.question, `${filePath}.axes[${index}].question`)
+    })),
+    roundJudgmentFlow: readStringArray(raw.round_judgment_flow, `${filePath}.round_judgment_flow`),
+    reasonMustCover: readStringArray(raw.reason_must_cover, `${filePath}.reason_must_cover`),
+    biasGuardrails: readStringArray(raw.bias_guardrails, `${filePath}.bias_guardrails`),
+    coachConsumptionWindows: readStringArray(raw.coach_consumption_windows, `${filePath}.coach_consumption_windows`),
+    jsonPath: filePath,
+    raw
+  };
+}
+
+function readMapRoundThemes(value: unknown, label: string): ProcessedMapRoundTheme[] {
+  return readArray<Record<string, unknown>>(value, label).map((theme, index) => ({
+    round: readString(theme.round, `${label}[${index}].round`),
+    theme: readString(theme.theme, `${label}[${index}].theme`),
+    judgment: readString(theme.judgment, `${label}[${index}].judgment`)
+  }));
 }
 
 function readFutureDriverBinding(entityId: string, value: unknown, llmAssets: ProcessedLlmAssets): MaterialFutureDriverBinding {
@@ -1087,6 +1352,14 @@ function normalizePhase17TeamSlug(value: string, label: string): string {
 function normalizePhase17MapId(value: string): string {
   const normalized = value.trim().toUpperCase();
   assert(normalized.length > 0, "Phase 1.7 showcase map ids must be non-empty strings.");
+  return normalized;
+}
+
+function normalizePhase18SelectedMapIds(selectedMapIds: string[] | undefined): string[] {
+  const mapIds = selectedMapIds && selectedMapIds.length > 0 ? selectedMapIds : [...phase18CanonIds.selectedMapIds];
+  const normalized = mapIds.map((mapId) => mapId.trim().toUpperCase()).filter((mapId) => mapId.length > 0);
+  assert(normalized.length > 0, "Phase 1.8 selectedMapIds must include at least one map.");
+  assert(new Set(normalized).size === normalized.length, "Phase 1.8 selectedMapIds must be unique.");
   return normalized;
 }
 
