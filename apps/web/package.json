@@ -6,7 +6,9 @@
   "scripts": {
     "build": "node scripts/clean-next.mjs && next build",
     "dev": "next dev",
+    "pretypecheck": "pnpm --filter @agent-major/shared build && pnpm --filter @agent-major/db build && pnpm --filter @agent-major/llm build && pnpm --filter @agent-major/core build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "pretest": "pnpm --filter @agent-major/shared build && pnpm --filter @agent-major/db build && pnpm --filter @agent-major/llm build && pnpm --filter @agent-major/core build",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {

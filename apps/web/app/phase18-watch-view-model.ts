@@ -1,10 +1,11 @@
-import type {
+﻿import type {
   EconomyRow,
   LiveAgentOutput,
   LiveReplayAgent,
   LiveReplayData,
   LiveReplayMap,
   LiveReplayRound,
+  LiveRoundKillLedgerEntry,
   LiveRoundFrame,
   LiveTeamPlan,
   ScorePair
@@ -32,6 +33,7 @@ export interface OverlayRosterViewModel {
   shortName: string;
   sideLabel: string;
   score: number;
+  timeoutsLabel?: string;
   coachLabel?: string;
   proposalLabel?: string;
   players: OverlayRosterPlayerViewModel[];
@@ -42,11 +44,11 @@ export interface OverlayRosterPlayerViewModel {
   id: string;
   displayName: string;
   roleLabel: string;
-  metaLabel: string;
-  dutyLabel: string;
-  tokenBankLabel: string;
-  buyLabel: string;
-  statusLabel: string;
+  kdaLabel: string;
+  roundKillLabel: string;
+  hpLabel: string;
+  totalEconomyLabel: string;
+  roundSpendLabel: string;
   highlight: "default" | "impact" | "target" | "mvp";
 }
 
@@ -57,6 +59,30 @@ export interface BottomTickerViewModel {
   latestKillValue: string;
   latestHighlightLabel: string;
   latestHighlightValue: string;
+  roundOutcome: RoundOutcomeViewModel | null;
+}
+
+export type RoundWinMethod =
+  | "attack_preplant_elimination"
+  | "attack_postplant_elimination"
+  | "attack_bomb_explosion"
+  | "defense_preplant_elimination"
+  | "defense_defuse"
+  | "defense_timeout_no_plant"
+  | "unknown";
+
+export type RoundCasualtyDensity = "low" | "medium" | "high" | "extreme";
+
+export interface RoundOutcomeViewModel {
+  winMethod: RoundWinMethod;
+  winMethodLabel: string;
+  winMethodDetail: string;
+  casualtyDensity: RoundCasualtyDensity;
+  casualtyDensityLabel: string;
+  combatShapeLabel: string;
+  tradeIntensityLabel: string;
+  killCountLabel: string;
+  killCount: number;
 }
 
 export interface ReplayStageState {
@@ -77,10 +103,39 @@ export interface OpsDockViewModel {
 export interface RoundEvidenceViewModel {
   roundLabel: string;
   factChainLabel: string;
+  roundOutcome: RoundOutcomeViewModel | null;
+  coachTimeoutCorrection: CoachTimeoutEvidenceViewModel | null;
   teamPlans: TeamPlanEvidenceViewModel[];
   playerActions: PlayerActionEvidenceViewModel[];
   judge: JudgeEvidenceViewModel | null;
   emptyMessage?: string;
+}
+
+export interface CoachTimeoutEvidenceViewModel {
+  teamId: string;
+  teamName: string;
+  triggerReason: string;
+  triggerReasonRaw: string;
+  diagnosedFailure: string;
+  diagnosedFailureRaw: string;
+  nextRoundObjective: string;
+  nextRoundObjectiveRaw: string;
+  ownCoreToHold: string;
+  ownCoreToHoldRaw: string;
+  opponentGapToHit: string;
+  opponentGapToHitRaw: string;
+  zonePriorityShift: string;
+  zonePriorityShiftRaw: string;
+  teamDirective: string;
+  teamDirectiveRaw: string;
+  confidenceLabel: string;
+  expiresAfterRoundLabel: string;
+  playerAdjustments: Array<{
+    agentId: string;
+    displayName: string;
+    adjustment: string;
+    adjustmentRaw: string;
+  }>;
 }
 
 export interface TeamPlanEvidenceViewModel {
@@ -154,13 +209,55 @@ const ROLE_LABELS: Record<string, string> = {
   trader: "Trader"
 };
 
-const BUY_LABELS: Record<string, string> = {
-  awp_glass: "大狙轻甲",
-  force_call: "强起",
-  rifle_full: "长枪满配",
-  rifle_half: "半甲长枪",
-  support_half: "半甲辅助",
-  support_kit: "辅助套装"
+const WIN_METHOD_META: Record<
+  RoundWinMethod,
+  { label: string; detail: string; combatShapeLabel: string }
+> = {
+  attack_preplant_elimination: {
+    label: "攻方下包前清场胜",
+    detail: "攻方在下包前完成清场，直接拿到回合控制权。",
+    combatShapeLabel: "前包清场"
+  },
+  attack_postplant_elimination: {
+    label: "攻方下包后清场胜",
+    detail: "攻方先完成下包，再通过收尾清场锁定回合。",
+    combatShapeLabel: "下包后收尾"
+  },
+  attack_bomb_explosion: {
+    label: "攻方下包爆炸胜",
+    detail: "攻方完成下包，并守到炸弹爆炸。",
+    combatShapeLabel: "下包守爆"
+  },
+  defense_preplant_elimination: {
+    label: "守方下包前清场胜",
+    detail: "守方在对手下包前完成清场，直接守住回合。",
+    combatShapeLabel: "前包清场"
+  },
+  defense_defuse: {
+    label: "守方拆包胜",
+    detail: "守方在炸弹生效前完成拆包，完成点位回收。",
+    combatShapeLabel: "拆包拉扯"
+  },
+  defense_timeout_no_plant: {
+    label: "守方超时未下包胜",
+    detail: "守方通过拖时和控图，让攻方没能完成下包。",
+    combatShapeLabel: "拖时控图"
+  },
+  unknown: {
+    label: "胜法待定",
+    detail: "当前回合暂无法从事实链稳定推导胜法。",
+    combatShapeLabel: "待判定"
+  }
+};
+
+const CASUALTY_DENSITY_META: Record<
+  RoundCasualtyDensity,
+  { label: string; tradeIntensityLabel: string }
+> = {
+  low: { label: "低战损", tradeIntensityLabel: "低换血" },
+  medium: { label: "中战损", tradeIntensityLabel: "多轮补枪" },
+  high: { label: "高战损", tradeIntensityLabel: "强对抗" },
+  extreme: { label: "极高战损", tradeIntensityLabel: "极限换血" }
 };
 
 export function buildReplayStageState(input: {
@@ -260,10 +357,12 @@ export function buildOverlayRosterViewModel(input: {
   const team = input.replay?.teams[input.teamKey] ?? FALLBACK_TEAMS[input.teamKey];
   const currentScore = input.frame?.currentScore ?? input.currentRound?.roundReport.scoreBeforeRound ?? { teamA: 0, teamB: 0 };
   const score = input.teamKey === "teamA" ? currentScore.teamA : currentScore.teamB;
+  const timeoutsRemaining = input.selectedMap?.timeoutsRemainingByTeam[team.id];
   const coachLabel = buildCoachLabel(team);
   const proposalLabel = buildProposalLabel(team);
   const players = buildOverlayPlayers({
     replay: input.replay,
+    selectedMap: input.selectedMap,
     currentRound: input.currentRound,
     frame: input.frame,
     teamId: team.id
@@ -275,6 +374,7 @@ export function buildOverlayRosterViewModel(input: {
     shortName: team.shortName,
     sideLabel: readSideLabel(input.currentRound, team.id),
     score,
+    ...(typeof timeoutsRemaining === "number" ? { timeoutsLabel: `战术暂停 ${timeoutsRemaining}/2` } : {}),
     ...(coachLabel ? { coachLabel } : {}),
     ...(proposalLabel ? { proposalLabel } : {}),
     players,
@@ -284,26 +384,70 @@ export function buildOverlayRosterViewModel(input: {
 
 export function buildBottomTickerViewModel(input: {
   replay: LiveReplayData | null;
+  currentRound: LiveReplayRound | null;
   frame: LiveRoundFrame | null;
   stageState: ReplayStageState;
 }): BottomTickerViewModel {
-  const latestKill = input.frame?.killFeed.at(-1);
+  const latestKill = input.frame?.killLedger.at(-1);
   const supportRate = input.frame?.supportRate;
   const highlightLabel = input.frame?.highlightTags.length
     ? `${input.frame.highlightTags.join(" / ")}${input.frame.highlightMvpName ? ` / MVP ${input.frame.highlightMvpName}` : ""}`
     : supportRate
       ? `${input.replay?.teams.teamA.shortName ?? "F7B"} ${supportRate.teamA}% / ${input.replay?.teams.teamB.shortName ?? "VIT"} ${supportRate.teamB}%`
       : "等待高光与支持率";
+  const roundOutcome = buildRoundOutcomeViewModel({
+    currentRound: input.currentRound,
+    frame: input.frame
+  });
 
   return {
     briefLabel: "局势摘要",
     briefValue: input.frame?.roundSummary ?? input.frame?.casterLine ?? input.stageState.description,
     latestKillLabel: "最新击杀",
     latestKillValue: latestKill
-      ? `${latestKill.actorName ?? latestKill.actorAgentId ?? "未知"} -> ${latestKill.targetName ?? latestKill.targetAgentId ?? "未知"}`
+      ? latestKill.actorName && latestKill.targetName
+        ? `${latestKill.actorName} -> ${latestKill.targetName}`
+        : "击杀数据缺失"
       : "当前切片还没有击杀事件",
     latestHighlightLabel: "高光焦点",
-    latestHighlightValue: highlightLabel
+    latestHighlightValue: highlightLabel,
+    roundOutcome
+  };
+}
+
+export function buildRoundOutcomeViewModel(input: {
+  currentRound: LiveReplayRound | null;
+  frame: LiveRoundFrame | null;
+}): RoundOutcomeViewModel | null {
+  if (!input.currentRound) {
+    return null;
+  }
+
+  const roundReport = input.currentRound.roundReport;
+  const killCount = input.frame?.killLedger.length ?? roundReport.killLedger?.length ?? 0;
+  const casualtyDensity = deriveCasualtyDensity(killCount);
+  const attackTeamId = input.currentRound.tacticalRound?.sideAssignment.attackingTeamId ?? null;
+  const isAttackWin = attackTeamId ? roundReport.winnerTeamId === attackTeamId : null;
+  const tacticalResult = input.currentRound.tacticalRound?.collision.result ?? null;
+  const winMethod = deriveWinMethod({
+    isAttackWin,
+    killCount,
+    tacticalResult,
+    margin: roundReport.judgeResult.margin
+  });
+  const winMethodMeta = WIN_METHOD_META[winMethod];
+  const casualtyMeta = CASUALTY_DENSITY_META[casualtyDensity];
+
+  return {
+    winMethod,
+    winMethodLabel: winMethodMeta.label,
+    winMethodDetail: winMethodMeta.detail,
+    casualtyDensity,
+    casualtyDensityLabel: casualtyMeta.label,
+    combatShapeLabel: winMethodMeta.combatShapeLabel,
+    tradeIntensityLabel: casualtyMeta.tradeIntensityLabel,
+    killCountLabel: `${killCount} 次击杀`,
+    killCount
   };
 }
 
@@ -332,11 +476,14 @@ export function buildOpsDockViewModel(runUiState: RunMatchUiState | null): OpsDo
 export function buildRoundEvidenceViewModel(input: {
   replay: LiveReplayData | null;
   currentRound: LiveReplayRound | null;
+  frame: LiveRoundFrame | null;
 }): RoundEvidenceViewModel {
   if (!input.replay || !input.currentRound) {
     return {
       roundLabel: "回合待生成",
       factChainLabel: "暂无已提交事实",
+      roundOutcome: null,
+      coachTimeoutCorrection: null,
       teamPlans: [],
       playerActions: [],
       judge: null,
@@ -345,17 +492,24 @@ export function buildRoundEvidenceViewModel(input: {
   }
 
   const roundReport = input.currentRound.roundReport;
+  const roundOutcome = buildRoundOutcomeViewModel({
+    currentRound: input.currentRound,
+    frame: input.frame
+  });
+  const coachTimeoutCorrection = buildCoachTimeoutEvidence(input.replay, roundReport.appliedCoachTimeoutCorrection);
   const teamPlans = buildTeamPlanEvidence(input.replay, roundReport.llmTeamPlans);
   const playerActions = buildPlayerActionEvidence(input.replay, roundReport.agentOutputs, roundReport.llmTeamPlans);
   const judge = buildJudgeEvidence(input.replay, roundReport);
 
   return {
     roundLabel: `R${input.currentRound.roundNumber}`,
-    factChainLabel: `队伍计划 ${teamPlans.length}/2 · 选手行动 ${playerActions.length}/10 · 裁判 ${judge ? "1/1" : "0/1"}`,
+    factChainLabel: `战术暂停 ${coachTimeoutCorrection ? "1/1" : "0/0"} · 队伍计划 ${teamPlans.length}/2 · 选手行动 ${playerActions.length}/10 · 裁判 ${judge ? "1/1" : "0/1"}`,
+    roundOutcome,
+    coachTimeoutCorrection,
     teamPlans,
     playerActions,
     judge,
-    ...(teamPlans.length === 0 && playerActions.length === 0 && !judge
+    ...(teamPlans.length === 0 && playerActions.length === 0 && !judge && !coachTimeoutCorrection
       ? { emptyMessage: "当前回合还没有可审计的 LLM 事实链。" }
       : {})
   };
@@ -375,6 +529,7 @@ export function buildOpsSidebarViewModel(runUiState: RunMatchUiState | null): Op
 
 function buildOverlayPlayers(input: {
   replay: LiveReplayData | null;
+  selectedMap: LiveReplayMap | null;
   currentRound: LiveReplayRound | null;
   frame: LiveRoundFrame | null;
   teamId: string;
@@ -383,9 +538,19 @@ function buildOverlayPlayers(input: {
     return [];
   }
 
+  const cumulativeCombatStatsByAgentId = buildCumulativeCombatStatsByAgentId(input.selectedMap, input.currentRound);
+  const roundKillCountsByAgentId = buildRoundKillCountsByAgentId(input.frame?.killLedger ?? input.currentRound.roundReport.killLedger ?? []);
   const economyPlayers = input.currentRound.roundReport.economyDelta.agents
     .filter((row) => row.teamId === input.teamId)
-    .map((row) => toOverlayPlayer(row, input.replay?.agentsById[row.agentId], input.frame));
+    .map((row) =>
+      toOverlayPlayer(
+        row,
+        input.replay?.agentsById[row.agentId],
+        input.frame,
+        cumulativeCombatStatsByAgentId.get(row.agentId),
+        roundKillCountsByAgentId.get(row.agentId) ?? 0
+      )
+    );
 
   if (economyPlayers.length > 0) {
     return economyPlayers.slice(0, 5);
@@ -395,7 +560,7 @@ function buildOverlayPlayers(input: {
     .filter((agent) => agent.teamId === input.teamId)
     .sort((left, right) => left.displayName.localeCompare(right.displayName))
     .slice(0, 5)
-    .map((agent) => toFallbackPlayer(agent));
+    .map((agent) => toFallbackPlayer(agent, cumulativeCombatStatsByAgentId.get(agent.id), roundKillCountsByAgentId.get(agent.id) ?? 0));
 }
 
 function buildTeamPlanEvidence(
@@ -433,6 +598,42 @@ function buildTeamPlanEvidence(
         directiveRaw: directive.directive
       }))
     }));
+}
+
+function buildCoachTimeoutEvidence(
+  replay: LiveReplayData,
+  correction: LiveReplayRound["roundReport"]["appliedCoachTimeoutCorrection"] | undefined
+): CoachTimeoutEvidenceViewModel | null {
+  if (!correction) {
+    return null;
+  }
+
+  return {
+    teamId: correction.teamId,
+    teamName: teamNameById(replay, correction.teamId),
+    triggerReason: translateEvidenceText(correction.triggerReason),
+    triggerReasonRaw: correction.triggerReason,
+    diagnosedFailure: translateEvidenceText(correction.diagnosedFailure),
+    diagnosedFailureRaw: correction.diagnosedFailure,
+    nextRoundObjective: translateEvidenceText(correction.nextRoundObjective),
+    nextRoundObjectiveRaw: correction.nextRoundObjective,
+    ownCoreToHold: translateEvidenceText(correction.ownCoreToHold),
+    ownCoreToHoldRaw: correction.ownCoreToHold,
+    opponentGapToHit: translateEvidenceText(correction.opponentGapToHit),
+    opponentGapToHitRaw: correction.opponentGapToHit,
+    zonePriorityShift: translateEvidenceText(correction.zonePriorityShift),
+    zonePriorityShiftRaw: correction.zonePriorityShift,
+    teamDirective: translateEvidenceText(correction.teamDirective),
+    teamDirectiveRaw: correction.teamDirective,
+    confidenceLabel: formatConfidence(correction.confidence),
+    expiresAfterRoundLabel: `仅对 R${correction.expiresAfterRoundNumber} 生效`,
+    playerAdjustments: correction.playerAdjustments.map((adjustment) => ({
+      agentId: adjustment.agentId,
+      displayName: replay.agentsById[adjustment.agentId]?.displayName ?? adjustment.agentId,
+      adjustment: translateEvidenceText(adjustment.adjustment),
+      adjustmentRaw: adjustment.adjustment
+    }))
+  };
 }
 
 function buildPlayerActionEvidence(
@@ -495,42 +696,92 @@ function teamNameById(replay: LiveReplayData, teamId: string): string {
   return teamId;
 }
 
-function toOverlayPlayer(row: EconomyRow, agent: LiveReplayAgent | undefined, frame: LiveRoundFrame | null): OverlayRosterPlayerViewModel {
+function toOverlayPlayer(
+  row: EconomyRow,
+  _agent: LiveReplayAgent | undefined,
+  frame: LiveRoundFrame | null,
+  combatStats: { kills: number; deaths: number; kdaLabel: string } | undefined,
+  roundKills: number
+): OverlayRosterPlayerViewModel {
   const highlight = resolvePlayerHighlight(row.agentId, frame);
   return {
     id: row.agentId,
     displayName: row.displayName,
     roleLabel: translateToken(row.role),
-    metaLabel: buildCompactMetaLabel(agent),
-    dutyLabel: buildDutyLabel(agent),
-    tokenBankLabel: `$${row.afterTokenBank}`,
-    buyLabel: translateBuyType(row.buyType),
-    statusLabel: buildPlayerStatusLabel(row.teamId, frame, highlight),
+    kdaLabel: combatStats?.kdaLabel ?? "0 / 0 / --",
+    roundKillLabel: `${roundKills}`,
+    hpLabel: "--",
+    totalEconomyLabel: `$${row.afterTokenBank}`,
+    roundSpendLabel: `$${row.spent}`,
     highlight
   };
 }
 
-function toFallbackPlayer(agent: LiveReplayAgent): OverlayRosterPlayerViewModel {
+function toFallbackPlayer(
+  agent: LiveReplayAgent,
+  combatStats: { kills: number; deaths: number; kdaLabel: string } | undefined,
+  roundKills: number
+): OverlayRosterPlayerViewModel {
   return {
     id: agent.id,
     displayName: agent.displayName,
     roleLabel: translateToken(agent.role),
-    metaLabel: buildCompactMetaLabel(agent),
-    dutyLabel: buildDutyLabel(agent),
-    tokenBankLabel: "$--",
-    buyLabel: "待购买",
-    statusLabel: "待回放",
+    kdaLabel: combatStats?.kdaLabel ?? "0 / 0 / --",
+    roundKillLabel: `${roundKills}`,
+    hpLabel: "--",
+    totalEconomyLabel: "--",
+    roundSpendLabel: "--",
     highlight: "default"
   };
 }
 
-function buildCompactMetaLabel(agent: LiveReplayAgent | undefined): string {
-  if (!agent) {
-    return "待同步";
+function buildCombatStatsByAgentId(ledger: LiveRoundKillLedgerEntry[]): Map<string, { kills: number; deaths: number; kdaLabel: string }> {
+  const stats = new Map<string, { kills: number; deaths: number }>();
+  for (const entry of ledger) {
+    const actorStats = stats.get(entry.actorAgentId) ?? { kills: 0, deaths: 0 };
+    actorStats.kills += 1;
+    stats.set(entry.actorAgentId, actorStats);
+
+    const targetStats = stats.get(entry.targetAgentId) ?? { kills: 0, deaths: 0 };
+    targetStats.deaths += 1;
+    stats.set(entry.targetAgentId, targetStats);
   }
 
-  const preferred = agent.secondaryRoles[0] ? translateToken(agent.secondaryRoles[0]) : agent.aliases[0];
-  return preferred ?? "角色稳定";
+  return new Map(
+    [...stats.entries()].map(([agentId, value]) => [
+      agentId,
+      {
+        ...value,
+        kdaLabel: `${value.kills} / ${value.deaths} / --`
+      }
+    ])
+  );
+}
+
+function buildRoundKillCountsByAgentId(ledger: LiveRoundKillLedgerEntry[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const entry of ledger) {
+    counts.set(entry.actorAgentId, (counts.get(entry.actorAgentId) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function buildCumulativeCombatStatsByAgentId(
+  selectedMap: LiveReplayMap | null,
+  currentRound: LiveReplayRound
+): Map<string, { kills: number; deaths: number; kdaLabel: string }> {
+  if (!selectedMap) {
+    return buildCombatStatsByAgentId(currentRound.roundReport.killLedger ?? []);
+  }
+
+  const currentRoundIndex = selectedMap.rounds.findIndex((round) => round.id === currentRound.id);
+  const roundsInScope =
+    currentRoundIndex >= 0
+      ? selectedMap.rounds.slice(0, currentRoundIndex + 1)
+      : selectedMap.rounds.filter((round) => round.roundNumber <= currentRound.roundNumber);
+
+  const mergedLedger = roundsInScope.flatMap((round) => round.roundReport.killLedger ?? []);
+  return buildCombatStatsByAgentId(mergedLedger);
 }
 
 function buildDutyLabel(agent: LiveReplayAgent | undefined): string {
@@ -562,6 +813,51 @@ function buildProposalLabel(team: LiveReplayData["teams"]["teamA"] | LiveReplayD
   return undefined;
 }
 
+function deriveWinMethod(input: {
+  isAttackWin: boolean | null;
+  killCount: number;
+  tacticalResult: string | null;
+  margin: "narrow" | "standard" | "decisive";
+}): RoundWinMethod {
+  if (input.isAttackWin === null) {
+    return "unknown";
+  }
+
+  if (input.isAttackWin) {
+    if (input.killCount <= 2) {
+      return "attack_bomb_explosion";
+    }
+    if (input.killCount >= 8 || (input.killCount >= 6 && input.margin === "decisive")) {
+      return input.tacticalResult === "attack_breakthrough" ? "attack_preplant_elimination" : "attack_postplant_elimination";
+    }
+    return input.tacticalResult === "attack_breakthrough" ? "attack_postplant_elimination" : "attack_bomb_explosion";
+  }
+
+  if (input.killCount <= 2) {
+    return "defense_timeout_no_plant";
+  }
+  if (input.killCount >= 8 || (input.killCount >= 6 && input.margin === "decisive")) {
+    return input.tacticalResult === "defense_hold" ? "defense_preplant_elimination" : "defense_defuse";
+  }
+  if (input.tacticalResult === "rotate_success" || input.tacticalResult === "trade_even") {
+    return "defense_defuse";
+  }
+  return "defense_timeout_no_plant";
+}
+
+function deriveCasualtyDensity(killCount: number): RoundCasualtyDensity {
+  if (killCount <= 2) {
+    return "low";
+  }
+  if (killCount <= 4) {
+    return "medium";
+  }
+  if (killCount <= 7) {
+    return "high";
+  }
+  return "extreme";
+}
+
 function resolvePlayerHighlight(agentId: string, frame: LiveRoundFrame | null): OverlayRosterPlayerViewModel["highlight"] {
   if (!frame) {
     return "default";
@@ -569,32 +865,13 @@ function resolvePlayerHighlight(agentId: string, frame: LiveRoundFrame | null): 
   if (frame.highlightMvpAgentId === agentId) {
     return "mvp";
   }
-  if (frame.killFeed.some((entry) => entry.actorAgentId === agentId)) {
+  if (frame.killLedger.some((entry) => entry.actorAgentId === agentId)) {
     return "impact";
   }
-  if (frame.killFeed.some((entry) => entry.targetAgentId === agentId)) {
+  if (frame.killLedger.some((entry) => entry.targetAgentId === agentId)) {
     return "target";
   }
   return "default";
-}
-
-function buildPlayerStatusLabel(teamId: string, frame: LiveRoundFrame | null, highlight: OverlayRosterPlayerViewModel["highlight"]): string {
-  if (!frame) {
-    return "待回放";
-  }
-  if (highlight === "mvp") {
-    return "MVP";
-  }
-  if (highlight === "impact") {
-    return "产生击杀";
-  }
-  if (highlight === "target") {
-    return "被击杀";
-  }
-  if (frame.resultWinnerTeamId && frame.resultWinnerTeamId === teamId) {
-    return "本局胜方";
-  }
-  return "执行职责";
 }
 
 function readSideLabel(currentRound: LiveReplayRound | null, teamId: string): string {
@@ -677,10 +954,6 @@ function formatRunModeLabel(mode: WebRunProgress["mode"] | null | undefined): st
 
 function translateToken(value: string): string {
   return ROLE_LABELS[value] ?? normalizeLabel(value);
-}
-
-function translateBuyType(value: string): string {
-  return BUY_LABELS[value] ?? normalizeLabel(value);
 }
 
 function translateMargin(value: string): string {

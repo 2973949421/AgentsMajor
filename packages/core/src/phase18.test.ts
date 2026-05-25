@@ -27,11 +27,20 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     expect(firstRound?.round.teamBActiveAgentIds).toHaveLength(5);
     expect(Object.keys(firstRound?.roundReport.llmTeamPlans ?? {}).sort()).toEqual(["team_ghost_fur", "team_ghost_nav"]);
     expect(firstRound?.roundReport.agentOutputs).toHaveLength(10);
+    expect(firstRound?.roundReport.killLedger).toBeDefined();
+    expect(firstRound?.roundReport.killLedger?.length).toBeGreaterThanOrEqual(5);
+    expect(firstRound?.roundReport.killLedger?.length).toBeLessThanOrEqual(10);
+    expect(
+      firstRound?.roundReport.killLedger?.every(
+        (entry) => Boolean(entry.actorAgentId && entry.targetAgentId && entry.actorTeamId !== entry.targetTeamId)
+      )
+    ).toBe(true);
     expect(firstRound?.roundReport.agentOutputs.every((output) => output.action.startsWith("LLM action"))).toBe(true);
-    expect(firstRound?.roundReport.judgeResult.reason).toBe("Ghost NAV win condition succeeded; Ghost FUR win condition failed.");
+    expect(firstRound?.roundReport.judgeResult.reason).toBe("Ghost NAV 胜利条件成立; Ghost FUR 胜利条件失守.");
+    expect(firstRound?.roundReport.judgeResult.reason).not.toContain("win condition");
     expect(firstRound?.roundReport.judgeResult.winnerTeamId).toBe("team_ghost_nav");
     expect(firstRound?.roundReport.summary).toContain("全甲全弹");
-    expect(firstRound?.roundReport.summary).not.toContain("鍏");
+    expect(firstRound?.roundReport.summary).not.toMatch(/\uFFFD/u);
     expect(firstRound?.roundReport.summary).not.toContain("Tactical:");
     expect(gateway.tasks).toEqual(["team_plan", "team_plan", ...Array<string>(10).fill("agent_action"), "judge"]);
 
@@ -104,6 +113,8 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     expect(JSON.stringify(judgeInput)).not.toContain("team_ghost_fur");
     expect(judgeRequest?.messages?.[1]?.content).toContain("裁判轴：opportunity_truth");
     expect(judgeRequest?.messages?.[1]?.content).toContain("反偏置约束：");
+    const killFeedEvents = await repositories.events.listByRound(firstRound?.round.id ?? "");
+    expect(killFeedEvents.filter((event) => event.type === "kill_feed_created")).toHaveLength(firstRound?.roundReport.killLedger?.length ?? 0);
 
     const llmCalls = repositories.sqlite.prepare("SELECT COUNT(*) AS count FROM llm_calls").get() as { count: number };
     expect(llmCalls.count).toBe(13);
@@ -136,6 +147,18 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     expect(replay?.rounds[0]?.roundReport.judgeResult.winnerTeamId).toBe("team_ghost_nav");
   });
 
+  it("fills missing judge diagnostic evidence from the judge reason", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(new PartialDiagnosticJudgeGateway());
+
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    const replay = await readMapReplay(repositories, phase11DemoIds.mapGameId);
+    const diagnostic = replay?.rounds[0]?.roundReport.judgeResult.diagnostic;
+
+    expect(diagnostic?.decisiveEvidence).toContain("胜利条件成立");
+    expect(diagnostic?.decisiveEvidence).toContain("胜利条件失守");
+    expect(replay?.rounds[0]?.roundReport.judgeDiagnostic?.decisiveEvidence).toBe(diagnostic?.decisiveEvidence);
+  });
+
   it("accepts Chinese judge reasons that explain winner success and loser failure paths", async () => {
     const { repositories, engine } = await createPhase18DemoEngine(new ChineseJudgeReasonGateway());
 
@@ -145,6 +168,19 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     expect(replay?.rounds[0]?.roundReport.judgeResult.reason).toContain("成功");
     expect(replay?.rounds[0]?.roundReport.judgeResult.reason).toContain("未能");
     expect(replay?.rounds[0]?.roundReport.judgeResult.winnerTeamId).toBe("team_ghost_nav");
+  });
+
+  it("normalizes mixed-language judge reasons to Chinese-first phrasing", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(new MixedLanguageJudgeReasonGateway());
+
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    const replay = await readMapReplay(repositories, phase11DemoIds.mapGameId);
+    const reason = replay?.rounds[0]?.roundReport.judgeResult.reason ?? "";
+
+    expect(reason).toContain("未能证明");
+    expect(reason).toContain("其用户是真实存在的");
+    expect(reason).not.toContain("failed to prove");
+    expect(reason).not.toContain("rather than aspirational");
   });
 
   it("normalizes object-shaped playerDirectives in team plans before validation", async () => {
@@ -160,6 +196,32 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     expect(navPlan?.playerDirectives).toHaveLength(5);
     expect(furPlan?.playerDirectives).toHaveLength(5);
     expect(firstRound?.roundReport.agentOutputs).toHaveLength(10);
+  });
+
+  it("normalizes object-shaped coach timeout payloads before validation", async () => {
+    const gateway = new ObjectCoachTimeoutGateway();
+    const { repositories, engine } = await createPhase18DemoEngine(gateway);
+
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+
+    expect(gateway.tasks.filter((task) => task === "coach_timeout")).toHaveLength(1);
+    const replay = await readMapReplay(repositories, phase11DemoIds.mapGameId);
+    const sixthRound = replay?.rounds[5];
+    expect(sixthRound?.roundReport.appliedCoachTimeoutCorrection).toMatchObject({
+      teamId: "team_ghost_fur",
+      triggerRoundNumber: 5
+    });
+    expect(typeof sixthRound?.roundReport.appliedCoachTimeoutCorrection?.zonePriorityShift).toBe("string");
+    expect(sixthRound?.roundReport.appliedCoachTimeoutCorrection?.zonePriorityShift).toContain("提高");
+    expect(sixthRound?.roundReport.appliedCoachTimeoutCorrection?.zonePriorityShift).toContain("平衡约束");
+    expect(sixthRound?.roundReport.appliedCoachTimeoutCorrection?.teamDirective).not.toContain("五名选手全部");
+    expect(sixthRound?.roundReport.appliedCoachTimeoutCorrection?.nextRoundObjective).not.toContain("唯一主");
+    expect(sixthRound?.roundReport.appliedCoachTimeoutCorrection?.playerAdjustments).toHaveLength(5);
   });
 
   it("stops the round on agent_action failure without partial round facts", async () => {
@@ -279,6 +341,65 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     expect(gateway.tasks.filter((task) => task === "judge_review")).toHaveLength(1);
     expect(await repositories.rounds.listByMapGame(phase11DemoIds.mapGameId)).toHaveLength(3);
   });
+
+  it("initializes two tactical timeouts per team when the map starts", async () => {
+    const { repositories } = await createPhase18DemoEngine(new SuccessfulPhase18Gateway());
+
+    const coachStates = await repositories.teamMapCoachStates.listByMapGame(phase11DemoIds.mapGameId);
+    expect(coachStates).toHaveLength(2);
+    expect(coachStates.every((state) => state.timeoutsRemaining === 2)).toBe(true);
+  });
+
+  it("creates a timeout correction only for the just-lost team and applies it to the next round", async () => {
+    const gateway = new ConsecutiveLossTimeoutGateway();
+    const { repositories, engine } = await createPhase18DemoEngine(gateway);
+
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    expect(gateway.tasks.filter((task) => task === "coach_timeout")).toHaveLength(0);
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    expect(gateway.tasks.filter((task) => task === "coach_timeout")).toHaveLength(0);
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+
+    expect(gateway.tasks.filter((task) => task === "coach_timeout")).toHaveLength(1);
+    const replay = await readMapReplay(repositories, phase11DemoIds.mapGameId);
+    const sixthRound = replay?.rounds[5];
+    expect(sixthRound?.roundReport.appliedCoachTimeoutCorrection).toMatchObject({
+      teamId: "team_ghost_fur",
+      triggerRoundNumber: 5
+    });
+    expect(sixthRound?.roundReport.appliedCoachTimeoutCorrection?.teamDirective).toContain("平衡约束");
+    expect(replay?.timeoutsRemainingByTeam.team_ghost_nav).toBe(2);
+    expect(replay?.timeoutsRemainingByTeam.team_ghost_fur).toBe(1);
+  });
+
+  it("creates one pending post-match review per team after the BO3 ends", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(new SuccessfulPhase18Gateway());
+    await engine.runCurrentMatch({
+      matchId: phase11DemoIds.matchId,
+      selectedMapIds: ["DUST2", "INFERNO", "MIRAGE"]
+    });
+    const match = await repositories.matches.getById(phase11DemoIds.matchId);
+
+    expect(match?.status).toBe("completed");
+    const teamAReview = await repositories.summaries.getLatestByScope("team", "team_ghost_nav");
+    const teamBReview = await repositories.summaries.getLatestByScope("team", "team_ghost_fur");
+    const teamAReviewPayload = teamAReview?.payload as { kind?: string; status?: string; matchId?: string } | undefined;
+    const teamBReviewPayload = teamBReview?.payload as { kind?: string; status?: string; matchId?: string } | undefined;
+
+    expect(teamAReviewPayload).toMatchObject({
+      kind: "coach_post_match_review",
+      status: "pending",
+      matchId: phase11DemoIds.matchId
+    });
+    expect(teamBReviewPayload).toMatchObject({
+      kind: "coach_post_match_review",
+      status: "pending",
+      matchId: phase11DemoIds.matchId
+    });
+  });
 });
 
 async function createPhase18DemoEngine(llmGateway: LlmGateway) {
@@ -297,7 +418,7 @@ async function createPhase18DemoEngine(llmGateway: LlmGateway) {
           defenseFocus: ["core user", "core pain"],
           regulationRoundThemes: [{ round: "R1", theme: "ICP", judgment: "Who is the first user?" }],
           overtimeRoundThemes: [{ round: "OT1", theme: "ICP+Pain", judgment: "Whose opportunity is more real?" }],
-          coachWindows: ["timeout", "halftime"],
+          coachWindows: ["timeout", "post_match_review"],
           displayZoneNames: { buyer_mid: "Mid", conversion_site_a: "A Site" },
           frontendMinimumFields: ["current subtheme", "main attack zone", "main defense zone"]
         },
@@ -308,7 +429,7 @@ async function createPhase18DemoEngine(llmGateway: LlmGateway) {
           roundJudgmentFlow: ["confirm subtheme", "check attack hit", "check defense hold"],
           reasonMustCover: ["subtheme", "attack gap", "defense core"],
           biasGuardrails: ["team order bias", "fame bias"],
-          coachConsumptionWindows: ["timeout", "halftime"]
+          coachConsumptionWindows: ["timeout", "post_match_review"]
         }
       }
     }
@@ -354,14 +475,13 @@ async function createPhase18DemoEngine(llmGateway: LlmGateway) {
         ],
         coachWindowPolicies: {
           timeout: "tighten the first-user proof lane",
-          halftime: "repair the broken proof chain",
-          postMap: "record which proof lane survived the map"
+          postMatchReview: "record which proof lane survived the whole BO3"
         },
         frontendSummary: "Focus on first-user proof before widening the system."
       },
       headCoachProfile: {
         displayName: "Blade Ghost",
-        dutySummary: "timeout correction / halftime reset",
+        dutySummary: "timeout correction / post-match review",
         personaSummary: "reset the team during pressure"
       }
     }
@@ -394,14 +514,13 @@ async function createPhase18DemoEngine(llmGateway: LlmGateway) {
         ],
         coachWindowPolicies: {
           timeout: "restore closure discipline",
-          halftime: "repair the lane that leaked pressure",
-          postMap: "record which stability claim failed"
+          postMatchReview: "record which stability claim failed across the BO3"
         },
         frontendSummary: "Protect system stability and close the round cleanly."
       },
       headCoachProfile: {
         displayName: "Sidde Ghost",
-        dutySummary: "timeout correction / halftime reset",
+        dutySummary: "timeout correction / post-match review",
         personaSummary: "stabilize tempo and trade discipline"
       }
     }
@@ -465,9 +584,69 @@ class SuccessfulPhase18Gateway implements LlmGateway {
       };
     }
 
+    if (request.task === "coach_timeout") {
+      const input = request.input as {
+        teamId: string;
+        triggerRoundNumber: number;
+        activeAgents: Array<{ id: string }>;
+      };
+      return {
+        data: {
+          teamId: input.teamId,
+          triggerRoundNumber: input.triggerRoundNumber,
+          triggerReason: "Consecutive losses exposed the same opportunity gap.",
+          diagnosedFailure: "The decisive proof lane became too diffuse.",
+          nextRoundObjective: "Lock the decisive proof lane one round earlier.",
+          ownCoreToHold: "Protect the single decisive proof lane.",
+          opponentGapToHit: "Punish the defender's delayed rotation.",
+          zonePriorityShift: "Raise A pressure and lower side noise.",
+          teamDirective: "All five players refocus on the primary proof lane.",
+          playerAdjustments: input.activeAgents.map((agent) => ({
+            agentId: agent.id,
+            adjustment: `One-line correction for ${agent.id}`
+          })),
+          expiresAfterRoundNumber: input.triggerRoundNumber + 1,
+          confidence: 0.84,
+          fingerprint: `fp_timeout_${input.teamId}_${input.triggerRoundNumber}`
+        } as TData,
+        usage: {
+          promptTokens: 22,
+          completionTokens: 24,
+          totalTokens: 46
+        }
+      };
+    }
+
+    if (request.task === "coach_post_match_review") {
+      const input = request.input as { teamId: string; matchId: string };
+      return {
+        data: {
+          teamId: input.teamId,
+          matchId: input.matchId,
+          keptBeliefs: ["Keep the narrow proof wedge."],
+          brokenBeliefs: ["Do not over-invest in side pressure without closure."],
+          effectiveAttacks: ["Fast convergence on the decisive proof lane."],
+          effectiveDefenses: ["Anchor the core proposition before wide rotation."],
+          timeoutQualityReview: "Timeouts restored focus on the primary proof lane.",
+          nextMatchUpgrades: ["Tighten opening calls", "Reduce low-value flank testing"],
+          proposedStrategyPatch: "Carry the same proof wedge into the next match with faster closure.",
+          confidence: 0.81,
+          fingerprint: `fp_review_${input.teamId}`
+        } as TData,
+        usage: {
+          promptTokens: 28,
+          completionTokens: 30,
+          totalTokens: 58
+        }
+      };
+    }
+
     if (request.task === "judge_review") {
       const input = request.input as { originalJudgeInput: JudgeRequestInput };
-      return this.buildJudgeResponse(input.originalJudgeInput, buildPromptJudgeReason(input.originalJudgeInput)) as LlmResponse<TData>;
+      return this.buildJudgeResponse(
+        input.originalJudgeInput,
+        buildDetailedPromptJudgeReason(input.originalJudgeInput)
+      ) as LlmResponse<TData>;
     }
 
     return this.buildJudgeResponse(request.input as JudgeRequestInput, buildPromptJudgeReason(request.input as JudgeRequestInput)) as LlmResponse<TData>;
@@ -514,6 +693,40 @@ class ClearMarginJudgeGateway extends SuccessfulPhase18Gateway {
   }
 }
 
+class PartialDiagnosticJudgeGateway extends SuccessfulPhase18Gateway {
+  override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
+    if (request.task !== "judge") {
+      return super.generateStructured(request);
+    }
+
+    this.requests.push(request as LlmRequest<unknown>);
+    this.tasks.push(request.task);
+    const input = request.input as JudgeRequestInput;
+    return {
+      data: {
+        winnerTeamId: input.teamAId,
+        loserTeamId: input.teamBId,
+        margin: "standard",
+        reason: buildPromptJudgeReason(input),
+        mvpAgentId: input.activeTeamAAgentIds[0],
+        confidence: 0.88,
+        diagnostic: {
+          currentSubTheme: "用户定义战",
+          attackedOpportunityGap: "败方核心用户定义不清晰",
+          defendedCoreProposition: "胜方守住了第一用户证明",
+          mainAttackZoneId: "conversion_site_a",
+          mainDefenseZoneId: "buyer_mid"
+        }
+      } as TData,
+      usage: {
+        promptTokens: 30,
+        completionTokens: 20,
+        totalTokens: 50
+      }
+    };
+  }
+}
+
 class ChineseJudgeReasonGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
     if (request.task !== "judge") {
@@ -527,6 +740,22 @@ class ChineseJudgeReasonGateway extends SuccessfulPhase18Gateway {
       input,
       `${input.teamAName ?? input.teamAId} 成功执行计划并打中机会缺口；${input.teamBName ?? input.teamBId} 未能守住计划中的核心成立点。`
       ) as LlmResponse<TData>;
+  }
+}
+
+class MixedLanguageJudgeReasonGateway extends SuccessfulPhase18Gateway {
+  override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
+    if (request.task !== "judge") {
+      return super.generateStructured(request);
+    }
+
+    this.requests.push(request as LlmRequest<unknown>);
+    this.tasks.push(request.task);
+    const input = request.input as JudgeRequestInput;
+    return this.buildJudgeResponse(
+      input,
+      `当前子命题是‘用户定义战’。${input.teamAName ?? input.teamAId} 成功守住核心成立点；${input.teamBName ?? input.teamBId} failed to prove their user is real rather than aspirational.`
+    ) as LlmResponse<TData>;
   }
 }
 
@@ -640,6 +869,101 @@ class SuspiciousJudgeGateway extends SuccessfulPhase18Gateway {
     }
 
     return super.generateStructured(request);
+  }
+}
+
+class ConsecutiveLossTimeoutGateway extends SuccessfulPhase18Gateway {
+  private judgeCalls = 0;
+
+  override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
+    if (request.task !== "judge") {
+      return super.generateStructured(request);
+    }
+
+    this.requests.push(request as LlmRequest<unknown>);
+    this.tasks.push(request.task);
+    this.judgeCalls += 1;
+    const input = request.input as JudgeRequestInput;
+    if (this.judgeCalls <= 2) {
+      return {
+        data: {
+          winnerTeamId: input.teamBId,
+          loserTeamId: input.teamAId,
+          margin: "standard",
+          reason: `${input.teamBName ?? input.teamBId} win condition succeeded; ${input.teamAName ?? input.teamAId} win condition failed.`,
+          mvpAgentId: input.activeTeamBAgentIds[0],
+          confidence: 0.86
+        } as TData,
+        usage: {
+          promptTokens: 30,
+          completionTokens: 20,
+          totalTokens: 50
+        }
+      };
+    }
+
+    return this.buildJudgeResponse(input, buildPromptJudgeReason(input), 0.87) as LlmResponse<TData>;
+  }
+}
+
+class ObjectCoachTimeoutGateway extends ConsecutiveLossTimeoutGateway {
+  override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
+    if (request.task !== "coach_timeout") {
+      return super.generateStructured(request);
+    }
+
+    this.requests.push(request as LlmRequest<unknown>);
+    this.tasks.push(request.task);
+    const input = request.input as {
+      teamId: string;
+      triggerRoundNumber: number;
+      activeAgents: Array<{ id: string }>;
+    };
+    return {
+      data: {
+        teamId: input.teamId,
+        triggerRoundNumber: input.triggerRoundNumber,
+        triggerReason: {
+          summary: "连续失分暴露了同一机会缺口。"
+        },
+        diagnosedFailure: {
+          focus: "决定性证据通道过于分散。"
+        },
+        nextRoundObjective: {
+          text: "下一回合更早锁定唯一主证明通道。"
+        },
+        ownCoreToHold: {
+          primary: "守住唯一决定性证明通道"
+        },
+        opponentGapToHit: {
+          raise: "惩罚守方延迟回防",
+          lower: "减少侧翼噪音"
+        },
+        zonePriorityShift: {
+          raise: ["A 区压力", "中路信息同步"],
+          deemphasize: "低价值侧翼试探"
+        },
+        teamDirective: {
+          summary: "五名选手全部回到主证明通道。"
+        },
+        playerAdjustments: Object.fromEntries(
+          input.activeAgents.map((agent) => [
+            agent.id,
+            {
+              adjustment: `针对 ${agent.id} 的单句修正`
+            }
+          ])
+        ),
+        expiresAfterRoundNumber: input.triggerRoundNumber + 1,
+        confidence: 0.83,
+        fingerprint: `fp_object_timeout_${input.teamId}_${input.triggerRoundNumber}`
+      } as TData,
+      usage: {
+        promptTokens: 24,
+        completionTokens: 28,
+        totalTokens: 52
+      }
+    };
   }
 }
 

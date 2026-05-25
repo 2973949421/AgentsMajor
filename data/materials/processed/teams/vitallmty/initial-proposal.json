@@ -33,8 +33,7 @@
   ],
   "coachWindowPolicies": {
     "timeout": "如果方案开始膨胀成抽象治理平台，就压回异常接管与恢复闭环这条主线。",
-    "halftime": "如果上半场被打成后置补锅叙事，下半场必须强化敢不敢放量这条主守线。",
-    "postMap": "赛后输出修正版，重点检查用户定义是否过晚、场景是否不够高频。"
+    "postMatchReview": "整场 BO3 结束后输出复盘修正版，用于下一场比赛的 strategy overlay 候选输入。"
   },
   "frontendSummary": "头号种子型稳态强队，偏好高可靠闭环、后程收束与系统托底。"
 }

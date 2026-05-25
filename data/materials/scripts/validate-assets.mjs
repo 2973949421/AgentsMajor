@@ -170,7 +170,7 @@ function validateInitialProposal(initialProposal, teamRef) {
     );
   }
   assert(initialProposal.coachWindowPolicies && typeof initialProposal.coachWindowPolicies === "object", `${teamRef.team_slug} coachWindowPolicies is required.`);
-  for (const key of ["timeout", "halftime", "postMap"]) {
+  for (const key of ["timeout", "postMatchReview"]) {
     assert(
       typeof initialProposal.coachWindowPolicies[key] === "string" && initialProposal.coachWindowPolicies[key].length > 0,
       `${teamRef.team_slug} initial proposal coachWindowPolicies.${key} is required.`

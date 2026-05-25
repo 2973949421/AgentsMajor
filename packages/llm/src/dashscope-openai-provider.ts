@@ -60,8 +60,8 @@ export class DashScopeOpenAiProvider implements LlmGateway {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.apiKey = options.apiKey;
     this.timeoutMs = options.timeoutMs ?? 300_000;
-    this.maxRetries = options.maxRetries ?? 2;
-    this.retryBackoffMs = options.retryBackoffMs ?? [1_000, 3_000];
+    this.maxRetries = options.maxRetries ?? 4;
+    this.retryBackoffMs = options.retryBackoffMs ?? [1_000, 3_000, 8_000, 15_000];
     this.fetchFn = options.fetchFn ?? fetch;
   }
 
@@ -372,6 +372,30 @@ function outputContractForSchema(schemaName: string): string {
       "mvpAgentId must come from the winning team's active agent id list.",
       "reason must discuss both teams' winCondition and explain why one succeeded while the other failed.",
       "Do not decide from team order, team name fame, current score lead, or first-listed team bias.",
+      "confidence must be a number between 0 and 1."
+    ].join("\n");
+  }
+
+  if (schemaName === "CoachTimeoutCorrection") {
+    return [
+      "Output contract:",
+      "Return exactly one top-level JSON object with these fields:",
+      '{"teamId":"<input teamId>","triggerRoundNumber":1,"triggerReason":"<why timeout triggered>","diagnosedFailure":"<main failure>","nextRoundObjective":"<single next-round objective>","ownCoreToHold":"<what own core must hold>","opponentGapToHit":"<which opponent gap to hit>","zonePriorityShift":"<how zone priority shifts>","teamDirective":"<one team-level directive>","playerAdjustments":[{"agentId":"<active player id>","adjustment":"<one-line adjustment>"}],"expiresAfterRoundNumber":2,"confidence":0.0,"fingerprint":"<optional short stable string>"}',
+      "Required fields: every field except fingerprint.",
+      "playerAdjustments must include exactly one adjustment for every active player in the input activeAgents list.",
+      "This is a timeout correction card, not a free-form speech transcript.",
+      "Do not rewrite the team's whole strategy or map proposition. Only correct the next round.",
+      "confidence must be a number between 0 and 1."
+    ].join("\n");
+  }
+
+  if (schemaName === "CoachPostMatchReview") {
+    return [
+      "Output contract:",
+      "Return exactly one top-level JSON object with these fields:",
+      '{"teamId":"<input teamId>","matchId":"<input matchId>","keptBeliefs":["<belief>"],"brokenBeliefs":["<belief>"],"effectiveAttacks":["<attack finding>"],"effectiveDefenses":["<defense finding>"],"timeoutQualityReview":"<timeout review>","nextMatchUpgrades":["<upgrade>"],"proposedStrategyPatch":"<short patch summary>","confidence":0.0,"fingerprint":"<optional short stable string>"}',
+      "Required fields: every field except fingerprint.",
+      "This is a post-match review artifact for the next match, not a rewrite of the completed match facts.",
       "confidence must be a number between 0 and 1."
     ].join("\n");
   }

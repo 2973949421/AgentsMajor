@@ -296,6 +296,7 @@ async function resetPhase18RoundFixture(repositories: SqliteRepositoryBundle, ru
 
   await repositories.transaction(async () => {
     await deleteRoundArtifacts(repositories, targetReport.roundId, targetMap.id);
+    await restoreCoachStatesForMap(repositories, targetMap.id, [match.teamAId, match.teamBId]);
     await repositories.mapGames.save({
       ...targetMap,
       status: remainingRounds > 0 ? "running" : "scheduled",
@@ -347,6 +348,7 @@ async function deleteMapGameArtifacts(repositories: SqliteRepositoryBundle, mapG
   repositories.sqlite.prepare("DELETE FROM events WHERE map_game_id = ?").run(mapGameId);
   repositories.sqlite.prepare("DELETE FROM timeline_events WHERE map_game_id = ?").run(mapGameId);
   repositories.sqlite.prepare("DELETE FROM economy_states WHERE map_game_id = ?").run(mapGameId);
+  repositories.sqlite.prepare("DELETE FROM team_map_coach_states WHERE map_game_id = ?").run(mapGameId);
   repositories.sqlite.prepare("DELETE FROM round_reports WHERE map_game_id = ?").run(mapGameId);
   repositories.sqlite.prepare("DELETE FROM rounds WHERE map_game_id = ?").run(mapGameId);
 }
@@ -360,6 +362,48 @@ async function deleteRoundArtifacts(repositories: SqliteRepositoryBundle, roundI
   repositories.sqlite.prepare("DELETE FROM economy_states WHERE round_id = ?").run(roundId);
   repositories.sqlite.prepare("DELETE FROM round_reports WHERE round_id = ?").run(roundId);
   repositories.sqlite.prepare("DELETE FROM rounds WHERE id = ? AND map_game_id = ?").run(roundId, mapGameId);
+}
+
+async function restoreCoachStatesForMap(
+  repositories: SqliteRepositoryBundle,
+  mapGameId: string,
+  teamIds: string[]
+): Promise<void> {
+  repositories.sqlite.prepare("DELETE FROM team_map_coach_states WHERE map_game_id = ?").run(mapGameId);
+  const timeoutRows = repositories.sqlite
+    .prepare(
+      `SELECT
+         json_extract(payload_json, '$.teamId') AS teamId,
+         COUNT(*) AS usedCount,
+         MAX(COALESCE(json_extract(payload_json, '$.triggerRoundNumber'), 0)) AS lastRound
+       FROM events
+       WHERE map_game_id = ?
+         AND type = 'timeout_used'
+       GROUP BY json_extract(payload_json, '$.teamId')`
+    )
+    .all(mapGameId) as Array<{ teamId?: unknown; usedCount?: unknown; lastRound?: unknown }>;
+  const timeoutByTeamId = new Map(
+    timeoutRows
+      .filter((row): row is { teamId: string; usedCount?: unknown; lastRound?: unknown } => typeof row.teamId === "string")
+      .map((row) => [
+        row.teamId,
+        {
+          usedCount: typeof row.usedCount === "number" ? row.usedCount : 0,
+          lastRound: typeof row.lastRound === "number" && row.lastRound > 0 ? row.lastRound : undefined
+        }
+      ])
+  );
+  const now = new Date().toISOString();
+  for (const teamId of teamIds) {
+    const timeoutState = timeoutByTeamId.get(teamId);
+    await repositories.teamMapCoachStates.save({
+      mapGameId,
+      teamId,
+      timeoutsRemaining: Math.max(0, 2 - (timeoutState?.usedCount ?? 0)),
+      ...(timeoutState?.lastRound ? { lastTimeoutRoundNumber: timeoutState.lastRound } : {}),
+      updatedAt: now
+    });
+  }
 }
 
 function readMapFactCounts(repositories: SqliteRepositoryBundle, mapGameId: string): { rounds: number; reports: number } {

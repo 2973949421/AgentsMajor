@@ -131,6 +131,50 @@ describe("Phase 1.5 DashScope OpenAI provider", () => {
     expect(seenBodies).toHaveLength(2);
   });
 
+  it("retries transient provider failures before returning a structured response", async () => {
+    let calls = 0;
+    const provider = new DashScopeOpenAiProvider({
+      baseUrl: "https://example.test/v1",
+      apiKey: "secret-key",
+      maxRetries: 2,
+      retryBackoffMs: [0, 0],
+      fetchFn: async () => {
+        calls += 1;
+        if (calls < 3) {
+          return new Response("temporary upstream failure", { status: 500 });
+        }
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "{\"text\":\"recovered\"}" } }],
+            usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+    });
+
+    const response = await provider.generateStructured<{ text: string }>({
+      task: "team_plan",
+      driverModelId: "driver_kimi_k2_5",
+      input: { teamId: "team-a" },
+      schemaName: "TeamRoundPlanDecision",
+      responseFormat: "json_object"
+    });
+
+    expect(calls).toBe(3);
+    expect(response.data).toEqual({ text: "recovered" });
+  });
+
+  it("defaults real LLM retry budget to four attempts after the first request", () => {
+    expect(
+      loadAgentMajorLlmConfig({
+        AGENT_MAJOR_REAL_LLM_ENABLED: "true",
+        DASHSCOPE_BASE_URL: "https://example.test/v1",
+        DASHSCOPE_API_KEY: "local-secret"
+      }).maxRetries
+    ).toBe(4);
+  });
+
   it("includes the exact AgentActionDecision output contract for JSON requests", async () => {
     const seenBodies: unknown[] = [];
     const provider = new DashScopeOpenAiProvider({

@@ -1,4 +1,4 @@
-const privateReplayKeys = new Set(["agentOutputs", "driverModelId", "rawFingerprint"]);
+const privateReplayKeys = new Set(["agentOutputs", "driverModelId", "rawFingerprint", "fingerprint"]);
 
 export function toPublicReplayPayload(value: unknown): unknown {
   if (Array.isArray(value)) {

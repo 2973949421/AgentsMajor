@@ -6,6 +6,8 @@ export type LlmTaskType =
   | "agent_action"
   | "judge"
   | "judge_review"
+  | "coach_timeout"
+  | "coach_post_match_review"
   | "arbiter"
   | "round_report"
   | "event_builder"

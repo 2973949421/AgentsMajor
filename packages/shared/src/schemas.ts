@@ -77,8 +77,7 @@ export const teamInitialProposalSchema = z.object({
   playerOperatingPrinciples: stringArray,
   coachWindowPolicies: z.object({
     timeout: z.string().min(1),
-    halftime: z.string().min(1),
-    postMap: z.string().min(1)
+    postMatchReview: z.string().min(1)
   }),
   frontendSummary: z.string().min(1)
 });
@@ -310,13 +309,63 @@ export const agentOutputSchema = z.object({
 });
 export type AgentOutput = z.infer<typeof agentOutputSchema>;
 
+export const coachTimeoutCorrectionSchema = z.object({
+  teamId: z.string().min(1),
+  triggerRoundNumber: z.number().int().positive(),
+  triggerReason: z.string().min(1),
+  diagnosedFailure: z.string().min(1),
+  nextRoundObjective: z.string().min(1),
+  ownCoreToHold: z.string().min(1),
+  opponentGapToHit: z.string().min(1),
+  zonePriorityShift: z.string().min(1),
+  teamDirective: z.string().min(1),
+  playerAdjustments: z
+    .array(
+      z.object({
+        agentId: z.string().min(1),
+        adjustment: z.string().min(1)
+      })
+    )
+    .min(5),
+  expiresAfterRoundNumber: z.number().int().positive(),
+  confidence: z.number().min(0).max(1),
+  fingerprint: z.string().min(1).optional()
+});
+export type CoachTimeoutCorrection = z.infer<typeof coachTimeoutCorrectionSchema>;
+
+export const coachPostMatchReviewSchema = z.object({
+  teamId: z.string().min(1),
+  matchId: z.string().min(1),
+  keptBeliefs: stringArray,
+  brokenBeliefs: stringArray,
+  effectiveAttacks: stringArray,
+  effectiveDefenses: stringArray,
+  timeoutQualityReview: z.string().min(1),
+  nextMatchUpgrades: stringArray,
+  proposedStrategyPatch: z.string().min(1),
+  confidence: z.number().min(0).max(1),
+  fingerprint: z.string().min(1).optional()
+});
+export type CoachPostMatchReview = z.infer<typeof coachPostMatchReviewSchema>;
+
+export const judgeDiagnosticSchema = z.object({
+  currentSubTheme: z.string().min(1),
+  attackedOpportunityGap: z.string().min(1),
+  defendedCoreProposition: z.string().min(1),
+  mainAttackZoneId: z.string().min(1),
+  mainDefenseZoneId: z.string().min(1),
+  decisiveEvidence: z.string().min(1)
+});
+export type JudgeDiagnostic = z.infer<typeof judgeDiagnosticSchema>;
+
 export const judgeResultSchema = z.object({
   winnerTeamId: z.string().min(1),
   loserTeamId: z.string().min(1),
   margin: z.enum(["narrow", "standard", "decisive"]),
   reason: z.string().min(1),
   mvpAgentId: z.string().min(1),
-  confidence: z.number().min(0).max(1)
+  confidence: z.number().min(0).max(1),
+  diagnostic: judgeDiagnosticSchema.optional()
 });
 export type JudgeResult = z.infer<typeof judgeResultSchema>;
 
@@ -474,6 +523,21 @@ export const roundKeyEventSchema = z.object({
 });
 export type RoundKeyEvent = z.infer<typeof roundKeyEventSchema>;
 
+export const roundKillLedgerEntrySchema = z.object({
+  id: z.string().min(1),
+  actorAgentId: z.string().min(1),
+  actorTeamId: z.string().min(1),
+  targetAgentId: z.string().min(1),
+  targetTeamId: z.string().min(1),
+  zoneId: z.string().min(1),
+  atMs: z.number().int().nonnegative(),
+  impact: z.string().min(1),
+  keyEventId: z.string().optional(),
+  sourceEventId: z.string().optional(),
+  sourceAgentOutputIds: stringArray.optional()
+});
+export type RoundKillLedgerEntry = z.infer<typeof roundKillLedgerEntrySchema>;
+
 export const agentEconomyDeltaSchema = z.object({
   agentId: z.string().min(1),
   teamId: z.string().min(1),
@@ -533,16 +597,30 @@ export const roundReportSchema = z.object({
   judgeResult: judgeResultSchema,
   agentOutputs: z.array(agentOutputSchema),
   llmTeamPlans: z.record(teamRoundPlanDecisionSchema).optional(),
+  appliedCoachTimeoutCorrection: coachTimeoutCorrectionSchema.optional(),
   keyEvents: z.array(roundKeyEventSchema),
+  killLedger: z.array(roundKillLedgerEntrySchema).optional(),
   economyDelta: economyDeltaSchema,
   tokenSubmission: tokenSubmissionSchema,
   highlightTags: z.array(z.string()).optional(),
+  judgeDiagnostic: judgeDiagnosticSchema.optional(),
   tacticalContext: tacticalRoundContextSchema.optional(),
   summary: z.string().min(1),
   eventProjection: eventProjectionSchema,
   createdAt: isoDateString
 });
 export type RoundReport = z.infer<typeof roundReportSchema>;
+
+export const teamMapCoachStateSchema = z.object({
+  mapGameId: z.string().min(1),
+  teamId: z.string().min(1),
+  timeoutsRemaining: z.number().int().nonnegative(),
+  activeCorrectionArtifactId: z.string().min(1).optional(),
+  activeCorrectionExpiresAfterRound: z.number().int().positive().optional(),
+  lastTimeoutRoundNumber: z.number().int().positive().optional(),
+  updatedAt: isoDateString
+});
+export type TeamMapCoachState = z.infer<typeof teamMapCoachStateSchema>;
 
 export const economyStateSchema = z.object({
   id: z.string().min(1),

@@ -25,7 +25,7 @@ export function loadAgentMajorLlmConfig(env: Record<string, string | undefined> 
     barrageDriverModelId: env.AGENT_MAJOR_BARRAGE_DRIVER_MODEL_ID?.trim() || "driver_minimax_m2_5",
     barrageFallbackDriverModelId: env.AGENT_MAJOR_BARRAGE_FALLBACK_DRIVER_MODEL_ID?.trim() || "driver_qwen_3_5_plus",
     timeoutMs: parsePositiveInteger(env.AGENT_MAJOR_LLM_TIMEOUT_MS, 300_000),
-    maxRetries: parseNonNegativeInteger(env.AGENT_MAJOR_LLM_MAX_RETRIES, 2)
+    maxRetries: parseNonNegativeInteger(env.AGENT_MAJOR_LLM_MAX_RETRIES, 4)
   };
 
   if (!isTruthy(env.AGENT_MAJOR_REAL_LLM_ENABLED)) {

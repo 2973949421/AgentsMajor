@@ -33,6 +33,21 @@ export interface LiveReplayData {
   };
   agentsById: Record<string, LiveReplayAgent>;
   maps: LiveReplayMap[];
+  postMatchReviews: Array<{
+    teamId: string;
+    status: string;
+    review: {
+      keptBeliefs?: string[];
+      brokenBeliefs?: string[];
+      effectiveAttacks?: string[];
+      effectiveDefenses?: string[];
+      timeoutQualityReview?: string;
+      nextMatchUpgrades?: string[];
+      proposedStrategyPatch?: string;
+      confidence?: number;
+    };
+    updatedAt?: string;
+  }>;
 }
 
 export interface LiveReplayAgent {
@@ -50,6 +65,7 @@ export interface LiveReplayMap {
   order: number;
   mapName: string;
   tacticalMap: LiveTacticalMapLayout;
+  timeoutsRemainingByTeam: Record<string, number>;
   finalScore: ScorePair;
   winnerTeamId?: string;
   keyRoundNumbers: number[];
@@ -71,9 +87,12 @@ export interface LiveReplayRoundReport {
   scoreBeforeRound: ScorePair;
   scoreAfterRound: ScorePair;
   judgeResult: LiveJudgeResult;
+  appliedCoachTimeoutCorrection?: SourceRoundReport["appliedCoachTimeoutCorrection"];
+  judgeDiagnostic?: SourceRoundReport["judgeDiagnostic"];
   agentOutputs: LiveAgentOutput[];
   llmTeamPlans?: Record<string, LiveTeamPlan>;
   keyEvents: LiveRoundKeyEvent[];
+  killLedger?: LiveRoundKillLedgerEntry[];
   economyDelta: {
     agents: EconomyRow[];
     teamTotals: {
@@ -113,11 +132,32 @@ export interface KillFeedEntry {
   text: string;
   actorAgentId?: string;
   targetAgentId?: string;
+  actorTeamId?: string;
+  targetTeamId?: string;
   actorName?: string;
   actorRole?: string;
   targetName?: string;
   zoneId?: string;
   keyEventId?: string;
+  sourceEventId?: string;
+  sourceAgentOutputIds?: string[];
+}
+
+export interface LiveRoundKillLedgerEntry {
+  id: string;
+  atMs: number;
+  text: string;
+  actorAgentId: string;
+  targetAgentId: string;
+  actorTeamId: string;
+  targetTeamId: string;
+  actorName: string;
+  actorRole: string;
+  targetName: string;
+  zoneId: string;
+  keyEventId?: string;
+  sourceEventId?: string;
+  sourceAgentOutputIds?: string[];
 }
 
 export interface EconomyRow {
@@ -231,6 +271,7 @@ export interface LiveRoundFrame {
   economyVisible: boolean;
   economyRows: EconomyRow[];
   killFeed: KillFeedEntry[];
+  killLedger: LiveRoundKillLedgerEntry[];
   casterLine: string | null;
   barrageMessages: LiveBarrageMessage[];
   supportRate: LiveSupportRate | null;
@@ -256,7 +297,8 @@ export function toLiveReplayData(replay: MatchReplay): LiveReplayData {
     agentsById,
     maps: [...replay.maps]
       .sort((left, right) => left.mapGame.order - right.mapGame.order)
-      .map((mapReplay) => toLiveMapReplay(mapReplay, agentsById))
+      .map((mapReplay) => toLiveMapReplay(mapReplay, agentsById)),
+    postMatchReviews: replay.postMatchReviews
   };
 }
 
@@ -308,11 +350,12 @@ export function buildRoundFrame(roundItem: LiveReplayRound, currentAtMs: number)
   const visibleEvents = getVisibleTimelineEvents(roundItem.timelineEvents, currentAtMs);
   const scoreFromTimeline = findLatestScore(visibleEvents);
   const killFeed = buildKillFeed(visibleEvents, roundItem.agentsById);
+  const killLedger = buildKillLedger(visibleEvents, roundItem.agentsById);
   const highlightEvent = findLatestByKind(visibleEvents, "highlight_reveal");
   const highlightMvpAgentId = readOptionalString(asRecord(highlightEvent?.payload)?.mvpAgentId) ?? null;
   const resultEvent = findLatestByKind(visibleEvents, "round_result");
   const economyVisible = visibleEvents.some((event) => event.kind === "economy_panel_update");
-  const tacticalMap = buildTacticalMapFrame(roundItem, killFeed, visibleEvents);
+  const tacticalMap = buildTacticalMapFrame(roundItem, killLedger, visibleEvents);
 
   return {
     roundDurationMs,
@@ -322,6 +365,7 @@ export function buildRoundFrame(roundItem: LiveReplayRound, currentAtMs: number)
     economyVisible,
     economyRows: economyVisible ? roundItem.roundReport.economyDelta.agents : [],
     killFeed,
+    killLedger,
     casterLine: readTextPayload(findLatestByKind(visibleEvents, "caster_line")),
     barrageMessages: buildBarrageMessages(visibleEvents),
     supportRate: readSupportRate(visibleEvents),
@@ -410,6 +454,7 @@ function toLiveMapReplay(mapReplay: MapReplay, agentsById: Record<string, LiveRe
     order: mapReplay.mapGame.order,
     mapName: mapReplay.mapGame.mapName,
     tacticalMap: toLiveTacticalMapLayout(getTacticalMapLayout(mapReplay.mapGame.mapName)),
+    timeoutsRemainingByTeam: mapReplay.timeoutsRemainingByTeam,
     finalScore: {
       teamA: mapReplay.mapGame.teamAScore,
       teamB: mapReplay.mapGame.teamBScore
@@ -450,6 +495,10 @@ function toLiveRound(item: RoundReplayItem, agentsById: Record<string, LiveRepla
       scoreBeforeRound: item.roundReport.scoreBeforeRound,
       scoreAfterRound: item.roundReport.scoreAfterRound,
       judgeResult: item.roundReport.judgeResult,
+      ...(item.roundReport.appliedCoachTimeoutCorrection
+        ? { appliedCoachTimeoutCorrection: item.roundReport.appliedCoachTimeoutCorrection }
+        : {}),
+      ...(item.roundReport.judgeDiagnostic ? { judgeDiagnostic: item.roundReport.judgeDiagnostic } : {}),
       agentOutputs: item.roundReport.agentOutputs,
       ...(item.roundReport.llmTeamPlans ? { llmTeamPlans: item.roundReport.llmTeamPlans } : {}),
       keyEvents: item.roundReport.keyEvents.map((event: LiveReplayRound["roundReport"]["keyEvents"][number]) => ({
@@ -459,6 +508,13 @@ function toLiveRound(item: RoundReplayItem, agentsById: Record<string, LiveRepla
         zoneId: event.zoneId,
         impact: event.impact
       })),
+      ...(item.roundReport.killLedger
+        ? {
+            killLedger: item.roundReport.killLedger.map((entry, index) =>
+              toLiveKillLedgerEntryFromRoundReport(entry, agentsById, item.round.id, index)
+            )
+          }
+        : {}),
       economyDelta: {
         agents: item.roundReport.economyDelta.agents.map((row) => toEconomyRow(row, agentsById)),
         teamTotals: item.roundReport.economyDelta.teamTotals
@@ -528,27 +584,159 @@ function buildKillFeed(events: LiveReplayTimelineEvent[], agentsById: Record<str
   return events
     .filter((event) => event.kind === "kill_feed_item")
     .map((event) => {
-      const payload = asRecord(event.payload);
-      const actorAgentId = readOptionalString(payload?.actorAgentId);
-      const targetAgentId = readOptionalString(payload?.targetAgentId);
-      const actor = actorAgentId ? agentsById[actorAgentId] : undefined;
-      const target = targetAgentId ? agentsById[targetAgentId] : undefined;
-      const zoneId = readOptionalString(payload?.zoneId);
-      const keyEventId = readOptionalString(payload?.keyEventId);
+      const parsed = parseRequiredKillEvent(event, agentsById);
       return {
         id: event.id,
         atMs: event.atMs,
-        text: readOptionalString(payload?.text) ?? "关键事件已触发",
-        ...(actorAgentId ? { actorAgentId } : {}),
-        ...(targetAgentId ? { targetAgentId } : {}),
-        ...(actor ? { actorName: actor.displayName, actorRole: actor.role } : {}),
-        ...(target ? { targetName: target.displayName } : {}),
-        ...(zoneId ? { zoneId } : {}),
-        ...(keyEventId ? { keyEventId } : {})
+        text: parsed.text,
+        actorAgentId: parsed.actorAgentId,
+        targetAgentId: parsed.targetAgentId,
+        actorTeamId: parsed.actor.teamId,
+        targetTeamId: parsed.target.teamId,
+        actorName: parsed.actor.displayName,
+        actorRole: parsed.actor.role,
+        targetName: parsed.target.displayName,
+        zoneId: parsed.zoneId,
+        ...(parsed.keyEventId ? { keyEventId: parsed.keyEventId } : {}),
+        ...(parsed.sourceAgentOutputIds.length ? { sourceAgentOutputIds: parsed.sourceAgentOutputIds } : {})
       };
     });
 }
 
+function buildKillLedger(events: LiveReplayTimelineEvent[], agentsById: Record<string, LiveReplayAgent>): LiveRoundKillLedgerEntry[] {
+  return events
+    .filter((event) => event.kind === "kill_feed_item")
+    .map((event) => {
+      const parsed = parseRequiredKillEvent(event, agentsById);
+      return {
+        id: event.id,
+        atMs: event.atMs,
+        text: parsed.text,
+        actorAgentId: parsed.actorAgentId,
+        targetAgentId: parsed.targetAgentId,
+        actorTeamId: parsed.actor.teamId,
+        targetTeamId: parsed.target.teamId,
+        actorName: parsed.actor.displayName,
+        actorRole: parsed.actor.role,
+        targetName: parsed.target.displayName,
+        zoneId: parsed.zoneId,
+        ...(parsed.keyEventId ? { keyEventId: parsed.keyEventId } : {}),
+        sourceEventId: event.id,
+        ...(parsed.sourceAgentOutputIds.length ? { sourceAgentOutputIds: parsed.sourceAgentOutputIds } : {})
+      };
+    });
+}
+
+function toLiveKillLedgerEntryFromRoundReport(
+  entry: NonNullable<RoundReplayItem["roundReport"]["killLedger"]>[number],
+  agentsById: Record<string, LiveReplayAgent>,
+  roundId: string,
+  index: number
+): LiveRoundKillLedgerEntry {
+  const context = `round ${roundId} killLedger[${index}]`;
+  const actorAgentId = readRequiredKillString(entry.actorAgentId, "actorAgentId", context);
+  const targetAgentId = readRequiredKillString(entry.targetAgentId, "targetAgentId", context);
+  const actor = requireReplayKillAgent(agentsById, actorAgentId, context, "actor");
+  const target = requireReplayKillAgent(agentsById, targetAgentId, context, "target");
+  const actorTeamId = readRequiredKillString(entry.actorTeamId, "actorTeamId", context);
+  const targetTeamId = readRequiredKillString(entry.targetTeamId, "targetTeamId", context);
+  assertReplayKillTeams({ actor, target, actorTeamId, targetTeamId, context });
+  const zoneId = readRequiredKillString(entry.zoneId, "zoneId", context);
+  return {
+    id: entry.id,
+    atMs: entry.atMs,
+    text: readOptionalString(entry.impact) ?? `${actor.displayName} -> ${target.displayName}`,
+    actorAgentId,
+    targetAgentId,
+    actorTeamId,
+    targetTeamId,
+    actorName: actor.displayName,
+    actorRole: actor.role,
+    targetName: target.displayName,
+    zoneId,
+    ...(entry.keyEventId ? { keyEventId: entry.keyEventId } : {}),
+    ...(entry.sourceEventId ? { sourceEventId: entry.sourceEventId } : {}),
+    ...(entry.sourceAgentOutputIds?.length ? { sourceAgentOutputIds: entry.sourceAgentOutputIds } : {})
+  };
+}
+
+function parseRequiredKillEvent(
+  event: LiveReplayTimelineEvent,
+  agentsById: Record<string, LiveReplayAgent>
+): {
+  actorAgentId: string;
+  targetAgentId: string;
+  actor: LiveReplayAgent;
+  target: LiveReplayAgent;
+  zoneId: string;
+  keyEventId?: string;
+  sourceAgentOutputIds: string[];
+  text: string;
+} {
+  const payload = asRecord(event.payload);
+  const context = `timeline event ${event.id}`;
+  const actorAgentId = readRequiredKillString(payload?.actorAgentId, "actorAgentId", context);
+  const targetAgentId = readRequiredKillString(payload?.targetAgentId, "targetAgentId", context);
+  const actor = requireReplayKillAgent(agentsById, actorAgentId, context, "actor");
+  const target = requireReplayKillAgent(agentsById, targetAgentId, context, "target");
+  const actorTeamId = readOptionalString(payload?.actorTeamId) ?? actor.teamId;
+  const targetTeamId = readOptionalString(payload?.targetTeamId) ?? target.teamId;
+  assertReplayKillTeams({ actor, target, actorTeamId, targetTeamId, context });
+  const keyEventId = readOptionalString(payload?.keyEventId);
+  return {
+    actorAgentId,
+    targetAgentId,
+    actor,
+    target,
+    zoneId: readOptionalString(payload?.zoneId) ?? "buyer_mid",
+    ...(keyEventId ? { keyEventId } : {}),
+    sourceAgentOutputIds: readStringArray(payload?.sourceAgentOutputIds),
+    text: readOptionalString(payload?.text) ?? `${actor.displayName} -> ${target.displayName}`
+  };
+}
+
+function readRequiredKillString(value: unknown, fieldName: string, context: string): string {
+  const text = readOptionalString(value);
+  if (!text) {
+    throw new Error(`Invalid replay kill data: ${context} is missing ${fieldName}.`);
+  }
+  return text;
+}
+
+function requireReplayKillAgent(
+  agentsById: Record<string, LiveReplayAgent>,
+  agentId: string,
+  context: string,
+  role: "actor" | "target"
+): LiveReplayAgent {
+  const agent = agentsById[agentId];
+  if (!agent) {
+    throw new Error(`Invalid replay kill data: ${context} references unknown ${role} agent "${agentId}".`);
+  }
+  return agent;
+}
+
+function assertReplayKillTeams(input: {
+  actor: LiveReplayAgent;
+  target: LiveReplayAgent;
+  actorTeamId: string;
+  targetTeamId: string;
+  context: string;
+}): void {
+  if (input.actor.teamId !== input.actorTeamId) {
+    throw new Error(
+      `Invalid replay kill data: ${input.context} actor team mismatch (${input.actorTeamId} !== ${input.actor.teamId}).`
+    );
+  }
+  if (input.target.teamId !== input.targetTeamId) {
+    throw new Error(
+      `Invalid replay kill data: ${input.context} target team mismatch (${input.targetTeamId} !== ${input.target.teamId}).`
+    );
+  }
+  if (input.actorTeamId === input.targetTeamId) {
+    throw new Error(`Invalid replay kill data: ${input.context} cannot target a same-team agent.`);
+  }
+}
 function buildBarrageMessages(events: LiveReplayTimelineEvent[]): LiveBarrageMessage[] {
   return events
     .filter((event) => event.kind === "barrage_stream")
@@ -903,3 +1091,4 @@ function formatBadge(tag: string): string {
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
+

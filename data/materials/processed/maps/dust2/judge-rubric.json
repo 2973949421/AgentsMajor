@@ -97,8 +97,7 @@
   },
   "coach_consumption_windows": [
     "timeout",
-    "halftime",
-    "post_map_review"
+    "post_match_review"
   ],
   "output_fields": [
     "winnerTeamId",

@@ -42,6 +42,14 @@ export type WebRunnerRequestValidation =
 
 export type WebRunResetScope = "round" | "map" | "match";
 
+export type WebRunnerAccessValidation =
+  | { ok: true }
+  | {
+      ok: false;
+      status: number;
+      error: string;
+    };
+
 export function getPublicWebRunnerPolicy(
   projectRoot = findProjectRoot(process.cwd()),
   baseEnv: EnvRecord = process.env
@@ -61,13 +69,9 @@ export function validateWebRunnerRequest(
   projectRoot = findProjectRoot(process.cwd()),
   baseEnv: EnvRecord = process.env
 ): WebRunnerRequestValidation {
-  const policy = loadPrivateWebRunnerPolicy(projectRoot, baseEnv);
-  if (!policy.enabled) {
-    return {
-      ok: false,
-      status: 403,
-      error: `Web runner is disabled: ${policy.disabledReason ?? "not_allowed"}.`
-    };
+  const access = validateWebRunnerAccess(request, body, projectRoot, baseEnv);
+  if (!access.ok) {
+    return access;
   }
 
   if (body.confirmReset !== true) {
@@ -76,18 +80,6 @@ export function validateWebRunnerRequest(
       status: 400,
       error: "Web runner requires explicit confirmReset=true because Phase runs may reset completed local fixtures."
     };
-  }
-
-  if (!policy.allowRemote && !isLocalRequest(request)) {
-    return {
-      ok: false,
-      status: 403,
-      error: "Web runner only accepts localhost requests unless AGENT_MAJOR_WEB_RUNNER_ALLOW_REMOTE=true."
-    };
-  }
-
-  if (policy.adminToken && !tokenMatches(policy.adminToken, getRequestToken(request, body))) {
-    return { ok: false, status: 401, error: "Invalid web runner token." };
   }
 
   const action = parseAction(body.action);
@@ -105,6 +97,36 @@ export function validateWebRunnerRequest(
   }
 
   return { ok: true, action: "run", mode };
+}
+
+export function validateWebRunnerAccess(
+  request: Request,
+  body: Pick<WebRunnerRequestBody, "adminToken">,
+  projectRoot = findProjectRoot(process.cwd()),
+  baseEnv: EnvRecord = process.env
+): WebRunnerAccessValidation {
+  const policy = loadPrivateWebRunnerPolicy(projectRoot, baseEnv);
+  if (!policy.enabled) {
+    return {
+      ok: false,
+      status: 403,
+      error: `Web runner is disabled: ${policy.disabledReason ?? "not_allowed"}.`
+    };
+  }
+
+  if (!policy.allowRemote && !isLocalRequest(request)) {
+    return {
+      ok: false,
+      status: 403,
+      error: "Web runner only accepts localhost requests unless AGENT_MAJOR_WEB_RUNNER_ALLOW_REMOTE=true."
+    };
+  }
+
+  if (policy.adminToken && !tokenMatches(policy.adminToken, getRequestToken(request, body))) {
+    return { ok: false, status: 401, error: "Invalid web runner token." };
+  }
+
+  return { ok: true };
 }
 
 function parseAction(value: unknown): "run" | "reset" {

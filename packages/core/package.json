@@ -13,8 +13,11 @@
     }
   },
   "scripts": {
+    "prebuild": "pnpm --filter @agent-major/shared build && pnpm --filter @agent-major/db build && pnpm --filter @agent-major/llm build",
+    "pretypecheck": "pnpm --filter @agent-major/shared build && pnpm --filter @agent-major/db build && pnpm --filter @agent-major/llm build",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json",
+    "pretest": "pnpm --filter @agent-major/shared build && pnpm --filter @agent-major/db build && pnpm --filter @agent-major/llm build",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {

@@ -894,8 +894,10 @@ function readInitialProposal(filePath: string, teamSlug: string, teamId: string,
     playerOperatingPrinciples,
     coachWindowPolicies: {
       timeout: readString(coachWindowPolicies.timeout, `${teamSlug}.initialProposal.coachWindowPolicies.timeout`),
-      halftime: readString(coachWindowPolicies.halftime, `${teamSlug}.initialProposal.coachWindowPolicies.halftime`),
-      postMap: readString(coachWindowPolicies.postMap, `${teamSlug}.initialProposal.coachWindowPolicies.postMap`)
+      postMatchReview: readString(
+        coachWindowPolicies.postMatchReview,
+        `${teamSlug}.initialProposal.coachWindowPolicies.postMatchReview`
+      )
     },
     frontendSummary,
     jsonPath: filePath,

@@ -24,7 +24,7 @@
     "confidence": "高",
     "notes": "Vitality 教练。",
     "agent_major_responsibilities": [
-      "Timeout correction / halftime reset / post-match review",
+      "Timeout correction / post-match review",
       "Repair system drift / preserve reliability standards / ship reusable reviews"
     ]
   },
@@ -148,7 +148,7 @@
     ],
     "override_ids": [],
     "ops_notes": [
-      "Use timeout resets, reliability correction, and post-match review framing."
+      "Use timeout correction, reliability repair, and post-match review framing."
     ]
   },
   "ops_hooks": {

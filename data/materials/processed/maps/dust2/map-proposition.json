@@ -123,8 +123,7 @@
   ],
   "coach_windows": [
     "timeout",
-    "halftime",
-    "post_map_review"
+    "post_match_review"
   ],
   "frontend_minimum_fields": [
     "当前地图命题",

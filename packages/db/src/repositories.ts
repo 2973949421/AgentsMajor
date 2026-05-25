@@ -16,6 +16,7 @@ import type {
   RoundReport,
   SimulationRun,
   Summary,
+  TeamMapCoachState,
   Team,
   TimelineEvent,
   Tournament
@@ -34,6 +35,7 @@ import {
   roundSchema,
   simulationRunSchema,
   summarySchema,
+  teamMapCoachStateSchema,
   teamSchema,
   timelineEventSchema,
   tournamentSchema
@@ -92,6 +94,11 @@ export interface RoundReportRepository extends Repository<RoundReport> {
   getByRoundId(roundId: string): Promise<RoundReport | null>;
   listByMapGame(mapGameId: string): Promise<RoundReport[]>;
 }
+export interface TeamMapCoachStateRepository {
+  getByMapGameAndTeam(mapGameId: string, teamId: string): Promise<TeamMapCoachState | null>;
+  listByMapGame(mapGameId: string): Promise<TeamMapCoachState[]>;
+  save(entity: TeamMapCoachState): Promise<void>;
+}
 export interface EconomyStateRepository extends Repository<EconomyState> {
   getLatestByAgent(agentId: string, mapGameId: string): Promise<EconomyState | null>;
   listByRound(roundId: string): Promise<EconomyState[]>;
@@ -128,6 +135,7 @@ export interface Repositories {
   mapGames: MapGameRepository;
   rounds: RoundRepository;
   roundReports: RoundReportRepository;
+  teamMapCoachStates: TeamMapCoachStateRepository;
   economyStates: EconomyStateRepository;
   events: EventRepository;
   timelineEvents: TimelineEventRepository;
@@ -191,6 +199,7 @@ export function createSqliteRepositories(filePath = defaultSqlitePath): SqliteRe
     mapGames: new MapGameSqliteRepository(sqlite),
     rounds: new RoundSqliteRepository(sqlite),
     roundReports: new RoundReportSqliteRepository(sqlite),
+    teamMapCoachStates: new TeamMapCoachStateSqliteRepository(sqlite),
     economyStates: new EconomyStateSqliteRepository(sqlite),
     events: new EventSqliteRepository(sqlite),
     timelineEvents: new TimelineEventSqliteRepository(sqlite),
@@ -328,14 +337,27 @@ CREATE TABLE IF NOT EXISTS round_reports (
   judge_result_json text NOT NULL,
   agent_outputs_json text NOT NULL,
   llm_team_plans_json text,
+  applied_coach_timeout_correction_json text,
   key_events_json text NOT NULL,
+  kill_ledger_json text,
   economy_delta_json text NOT NULL,
   token_submission_json text NOT NULL,
   highlight_tags_json text,
+  judge_diagnostic_json text,
   tactical_context_json text,
   summary text NOT NULL,
   event_projection_json text NOT NULL,
   created_at text NOT NULL
+);
+CREATE TABLE IF NOT EXISTS team_map_coach_states (
+  map_game_id text NOT NULL REFERENCES map_games(id),
+  team_id text NOT NULL REFERENCES teams(id),
+  timeouts_remaining integer DEFAULT 2 NOT NULL,
+  active_correction_artifact_id text,
+  active_correction_expires_after_round integer,
+  last_timeout_round_number integer,
+  updated_at text NOT NULL,
+  PRIMARY KEY (map_game_id, team_id)
 );
 CREATE TABLE IF NOT EXISTS economy_states (
   id text PRIMARY KEY NOT NULL,
@@ -470,10 +492,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS events_global_sequence_unique ON events(global
 CREATE UNIQUE INDEX IF NOT EXISTS events_scope_sequence_unique ON events(scope_type, scope_id, sequence_in_scope);
 CREATE INDEX IF NOT EXISTS timeline_events_round_idx ON timeline_events(round_id, sequence_index);
 CREATE INDEX IF NOT EXISTS economy_states_agent_round_idx ON economy_states(agent_id, round_id);
+CREATE INDEX IF NOT EXISTS team_map_coach_states_map_idx ON team_map_coach_states(map_game_id);
 CREATE INDEX IF NOT EXISTS summaries_scope_idx ON summaries(scope_type, scope_id, created_at);
 `);
   ensureSqliteColumn(sqlite, "round_reports", "tactical_context_json", "text");
   ensureSqliteColumn(sqlite, "round_reports", "llm_team_plans_json", "text");
+  ensureSqliteColumn(sqlite, "round_reports", "applied_coach_timeout_correction_json", "text");
+  ensureSqliteColumn(sqlite, "round_reports", "kill_ledger_json", "text");
+  ensureSqliteColumn(sqlite, "round_reports", "judge_diagnostic_json", "text");
   ensureSqliteColumn(sqlite, "agents", "secondary_roles_json", "text");
   ensureSqliteColumn(sqlite, "agents", "role_profile_json", "text");
   ensureSqliteColumn(sqlite, "agents", "material_ref_json", "text");
@@ -799,16 +825,19 @@ class RoundReportSqliteRepository implements RoundReportRepository {
     const item = roundReportSchema.parse(entity);
     this.sqlite
       .prepare(
-        `INSERT INTO round_reports (id, tournament_id, match_id, map_game_id, round_id, round_number, map_name, winner_team_id, score_before_round_json, score_after_round_json, judge_result_json, agent_outputs_json, llm_team_plans_json, key_events_json, economy_delta_json, token_submission_json, highlight_tags_json, tactical_context_json, summary, event_projection_json, created_at)
-         VALUES (@id, @tournamentId, @matchId, @mapGameId, @roundId, @roundNumber, @mapName, @winnerTeamId, @scoreBeforeRoundJson, @scoreAfterRoundJson, @judgeResultJson, @agentOutputsJson, @llmTeamPlansJson, @keyEventsJson, @economyDeltaJson, @tokenSubmissionJson, @highlightTagsJson, @tacticalContextJson, @summary, @eventProjectionJson, @createdAt)
+        `INSERT INTO round_reports (id, tournament_id, match_id, map_game_id, round_id, round_number, map_name, winner_team_id, score_before_round_json, score_after_round_json, judge_result_json, agent_outputs_json, llm_team_plans_json, applied_coach_timeout_correction_json, key_events_json, kill_ledger_json, economy_delta_json, token_submission_json, highlight_tags_json, judge_diagnostic_json, tactical_context_json, summary, event_projection_json, created_at)
+         VALUES (@id, @tournamentId, @matchId, @mapGameId, @roundId, @roundNumber, @mapName, @winnerTeamId, @scoreBeforeRoundJson, @scoreAfterRoundJson, @judgeResultJson, @agentOutputsJson, @llmTeamPlansJson, @appliedCoachTimeoutCorrectionJson, @keyEventsJson, @killLedgerJson, @economyDeltaJson, @tokenSubmissionJson, @highlightTagsJson, @judgeDiagnosticJson, @tacticalContextJson, @summary, @eventProjectionJson, @createdAt)
          ON CONFLICT(id) DO UPDATE SET
          tournament_id = excluded.tournament_id, match_id = excluded.match_id, map_game_id = excluded.map_game_id,
          round_id = excluded.round_id, round_number = excluded.round_number, map_name = excluded.map_name,
          winner_team_id = excluded.winner_team_id, score_before_round_json = excluded.score_before_round_json,
          score_after_round_json = excluded.score_after_round_json, judge_result_json = excluded.judge_result_json,
-         agent_outputs_json = excluded.agent_outputs_json, llm_team_plans_json = excluded.llm_team_plans_json, key_events_json = excluded.key_events_json,
+         agent_outputs_json = excluded.agent_outputs_json, llm_team_plans_json = excluded.llm_team_plans_json,
+         applied_coach_timeout_correction_json = excluded.applied_coach_timeout_correction_json, key_events_json = excluded.key_events_json,
+         kill_ledger_json = excluded.kill_ledger_json,
          economy_delta_json = excluded.economy_delta_json, token_submission_json = excluded.token_submission_json,
-         highlight_tags_json = excluded.highlight_tags_json, tactical_context_json = excluded.tactical_context_json, summary = excluded.summary,
+         highlight_tags_json = excluded.highlight_tags_json, judge_diagnostic_json = excluded.judge_diagnostic_json,
+         tactical_context_json = excluded.tactical_context_json, summary = excluded.summary,
          event_projection_json = excluded.event_projection_json, created_at = excluded.created_at`
       )
       .run(
@@ -819,14 +848,55 @@ class RoundReportSqliteRepository implements RoundReportRepository {
           judgeResultJson: JSON.stringify(item.judgeResult),
           agentOutputsJson: JSON.stringify(item.agentOutputs),
           llmTeamPlansJson: stringifyOptional(item.llmTeamPlans),
+          appliedCoachTimeoutCorrectionJson: stringifyOptional(item.appliedCoachTimeoutCorrection),
           keyEventsJson: JSON.stringify(item.keyEvents),
+          killLedgerJson: stringifyOptional(item.killLedger),
           economyDeltaJson: JSON.stringify(item.economyDelta),
           tokenSubmissionJson: JSON.stringify(item.tokenSubmission),
           highlightTagsJson: stringifyOptional(item.highlightTags),
+          judgeDiagnosticJson: stringifyOptional(item.judgeDiagnostic),
           tacticalContextJson: stringifyOptional(item.tacticalContext),
           eventProjectionJson: JSON.stringify(item.eventProjection)
         })
       );
+  }
+}
+
+class TeamMapCoachStateSqliteRepository implements TeamMapCoachStateRepository {
+  constructor(private readonly sqlite: SqliteDatabase) {}
+
+  async getByMapGameAndTeam(mapGameId: string, teamId: string): Promise<TeamMapCoachState | null> {
+    const row = this.sqlite
+      .prepare("SELECT * FROM team_map_coach_states WHERE map_game_id = ? AND team_id = ?")
+      .get(mapGameId, teamId) as Row | undefined;
+    return row ? teamMapCoachStateSchema.parse(mapTeamMapCoachState(row)) : null;
+  }
+
+  async listByMapGame(mapGameId: string): Promise<TeamMapCoachState[]> {
+    return (
+      this.sqlite.prepare("SELECT * FROM team_map_coach_states WHERE map_game_id = ? ORDER BY team_id ASC").all(mapGameId) as Row[]
+    ).map((row) => teamMapCoachStateSchema.parse(mapTeamMapCoachState(row)));
+  }
+
+  async save(entity: TeamMapCoachState): Promise<void> {
+    const item = teamMapCoachStateSchema.parse(entity);
+    this.sqlite
+      .prepare(
+        `INSERT INTO team_map_coach_states (
+          map_game_id, team_id, timeouts_remaining, active_correction_artifact_id,
+          active_correction_expires_after_round, last_timeout_round_number, updated_at
+        ) VALUES (
+          @mapGameId, @teamId, @timeoutsRemaining, @activeCorrectionArtifactId,
+          @activeCorrectionExpiresAfterRound, @lastTimeoutRoundNumber, @updatedAt
+        )
+         ON CONFLICT(map_game_id, team_id) DO UPDATE SET
+         timeouts_remaining = excluded.timeouts_remaining,
+         active_correction_artifact_id = excluded.active_correction_artifact_id,
+         active_correction_expires_after_round = excluded.active_correction_expires_after_round,
+         last_timeout_round_number = excluded.last_timeout_round_number,
+         updated_at = excluded.updated_at`
+      )
+      .run(toNullable(item));
   }
 }
 
@@ -1285,15 +1355,30 @@ function mapRoundReport(row: Row) {
     judgeResult: parseJson(row.judge_result_json),
     agentOutputs: parseJson(row.agent_outputs_json),
     ...optionalObject("llmTeamPlans", parseOptionalJson(row.llm_team_plans_json)),
+    ...optionalObject("appliedCoachTimeoutCorrection", parseOptionalJson(row.applied_coach_timeout_correction_json)),
     keyEvents: parseJson(row.key_events_json),
+    ...optionalObject("killLedger", parseOptionalJson(row.kill_ledger_json)),
     economyDelta: parseJson(row.economy_delta_json),
     tokenSubmission: parseJson(row.token_submission_json),
     ...optionalObject("highlightTags", parseOptionalJson(row.highlight_tags_json)),
+    ...optionalObject("judgeDiagnostic", parseOptionalJson(row.judge_diagnostic_json)),
     ...optionalObject("tacticalContext", parseOptionalJson(row.tactical_context_json)),
     summary: asString(row.summary),
     eventProjection: parseJson(row.event_projection_json),
     createdAt: asString(row.created_at)
   };
+}
+
+function mapTeamMapCoachState(row: Row) {
+  return removeUndefined({
+    mapGameId: asString(row.map_game_id),
+    teamId: asString(row.team_id),
+    timeoutsRemaining: asNumber(row.timeouts_remaining),
+    activeCorrectionArtifactId: nullableString(row.active_correction_artifact_id),
+    activeCorrectionExpiresAfterRound: nullableNumber(row.active_correction_expires_after_round),
+    lastTimeoutRoundNumber: nullableNumber(row.last_timeout_round_number),
+    updatedAt: asString(row.updated_at)
+  });
 }
 
 function mapEconomyState(row: Row) {

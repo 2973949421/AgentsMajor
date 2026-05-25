@@ -170,18 +170,37 @@ export const roundReports = sqliteTable("round_reports", {
   winnerTeamId: text("winner_team_id").notNull().references(() => teams.id),
   scoreBeforeRoundJson: text("score_before_round_json", { mode: "json" }).notNull(),
   scoreAfterRoundJson: text("score_after_round_json", { mode: "json" }).notNull(),
-    judgeResultJson: text("judge_result_json", { mode: "json" }).notNull(),
-    agentOutputsJson: text("agent_outputs_json", { mode: "json" }).notNull(),
-    llmTeamPlansJson: text("llm_team_plans_json", { mode: "json" }),
-    keyEventsJson: text("key_events_json", { mode: "json" }).notNull(),
+  judgeResultJson: text("judge_result_json", { mode: "json" }).notNull(),
+  agentOutputsJson: text("agent_outputs_json", { mode: "json" }).notNull(),
+  llmTeamPlansJson: text("llm_team_plans_json", { mode: "json" }),
+  appliedCoachTimeoutCorrectionJson: text("applied_coach_timeout_correction_json", { mode: "json" }),
+  keyEventsJson: text("key_events_json", { mode: "json" }).notNull(),
   economyDeltaJson: text("economy_delta_json", { mode: "json" }).notNull(),
   tokenSubmissionJson: text("token_submission_json", { mode: "json" }).notNull(),
   highlightTagsJson: text("highlight_tags_json", { mode: "json" }),
+  judgeDiagnosticJson: text("judge_diagnostic_json", { mode: "json" }),
   tacticalContextJson: text("tactical_context_json", { mode: "json" }),
   summary: text("summary").notNull(),
   eventProjectionJson: text("event_projection_json", { mode: "json" }).notNull(),
   createdAt: text("created_at").notNull()
 });
+
+export const teamMapCoachStates = sqliteTable(
+  "team_map_coach_states",
+  {
+    mapGameId: text("map_game_id").notNull().references(() => mapGames.id),
+    teamId: text("team_id").notNull().references(() => teams.id),
+    timeoutsRemaining: integer("timeouts_remaining").notNull().default(2),
+    activeCorrectionArtifactId: text("active_correction_artifact_id"),
+    activeCorrectionExpiresAfterRound: integer("active_correction_expires_after_round"),
+    lastTimeoutRoundNumber: integer("last_timeout_round_number"),
+    updatedAt: text("updated_at").notNull()
+  },
+  (table) => ({
+    mapIdx: index("team_map_coach_states_map_idx").on(table.mapGameId),
+    stateUnique: uniqueIndex("team_map_coach_states_map_team_unique").on(table.mapGameId, table.teamId)
+  })
+);
 
 export const economyStates = sqliteTable(
   "economy_states",

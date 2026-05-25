@@ -3,6 +3,9 @@ import type { LlmGateway, LlmMessage, LlmResponse } from "@agent-major/llm";
 import type { JobQueue } from "@agent-major/queue";
 import {
   agentActionDecisionSchema,
+  coachPostMatchReviewSchema,
+  coachTimeoutCorrectionSchema,
+  judgeDiagnosticSchema,
   judgeResultSchema,
   teamInitialProposalSchema,
   teamInitialProposalSummarySchema,
@@ -13,8 +16,11 @@ import {
   type AgentEconomyDelta,
   type AgentOutput,
   type BuyType,
+  type CoachPostMatchReview,
+  type CoachTimeoutCorrection,
   type EconomyState,
   type Event,
+  type JudgeDiagnostic,
   type JudgeResult,
   type MapGame,
   type Match,
@@ -22,6 +28,7 @@ import {
   type Round,
   type RoundKeyEvent,
   type RoundReport,
+  type RoundKillLedgerEntry,
   type ScorePair,
   type SideAssignment,
   type Summary,
@@ -146,11 +153,24 @@ interface RoundGeneration {
   beforeEconomy: EconomyState[];
   economyStates: EconomyState[];
   economyDelta: RoundReport["economyDelta"];
+  coachTimeout?: ResolvedCoachTimeout;
   teamPlans?: Record<string, TeamRoundPlanDecision>;
   agentOutputs: AgentOutput[];
   judgeResult: JudgeResult;
   tacticalRound?: TacticalRoundGeneration;
   keyEvents: RoundKeyEvent[];
+  killLedger: RoundKillLedgerEntry[];
+}
+
+interface ResolvedCoachTimeout {
+  teamId: string;
+  teamName: string;
+  triggerRoundId: string;
+  triggerRoundNumber: number;
+  correction: CoachTimeoutCorrection;
+  responseArtifactId?: string;
+  timeoutsRemainingBefore: number;
+  timeoutsRemainingAfter: number;
 }
 
 interface CommittedRoundGeneration {
@@ -166,6 +186,8 @@ interface CommittedRoundGeneration {
   economyEvent: Event;
   killFeedEvents: Event[];
   highlightEvent: Event;
+  timeoutUsedEvent?: Event;
+  coachTimeoutCorrectionEvent?: Event;
   sideAssignmentEvent?: Event;
   tacticalPlanEvent?: Event;
   zoneDeploymentEvent?: Event;
@@ -368,6 +390,7 @@ class Phase12SimulationEngine implements SimulationEngine {
       startedAt: mapGame.startedAt ?? now
     };
     await this.context.repositories.mapGames.save(updated);
+    await this.ensureCoachStatesForMap(updated, match);
     await this.appendEvent({
       id: `evt_${mapGame.id}_map_started`,
       type: "map_started",
@@ -391,7 +414,15 @@ class Phase12SimulationEngine implements SimulationEngine {
   async playNextRound(input: PlayNextRoundInput): Promise<Round> {
     try {
       const generation = await this.prepareRoundGeneration(input.mapGameId);
-      return this.commitRoundGeneration(generation);
+      const round = await this.commitRoundGeneration(generation);
+      const committedMapGame = await this.context.repositories.mapGames.getById(round.mapGameId);
+      if (committedMapGame) {
+        const committedMatch = await this.context.repositories.matches.getById(committedMapGame.matchId);
+        if (committedMatch?.status === "completed") {
+          await this.generateCoachPostMatchReviewsIfNeeded(committedMatch);
+        }
+      }
+      return round;
     } catch (error) {
       if (error instanceof CompletedRoundError || error instanceof CompletedMapError) {
         return error.round;
@@ -590,6 +621,7 @@ class Phase12SimulationEngine implements SimulationEngine {
     if (activeA.length < activeAgentsPerTeam || activeB.length < activeAgentsPerTeam) {
       throw new Error(`Both teams must have at least ${activeAgentsPerTeam} active agents before playNextRound.`);
     }
+    await this.ensureCoachStatesForMap(mapGame, match);
 
     const roundNumber = mapGame.currentRoundNumber + 1;
     const roundId = `round_${mapGame.id}_${roundNumber}`;
@@ -642,6 +674,19 @@ class Phase12SimulationEngine implements SimulationEngine {
     });
     const recentRoundReports = (await this.context.repositories.roundReports.listByMapGame(mapGame.id)).slice(-3);
     const recentPublicRoundSummaries = recentRoundReports.map((report) => report.summary);
+    const coachTimeout = await this.resolveCoachTimeoutIfNeeded({
+      match,
+      mapGame,
+      round,
+      observabilityAttempt,
+      roundNumber,
+      scoreBeforeRound,
+      teamA,
+      teamB,
+      activeA,
+      activeB,
+      recentRoundReports
+    });
     const tacticalPlans =
       this.context.tacticalProtocol === "rule"
         ? buildRuleBasedTacticalPlans({
@@ -679,7 +724,8 @@ class Phase12SimulationEngine implements SimulationEngine {
           buyTypeByTeam,
           beforeEconomy,
           ...(tacticalPlans ? { tacticalPlans } : {}),
-          recentPublicRoundSummaries
+          recentPublicRoundSummaries,
+          ...(coachTimeout ? { coachTimeout } : {})
         })
       : undefined;
 
@@ -693,7 +739,8 @@ class Phase12SimulationEngine implements SimulationEngine {
       teamA,
       teamB,
       buyTypeByTeam,
-      ...(teamPlans ? { teamPlans } : {})
+      ...(teamPlans ? { teamPlans } : {}),
+      ...(coachTimeout ? { coachTimeout } : {})
     });
     const judgeResult = await this.judgeRound({
       match,
@@ -710,6 +757,7 @@ class Phase12SimulationEngine implements SimulationEngine {
       teamBBuyType,
       sideAssignment,
       ...(teamPlans ? { teamPlans } : {}),
+      ...(coachTimeout ? { coachTimeout } : {}),
       agentOutputs,
       recentPublicRoundSummaries,
       recentWinnerTeamIds: recentRoundReports.map((report) => report.winnerTeamId)
@@ -753,20 +801,65 @@ class Phase12SimulationEngine implements SimulationEngine {
             };
           })()
         : undefined;
-    const keyEvents = buildKeyEvents({
-      roundId,
-      roundNumber,
-      winnerTeamId,
-      loserTeamId,
-      activeA,
-      activeB,
-      agentOutputs,
-      mvpAgentId: judgeResult.mvpAgentId,
-      economyDelta,
-      teamABuyType,
-      teamBBuyType,
-      ...(tacticalRound ? { tacticalCollision: tacticalRound.collision } : {})
-    });
+    const tacticalCollision = tacticalRound?.collision;
+    const keyEvents = tacticalCollision
+      ? buildKeyEvents({
+          roundId,
+          roundNumber,
+          winnerTeamId,
+          loserTeamId,
+          activeA,
+          activeB,
+          agentOutputs,
+          mvpAgentId: judgeResult.mvpAgentId,
+          economyDelta,
+          teamABuyType,
+          teamBBuyType,
+          tacticalCollision
+        })
+      : buildKeyEvents({
+          roundId,
+          roundNumber,
+          winnerTeamId,
+          loserTeamId,
+          activeA,
+          activeB,
+          agentOutputs,
+          mvpAgentId: judgeResult.mvpAgentId,
+          economyDelta,
+          teamABuyType,
+          teamBBuyType
+        });
+    const killLedger = tacticalCollision
+      ? buildRoundKillLedger({
+          roundId,
+          roundNumber,
+          winnerTeamId,
+          loserTeamId,
+          activeA,
+          activeB,
+          agentOutputs,
+          mvpAgentId: judgeResult.mvpAgentId,
+          economyDelta,
+          teamABuyType,
+          teamBBuyType,
+          keyEvents,
+          tacticalCollision
+        })
+      : buildRoundKillLedger({
+          roundId,
+          roundNumber,
+          winnerTeamId,
+          loserTeamId,
+          activeA,
+          activeB,
+          agentOutputs,
+          mvpAgentId: judgeResult.mvpAgentId,
+          economyDelta,
+          teamABuyType,
+          teamBBuyType,
+          keyEvents
+        });
 
     return {
       match,
@@ -786,11 +879,13 @@ class Phase12SimulationEngine implements SimulationEngine {
       beforeEconomy,
       economyStates,
       economyDelta,
+      ...(coachTimeout ? { coachTimeout } : {}),
       ...(teamPlans ? { teamPlans } : {}),
       agentOutputs,
       judgeResult,
       ...(tacticalRound ? { tacticalRound } : {}),
-      keyEvents
+      keyEvents,
+      killLedger
     };
   }
 
@@ -824,6 +919,8 @@ class Phase12SimulationEngine implements SimulationEngine {
         let sideAssignmentEvent: Event | undefined;
         let tacticalPlanEvent: Event | undefined;
         let zoneDeploymentEvent: Event | undefined;
+        let timeoutUsedEvent: Event | undefined;
+        let coachTimeoutCorrectionEvent: Event | undefined;
         if (generation.tacticalRound) {
           const sidePayload = {
             schemaVersion: 1,
@@ -902,6 +999,51 @@ class Phase12SimulationEngine implements SimulationEngine {
             scopeType: "round",
             scopeId: round.id,
             payload: zoneDeploymentPayload,
+            createdAt: now
+          });
+        }
+        if (generation.coachTimeout) {
+          timeoutUsedEvent = await this.appendEvent({
+            id: `evt_${round.id}_timeout_used_${safeId(generation.coachTimeout.teamId)}`,
+            type: "timeout_used",
+            category: "runtime_control",
+            tournamentId: match.tournamentId,
+            matchId: match.id,
+            mapGameId: mapGame.id,
+            roundId: round.id,
+            scopeType: "round",
+            scopeId: round.id,
+            payload: {
+              schemaVersion: 1,
+              teamId: generation.coachTimeout.teamId,
+              teamName: generation.coachTimeout.teamName,
+              triggerRoundId: generation.coachTimeout.triggerRoundId,
+              triggerRoundNumber: generation.coachTimeout.triggerRoundNumber,
+              timeoutsRemainingBefore: generation.coachTimeout.timeoutsRemainingBefore,
+              timeoutsRemainingAfter: generation.coachTimeout.timeoutsRemainingAfter
+            },
+            createdAt: now
+          });
+          coachTimeoutCorrectionEvent = await this.appendEvent({
+            id: `evt_${round.id}_coach_timeout_correction_${safeId(generation.coachTimeout.teamId)}`,
+            type: "coach_timeout_correction_created",
+            category: "runtime_control",
+            tournamentId: match.tournamentId,
+            matchId: match.id,
+            mapGameId: mapGame.id,
+            roundId: round.id,
+            scopeType: "round",
+            scopeId: round.id,
+            payload: removeUndefined({
+              schemaVersion: 1,
+              visibility: "public_after_round",
+              teamId: generation.coachTimeout.teamId,
+              teamName: generation.coachTimeout.teamName,
+              triggerRoundNumber: generation.coachTimeout.triggerRoundNumber,
+              expiresAfterRoundNumber: generation.coachTimeout.correction.expiresAfterRoundNumber,
+              correction: generation.coachTimeout.correction,
+              artifactId: generation.coachTimeout.responseArtifactId
+            }),
             createdAt: now
           });
         }
@@ -1009,7 +1151,14 @@ class Phase12SimulationEngine implements SimulationEngine {
         });
 
         const killFeedEvents: Event[] = [];
-        for (const [index, keyEvent] of generation.keyEvents.entries()) {
+        const validatedKillLedger = validateRoundKillLedger({
+          killLedger: generation.killLedger,
+          activeA: generation.activeA,
+          activeB: generation.activeB,
+          winnerTeamId: generation.judgeResult.winnerTeamId,
+          loserTeamId: generation.judgeResult.loserTeamId
+        });
+        for (const [index, kill] of validatedKillLedger.entries()) {
           killFeedEvents.push(
             await this.appendEvent({
               id: `evt_${round.id}_kill_feed_${index + 1}`,
@@ -1023,11 +1172,15 @@ class Phase12SimulationEngine implements SimulationEngine {
               scopeId: round.id,
               payload: {
                 schemaVersion: 1,
-                keyEventId: keyEvent.id,
-                actorAgentId: keyEvent.actorAgentId,
-                targetAgentId: keyEvent.targetAgentId,
-                zoneId: keyEvent.zoneId,
-                text: keyEvent.impact
+                atMs: kill.atMs,
+                keyEventId: kill.keyEventId,
+                actorAgentId: kill.actorAgentId,
+                actorTeamId: kill.actorTeamId,
+                targetAgentId: kill.targetAgentId,
+                targetTeamId: kill.targetTeamId,
+                zoneId: kill.zoneId,
+                text: kill.impact,
+                sourceAgentOutputIds: kill.sourceAgentOutputIds ?? []
               },
               createdAt: now
             })
@@ -1074,7 +1227,7 @@ class Phase12SimulationEngine implements SimulationEngine {
         const roundReportEventId = `evt_${round.id}_round_report_created`;
         const roundCompletedEventId = `evt_${round.id}_round_completed`;
         const coreProjection: ProjectedEvent[] = [
-          ...[sideAssignmentEvent, tacticalPlanEvent, zoneDeploymentEvent, siteExecuteEvent]
+          ...[sideAssignmentEvent, tacticalPlanEvent, zoneDeploymentEvent, timeoutUsedEvent, coachTimeoutCorrectionEvent, siteExecuteEvent]
             .filter((event): event is Event => Boolean(event))
             .map((event) => requiredProjection(event)),
           requiredProjection(judgeEvent),
@@ -1108,7 +1261,12 @@ class Phase12SimulationEngine implements SimulationEngine {
           judgeResult: generation.judgeResult,
           agentOutputs: generation.agentOutputs,
           ...(generation.teamPlans ? { llmTeamPlans: generation.teamPlans } : {}),
+          ...(generation.coachTimeout ? { appliedCoachTimeoutCorrection: generation.coachTimeout.correction } : {}),
           keyEvents: generation.keyEvents,
+          killLedger: validatedKillLedger.map((kill, index) => ({
+            ...kill,
+            sourceEventId: killFeedEvents[index]?.id
+          })),
           economyDelta: generation.economyDelta,
           tokenSubmission: {
             activeAgentIds: generation.allActive.map((agent) => agent.id),
@@ -1120,6 +1278,7 @@ class Phase12SimulationEngine implements SimulationEngine {
             }
           },
           highlightTags,
+          ...(generation.judgeResult.diagnostic ? { judgeDiagnostic: generation.judgeResult.diagnostic } : {}),
           ...(generation.tacticalRound ? { tacticalContext: generation.tacticalRound.tacticalContext } : {}),
           summary: buildSummary({
             roundNumber: round.roundNumber,
@@ -1183,6 +1342,15 @@ class Phase12SimulationEngine implements SimulationEngine {
           completedAt: now
         };
         await this.context.repositories.rounds.save(completedRound);
+        if (generation.coachTimeout) {
+          await this.context.repositories.teamMapCoachStates.save({
+            mapGameId: mapGame.id,
+            teamId: generation.coachTimeout.teamId,
+            timeoutsRemaining: generation.coachTimeout.timeoutsRemainingAfter,
+            lastTimeoutRoundNumber: generation.coachTimeout.triggerRoundNumber,
+            updatedAt: now
+          });
+        }
         const mapEvaluation = evaluateMapState(generation.scoreAfterRound, round.roundNumber);
         const nextMap: MapGame = {
           ...mapGame,
@@ -1256,6 +1424,8 @@ class Phase12SimulationEngine implements SimulationEngine {
           economyEvent,
           killFeedEvents,
           highlightEvent,
+          ...(timeoutUsedEvent ? { timeoutUsedEvent } : {}),
+          ...(coachTimeoutCorrectionEvent ? { coachTimeoutCorrectionEvent } : {}),
           ...(sideAssignmentEvent ? { sideAssignmentEvent } : {}),
           ...(tacticalPlanEvent ? { tacticalPlanEvent } : {}),
           ...(zoneDeploymentEvent ? { zoneDeploymentEvent } : {}),
@@ -1390,6 +1560,8 @@ class Phase12SimulationEngine implements SimulationEngine {
         economyEvent: committed.economyEvent,
         killFeedEvents: committed.killFeedEvents,
         highlightEvent: committed.highlightEvent,
+        ...(committed.timeoutUsedEvent ? { timeoutUsedEvent: committed.timeoutUsedEvent } : {}),
+        ...(committed.coachTimeoutCorrectionEvent ? { coachTimeoutCorrectionEvent: committed.coachTimeoutCorrectionEvent } : {}),
         ...(committed.sideAssignmentEvent ? { sideAssignmentEvent: committed.sideAssignmentEvent } : {}),
         ...(committed.tacticalPlanEvent ? { tacticalPlanEvent: committed.tacticalPlanEvent } : {}),
         ...(committed.zoneDeploymentEvent ? { zoneDeploymentEvent: committed.zoneDeploymentEvent } : {}),
@@ -1577,6 +1749,463 @@ class Phase12SimulationEngine implements SimulationEngine {
     await this.context.repositories.matches.save(completedMatch);
   }
 
+  private async ensureCoachStatesForMap(mapGame: MapGame, match: Match): Promise<void> {
+    const existingStates = await this.context.repositories.teamMapCoachStates.listByMapGame(mapGame.id);
+    const existingTeamIds = new Set(existingStates.map((state) => state.teamId));
+    const now = timestamp();
+    for (const teamId of [match.teamAId, match.teamBId]) {
+      if (existingTeamIds.has(teamId)) {
+        continue;
+      }
+
+      await this.context.repositories.teamMapCoachStates.save({
+        mapGameId: mapGame.id,
+        teamId,
+        timeoutsRemaining: 2,
+        updatedAt: now
+      });
+    }
+  }
+
+  private async resolveCoachTimeoutIfNeeded(input: {
+    match: Match;
+    mapGame: MapGame;
+    round: Round;
+    observabilityAttempt: number;
+    roundNumber: number;
+    scoreBeforeRound: ScorePair;
+    teamA: Team;
+    teamB: Team;
+    activeA: Agent[];
+    activeB: Agent[];
+    recentRoundReports: RoundReport[];
+  }): Promise<ResolvedCoachTimeout | undefined> {
+    const previousReport = input.recentRoundReports.at(-1);
+    if (!previousReport) {
+      return undefined;
+    }
+
+    const losingTeamId = previousReport.winnerTeamId === input.teamA.id ? input.teamB.id : input.teamA.id;
+    const losingTeam = losingTeamId === input.teamA.id ? input.teamA : input.teamB;
+    const activeAgents = losingTeamId === input.teamA.id ? input.activeA : input.activeB;
+    const coachState = await this.context.repositories.teamMapCoachStates.getByMapGameAndTeam(input.mapGame.id, losingTeamId);
+    if (!coachState || coachState.timeoutsRemaining <= 0) {
+      return undefined;
+    }
+    if (input.roundNumber < coachTimeoutMinRoundNumber) {
+      return undefined;
+    }
+    if (
+      typeof coachState.lastTimeoutRoundNumber === "number" &&
+      input.roundNumber - coachState.lastTimeoutRoundNumber <= coachTimeoutCooldownRounds
+    ) {
+      return undefined;
+    }
+
+    const triggerReason = detectCoachTimeoutTrigger({
+      losingTeam,
+      recentRoundReports: input.recentRoundReports,
+      scoreBeforeRound: input.scoreBeforeRound,
+      teamAId: input.teamA.id,
+      teamBId: input.teamB.id
+    });
+    if (!triggerReason) {
+      return undefined;
+    }
+
+    const response = await this.runObservedStructuredCall<CoachTimeoutCorrection>({
+      callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_team_${safeId(losingTeamId)}_coach_timeout`,
+      attemptNumber: input.observabilityAttempt,
+      task: "coach_timeout",
+      schemaName: "CoachTimeoutCorrection",
+      driverModelId: activeAgents[0]?.driverModelId ?? "",
+      requestInput: {
+        objective: "在战术暂停窗口内输出一张只影响下一回合的结构化修正单。",
+        roundId: input.round.id,
+        roundNumber: input.roundNumber,
+        mapName: input.mapGame.mapName,
+        teamId: losingTeam.id,
+        teamName: losingTeam.displayName,
+        mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName),
+        judgeRubricContext: readPhase18JudgeRubricContext(this.context, input.mapGame.mapName),
+        initialProposal: readTeamMaterialInitialProposal(losingTeam),
+        coachContext: readTeamHeadCoachProfile(losingTeam),
+        teamMemoryOverlay: await this.readApprovedTeamMemoryOverlay(losingTeam.id),
+        triggerRoundNumber: previousReport.roundNumber,
+        triggerRoundSummary: previousReport.summary,
+        triggerReason,
+        triggerPolicy: {
+          earliestTimeoutRound: coachTimeoutMinRoundNumber,
+          cooldownRoundsAfterLastTimeoutTrigger: coachTimeoutCooldownRounds,
+          repeatedGapRequiresAtLeastTwoMatchingDiagnostics: true
+        },
+        antiOvercorrectionRules: [
+          "修正单只能指定主优先区，不能让五名选手全部压向同一单点。",
+          "必须保留至少一个次级区域的信息锚点或回防锚点。",
+          "禁止使用“唯一主攻方向”“不参与某区任何行动”“取消所有某区 call”这类绝对指令。",
+          "playerAdjustments 可以分工不同：3人围绕主区，1人信息，1人回防/兜底。"
+        ],
+        latestJudgeDiagnostic: previousReport.judgeDiagnostic ?? previousReport.judgeResult.diagnostic,
+        recentPublicRoundSummaries: input.recentRoundReports.map((report) => report.summary),
+        activeAgents: activeAgents.map((agent) => ({
+          id: agent.id,
+          displayName: agent.displayName,
+          role: agent.role,
+          roleResponsibilities: agent.roleProfile?.agentMajorResponsibilities ?? []
+        }))
+      },
+      responseFormat: "json_object",
+      seed: `coach_timeout:${input.round.id}:${losingTeam.id}`,
+      modelTier: "cheap",
+      temperature: 0,
+      match: input.match,
+      mapGame: input.mapGame,
+      round: input.round,
+      roundNumber: input.roundNumber,
+      validateResponseData: (data) =>
+        validateCoachTimeoutCorrection({
+          correction: coachTimeoutCorrectionSchema.parse(normalizeCoachTimeoutCorrectionPayload(data)),
+          teamId: losingTeam.id,
+          triggerRoundNumber: previousReport.roundNumber,
+          expiresAfterRoundNumber: input.roundNumber,
+          activeAgents
+        })
+    });
+
+    return {
+      teamId: losingTeam.id,
+      teamName: losingTeam.displayName,
+      triggerRoundId: previousReport.roundId,
+      triggerRoundNumber: previousReport.roundNumber,
+      correction: response.data,
+      ...(response.responseArtifactId ? { responseArtifactId: response.responseArtifactId } : {}),
+      timeoutsRemainingBefore: coachState.timeoutsRemaining,
+      timeoutsRemainingAfter: Math.max(0, coachState.timeoutsRemaining - 1)
+    };
+  }
+
+  private async readApprovedTeamMemoryOverlay(teamId: string): Promise<Record<string, unknown> | undefined> {
+    const summary = await this.context.repositories.summaries.getLatestByScope("team", teamId);
+    if (!summary) {
+      return undefined;
+    }
+
+    const payload = readUnknownRecord(summary.payload);
+    if (!payload || payload.kind !== "coach_post_match_review" || payload.status !== "approved") {
+      return undefined;
+    }
+
+    return readUnknownRecord(payload.review);
+  }
+
+  private async generateCoachPostMatchReviewsIfNeeded(match: Match): Promise<void> {
+    const [teamA, teamB] = (await Promise.all([
+      required(this.context.repositories.teams.getById(match.teamAId), `Team not found: ${match.teamAId}`),
+      required(this.context.repositories.teams.getById(match.teamBId), `Team not found: ${match.teamBId}`)
+    ])) as [Team, Team];
+    const mapGames = (await this.context.repositories.mapGames.listByMatch(match.id)).sort((left, right) => left.order - right.order);
+    const mapSummaries = (
+      await Promise.all(mapGames.map((mapGame) => (mapGame.summaryId ? this.context.repositories.summaries.getById(mapGame.summaryId) : null)))
+    ).filter((summary): summary is Summary => Boolean(summary));
+    const matchSummary = await this.context.repositories.summaries.getLatestByScope("match", match.id);
+    const matchEvents = await this.context.repositories.events.listByMatch(match.id);
+
+    for (const team of [teamA, teamB]) {
+      const existingSummary = await this.context.repositories.summaries.getLatestByScope("team", team.id);
+      const existingPayload = readUnknownRecord(existingSummary?.payload);
+      if (existingPayload?.kind === "coach_post_match_review" && existingPayload.matchId === match.id) {
+        continue;
+      }
+
+      const teamAgents = sortAgentsForRound(await this.context.repositories.agents.listByTeam(team.id));
+      const driverModelId = teamAgents[0]?.driverModelId ?? "";
+      if (!driverModelId) {
+        continue;
+      }
+
+      const response = await this.runObservedMatchStructuredCall<CoachPostMatchReview>({
+        callId: `llm_${safeId(match.id)}_team_${safeId(team.id)}_coach_post_match_review`,
+        task: "coach_post_match_review",
+        schemaName: "CoachPostMatchReview",
+        driverModelId,
+        requestInput: {
+          objective: "生成一份只服务下一场比赛、且需要人工确认后才会采纳的赛后复盘。",
+          matchId: match.id,
+          teamId: team.id,
+          teamName: team.displayName,
+          coachContext: readTeamHeadCoachProfile(team),
+          initialProposal: readTeamMaterialInitialProposal(team),
+          teamMemoryOverlay: await this.readApprovedTeamMemoryOverlay(team.id),
+          matchSummary: matchSummary?.payload,
+          mapSummaries: mapSummaries.map((summary) => summary.payload),
+          timeoutUsage: summarizeCoachTimeoutUsage(matchEvents, team.id),
+          latestMapResults: mapGames.map((mapGame) => ({
+            mapGameId: mapGame.id,
+            mapName: mapGame.mapName,
+            winnerTeamId: mapGame.winnerTeamId,
+            score: {
+              teamA: mapGame.teamAScore,
+              teamB: mapGame.teamBScore
+            }
+          }))
+        },
+        responseFormat: "json_object",
+        seed: `coach_post_match_review:${match.id}:${team.id}`,
+        modelTier: "cheap",
+        temperature: 0,
+        match,
+        validateResponseData: (data) =>
+          validateCoachPostMatchReview({
+            review: coachPostMatchReviewSchema.parse(data),
+            teamId: team.id,
+            matchId: match.id
+          })
+      });
+
+      const createdAt = timestamp();
+      const summaryId = `summary_${match.id}_${team.id}_coach_post_match_review`;
+      const pendingSummary: Summary = {
+        id: summaryId,
+        summaryType: "team_memory",
+        scopeType: "team",
+        scopeId: team.id,
+        tournamentId: match.tournamentId,
+        matchId: match.id,
+        title: `赛后复盘待采纳：${team.displayName}`,
+        content: `${team.displayName} 的教练赛后复盘已生成，等待人工确认后再作为下一场补丁。`,
+        payload: {
+          kind: "coach_post_match_review",
+          status: "pending",
+          teamId: team.id,
+          matchId: match.id,
+          review: response.data
+        },
+        sourceEventIds: [],
+        createdAt
+      };
+      await this.context.repositories.summaries.save(pendingSummary);
+      await this.appendEvent({
+        id: `evt_${match.id}_${team.id}_coach_post_match_review_created`,
+        type: "coach_post_match_review_created",
+        category: "runtime_control",
+        tournamentId: match.tournamentId,
+        matchId: match.id,
+        scopeType: "match",
+        scopeId: match.id,
+        payload: {
+          schemaVersion: 1,
+          matchId: match.id,
+          teamId: team.id,
+          teamName: team.displayName,
+          summaryId,
+          status: "pending",
+          responseArtifactId: response.responseArtifactId
+        },
+        createdAt
+      });
+    }
+  }
+
+  private async runObservedMatchStructuredCall<TData>(input: {
+    callId: string;
+    task: "coach_post_match_review";
+    schemaName: string;
+    driverModelId: string;
+    requestInput: unknown;
+    responseFormat: "json_object";
+    seed: string;
+    modelTier: "cheap" | "standard" | "strong";
+    temperature: number;
+    match: Match;
+    validateResponseData?: (data: unknown) => TData;
+  }) {
+    const promptHash = stableHex(JSON.stringify({
+      task: input.task,
+      schemaName: input.schemaName,
+      input: input.requestInput
+    }));
+    const startedAt = timestamp();
+    const requestArtifactId = await this.writeLlmArtifact({
+      callId: input.callId,
+      suffix: "request",
+      artifactType: "llm_request",
+      match: input.match,
+      content: {
+        schemaVersion: 1,
+        taskType: input.task,
+        driverModelId: input.driverModelId,
+        schemaName: input.schemaName,
+        promptHash,
+        input: input.requestInput
+      }
+    });
+    await this.appendEvent({
+      id: `evt_${input.callId}_started`,
+      type: "llm_call_started",
+      category: "system",
+      tournamentId: input.match.tournamentId,
+      matchId: input.match.id,
+      scopeType: "match",
+      scopeId: input.match.id,
+      payload: {
+        schemaVersion: 1,
+        callId: input.callId,
+        taskType: input.task,
+        driverModelId: input.driverModelId,
+        status: "started",
+        startedAt
+      },
+      createdAt: startedAt
+    });
+
+    let latestResponse: LlmResponse<TData> | undefined;
+    try {
+      const response = await this.context.llmGateway.generateStructured<TData, unknown>({
+        task: input.task,
+        driverModelId: input.driverModelId,
+        input: input.requestInput,
+        schemaName: input.schemaName,
+        messages: buildPhase18StructuredMessages({
+          task: input.task,
+          schemaName: input.schemaName,
+          requestInput: input.requestInput
+        }),
+        responseFormat: input.responseFormat,
+        seed: input.seed,
+        modelTier: input.modelTier,
+        temperature: input.temperature
+      });
+      latestResponse = response;
+      const data = input.validateResponseData ? input.validateResponseData(response.data) : response.data;
+      const validatedResponse: LlmResponse<TData> = { ...response, data };
+      const completedAt = timestamp();
+      const responseArtifactId = await this.writeLlmArtifact({
+        callId: input.callId,
+        suffix: "response",
+        artifactType: "llm_response",
+        match: input.match,
+        content: {
+          schemaVersion: 1,
+          taskType: input.task,
+          driverModelId: input.driverModelId,
+          ok: true,
+          rawText: validatedResponse.rawText,
+          usage: validatedResponse.usage,
+          structuredRepair: validatedResponse.structuredRepair,
+          data: validatedResponse.data
+        }
+      });
+      await this.context.repositories.llmCalls.save(removeUndefined({
+        id: input.callId,
+        tournamentId: input.match.tournamentId,
+        matchId: input.match.id,
+        driverModelId: input.driverModelId,
+        taskType: input.task,
+        promptHash,
+        requestArtifactId,
+        responseArtifactId,
+        inputTokens: validatedResponse.usage.promptTokens,
+        outputTokens: validatedResponse.usage.completionTokens,
+        createdAt: startedAt
+      }));
+      await this.appendEvent({
+        id: `evt_${input.callId}_completed`,
+        type: "llm_call_completed",
+        category: "system",
+        tournamentId: input.match.tournamentId,
+        matchId: input.match.id,
+        scopeType: "match",
+        scopeId: input.match.id,
+        payload: {
+          schemaVersion: 1,
+          callId: input.callId,
+          taskType: input.task,
+          driverModelId: input.driverModelId,
+          status: "completed",
+          startedAt,
+          completedAt,
+          latencyMs: Date.parse(completedAt) - Date.parse(startedAt),
+          inputTokens: validatedResponse.usage.promptTokens,
+          outputTokens: validatedResponse.usage.completionTokens,
+          repaired: Boolean(validatedResponse.structuredRepair),
+          rawTextPreview: previewText(validatedResponse.structuredRepair?.originalRawText),
+          repairRawTextPreview: previewText(validatedResponse.structuredRepair?.repairRawText)
+        },
+        createdAt: completedAt
+      });
+      return {
+        ...validatedResponse,
+        requestArtifactId,
+        responseArtifactId
+      };
+    } catch (error) {
+      const failedAt = timestamp();
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const diagnostic = readLlmErrorDiagnostic(error);
+      const failedRawText = latestResponse?.rawText ?? diagnostic.rawText;
+      const failedUsage = latestResponse?.usage ?? diagnostic.usage;
+      const responseArtifactId = await this.writeLlmArtifact({
+        callId: input.callId,
+        suffix: "response",
+        artifactType: "llm_response",
+        match: input.match,
+        content: {
+          schemaVersion: 1,
+          taskType: input.task,
+          driverModelId: input.driverModelId,
+          ok: false,
+          rawText: failedRawText,
+          rawTextPreview: previewText(failedRawText),
+          parseCandidatePreview: previewText(diagnostic.parseCandidate),
+          usage: failedUsage,
+          data: latestResponse?.data,
+          structuredRepair: latestResponse?.structuredRepair,
+          error: errorMessage
+        }
+      });
+      await this.context.repositories.llmCalls.save(removeUndefined({
+        id: input.callId,
+        tournamentId: input.match.tournamentId,
+        matchId: input.match.id,
+        driverModelId: input.driverModelId,
+        taskType: input.task,
+        promptHash,
+        requestArtifactId,
+        responseArtifactId,
+        inputTokens: failedUsage?.promptTokens,
+        outputTokens: failedUsage?.completionTokens,
+        createdAt: startedAt
+      }));
+      await this.appendEvent({
+        id: `evt_${input.callId}_failed`,
+        type: "llm_call_failed",
+        category: "system",
+        tournamentId: input.match.tournamentId,
+        matchId: input.match.id,
+        scopeType: "match",
+        scopeId: input.match.id,
+        payload: {
+          schemaVersion: 1,
+          callId: input.callId,
+          taskType: input.task,
+          driverModelId: input.driverModelId,
+          status: "failed",
+          startedAt,
+          failedAt,
+          latencyMs: Date.parse(failedAt) - Date.parse(startedAt),
+          inputTokens: failedUsage?.promptTokens,
+          outputTokens: failedUsage?.completionTokens,
+          responseArtifactId,
+          rawTextPreview: previewText(failedRawText),
+          parseCandidatePreview: previewText(diagnostic.parseCandidate),
+          error: errorMessage
+        },
+        createdAt: failedAt
+      });
+      throw error;
+    }
+  }
+
   private async generateTeamPlans(input: {
     match: Match;
     round: Round;
@@ -1593,6 +2222,7 @@ class Phase12SimulationEngine implements SimulationEngine {
     beforeEconomy: EconomyState[];
     tacticalPlans?: RuleBasedTacticalPlans;
     recentPublicRoundSummaries: string[];
+    coachTimeout?: ResolvedCoachTimeout;
   }): Promise<Record<string, TeamRoundPlanDecision>> {
     const sides = [
       { team: input.teamA, opponent: input.teamB, activeAgents: input.activeA },
@@ -1619,6 +2249,7 @@ class Phase12SimulationEngine implements SimulationEngine {
           teamName: side.team.displayName,
           initialProposal: readTeamMaterialInitialProposal(side.team),
           coachContext: readTeamHeadCoachProfile(side.team),
+          teamMemoryOverlay: await this.readApprovedTeamMemoryOverlay(side.team.id),
           opponentTeamId: side.opponent.id,
           opponentTeamName: side.opponent.displayName,
           side: teamSide,
@@ -1638,7 +2269,8 @@ class Phase12SimulationEngine implements SimulationEngine {
             teamSide === "attack"
               ? input.tacticalPlans?.attackPlan
               : input.tacticalPlans?.defenseDeployment,
-          recentPublicRoundSummaries: input.recentPublicRoundSummaries
+          recentPublicRoundSummaries: input.recentPublicRoundSummaries,
+          ...(input.coachTimeout?.teamId === side.team.id ? { coachCorrection: input.coachTimeout.correction } : {})
         },
         responseFormat: "json_object",
         seed: `team_plan:${input.round.id}:${side.team.id}`,
@@ -1673,6 +2305,7 @@ class Phase12SimulationEngine implements SimulationEngine {
     teamB: Team;
     buyTypeByTeam: Map<string, BuyType>;
     teamPlans?: Record<string, TeamRoundPlanDecision>;
+    coachTimeout?: ResolvedCoachTimeout;
   }): Promise<AgentOutput[]> {
     const outputs: AgentOutput[] = [];
     for (const agent of input.agents) {
@@ -1684,6 +2317,12 @@ class Phase12SimulationEngine implements SimulationEngine {
       const playerDirective = teamPlan?.playerDirectives.find(
         (directive: TeamRoundPlanDecision["playerDirectives"][number]) => directive.agentId === agent.id
       );
+      const coachAdjustment =
+        input.coachTimeout?.teamId === agent.teamId
+          ? input.coachTimeout.correction.playerAdjustments.find(
+              (adjustment: CoachTimeoutCorrection["playerAdjustments"][number]) => adjustment.agentId === agent.id
+            )
+          : undefined;
       const requestInput = {
         objective: "Choose this player's concrete tactical action for the current round.",
         roundId: input.round.id,
@@ -1695,6 +2334,7 @@ class Phase12SimulationEngine implements SimulationEngine {
         teamName: agentTeam.displayName,
         proposalAnchor: readTeamProposalAnchor(agentTeam, agent),
         coachContext: readTeamHeadCoachProfile(agentTeam),
+        teamMemoryOverlay: await this.readApprovedTeamMemoryOverlay(agentTeam.id),
         opponentTeamId: opponentTeam.id,
         opponentTeamName: opponentTeam.displayName,
         role: agent.role,
@@ -1704,6 +2344,7 @@ class Phase12SimulationEngine implements SimulationEngine {
         mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName),
         teamPlan,
         playerDirective,
+        ...(coachAdjustment ? { coachAdjustment } : {}),
         buyType,
         posture,
         sideContext: input.sideContext
@@ -1767,6 +2408,7 @@ class Phase12SimulationEngine implements SimulationEngine {
     teamBBuyType: BuyType;
     sideAssignment: SideAssignment;
     teamPlans?: Record<string, TeamRoundPlanDecision>;
+    coachTimeout?: ResolvedCoachTimeout;
     agentOutputs: AgentOutput[];
     recentPublicRoundSummaries: string[];
     recentWinnerTeamIds: string[];
@@ -1795,6 +2437,7 @@ class Phase12SimulationEngine implements SimulationEngine {
         scoreBeforeRound: input.scoreBeforeRound,
         mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName),
         judgeRubricContext: readPhase18JudgeRubricContext(this.context, input.mapGame.mapName),
+        ...(input.coachTimeout ? { appliedCoachCorrection: input.coachTimeout.correction } : {}),
         ...judgePromptContext.requestInput
       };
       const response = await this.runObservedStructuredCall<JudgeResult>({
@@ -1820,23 +2463,34 @@ class Phase12SimulationEngine implements SimulationEngine {
           }
         }
       });
+      const authoritativeJudgeResult = ensureJudgeDiagnostic({
+        judgeResult: response.data,
+        roundNumber: input.roundNumber,
+        sideAssignment: input.sideAssignment,
+        teamA: input.teamA,
+        teamB: input.teamB,
+        ...(input.teamPlans ? { teamPlans: input.teamPlans } : {}),
+        ...(readPhase18MapSemanticContext(this.context, input.mapGame.mapName)
+          ? { mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName) }
+          : {})
+      });
       if (!this.context.useJudgeBiasGuardrail) {
-        return response.data;
+        return authoritativeJudgeResult;
       }
 
       const suspicious = detectSuspiciousJudgeResult({
-        judgeResult: response.data,
+        judgeResult: authoritativeJudgeResult,
         recentWinnerTeamIds: input.recentWinnerTeamIds,
         teamA: input.teamA,
         teamB: input.teamB,
         ...(input.teamPlans ? { teamPlans: input.teamPlans } : {})
       });
       if (!suspicious) {
-        return response.data;
+        return authoritativeJudgeResult;
       }
 
       return this.reviewSuspiciousJudgeResult({
-        originalJudgeResult: response.data,
+        originalJudgeResult: authoritativeJudgeResult,
         guardrailReason: suspicious,
         judgeRequestInput,
         judgePromptContext,
@@ -1849,7 +2503,8 @@ class Phase12SimulationEngine implements SimulationEngine {
         teamA: input.teamA,
         teamB: input.teamB,
         activeA: input.activeA,
-        activeB: input.activeB
+        activeB: input.activeB,
+        sideAssignment: input.sideAssignment
       });
     }
 
@@ -1912,6 +2567,7 @@ class Phase12SimulationEngine implements SimulationEngine {
     teamB: Team;
     activeA: Agent[];
     activeB: Agent[];
+    sideAssignment: SideAssignment;
   }): Promise<JudgeResult> {
     const teamPlans = input.judgePromptContext.actualTeamPlans;
     const response = await this.runObservedStructuredCall<JudgeResult>({
@@ -1945,19 +2601,30 @@ class Phase12SimulationEngine implements SimulationEngine {
         }
       }
     });
-    const loserTeam = response.data.loserTeamId === input.teamA.id ? input.teamA : input.teamB;
+    const reviewedJudgeResult = ensureJudgeDiagnostic({
+      judgeResult: response.data,
+      roundNumber: input.roundNumber,
+      sideAssignment: input.sideAssignment,
+      teamA: input.teamA,
+      teamB: input.teamB,
+      ...(teamPlans ? { teamPlans } : {}),
+      ...(readPhase18MapSemanticContext(this.context, input.mapGame.mapName)
+        ? { mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName) }
+        : {})
+    });
+    const loserTeam = reviewedJudgeResult.loserTeamId === input.teamA.id ? input.teamA : input.teamB;
     const loserPlan = teamPlans?.[loserTeam.id];
-    if (!loserPlan || !hasDetailedLoserPlanExplanation(response.data.reason, loserTeam, loserPlan)) {
+    if (!loserPlan || !hasDetailedLoserPlanExplanation(reviewedJudgeResult.reason, loserTeam, loserPlan)) {
       throw new Error(`Judge review failed anti-bias guardrail: ${input.guardrailReason}`);
     }
 
-    return response.data;
+    return reviewedJudgeResult;
   }
 
   private async runObservedStructuredCall<TData>(input: {
     callId: string;
     attemptNumber: number;
-    task: "team_plan" | "agent_action" | "judge" | "judge_review";
+    task: "team_plan" | "agent_action" | "judge" | "judge_review" | "coach_timeout";
     schemaName: string;
     driverModelId: string;
     requestInput: unknown;
@@ -2105,7 +2772,11 @@ class Phase12SimulationEngine implements SimulationEngine {
         },
         createdAt: completedAt
       });
-      return validatedResponse;
+      return {
+        ...validatedResponse,
+        requestArtifactId,
+        responseArtifactId
+      };
     } catch (error) {
       const failedAt = timestamp();
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -2189,8 +2860,8 @@ class Phase12SimulationEngine implements SimulationEngine {
     suffix: "request" | "response";
     artifactType: string;
     match: Match;
-    mapGame: MapGame;
-    round: Round;
+    mapGame?: MapGame;
+    round?: Round;
     agent?: Agent;
     content: unknown;
   }): Promise<string | undefined> {
@@ -2207,7 +2878,8 @@ class Phase12SimulationEngine implements SimulationEngine {
         content: `${JSON.stringify(input.content, null, 2)}\n`,
         tournamentId: input.match.tournamentId,
         matchId: input.match.id,
-        mapGameId: input.mapGame.id,
+        ...(input.mapGame ? { mapGameId: input.mapGame.id } : {}),
+        ...(input.round ? { roundId: input.round.id } : {}),
         ...(input.agent ? { agentId: input.agent.id } : {})
       });
       return artifact.id;
@@ -2440,6 +3112,235 @@ function buildKeyEvents(input: {
   return events;
 }
 
+function buildRoundKillLedger(input: {
+  roundId: string;
+  roundNumber: number;
+  winnerTeamId: string;
+  loserTeamId: string;
+  activeA: Agent[];
+  activeB: Agent[];
+  agentOutputs: AgentOutput[];
+  mvpAgentId: string;
+  economyDelta: RoundReport["economyDelta"];
+  teamABuyType: BuyType;
+  teamBBuyType: BuyType;
+  keyEvents: RoundKeyEvent[];
+  tacticalCollision?: TacticalCollision;
+}): RoundKillLedgerEntry[] {
+  const teamAId = input.activeA[0]?.teamId;
+  const teamBId = input.activeB[0]?.teamId;
+  if (!teamAId || !teamBId) {
+    throw new Error("Cannot build kill ledger without both active teams.");
+  }
+
+  const winnerAgents = sortAgentsForRound(input.winnerTeamId === teamAId ? input.activeA : input.activeB);
+  const loserAgents = sortAgentsForRound(input.loserTeamId === teamAId ? input.activeA : input.activeB);
+  const keyEvents = [...input.keyEvents];
+  const ledgerSize = determineKillLedgerSize({
+    roundId: input.roundId,
+    roundNumber: input.roundNumber,
+    winnerTeamId: input.winnerTeamId,
+    loserTeamId: input.loserTeamId,
+    teamAId,
+    teamABuyType: input.teamABuyType,
+    teamBBuyType: input.teamBBuyType,
+    tacticalCollision: input.tacticalCollision
+  });
+  const winnerKillCount = Math.min(winnerAgents.length, Math.max(3, Math.round(ledgerSize * 0.55)));
+  const loserKillCount = Math.min(loserAgents.length, Math.max(1, ledgerSize - winnerKillCount));
+  const totalKillCount = Math.max(2, Math.min(ledgerSize, winnerKillCount + loserKillCount));
+  const adjustedWinnerKillCount = Math.min(winnerAgents.length, Math.max(1, totalKillCount - loserKillCount));
+  const adjustedLoserKillCount = Math.min(loserAgents.length, Math.max(1, totalKillCount - adjustedWinnerKillCount));
+  const sideOrder: Array<"winner" | "loser"> = [];
+  let winnerRemaining = adjustedWinnerKillCount;
+  let loserRemaining = adjustedLoserKillCount;
+  const startWithWinner = input.winnerTeamId === teamAId || adjustedWinnerKillCount >= adjustedLoserKillCount;
+  let nextSide: "winner" | "loser" = startWithWinner ? "winner" : "loser";
+  while (winnerRemaining > 0 || loserRemaining > 0) {
+    if (nextSide === "winner" && winnerRemaining > 0) {
+      sideOrder.push("winner");
+      winnerRemaining -= 1;
+      nextSide = loserRemaining > 0 ? "loser" : "winner";
+      continue;
+    }
+    if (nextSide === "loser" && loserRemaining > 0) {
+      sideOrder.push("loser");
+      loserRemaining -= 1;
+      nextSide = winnerRemaining > 0 ? "winner" : "loser";
+      continue;
+    }
+    if (winnerRemaining > 0) {
+      nextSide = "winner";
+      continue;
+    }
+    if (loserRemaining > 0) {
+      nextSide = "loser";
+      continue;
+    }
+  }
+
+  const winnerTargetPool = [...loserAgents];
+  const loserTargetPool = [...winnerAgents];
+  let winnerActorIndex = 0;
+  let loserActorIndex = 0;
+  let winnerTargetIndex = 0;
+  let loserTargetIndex = 0;
+  const entryZoneId = keyEvents[0]?.zoneId ?? "buyer_mid";
+  const pressureZoneId = input.tacticalCollision?.primaryZoneId ?? keyEvents[1]?.zoneId ?? entryZoneId;
+  const supportZoneId = keyEvents[1]?.zoneId ?? pressureZoneId;
+
+  return sideOrder.map((side, index) => {
+    const actorPool = side === "winner" ? winnerAgents : loserAgents;
+    const targetPool = side === "winner" ? winnerTargetPool : loserTargetPool;
+    const actorIndex = side === "winner" ? winnerActorIndex++ : loserActorIndex++;
+    const targetIndex = side === "winner" ? winnerTargetIndex++ : loserTargetIndex++;
+    const actor = actorPool[actorIndex % actorPool.length];
+    const target = targetPool[targetIndex % targetPool.length];
+    if (!actor || !target) {
+      throw new Error("Cannot build kill ledger without valid actor and target agents.");
+    }
+
+    const keyEvent = keyEvents[index] ?? keyEvents.at(-1);
+    const keyEventId = index < keyEvents.length ? keyEvents[index]?.id : keyEvent?.id;
+    const zoneId = index === 0 ? entryZoneId : index === 1 ? pressureZoneId : supportZoneId;
+    return {
+      id: `kl_${input.roundId}_${index + 1}`,
+      actorAgentId: actor.id,
+      actorTeamId: actor.teamId,
+      targetAgentId: target.id,
+      targetTeamId: target.teamId,
+      zoneId,
+      atMs: 8000 + index * 4200,
+      impact: buildKillLedgerImpact({
+        actor,
+        target,
+        side,
+        roundNumber: input.roundNumber,
+        tacticalCollisionResult: input.tacticalCollision?.result ?? null,
+        keyEventType: keyEvent?.type ?? null,
+        keyEventZoneId: keyEvent?.zoneId ?? null
+      }),
+      ...(keyEventId ? { keyEventId } : {}),
+      sourceAgentOutputIds: sourceOutputIds(input.agentOutputs, actor.id)
+    };
+  });
+}
+
+function validateRoundKillLedger(input: {
+  killLedger: RoundKillLedgerEntry[];
+  activeA: Agent[];
+  activeB: Agent[];
+  winnerTeamId: string;
+  loserTeamId: string;
+}): RoundKillLedgerEntry[] {
+  const activeById = new Map<string, Agent>([...input.activeA, ...input.activeB].map((agent) => [agent.id, agent] as const));
+  const allowedTeamIds = new Set([input.winnerTeamId, input.loserTeamId]);
+
+  return input.killLedger.map((entry, index) => {
+    const actor = activeById.get(entry.actorAgentId);
+    const target = activeById.get(entry.targetAgentId);
+    if (!actor || !target) {
+      throw new Error(`Invalid kill ledger entry ${index + 1}: unresolved actor or target agent.`);
+    }
+    if (!allowedTeamIds.has(entry.actorTeamId) || !allowedTeamIds.has(entry.targetTeamId)) {
+      throw new Error(`Invalid kill ledger entry ${index + 1}: team ids do not match the round roster.`);
+    }
+    if (actor.teamId !== entry.actorTeamId || target.teamId !== entry.targetTeamId) {
+      throw new Error(`Invalid kill ledger entry ${index + 1}: actor or target team mismatch.`);
+    }
+    if (actor.teamId === target.teamId) {
+      throw new Error(`Invalid kill ledger entry ${index + 1}: actor and target must belong to opposite teams.`);
+    }
+    if (!entry.zoneId) {
+      throw new Error(`Invalid kill ledger entry ${index + 1}: missing zone id.`);
+    }
+    if (!Number.isFinite(entry.atMs)) {
+      throw new Error(`Invalid kill ledger entry ${index + 1}: missing event timestamp.`);
+    }
+
+    return {
+      ...entry,
+      sourceAgentOutputIds: entry.sourceAgentOutputIds ?? []
+    };
+  });
+}
+
+function determineKillLedgerSize(input: {
+  roundId: string;
+  roundNumber: number;
+  winnerTeamId: string;
+  loserTeamId: string;
+  teamAId: string;
+  teamABuyType: BuyType;
+  teamBBuyType: BuyType;
+  tacticalCollision: TacticalCollision | undefined;
+}): number {
+  const winnerBuyType = buyTypeForTeam(input.winnerTeamId, input.teamAId, input.teamABuyType, input.teamBBuyType);
+  const loserBuyType = buyTypeForTeam(input.loserTeamId, input.teamAId, input.teamABuyType, input.teamBBuyType);
+  const collisionResult = input.tacticalCollision?.result ?? "trade_even";
+  let base = 7;
+  if (winnerBuyType === "fullBuy" && loserBuyType === "fullBuy") {
+    base = 8;
+  } else if (winnerBuyType === "eco" || loserBuyType === "eco") {
+    base = 6;
+  } else if (winnerBuyType === "forceBuy" || loserBuyType === "forceBuy") {
+    base = 7;
+  }
+
+  if (collisionResult === "attack_breakthrough" || collisionResult === "defense_hold") {
+    base += 1;
+  } else if (collisionResult === "trade_even" || collisionResult === "rotate_success") {
+    base -= 1;
+  }
+
+  if (input.roundNumber > mr6MapRules.regularRounds) {
+    base += 1;
+  }
+
+  const variance = stableNumber(`${input.roundId}:kill_ledger_size`, 3) - 1;
+  return Math.max(5, Math.min(10, base + variance));
+}
+
+function buildKillLedgerImpact(input: {
+  actor: Agent;
+  target: Agent;
+  side: "winner" | "loser";
+  roundNumber: number;
+  tacticalCollisionResult: TacticalCollision["result"] | null;
+  keyEventType: RoundKeyEvent["type"] | null;
+  keyEventZoneId: string | null;
+}): string {
+  const zoneLabel = formatKillLedgerZoneLabel(input.keyEventZoneId ?? "buyer_mid");
+  const emphasis =
+    input.side === "winner"
+      ? input.keyEventType === "entry"
+        ? "打开突破口"
+        : input.keyEventType === "clutch"
+          ? "完成收束"
+          : "延续优势"
+      : input.tacticalCollisionResult === "rotate_success"
+        ? "拖住回防"
+        : input.tacticalCollisionResult === "defense_hold"
+          ? "守住点位"
+          : "制造交换";
+  return `${input.actor.displayName} 在 ${zoneLabel} ${emphasis}，击杀 ${input.target.displayName}。`;
+}
+
+function formatKillLedgerZoneLabel(zoneId: string): string {
+  const labels: Record<string, string> = {
+    buyer_mid: "中路",
+    conversion_site_a: "A 点",
+    conversion_site_b: "B 点",
+    retention_connector: "A 小",
+    token_economy: "B 洞",
+    pricing_ramp: "A 大",
+    spawn_a: "进攻方出生点",
+    spawn_b: "防守方出生点",
+    utility_slope: "斜坡"
+  };
+  return labels[zoneId] ?? zoneId.replaceAll("_", " ");
+}
+
 function buildHighlightTags(input: {
   roundNumber: number;
   winnerTeamId: string;
@@ -2519,6 +3420,8 @@ function buildTimelineEvents(input: {
   economyEvent: Event;
   killFeedEvents: Event[];
   highlightEvent: Event;
+  timeoutUsedEvent?: Event;
+  coachTimeoutCorrectionEvent?: Event;
   sideAssignmentEvent?: Event;
   tacticalPlanEvent?: Event;
   zoneDeploymentEvent?: Event;
@@ -2552,7 +3455,11 @@ function buildTimelineEvents(input: {
       kind: "round_intro",
       atMs: 0,
       durationMs: 4000,
-      sourceEventIds: [input.roundStartedEvent.id, ...(input.sideAssignmentEvent ? [input.sideAssignmentEvent.id] : [])],
+      sourceEventIds: [
+        input.roundStartedEvent.id,
+        ...(input.timeoutUsedEvent ? [input.timeoutUsedEvent.id] : []),
+        ...(input.sideAssignmentEvent ? [input.sideAssignmentEvent.id] : [])
+      ],
       payload: {
         roundNumber: input.round.roundNumber,
         mapName: input.mapGame.mapName,
@@ -2574,6 +3481,21 @@ function buildTimelineEvents(input: {
         }
       }
     },
+    ...(input.coachTimeoutCorrectionEvent
+      ? [
+          {
+            kind: "pause_marker" as const,
+            atMs: 1200,
+            durationMs: 2600,
+            sourceEventIds: [input.timeoutUsedEvent?.id ?? input.coachTimeoutCorrectionEvent.id, input.coachTimeoutCorrectionEvent.id],
+            payload: {
+              teamId: input.roundReport.appliedCoachTimeoutCorrection?.teamId,
+              teamDirective: input.roundReport.appliedCoachTimeoutCorrection?.teamDirective,
+              nextRoundObjective: input.roundReport.appliedCoachTimeoutCorrection?.nextRoundObjective
+            }
+          }
+        ]
+      : []),
     {
       kind: "scoreboard_update",
       atMs: 5000,
@@ -2597,13 +3519,17 @@ function buildTimelineEvents(input: {
       }
     },
     ...buildTacticalTimelineItems(input),
-    ...input.killFeedEvents.map((event, index) => ({
-      kind: "kill_feed_item" as const,
-      atMs: 20000 + index * 8000,
-      durationMs: 5000,
-      sourceEventIds: [event.id],
-      payload: event.payload
-    })),
+    ...input.killFeedEvents.map((event, index) => {
+      const payload = isRecord(event.payload) ? (event.payload as Record<string, unknown>) : null;
+      const atMs = typeof payload?.atMs === "number" ? payload.atMs : 20000 + index * 8000;
+      return {
+        kind: "kill_feed_item" as const,
+        atMs,
+        durationMs: 5000,
+        sourceEventIds: [event.id],
+        payload: event.payload
+      };
+    }),
     ...buildCasterTimelineItems(input),
     {
       kind: "barrage_stream",
@@ -3248,6 +4174,154 @@ function sourceOutputIds(outputs: AgentOutput[], agentId: string): string[] {
   return outputs.filter((output) => output.agentId === agentId).map((output) => output.id);
 }
 
+function validateCoachTimeoutCorrection(input: {
+  correction: CoachTimeoutCorrection;
+  teamId: string;
+  triggerRoundNumber: number;
+  expiresAfterRoundNumber: number;
+  activeAgents: Agent[];
+}): CoachTimeoutCorrection {
+  const activeAgentIds = new Set(input.activeAgents.map((agent) => agent.id));
+  const adjustmentIds = input.correction.playerAdjustments.map(
+    (adjustment: CoachTimeoutCorrection["playerAdjustments"][number]) => adjustment.agentId
+  );
+  const adjustmentIdSet = new Set(adjustmentIds);
+  if (adjustmentIdSet.size !== adjustmentIds.length) {
+    throw new Error(`Coach timeout correction returned duplicate player adjustments for ${input.teamId}`);
+  }
+  for (const agentId of adjustmentIds) {
+    if (!activeAgentIds.has(agentId)) {
+      throw new Error(`Coach timeout correction returned adjustment for inactive agent: ${agentId}`);
+    }
+  }
+  for (const agentId of activeAgentIds) {
+    if (!adjustmentIdSet.has(agentId)) {
+      throw new Error(`Coach timeout correction missed adjustment for active agent: ${agentId}`);
+    }
+  }
+
+  const balancedCorrection = constrainCoachTimeoutCorrection(input.correction);
+  return {
+    ...balancedCorrection,
+    teamId: input.teamId,
+    triggerRoundNumber: input.triggerRoundNumber,
+    expiresAfterRoundNumber: input.expiresAfterRoundNumber
+  };
+}
+
+function validateCoachPostMatchReview(input: {
+  review: CoachPostMatchReview;
+  teamId: string;
+  matchId: string;
+}): CoachPostMatchReview {
+  return {
+    ...input.review,
+    teamId: input.teamId,
+    matchId: input.matchId
+  };
+}
+
+const coachTimeoutMinRoundNumber = 5;
+const coachTimeoutCooldownRounds = 3;
+const coachTimeoutBalanceGuardrail = "平衡约束：主区优先，但至少保留一个次级区域的信息锚点或回防锚点，禁止五人全部压向同一单点。";
+
+function constrainCoachTimeoutCorrection(correction: CoachTimeoutCorrection): CoachTimeoutCorrection {
+  return {
+    ...correction,
+    nextRoundObjective: softenCoachOverfocusText(correction.nextRoundObjective),
+    ownCoreToHold: softenCoachOverfocusText(correction.ownCoreToHold),
+    opponentGapToHit: softenCoachOverfocusText(correction.opponentGapToHit),
+    zonePriorityShift: withCoachBalanceGuardrail(softenCoachOverfocusText(correction.zonePriorityShift)),
+    teamDirective: withCoachBalanceGuardrail(softenCoachOverfocusText(correction.teamDirective)),
+    playerAdjustments: correction.playerAdjustments.map((adjustment) => ({
+      ...adjustment,
+      adjustment: softenCoachOverfocusText(adjustment.adjustment)
+    }))
+  };
+}
+
+function withCoachBalanceGuardrail(text: string): string {
+  return text.includes("平衡约束") ? text : `${text} ${coachTimeoutBalanceGuardrail}`;
+}
+
+function softenCoachOverfocusText(text: string): string {
+  return text
+    .replace(/唯一主攻方向/g, "主要进攻方向")
+    .replace(/唯一主证明通道/g, "主要证明通道")
+    .replace(/唯一决定性证明通道/g, "主要决定性证明通道")
+    .replace(/五名选手全部/g, "多数选手")
+    .replace(/全员执行/g, "以三人核心执行")
+    .replace(/全员默认/g, "主要资源默认")
+    .replace(/全部回到/g, "回到")
+    .replace(/不分散资源至/g, "避免过度分散资源，同时保留信息位观察")
+    .replace(/不参与([^，。；;]+)任何行动/g, "不主动投入$1主战，但保留异常信息响应")
+    .replace(/取消所有([^，。；;]+)call/g, "降低$1call 优先级，同时保留异常信息响应");
+}
+
+function detectCoachTimeoutTrigger(input: {
+  losingTeam: Team;
+  recentRoundReports: RoundReport[];
+  scoreBeforeRound: ScorePair;
+  teamAId: string;
+  teamBId: string;
+}): string | undefined {
+  const recentReports = [...input.recentRoundReports];
+  const lossReports = recentReports.filter((report) => report.winnerTeamId !== input.losingTeam.id);
+  const trailingLossReports: RoundReport[] = [];
+  for (let index = recentReports.length - 1; index >= 0; index -= 1) {
+    const report = recentReports[index];
+    if (!report || report.winnerTeamId === input.losingTeam.id) {
+      break;
+    }
+    trailingLossReports.unshift(report);
+  }
+  if (trailingLossReports.length >= 3 || (trailingLossReports.length >= 2 && trailingLossReports.some((report) => report.judgeResult.margin === "decisive"))) {
+    return `${input.losingTeam.displayName} 已连续两局失守，需要用战术暂停统一下一回合修正重点。`;
+  }
+
+  const recentThreeLossReports = lossReports.slice(-3);
+  const repeatedDiagnostic = mostFrequentWithCount(
+    recentThreeLossReports
+      .map((report) => report.judgeDiagnostic?.attackedOpportunityGap ?? report.judgeResult.diagnostic?.attackedOpportunityGap)
+      .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+  );
+  if (recentThreeLossReports.length >= 3 && repeatedDiagnostic && repeatedDiagnostic.count >= 2) {
+    return `${input.losingTeam.displayName} 在最近三局里反复暴露同类命题缺口：${repeatedDiagnostic.value}。`;
+  }
+
+  const teamScore = input.losingTeam.id === input.teamAId ? input.scoreBeforeRound.teamA : input.scoreBeforeRound.teamB;
+  const opponentScore = input.losingTeam.id === input.teamAId ? input.scoreBeforeRound.teamB : input.scoreBeforeRound.teamA;
+  const previousLoss = recentThreeLossReports.at(-1);
+  if (opponentScore >= mr6MapRules.mapWinScore - 1 && previousLoss?.judgeResult.margin === "decisive") {
+    return `${input.losingTeam.displayName} 正承受 map point 压力，且上一局为明显失守，需要暂停统一下一局的防守重点。`;
+  }
+  if (teamScore >= 5 && previousLoss?.judgeResult.margin === "decisive") {
+    return `${input.losingTeam.displayName} 已进入关键分区间，上一局明显失守，需要暂停收束下一局执行。`;
+  }
+
+  return undefined;
+}
+
+function summarizeCoachTimeoutUsage(events: Event[], teamId: string): {
+  totalUsed: number;
+  rounds: Array<{ roundId?: string; triggerRoundNumber?: number }>;
+} {
+  const timeoutEvents = events
+    .filter((event) => event.type === "timeout_used")
+    .map((event) => ({
+      roundId: event.roundId,
+      payload: isRecord(event.payload) ? event.payload : null
+    }))
+    .filter((entry) => entry.payload?.teamId === teamId);
+  return {
+    totalUsed: timeoutEvents.length,
+    rounds: timeoutEvents.map((entry) => ({
+      ...(entry.roundId ? { roundId: entry.roundId } : {}),
+      ...(typeof entry.payload?.triggerRoundNumber === "number" ? { triggerRoundNumber: entry.payload.triggerRoundNumber } : {})
+    }))
+  };
+}
+
 function validateTeamRoundPlan(input: {
   plan: TeamRoundPlanDecision;
   teamId: string;
@@ -3319,6 +4393,49 @@ function validateJudgeResult(input: {
   }
 
   return input.judgeResult;
+}
+
+function ensureJudgeDiagnostic(input: {
+  judgeResult: JudgeResult;
+  roundNumber: number;
+  sideAssignment: SideAssignment;
+  teamA: Team;
+  teamB: Team;
+  teamPlans?: Record<string, TeamRoundPlanDecision>;
+  mapSemanticContext?: Record<string, unknown> | undefined;
+}): JudgeResult {
+  if (input.judgeResult.diagnostic) {
+    return {
+      ...input.judgeResult,
+      diagnostic: judgeDiagnosticSchema.parse(input.judgeResult.diagnostic)
+    };
+  }
+
+  const proposition = readUnknownRecord(input.mapSemanticContext?.proposition);
+  const attackingPlan = input.teamPlans?.[input.sideAssignment.attackingTeamId];
+  const defendingPlan = input.teamPlans?.[input.sideAssignment.defendingTeamId];
+  const currentSubTheme =
+    (proposition ? resolvePhase18SubTheme(proposition, input.roundNumber) : undefined) ??
+    pickString(proposition, "coreQuestion") ??
+    "当前子命题待明确";
+  const winnerTeam = input.judgeResult.winnerTeamId === input.teamA.id ? input.teamA : input.teamB;
+  const loserTeam = input.judgeResult.loserTeamId === input.teamA.id ? input.teamA : input.teamB;
+
+  return {
+    ...input.judgeResult,
+    diagnostic: {
+      currentSubTheme,
+      attackedOpportunityGap:
+        attackingPlan?.risk ??
+        `${loserTeam.displayName} 在当前命题下暴露出可以被集中打击的缺口。`,
+      defendedCoreProposition:
+        defendingPlan?.winCondition ??
+        `${winnerTeam.displayName} 在当前命题下守住了更关键的核心成立点。`,
+      mainAttackZoneId: attackingPlan?.primaryZoneId ?? "buyer_mid",
+      mainDefenseZoneId: defendingPlan?.primaryZoneId ?? "conversion_site_a",
+      decisiveEvidence: normalizeChineseFirstJudgeReason(input.judgeResult.reason)
+    }
+  };
 }
 
 function buildJudgePromptContext(input: {
@@ -3454,7 +4571,7 @@ function buildJudgePromptContext(input: {
         winnerTeamId: actualWinnerTeamId,
         loserTeamId: actualLoserTeamId,
         mvpAgentId: actualMvpAgentId,
-        reason: desanitizeJudgeText(promptValidated.reason, desanitizeReplacements)
+        reason: normalizeChineseFirstJudgeReason(desanitizeJudgeText(promptValidated.reason, desanitizeReplacements))
       };
     },
     translatePromptText: (value: string) => desanitizeJudgeText(value, desanitizeReplacements)
@@ -3563,13 +4680,31 @@ function normalizeJudgeResultPayload(data: unknown): unknown {
   }
 
   const margin = normalizeJudgeMargin(record.margin);
-  if (!margin) {
-    return data;
-  }
-
   return {
     ...record,
-    margin
+    ...(margin ? { margin } : {}),
+    ...(readUnknownRecord(record.diagnostic)
+      ? { diagnostic: normalizeJudgeDiagnosticPayload(record.diagnostic, record.reason) }
+      : {})
+  };
+}
+
+function normalizeJudgeDiagnosticPayload(diagnostic: unknown, reason: unknown): unknown {
+  const record = readUnknownRecord(diagnostic);
+  if (!record) {
+    return diagnostic;
+  }
+
+  const reasonText = normalizeCoachTimeoutText(reason) ?? "裁判判词已给出本回合决定性证据。";
+  return {
+    currentSubTheme: normalizeCoachTimeoutText(record.currentSubTheme) ?? "当前子命题待明确",
+    attackedOpportunityGap:
+      normalizeCoachTimeoutText(record.attackedOpportunityGap) ?? "胜方打中了对手方案中的关键机会缺口。",
+    defendedCoreProposition:
+      normalizeCoachTimeoutText(record.defendedCoreProposition) ?? "败方未能守住本回合核心成立点。",
+    mainAttackZoneId: normalizeCoachTimeoutText(record.mainAttackZoneId) ?? "buyer_mid",
+    mainDefenseZoneId: normalizeCoachTimeoutText(record.mainDefenseZoneId) ?? "conversion_site_a",
+    decisiveEvidence: normalizeCoachTimeoutText(record.decisiveEvidence) ?? normalizeChineseFirstJudgeReason(reasonText)
   };
 }
 
@@ -3610,6 +4745,157 @@ function normalizeTeamRoundPlanPayload(data: unknown): unknown {
     ...record,
     playerDirectives
   };
+}
+
+function normalizeCoachTimeoutCorrectionPayload(data: unknown): unknown {
+  const record = readUnknownRecord(data);
+  if (!record) {
+    return data;
+  }
+
+  const normalizedRecord: Record<string, unknown> = { ...record };
+  for (const field of [
+    "triggerReason",
+    "diagnosedFailure",
+    "nextRoundObjective",
+    "ownCoreToHold",
+    "opponentGapToHit",
+    "zonePriorityShift",
+    "teamDirective"
+  ] satisfies Array<keyof CoachTimeoutCorrection>) {
+    const normalizedText = normalizeCoachTimeoutText(record[field]);
+    if (normalizedText) {
+      normalizedRecord[field] = normalizedText;
+    }
+  }
+
+  const normalizedAdjustments = normalizeCoachTimeoutPlayerAdjustments(record.playerAdjustments ?? record.playerDirectives);
+  if (normalizedAdjustments) {
+    normalizedRecord.playerAdjustments = normalizedAdjustments;
+  }
+
+  return normalizedRecord;
+}
+
+function normalizeCoachTimeoutPlayerAdjustments(
+  value: unknown
+): CoachTimeoutCorrection["playerAdjustments"] | undefined {
+  if (Array.isArray(value)) {
+    return value.map((entry, index) => {
+      if (typeof entry === "string") {
+        return {
+          agentId: `unknown_agent_${index + 1}`,
+          adjustment: entry
+        };
+      }
+
+      const record = readUnknownRecord(entry);
+      if (!record) {
+        return {
+          agentId: `unknown_agent_${index + 1}`,
+          adjustment: normalizeCoachTimeoutText(entry) ?? String(entry)
+        };
+      }
+
+      return {
+        agentId:
+          readStringField(record, ["agentId", "playerId", "id", "agent"]) ?? `unknown_agent_${index + 1}`,
+        adjustment:
+          normalizeCoachTimeoutText(
+            record.adjustment ?? record.directive ?? record.text ?? record.summary ?? record.instruction
+          ) ?? "保持当前职责但收紧执行。"
+      };
+    });
+  }
+
+  const adjustmentsRecord = readUnknownRecord(value);
+  if (!adjustmentsRecord) {
+    return undefined;
+  }
+
+  return Object.entries(adjustmentsRecord).map(([agentId, adjustmentValue]) => ({
+    agentId,
+    adjustment: normalizeCoachTimeoutText(adjustmentValue) ?? String(adjustmentValue)
+  }));
+}
+
+function normalizeCoachTimeoutText(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    const normalized = value.trim();
+    return normalized.length > 0 ? normalized : undefined;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    const items = value.map((item) => normalizeCoachTimeoutText(item)).filter((item): item is string => Boolean(item));
+    return items.length > 0 ? items.join("；") : undefined;
+  }
+
+  const record = readUnknownRecord(value);
+  if (!record) {
+    return undefined;
+  }
+
+  const directText = readStringField(record, ["text", "summary", "directive", "adjustment", "reason", "focus"]);
+  if (directText) {
+    return directText;
+  }
+
+  const entries = Object.entries(record)
+    .map(([key, nestedValue]) => {
+      const nestedText = normalizeCoachTimeoutText(nestedValue);
+      return nestedText ? `${normalizeCoachTimeoutKeyLabel(key)}：${nestedText}` : undefined;
+    })
+    .filter((entry): entry is string => Boolean(entry));
+  return entries.length > 0 ? entries.join("；") : undefined;
+}
+
+function normalizeCoachTimeoutKeyLabel(key: string): string {
+  switch (key) {
+    case "primary":
+      return "主优先";
+    case "secondary":
+      return "次优先";
+    case "raise":
+    case "increase":
+      return "提高";
+    case "lower":
+    case "decrease":
+      return "降低";
+    case "deprioritize":
+    case "deemphasize":
+      return "降权";
+    case "focus":
+      return "聚焦";
+    case "avoid":
+      return "避免";
+    case "zone":
+    case "zoneId":
+      return "区域";
+    case "summary":
+      return "摘要";
+    case "text":
+      return "说明";
+    case "directive":
+      return "指令";
+    case "adjustment":
+      return "调整";
+    default:
+      return key;
+  }
+}
+
+function readStringField(record: Record<string, unknown>, keys: string[]): string | undefined {
+  for (const key of keys) {
+    if (typeof record[key] === "string" && record[key].trim().length > 0) {
+      return record[key].trim();
+    }
+  }
+
+  return undefined;
 }
 
 function normalizeJudgeMargin(value: unknown): JudgeResult["margin"] | undefined {
@@ -3656,7 +4942,7 @@ function sanitizeJudgeRecord(
 }
 
 function buildPhase18StructuredMessages(input: {
-  task: "team_plan" | "agent_action" | "judge" | "judge_review";
+  task: "team_plan" | "agent_action" | "judge" | "judge_review" | "coach_timeout" | "coach_post_match_review";
   schemaName: string;
   requestInput: unknown;
 }): LlmMessage[] {
@@ -3678,7 +4964,7 @@ function buildPhase18StructuredMessages(input: {
       content: [
         `任务：${input.task}`,
         "这不是自由叙事，也不是通用 Counter-Strike 模拟。你必须把给定的比赛资产当作唯一事实来源。",
-        "当上下文存在时，必须围绕 mapSemanticContext、judgeRubricContext、initialProposal、initialProposalSummary、proposalAnchor、coachContext、teamPlan、playerDirective、roleResponsibilities 来回答。",
+        "当上下文存在时，必须围绕 mapSemanticContext、judgeRubricContext、initialProposal、initialProposalSummary、proposalAnchor、coachContext、teamPlan、playerDirective、roleResponsibilities、teamMemoryOverlay、coachCorrection、coachAdjustment 来回答。",
         contextSummary,
         "结构化输入 json：",
         JSON.stringify(input.requestInput, null, 2)
@@ -3713,18 +4999,42 @@ function buildPhase18SchemaContract(schemaName: string): string {
     return [
       "json 输出契约：",
       "只返回一个顶层对象，字段包括：winnerTeamId、loserTeamId、margin、reason、mvpAgentId、confidence。",
+      "如果能提供更稳定的裁判证据，请额外返回 diagnostic，字段包括：currentSubTheme、attackedOpportunityGap、defendedCoreProposition、mainAttackZoneId、mainDefenseZoneId、decisiveEvidence。",
       "margin 必须严格是 narrow、standard、decisive 三者之一，不要使用 clear、close、solid、dominant 等同义词。",
       "reason 必须明确解释胜方为什么成功、败方为什么失败，并保留‘成功/失败’或 succeeded/failed 这类稳定标记。",
       "winnerTeamId 必须是输入两队之一，loserTeamId 必须是另一队。",
       "mvpAgentId 必须来自胜方 active roster，confidence 必须是 0 到 1 之间的数字。",
-      "自然语言部分默认使用中文。"
+      "自然语言部分默认使用中文。",
+      "reason 必须优先写成完整中文句子；除地图名、队伍名、必要裁判轴术语外，不要夹英文分句。"
+    ].join("\n");
+  }
+
+  if (schemaName === "CoachTimeoutCorrection") {
+    return [
+      "json 输出契约：",
+      "只返回一个顶层对象，字段包括：teamId、triggerRoundNumber、triggerReason、diagnosedFailure、nextRoundObjective、ownCoreToHold、opponentGapToHit、zonePriorityShift、teamDirective、playerAdjustments、expiresAfterRoundNumber、confidence、可选 fingerprint。",
+      'playerAdjustments 必须是数组，例如：[{"agentId":"agent_x","adjustment":"下一局优先保住中路信息位"}]。',
+      "playerAdjustments 必须且只能覆盖输入中的每名 active player 一次。",
+      "这是一张下一回合修正单，不是重写整图方案；自然语言字段默认使用中文。",
+      "禁止把五名选手全部压成同一个单点 all-in。必须写出主区优先，同时保留至少一个次级区域的信息锚点或回防锚点。"
+    ].join("\n");
+  }
+
+  if (schemaName === "CoachPostMatchReview") {
+    return [
+      "json 输出契约：",
+      "只返回一个顶层对象，字段包括：teamId、matchId、keptBeliefs、brokenBeliefs、effectiveAttacks、effectiveDefenses、timeoutQualityReview、nextMatchUpgrades、proposedStrategyPatch、confidence、可选 fingerprint。",
+      "所有数组字段必须是字符串数组；自然语言字段默认使用中文。",
+      "这份复盘只服务下一场比赛，不允许回写已经完成的 BO3 事实链。"
     ].join("\n");
   }
 
   return "json 输出契约：只返回一个与指定 schema 完全一致的顶层对象。";
 }
 
-function buildPhase18TaskInstruction(task: "team_plan" | "agent_action" | "judge" | "judge_review"): string {
+function buildPhase18TaskInstruction(
+  task: "team_plan" | "agent_action" | "judge" | "judge_review" | "coach_timeout" | "coach_post_match_review"
+): string {
   switch (task) {
       case "team_plan":
         return [
@@ -3748,14 +5058,29 @@ function buildPhase18TaskInstruction(task: "team_plan" | "agent_action" | "judge
         "你只能根据双方 initialProposalSummary、双方 teamPlan、10 名选手动作、地图命题与裁判规程来判定本回合。",
         "必须解释进攻方打中了什么，防守方守住或没守住什么，并说明这为什么符合当前地图命题。",
         "reason 必须同时写出胜方成功与败方失败，不能只写单边赞美，也不能按队伍顺序、名气或比分领先做判断。",
-        "自然语言内容用中文。"
+        "自然语言内容用中文，不要在中文句子里夹英文分句。"
       ].join("\n");
     case "judge_review":
       return [
         "任务说明：",
         "在同一裁判规程下，带着更强的反偏置要求重新评估上一版裁判结果。",
         "只有当败方解释完整、结论仍然锚定当前子命题与核心裁判轴时，才保留原判。",
-        "如果上一版只是叙事性偏置或理由残缺，请直接纠正。自然语言内容用中文。"
+        "如果上一版只是叙事性偏置或理由残缺，请直接纠正。自然语言内容用中文，不要夹英文分句。"
+      ].join("\n");
+    case "coach_timeout":
+      return [
+        "任务说明：",
+        "你处在战术暂停窗口，只能输出一张影响下一回合的修正单。",
+        "你只能诊断问题、统一重点、重排区域优先级，不能重写地图命题、队伍母方案或单图初始方案。",
+        "修正应是“主区优先 + 次区预警/回防”的平衡方案，不允许五人全部压向同一单点。",
+        "playerAdjustments 只允许每名选手一句短调整，自然语言内容用中文。"
+      ].join("\n");
+    case "coach_post_match_review":
+      return [
+        "任务说明：",
+        "你在整场 BO3 结束后输出赛后复盘，目标是为下一场比赛提供可人工采纳的升级建议。",
+        "你不能改写已经结束的 BO3 事实，只能总结哪些信念要保留、哪些被打破、哪些升级应在下一场尝试。",
+        "自然语言内容用中文，不要写成赛中指挥口吻。"
       ].join("\n");
     default:
       return "任务说明：严格按照结构化任务执行。";
@@ -3776,7 +5101,10 @@ function buildPhase18PromptContextSummary(requestInput: unknown): string {
   const initialProposal = readUnknownRecord(record.initialProposal);
   const proposalAnchor = readUnknownRecord(record.proposalAnchor);
   const coachContext = readUnknownRecord(record.coachContext);
+  const teamMemoryOverlay = readUnknownRecord(record.teamMemoryOverlay);
   const teamPlan = readUnknownRecord(record.teamPlan);
+  const coachCorrection = readUnknownRecord(record.coachCorrection);
+  const coachAdjustment = readUnknownRecord(record.coachAdjustment);
   const playerDirective = readUnknownRecord(record.playerDirective);
   const evaluationOrder = Array.isArray(record.evaluationOrder)
     ? record.evaluationOrder
@@ -3863,6 +5191,11 @@ function buildPhase18PromptContextSummary(requestInput: unknown): string {
           })()
         ]
       : []),
+    ...(teamMemoryOverlay
+      ? [
+          `已采纳长期补丁：${pickString(teamMemoryOverlay, "proposedStrategyPatch") ?? pickString(teamMemoryOverlay, "timeoutQualityReview") ?? "已存在"}`
+        ]
+      : []),
     ...evaluationOrder.flatMap((entry) => {
       const initialProposalSummary = readUnknownRecord(entry.initialProposalSummary);
       const summarizedPlan = readUnknownRecord(entry.teamPlan);
@@ -3882,6 +5215,13 @@ function buildPhase18PromptContextSummary(requestInput: unknown): string {
           `队伍胜利条件：${pickString(teamPlan, "winCondition") ?? "unknown"}`
         ]
       : []),
+    ...(coachCorrection
+      ? [
+          `暂停修正重点：${pickString(coachCorrection, "nextRoundObjective") ?? "unknown"}`,
+          `暂停修正主令：${pickString(coachCorrection, "teamDirective") ?? "unknown"}`
+        ]
+      : []),
+    ...(coachAdjustment ? [`教练单兵修正：${pickString(coachAdjustment, "adjustment") ?? "unknown"}`] : []),
     ...(playerDirective ? [`选手指令：${pickString(playerDirective, "directive") ?? "unknown"}`] : [])
   ];
 
@@ -4162,6 +5502,50 @@ function desanitizeJudgeText(value: string, replacements: Array<{ source: string
     output = output.replace(buildJudgeLiteralPattern(replacement.source), replacement.target);
   }
   return output;
+}
+
+function normalizeChineseFirstJudgeReason(value: string): string {
+  const replacements = [
+    {
+      source: "their user is real rather than aspirational",
+      target: "其用户是真实存在的，而不是停留在愿景想象中"
+    },
+    {
+      source: "failed to keep synchronized utility and trades after losing the first duel and breaking spacing",
+      target: "在丢掉首个对枪并失去站位间距后，未能维持同步道具与补枪（synchronized utility and trades）"
+    },
+    {
+      source: "win condition succeeded through synchronized utility and trades",
+      target: "通过同步道具与补枪（synchronized utility and trades）让胜利条件成立"
+    },
+    {
+      source: "wins by cleaner trading",
+      target: "凭借更干净的补枪取胜"
+    },
+    {
+      source: "failed to prove",
+      target: "未能证明"
+    },
+    {
+      source: "win condition succeeded",
+      target: "胜利条件成立"
+    },
+    {
+      source: "win condition failed",
+      target: "胜利条件失守"
+    },
+    {
+      source: "rather than",
+      target: "而不是"
+    }
+  ] as const;
+
+  let output = value;
+  for (const replacement of replacements) {
+    output = output.replace(buildJudgeLiteralPattern(replacement.source), replacement.target);
+  }
+
+  return output.replace(/\s{2,}/g, " ").trim();
 }
 
 function translateJudgePromptError(error: unknown, context: Phase18JudgePromptContext): Error {
@@ -4483,6 +5867,20 @@ function mostFrequent(values: string[]): string {
   }
 
   return [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0]?.[0] ?? "unknown";
+}
+
+function mostFrequentWithCount(values: string[]): { value: string; count: number } | undefined {
+  const counts = new Map<string, number>();
+  for (const value of values) {
+    const normalized = value.trim();
+    if (normalized.length === 0) {
+      continue;
+    }
+    counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+  }
+
+  const [value, count] = [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0] ?? [];
+  return typeof value === "string" && typeof count === "number" ? { value, count } : undefined;
 }
 
 function stableNumber(input: string, modulo: number): number {

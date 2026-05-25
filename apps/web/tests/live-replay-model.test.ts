@@ -30,7 +30,12 @@ describe("Phase 1.4 live replay model", () => {
     const item = roundItem(1, [
       timelineEvent({ id: "intro", kind: "round_intro", atMs: 0 }),
       timelineEvent({ id: "score", kind: "scoreboard_update", atMs: 5000, payload: { scoreAfterRound: { teamA: 1, teamB: 0 } } }),
-      timelineEvent({ id: "kill", kind: "kill_feed_item", atMs: 8000, payload: { text: "Entry opens mid" } }),
+      timelineEvent({
+        id: "kill",
+        kind: "kill_feed_item",
+        atMs: 8000,
+        payload: { actorAgentId: "agent-a", targetAgentId: "agent-b", text: "Entry opens mid", zoneId: "buyer_mid" }
+      }),
       timelineEvent({ id: "result", kind: "round_result", atMs: 62000, payload: { scoreAfterRound: { teamA: 1, teamB: 0 } } })
     ]);
 
@@ -82,7 +87,7 @@ describe("Phase 1.4 live replay model", () => {
     expect(getNextRoundIndex(keyRoundMap, 2)).toBeNull();
   });
 
-  it("serializes a browser-safe live replay view model without raw events or agent outputs", () => {
+  it("serializes a live replay view model without raw events while preserving analysis facts", () => {
     const liveReplay = toLiveReplayData(matchReplayFixture());
     const firstRound = liveReplay.maps[0]?.rounds[0];
 
@@ -93,7 +98,7 @@ describe("Phase 1.4 live replay model", () => {
     expect(firstRound?.roundReport.summary).toBe("test round");
     expect(firstRound?.timelineEvents[0]?.id).toBe("tl-1");
     expect(firstRound).not.toHaveProperty("events");
-    expect(firstRound?.roundReport).not.toHaveProperty("agentOutputs");
+    expect(firstRound?.roundReport.agentOutputs).toHaveLength(1);
   });
 
   it("exposes Phase 1.45 tactical map and broadcast frame data", () => {
@@ -102,7 +107,13 @@ describe("Phase 1.4 live replay model", () => {
         id: "kill",
         kind: "kill_feed_item",
         atMs: 20000,
-        payload: { keyEventId: "ke-1", zoneId: "unknown_zone", text: "unknown zone event" }
+        payload: {
+          actorAgentId: "agent-a",
+          targetAgentId: "agent-b",
+          keyEventId: "ke-1",
+          zoneId: "unknown_zone",
+          text: "unknown zone event"
+        }
       }),
       timelineEvent({
         id: "score",
@@ -213,6 +224,51 @@ describe("Phase 1.4 live replay model", () => {
     expect(JSON.stringify(frame)).not.toContain("rawOutput");
     expect(JSON.stringify(frame)).not.toContain("driverModelId");
   });
+
+  it("throws on malformed kill_feed_item timeline payloads instead of silently dropping them", () => {
+    const item = roundItem(1, [
+      timelineEvent({
+        id: "bad-kill",
+        kind: "kill_feed_item",
+        atMs: 8000,
+        payload: { actorAgentId: "agent-a", text: "missing victim" }
+      })
+    ]);
+
+    expect(() => buildRoundFrame(item, 8000)).toThrow("Invalid replay kill data");
+    expect(() => buildRoundFrame(item, 8000)).toThrow("targetAgentId");
+  });
+
+  it("throws when stored kill ledger references an unmapped target agent", () => {
+    const replay = matchReplayFixture();
+    replay.agentsById = {
+      "agent-a": {
+        id: "agent-a",
+        teamId: "team-a",
+        displayName: "Agent A",
+        role: "entry",
+        secondaryRoles: [],
+        roleResponsibilities: [],
+        aliases: []
+      }
+    } as MatchReplay["agentsById"];
+    (replay.maps[0] as MatchReplay["maps"][number]).rounds[0]!.roundReport.killLedger = [
+      {
+        id: "ledger-1",
+        atMs: 1000,
+        impact: "bad stored kill",
+        actorAgentId: "agent-a",
+        targetAgentId: "agent-b",
+        actorTeamId: "team-a",
+        targetTeamId: "team-b",
+        zoneId: "buyer_mid",
+        sourceEventId: "tl-1"
+      }
+    ] as NonNullable<MatchReplay["maps"][number]["rounds"][number]["roundReport"]["killLedger"]>;
+
+    expect(() => toLiveReplayData(replay)).toThrow("Invalid replay kill data");
+    expect(() => toLiveReplayData(replay)).toThrow('unknown target agent "agent-b"');
+  });
 });
 
 function timelineEvent(input: Partial<LiveReplayTimelineEvent> & { id: string }): LiveReplayTimelineEvent {
@@ -231,7 +287,7 @@ function roundItem(roundNumber: number, timelineEvents: LiveReplayTimelineEvent[
   return {
     id: `round-${roundNumber}`,
     roundNumber,
-    agentsById: {},
+    agentsById: replayAgentsFixture(),
     roundReport: {
       winnerTeamId: "team-a",
       mapName: "DUST2",
@@ -258,6 +314,29 @@ function roundItem(roundNumber: number, timelineEvents: LiveReplayTimelineEvent[
   };
 }
 
+function replayAgentsFixture() {
+  return {
+    "agent-a": {
+      id: "agent-a",
+      teamId: "team-a",
+      displayName: "Agent A",
+      role: "entry",
+      secondaryRoles: [],
+      roleResponsibilities: [],
+      aliases: []
+    },
+    "agent-b": {
+      id: "agent-b",
+      teamId: "team-b",
+      displayName: "Agent B",
+      role: "support",
+      secondaryRoles: [],
+      roleResponsibilities: [],
+      aliases: []
+    }
+  };
+}
+
 function mapReplay(rounds: LiveReplayRound[], keyRoundNumbers: number[] = []): LiveReplayMap {
   return {
     id: "map",
@@ -269,6 +348,10 @@ function mapReplay(rounds: LiveReplayRound[], keyRoundNumbers: number[] = []): L
       fallbackZoneId: "buyer_mid",
       zones: [],
       connections: []
+    },
+    timeoutsRemainingByTeam: {
+      "team-a": 2,
+      "team-b": 2
     },
     finalScore: { teamA: 7, teamB: 5 },
     winnerTeamId: "team-a",

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
@@ -244,8 +244,8 @@ export function LiveReplayPlayer({
   });
   const teamAView = buildOverlayRosterViewModel({ replay, selectedMap, currentRound, frame, teamKey: "teamA" });
   const teamBView = buildOverlayRosterViewModel({ replay, selectedMap, currentRound, frame, teamKey: "teamB" });
-  const bottomTickerView = buildBottomTickerViewModel({ replay, frame, stageState });
-  const evidenceView = buildRoundEvidenceViewModel({ replay, currentRound });
+  const bottomTickerView = buildBottomTickerViewModel({ replay, currentRound, frame, stageState });
+  const evidenceView = buildRoundEvidenceViewModel({ replay, currentRound, frame });
   const roundProgressPercent = frame ? `${Math.round(frame.progress * 100)}%` : "0%";
   const timeLabel = frame ? `${formatClock(currentAtMs)} / ${formatClock(roundDurationMs)}` : "--:-- / --:--";
 
@@ -390,6 +390,7 @@ export function LiveReplayPlayer({
                     runnerPolicy={runnerPolicy}
                     initialProgress={initialRunProgress}
                     initialRunHistory={initialRunHistory}
+                    postMatchReviews={replay?.postMatchReviews ?? []}
                     onReplayGuardChange={setReplayGuard}
                     onUiStateChange={setRunUiState}
                     onResetCurrentMapView={handleResetCurrentMapView}
@@ -402,6 +403,21 @@ export function LiveReplayPlayer({
         </section>
 
         <section className={styles.bottomTicker}>
+          {bottomTickerView.roundOutcome ? (
+            <div className={styles.outcomeStrip} aria-label="回合胜法与战损密度">
+              <OutcomeCard
+                label="胜法"
+                value={bottomTickerView.roundOutcome.winMethodLabel}
+                detail={bottomTickerView.roundOutcome.winMethodDetail}
+              />
+              <OutcomeCard
+                label="战损"
+                value={bottomTickerView.roundOutcome.casualtyDensityLabel}
+                detail={`${bottomTickerView.roundOutcome.tradeIntensityLabel} / ${bottomTickerView.roundOutcome.combatShapeLabel}`}
+              />
+              <OutcomeCard label="击杀" value={bottomTickerView.roundOutcome.killCountLabel} detail="只展示真实击杀数，不改事实" />
+            </div>
+          ) : null}
           <div className={styles.tickerSummaryGrid}>
             <TickerCard label={bottomTickerView.briefLabel} value={bottomTickerView.briefValue} />
             <TickerCard label={bottomTickerView.latestKillLabel} value={bottomTickerView.latestKillValue} />
@@ -585,13 +601,76 @@ export function LiveReplayPlayer({
 
 function RoundEvidencePanel({ evidence }: { evidence: RoundEvidenceViewModel }) {
   return (
-    <Panel className={styles.evidencePanel} title={`本回合证据链 / ${evidence.roundLabel}`}>
-      <div className={styles.evidenceStack}>
-        <div className={styles.evidenceSummary}>
-          <span>{evidence.factChainLabel}</span>
-          <small>用于判断真实 LLM 是否完成了队伍计划、选手行动、裁判判词到已提交回放结果的事实链。</small>
-        </div>
-        {evidence.emptyMessage ? <span className={styles.muted}>{evidence.emptyMessage}</span> : null}
+      <Panel className={styles.evidencePanel} title={`本回合证据链 / ${evidence.roundLabel}`}>
+        <div className={styles.evidenceStack}>
+          <div className={styles.evidenceSummary}>
+            <span>{evidence.factChainLabel}</span>
+            <small>用于判断真实 LLM 是否完成了队伍计划、选手行动、裁判判词到已提交回放结果的事实链。</small>
+          </div>
+          {evidence.roundOutcome ? (
+            <div className={styles.outcomeStrip}>
+              <OutcomeCard label="胜法" value={evidence.roundOutcome.winMethodLabel} detail={evidence.roundOutcome.winMethodDetail} />
+              <OutcomeCard
+                label="战损"
+                value={evidence.roundOutcome.casualtyDensityLabel}
+                detail={`${evidence.roundOutcome.tradeIntensityLabel} / ${evidence.roundOutcome.combatShapeLabel}`}
+              />
+              <OutcomeCard label="击杀" value={evidence.roundOutcome.killCountLabel} detail="只展示真实击杀数，不改事实" />
+            </div>
+          ) : null}
+          {evidence.emptyMessage ? <span className={styles.muted}>{evidence.emptyMessage}</span> : null}
+
+          {evidence.coachTimeoutCorrection ? (
+            <section className={styles.evidenceSection}>
+              <div className={styles.evidenceSectionHeader}>
+                <span>战术暂停修正</span>
+                <small>coach_timeout</small>
+              </div>
+              <article className={styles.teamPlanCard}>
+                <div className={styles.teamPlanHeader}>
+                  <strong>{evidence.coachTimeoutCorrection.teamName}</strong>
+                  <span>
+                    {evidence.coachTimeoutCorrection.confidenceLabel} / {evidence.coachTimeoutCorrection.expiresAfterRoundLabel}
+                  </span>
+                </div>
+                <small>触发原因：{evidence.coachTimeoutCorrection.triggerReason}</small>
+                <small>诊断问题：{evidence.coachTimeoutCorrection.diagnosedFailure}</small>
+                <small>下一回合目标：{evidence.coachTimeoutCorrection.nextRoundObjective}</small>
+                <small>本方必须守住：{evidence.coachTimeoutCorrection.ownCoreToHold}</small>
+                <small>对手缺口：{evidence.coachTimeoutCorrection.opponentGapToHit}</small>
+                <small>区域重排：{evidence.coachTimeoutCorrection.zonePriorityShift}</small>
+                <p>{evidence.coachTimeoutCorrection.teamDirective}</p>
+                <div className={styles.directiveList}>
+                  {evidence.coachTimeoutCorrection.playerAdjustments.map((adjustment) => (
+                    <div key={adjustment.agentId}>
+                      <b>{adjustment.displayName}</b>
+                      <span>{adjustment.adjustment}</span>
+                    </div>
+                  ))}
+                </div>
+                <details className={styles.evidenceRawDetails}>
+                  <summary>查看原文</summary>
+                  <div className={styles.evidenceRawBlock}>
+                    <small>原文触发原因：{evidence.coachTimeoutCorrection.triggerReasonRaw}</small>
+                    <small>原文诊断：{evidence.coachTimeoutCorrection.diagnosedFailureRaw}</small>
+                    <small>原文目标：{evidence.coachTimeoutCorrection.nextRoundObjectiveRaw}</small>
+                    <small>原文本方核心：{evidence.coachTimeoutCorrection.ownCoreToHoldRaw}</small>
+                    <small>原文对手缺口：{evidence.coachTimeoutCorrection.opponentGapToHitRaw}</small>
+                    <small>原文区域重排：{evidence.coachTimeoutCorrection.zonePriorityShiftRaw}</small>
+                    <small>原文队伍口径：{evidence.coachTimeoutCorrection.teamDirectiveRaw}</small>
+                    <div className={styles.directiveList}>
+                      {evidence.coachTimeoutCorrection.playerAdjustments.map((adjustment) => (
+                        <div key={`${adjustment.agentId}-raw`}>
+                          <b>{adjustment.displayName}</b>
+                          <span>{adjustment.adjustmentRaw}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </details>
+              </article>
+            </section>
+          ) : null}
 
         <section className={styles.evidenceSection}>
           <div className={styles.evidenceSectionHeader}>
@@ -736,6 +815,7 @@ function RosterRail({ roster, side }: { roster: OverlayRosterViewModel; side: "l
           <span>{roster.shortName}</span>
           <strong>{roster.displayName}</strong>
           <small>{roster.sideLabel}</small>
+          {roster.timeoutsLabel ? <small className={styles.rosterCoachLine}>{roster.timeoutsLabel}</small> : null}
           {roster.proposalLabel ? <small className={styles.rosterCoachLine}>{roster.proposalLabel}</small> : null}
           {roster.coachLabel ? <small className={styles.rosterCoachLine}>{roster.coachLabel}</small> : null}
         </div>
@@ -749,13 +829,30 @@ function RosterRail({ roster, side }: { roster: OverlayRosterViewModel; side: "l
                 <strong>{player.displayName}</strong>
                 <span>{player.roleLabel}</span>
               </div>
-              <div className={styles.rosterRowMeta}>
-                <span>{player.metaLabel}</span>
-                <span>{player.tokenBankLabel}</span>
-                <span>{player.buyLabel}</span>
+              <div className={styles.rosterRowCore}>
+                <span>
+                  <b>累计 K/D/A</b>
+                  <strong>{player.kdaLabel}</strong>
+                </span>
+                <span>
+                  <b>本局 K</b>
+                  <strong>{player.roundKillLabel}</strong>
+                </span>
               </div>
-              <small className={styles.rosterDuty}>{player.dutyLabel}</small>
-              <small>{player.statusLabel}</small>
+              <div className={styles.rosterRowEconomy}>
+                <span>
+                  <b>HP</b>
+                  <strong>{player.hpLabel}</strong>
+                </span>
+                <span>
+                  <b>总经济</b>
+                  <strong>{player.totalEconomyLabel}</strong>
+                </span>
+                <span>
+                  <b>本回合消费</b>
+                  <strong>{player.roundSpendLabel}</strong>
+                </span>
+              </div>
             </article>
           ))}
         </div>
@@ -771,6 +868,16 @@ function TickerCard({ label, value }: { label: string; value: string }) {
     <article className={styles.tickerCard}>
       <span>{label}</span>
       <strong>{value}</strong>
+    </article>
+  );
+}
+
+function OutcomeCard({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <article className={styles.outcomeCard}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small>{detail}</small>
     </article>
   );
 }

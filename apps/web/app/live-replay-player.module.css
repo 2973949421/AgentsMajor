@@ -107,6 +107,7 @@
 .hudScoreLine span,
 .hudScoreLine small,
 .mapPill span,
+.outcomeCard span,
 .rosterHeader span,
 .rosterRowTop span,
 .tickerCard span,
@@ -243,7 +244,7 @@
 
 .rosterRow {
   display: grid;
-  gap: 3px;
+  gap: 5px;
   min-width: 0;
   padding: 7px 8px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -277,13 +278,39 @@
   white-space: nowrap;
 }
 
-.rosterRowMeta {
+.rosterRowCore,
+.rosterRowEconomy {
   display: flex;
-  gap: 6px;
   flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
   color: var(--muted);
   font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   font-size: 10px;
+}
+
+.rosterRowCore span,
+.rosterRowEconomy span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rosterRowCore b,
+.rosterRowEconomy b {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+}
+
+.rosterRowCore strong,
+.rosterRowEconomy strong {
+  color: var(--accent-soft);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
 .rosterRow small,
@@ -299,11 +326,6 @@
 .opsHelperText,
 .opsLatestError {
   color: var(--muted);
-}
-
-.rosterDuty {
-  display: block;
-  line-height: 1.45;
 }
 
 .rosterEmpty {
@@ -878,6 +900,36 @@
   gap: 8px;
 }
 
+.outcomeStrip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.outcomeCard {
+  display: grid;
+  gap: 6px;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid rgba(244, 184, 70, 0.22);
+  background: linear-gradient(180deg, rgba(244, 184, 70, 0.06), rgba(255, 255, 255, 0.03));
+}
+
+.outcomeCard strong {
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.outcomeCard small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .tickerCard {
   display: grid;
   gap: 6px;
@@ -1223,6 +1275,7 @@
   }
 
   .tickerSummaryGrid,
+  .outcomeStrip,
   .detailsTrayBody {
     grid-template-columns: 1fr;
   }

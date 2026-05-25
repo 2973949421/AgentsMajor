@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 
+import type { LiveReplayData } from "./live-replay-model";
 import type { PublicWebRunnerPolicy } from "./server-web-runner-policy";
 import styles from "./live-replay-player.module.css";
 
@@ -95,11 +96,14 @@ export interface RunMatchUiState {
   message: string;
 }
 
+type CoachPostMatchReviewEntry = LiveReplayData["postMatchReviews"][number];
+
 interface RunMatchControlsProps {
   matchId: string;
   runnerPolicy: PublicWebRunnerPolicy;
   initialProgress?: WebRunProgress | null;
   initialRunHistory?: RunMatchHistoryEntry[];
+  postMatchReviews?: CoachPostMatchReviewEntry[];
   onReplayGuardChange?: (guard: ReplayGuardState) => void;
   onUiStateChange?: (uiState: RunMatchUiState) => void;
   onResetCurrentMapView?: () => void;
@@ -119,6 +123,7 @@ export function RunMatchControls({
   runnerPolicy,
   initialProgress = null,
   initialRunHistory = [],
+  postMatchReviews = [],
   onReplayGuardChange,
   onUiStateChange,
   onResetCurrentMapView,
@@ -133,6 +138,8 @@ export function RunMatchControls({
   const [trackingPaused, setTrackingPaused] = useState(false);
   const [trackingStopped, setTrackingStopped] = useState(false);
   const [history, setHistory] = useState<RunMatchHistoryEntry[]>(initialProgress?.recentRuns ?? initialRunHistory);
+  const [reviewEntries, setReviewEntries] = useState<CoachPostMatchReviewEntry[]>(postMatchReviews);
+  const [reviewActionState, setReviewActionState] = useState<{ teamId: string; action: "approve" | "dismiss" } | null>(null);
 
   useEffect(() => {
     const next = buildInitialRunMatchUiState(initialProgress);
@@ -142,6 +149,10 @@ export function RunMatchControls({
     setRequestedMode(next.requestedMode);
     setHistory(initialProgress?.recentRuns ?? initialRunHistory);
   }, [initialProgress?.runId, initialProgress?.status, initialRunHistory]);
+
+  useEffect(() => {
+    setReviewEntries(postMatchReviews);
+  }, [postMatchReviews]);
 
   useEffect(() => {
     onUiStateChange?.({
@@ -452,6 +463,49 @@ export function RunMatchControls({
         </div>
       </details>
 
+      {reviewEntries.length > 0 ? (
+        <details className={styles.opsDisclosure}>
+          <summary>赛后复盘补丁</summary>
+          <div className={styles.opsDisclosureBody}>
+            <div className={styles.opsHistoryList}>
+              {reviewEntries.map((entry) => {
+                const busy =
+                  reviewActionState?.teamId === entry.teamId;
+                return (
+                  <div key={entry.teamId} className={styles.opsHistoryButton}>
+                    <strong>{entry.teamId}</strong>
+                    <span>{formatCoachReviewStatus(entry.status)}</span>
+                    {entry.review.timeoutQualityReview ? <span>{entry.review.timeoutQualityReview}</span> : null}
+                    {entry.review.nextMatchUpgrades?.length ? (
+                      <span className={styles.opsHistoryMeta}>下一场升级：{entry.review.nextMatchUpgrades.join(" / ")}</span>
+                    ) : null}
+                    {entry.review.proposedStrategyPatch ? <span>{entry.review.proposedStrategyPatch}</span> : null}
+                    <div className={styles.opsUtilityGrid}>
+                      <button
+                        type="button"
+                        className={styles.opsActionSecondary}
+                        disabled={busy || entry.status === "approved"}
+                        onClick={() => void handleCoachReview(entry.teamId, "approve")}
+                      >
+                        {busy && reviewActionState?.action === "approve" ? "采纳中..." : "采纳为下一场补丁"}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.opsActionSecondary}
+                        disabled={busy || entry.status === "dismissed"}
+                        onClick={() => void handleCoachReview(entry.teamId, "dismiss")}
+                      >
+                        {busy && reviewActionState?.action === "dismiss" ? "处理中..." : "暂不采纳"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </details>
+      ) : null}
+
       <span className={state === "failed" ? styles.opsErrorText : styles.opsHelperText}>{helperText}</span>
     </section>
   );
@@ -576,6 +630,42 @@ export function RunMatchControls({
     setState("stopped");
     setMessage("已停止本地跟踪当前生成；如后端仍在执行，请等待它自然结束。");
   }
+
+  async function handleCoachReview(teamId: string, action: "approve" | "dismiss") {
+    setReviewActionState({ teamId, action });
+    try {
+      const response = await fetch(`/api/matches/${encodeURIComponent(matchId)}/coach-review/${encodeURIComponent(teamId)}/approve`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          action,
+          ...(adminToken.trim() ? { adminToken: adminToken.trim() } : {})
+        })
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        summary?: string;
+        review?: CoachPostMatchReviewEntry;
+      };
+      if (!response.ok) {
+        throw new Error(payload.error ?? `Coach review failed with HTTP ${response.status}`);
+      }
+
+      if (payload.review) {
+        setReviewEntries((current) =>
+          current.map((entry) => (entry.teamId === payload.review?.teamId ? payload.review : entry))
+        );
+      }
+      if (payload.summary) {
+        setMessage(payload.summary);
+      }
+    } catch (error) {
+      setState("failed");
+      setMessage(error instanceof Error ? error.message : "赛后复盘处理失败。");
+    } finally {
+      setReviewActionState(null);
+    }
+  }
 }
 
 export function buildInitialRunMatchUiState(initialProgress: WebRunProgress | null | undefined): RunMatchUiState {
@@ -662,6 +752,10 @@ function formatTaskType(taskType: string): string {
       return "队伍计划";
     case "agent_action":
       return "选手行动";
+    case "coach_timeout":
+      return "教练暂停修正";
+    case "coach_post_match_review":
+      return "赛后复盘";
     case "judge":
       return "裁判";
     case "judge_review":
@@ -674,6 +768,12 @@ function formatTaskType(taskType: string): string {
 function formatLlmActor(call: WebRunLlmCallProgress): string {
   if (call.agentId) {
     return call.agentId;
+  }
+  if (call.taskType === "coach_timeout") {
+    return "教练";
+  }
+  if (call.taskType === "coach_post_match_review") {
+    return "教练复盘";
   }
   if (call.taskType === "team_plan") {
     return "队伍";
@@ -746,4 +846,16 @@ function formatDisabledReason(reason: PublicWebRunnerPolicy["disabledReason"]): 
 
 function shortRunId(runId: string): string {
   return runId.length > 24 ? runId.slice(-24) : runId;
+}
+
+function formatCoachReviewStatus(status: string): string {
+  switch (status) {
+    case "approved":
+      return "已采纳";
+    case "dismissed":
+      return "暂不采纳";
+    case "pending":
+    default:
+      return "待确认";
+  }
 }

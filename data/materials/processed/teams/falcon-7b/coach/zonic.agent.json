@@ -24,7 +24,7 @@
     "confidence": "高",
     "notes": "Falcons 教练。",
     "agent_major_responsibilities": [
-      "Timeout correction / halftime reset / post-match review",
+      "Timeout correction / post-match review",
       "Re-align team judgment / repair the main path / turn failures into templates"
     ]
   },
@@ -146,7 +146,7 @@
     ],
     "override_ids": [],
     "ops_notes": [
-      "Use timeout resets, halftime correction, and post-match review framing."
+      "Use timeout correction and post-match review framing."
     ]
   },
   "ops_hooks": {
