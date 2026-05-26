@@ -209,6 +209,9 @@ function roundReportFixture(): RoundReport {
       winnerTeamId: "team-a",
       loserTeamId: "team-b",
       margin: "standard",
+      roundWinType: "attack_elimination",
+      attackWinConditionMet: true,
+      defenseWinConditionMet: false,
       reason: "Team A converts mid control.",
       mvpAgentId: "agent-a",
       confidence: 0.8

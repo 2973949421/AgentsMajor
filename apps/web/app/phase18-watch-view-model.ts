@@ -63,10 +63,9 @@ export interface BottomTickerViewModel {
 }
 
 export type RoundWinMethod =
-  | "attack_preplant_elimination"
-  | "attack_postplant_elimination"
+  | "attack_elimination"
   | "attack_bomb_explosion"
-  | "defense_preplant_elimination"
+  | "defense_elimination"
   | "defense_defuse"
   | "defense_timeout_no_plant"
   | "unknown";
@@ -174,10 +173,32 @@ export interface JudgeEvidenceViewModel {
   winnerLabel: string;
   loserLabel: string;
   marginLabel: string;
+  roundWinTypeLabel: string;
+  roundWinTypeDetail: string;
+  attackWinConditionLabel: string;
+  defenseWinConditionLabel: string;
   mvpLabel: string;
   confidenceLabel: string;
+  diagnostic: JudgeDiagnosticEvidenceViewModel | null;
+  diagnosticMissingLabel?: string;
   reason: string;
   reasonRaw: string;
+}
+
+export interface JudgeDiagnosticEvidenceViewModel {
+  currentSubTheme: string;
+  currentSubThemeRaw: string;
+  attackedOpportunityGap: string;
+  attackedOpportunityGapRaw: string;
+  defendedCoreProposition: string;
+  defendedCorePropositionRaw: string;
+  mainAttackZoneLabel: string;
+  mainAttackZoneId: string;
+  mainDefenseZoneLabel: string;
+  mainDefenseZoneId: string;
+  zoneRelationLabel: string;
+  decisiveEvidence: string;
+  decisiveEvidenceRaw: string;
 }
 
 export type MatchHudViewModel = BroadcastHudViewModel;
@@ -213,25 +234,20 @@ const WIN_METHOD_META: Record<
   RoundWinMethod,
   { label: string; detail: string; combatShapeLabel: string }
 > = {
-  attack_preplant_elimination: {
-    label: "攻方下包前清场胜",
-    detail: "攻方在下包前完成清场，直接拿到回合控制权。",
-    combatShapeLabel: "前包清场"
-  },
-  attack_postplant_elimination: {
-    label: "攻方下包后清场胜",
-    detail: "攻方先完成下包，再通过收尾清场锁定回合。",
-    combatShapeLabel: "下包后收尾"
+  attack_elimination: {
+    label: "攻方全歼胜",
+    detail: "攻方通过全歼守方拿下本局，不依赖炸弹爆炸结算。",
+    combatShapeLabel: "攻方清场"
   },
   attack_bomb_explosion: {
     label: "攻方下包爆炸胜",
     detail: "攻方完成下包，并守到炸弹爆炸。",
     combatShapeLabel: "下包守爆"
   },
-  defense_preplant_elimination: {
-    label: "守方下包前清场胜",
-    detail: "守方在对手下包前完成清场，直接守住回合。",
-    combatShapeLabel: "前包清场"
+  defense_elimination: {
+    label: "守方全歼胜",
+    detail: "守方通过全歼攻方守住本局。",
+    combatShapeLabel: "守方清场"
   },
   defense_defuse: {
     label: "守方拆包胜",
@@ -429,12 +445,13 @@ export function buildRoundOutcomeViewModel(input: {
   const attackTeamId = input.currentRound.tacticalRound?.sideAssignment.attackingTeamId ?? null;
   const isAttackWin = attackTeamId ? roundReport.winnerTeamId === attackTeamId : null;
   const tacticalResult = input.currentRound.tacticalRound?.collision.result ?? null;
-  const winMethod = deriveWinMethod({
-    isAttackWin,
-    killCount,
-    tacticalResult,
-    margin: roundReport.judgeResult.margin
-  });
+  const winMethod = roundReport.judgeResult.roundWinType
+    ? toRoundWinMethod(roundReport.judgeResult.roundWinType)
+    : deriveWinMethod({
+        isAttackWin,
+        killCount,
+        tacticalResult
+      });
   const winMethodMeta = WIN_METHOD_META[winMethod];
   const casualtyMeta = CASUALTY_DENSITY_META[casualtyDensity];
 
@@ -675,15 +692,68 @@ function buildJudgeEvidence(
 ): JudgeEvidenceViewModel {
   const judge = roundReport.judgeResult;
   const mvpAgent = replay.agentsById[judge.mvpAgentId];
+  const diagnostic = buildJudgeDiagnosticEvidence(roundReport);
+  const winMethod = toRoundWinMethod(judge.roundWinType);
+  const winMethodMeta = WIN_METHOD_META[winMethod];
   return {
     winnerLabel: teamNameById(replay, judge.winnerTeamId),
     loserLabel: teamNameById(replay, judge.loserTeamId),
     marginLabel: translateMargin(judge.margin),
+    roundWinTypeLabel: winMethodMeta.label,
+    roundWinTypeDetail: winMethodMeta.detail,
+    attackWinConditionLabel:
+      typeof judge.attackWinConditionMet === "boolean" ? (judge.attackWinConditionMet ? "已成立" : "未成立") : "旧回合未归档",
+    defenseWinConditionLabel:
+      typeof judge.defenseWinConditionMet === "boolean"
+        ? (judge.defenseWinConditionMet ? "已成立" : "未成立")
+        : "旧回合未归档",
     mvpLabel: mvpAgent?.displayName ?? judge.mvpAgentId,
     confidenceLabel: formatConfidence(judge.confidence),
+    diagnostic,
+    ...(diagnostic ? {} : { diagnosticMissingLabel: "旧回合未归档裁判诊断；不会根据判词伪造补齐。" }),
     reason: translateEvidenceText(judge.reason),
     reasonRaw: judge.reason
   };
+}
+
+function buildJudgeDiagnosticEvidence(roundReport: LiveReplayRound["roundReport"]): JudgeDiagnosticEvidenceViewModel | null {
+  const diagnostic = roundReport.judgeDiagnostic ?? roundReport.judgeResult.diagnostic;
+  if (!diagnostic) {
+    return null;
+  }
+
+  return {
+    currentSubTheme: translateEvidenceText(diagnostic.currentSubTheme),
+    currentSubThemeRaw: diagnostic.currentSubTheme,
+    attackedOpportunityGap: translateEvidenceText(diagnostic.attackedOpportunityGap),
+    attackedOpportunityGapRaw: diagnostic.attackedOpportunityGap,
+    defendedCoreProposition: translateEvidenceText(diagnostic.defendedCoreProposition),
+    defendedCorePropositionRaw: diagnostic.defendedCoreProposition,
+    mainAttackZoneLabel: formatZoneName(diagnostic.mainAttackZoneId),
+    mainAttackZoneId: diagnostic.mainAttackZoneId,
+    mainDefenseZoneLabel: formatZoneName(diagnostic.mainDefenseZoneId),
+    mainDefenseZoneId: diagnostic.mainDefenseZoneId,
+    zoneRelationLabel:
+      diagnostic.mainAttackZoneId === diagnostic.mainDefenseZoneId
+        ? "主攻落点与守方命题焦点一致"
+        : "主攻落点与守方命题焦点不同，表示攻守双方围绕不同关键区交锋",
+    decisiveEvidence: translateEvidenceText(diagnostic.decisiveEvidence),
+    decisiveEvidenceRaw: diagnostic.decisiveEvidence
+  };
+}
+
+function formatZoneName(zoneId: string): string {
+  const labels: Record<string, string> = {
+    buyer_mid: "中路",
+    conversion_site_a: "A 点",
+    conversion_site_b: "B 点",
+    pricing_ramp: "A 大",
+    retention_connector: "A 小",
+    token_economy: "B 洞",
+    spawn_a: "T 出生点",
+    spawn_b: "CT 出生点"
+  };
+  return labels[zoneId] ?? zoneId.replaceAll("_", " ");
 }
 
 function teamNameById(replay: LiveReplayData, teamId: string): string {
@@ -817,7 +887,6 @@ function deriveWinMethod(input: {
   isAttackWin: boolean | null;
   killCount: number;
   tacticalResult: string | null;
-  margin: "narrow" | "standard" | "decisive";
 }): RoundWinMethod {
   if (input.isAttackWin === null) {
     return "unknown";
@@ -827,22 +896,29 @@ function deriveWinMethod(input: {
     if (input.killCount <= 2) {
       return "attack_bomb_explosion";
     }
-    if (input.killCount >= 8 || (input.killCount >= 6 && input.margin === "decisive")) {
-      return input.tacticalResult === "attack_breakthrough" ? "attack_preplant_elimination" : "attack_postplant_elimination";
-    }
-    return input.tacticalResult === "attack_breakthrough" ? "attack_postplant_elimination" : "attack_bomb_explosion";
+    return "attack_elimination";
   }
 
   if (input.killCount <= 2) {
     return "defense_timeout_no_plant";
   }
-  if (input.killCount >= 8 || (input.killCount >= 6 && input.margin === "decisive")) {
-    return input.tacticalResult === "defense_hold" ? "defense_preplant_elimination" : "defense_defuse";
-  }
   if (input.tacticalResult === "rotate_success" || input.tacticalResult === "trade_even") {
     return "defense_defuse";
   }
-  return "defense_timeout_no_plant";
+  return "defense_elimination";
+}
+
+function toRoundWinMethod(roundWinType: string | undefined): RoundWinMethod {
+  switch (roundWinType) {
+    case "attack_elimination":
+    case "attack_bomb_explosion":
+    case "defense_elimination":
+    case "defense_defuse":
+    case "defense_timeout_no_plant":
+      return roundWinType;
+    default:
+      return "unknown";
+  }
 }
 
 function deriveCasualtyDensity(killCount: number): RoundCasualtyDensity {

@@ -86,6 +86,9 @@ describe("Phase 1.6 tactical protocol", () => {
         winnerTeamId: "team_a",
         loserTeamId: "team_b",
         margin: "standard",
+        roundWinType: "attack_elimination",
+        attackWinConditionMet: true,
+        defenseWinConditionMet: false,
         reason: "test judge",
         mvpAgentId: "agent_a_star",
         confidence: 0.75
@@ -110,6 +113,9 @@ describe("Phase 1.6 tactical protocol", () => {
         winnerTeamId: "team_b",
         loserTeamId: "team_a",
         margin: "standard",
+        roundWinType: "defense_elimination",
+        attackWinConditionMet: false,
+        defenseWinConditionMet: true,
         reason: "judge says defense converted the hold",
         mvpAgentId: "agent_b_support",
         confidence: 0.75

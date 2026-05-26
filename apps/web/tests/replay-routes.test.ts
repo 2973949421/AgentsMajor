@@ -157,6 +157,9 @@ function matchReplayFixture(): MatchReplay {
           winnerTeamId: "team-a",
           loserTeamId: "team-b",
           margin: "standard",
+          roundWinType: "attack_elimination",
+          attackWinConditionMet: true,
+          defenseWinConditionMet: false,
           reason: "won the opener",
           mvpAgentId: "agent-a",
           confidence: 0.9

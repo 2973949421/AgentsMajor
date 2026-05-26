@@ -21,6 +21,7 @@ import {
   type EconomyState,
   type Event,
   type JudgeDiagnostic,
+  type JudgeRoundWinType,
   type JudgeResult,
   type MapGame,
   type Match,
@@ -228,6 +229,7 @@ interface Phase18JudgePromptContext {
     recentPublicRoundSummaries: string[];
   };
   actualTeamPlans?: Record<string, TeamRoundPlanDecision>;
+  actualAgentOutputs: AgentOutput[];
   validateAndTranslate(judgeResult: JudgeResult): JudgeResult;
   translatePromptText(value: string): string;
 }
@@ -2060,22 +2062,27 @@ class Phase12SimulationEngine implements SimulationEngine {
 
     let latestResponse: LlmResponse<TData> | undefined;
     try {
+      assertNoMojibakePayload(input.requestInput, `${input.task} request`);
+      const messages = buildPhase18StructuredMessages({
+        task: input.task,
+        schemaName: input.schemaName,
+        requestInput: input.requestInput
+      });
+      assertNoMojibakePayload(messages, `${input.task} prompt messages`);
       const response = await this.context.llmGateway.generateStructured<TData, unknown>({
         task: input.task,
         driverModelId: input.driverModelId,
         input: input.requestInput,
         schemaName: input.schemaName,
-        messages: buildPhase18StructuredMessages({
-          task: input.task,
-          schemaName: input.schemaName,
-          requestInput: input.requestInput
-        }),
+        messages,
         responseFormat: input.responseFormat,
         seed: input.seed,
         modelTier: input.modelTier,
         temperature: input.temperature
       });
       latestResponse = response;
+      assertNoMojibakePayload(response.rawText, `${input.task} raw response`);
+      assertNoMojibakePayload(response.data, `${input.task} structured response`);
       const data = input.validateResponseData ? input.validateResponseData(response.data) : response.data;
       const validatedResponse: LlmResponse<TData> = { ...response, data };
       const completedAt = timestamp();
@@ -2440,6 +2447,7 @@ class Phase12SimulationEngine implements SimulationEngine {
         ...(input.coachTimeout ? { appliedCoachCorrection: input.coachTimeout.correction } : {}),
         ...judgePromptContext.requestInput
       };
+      const mapSemanticContext = readPhase18MapSemanticContext(this.context, input.mapGame.mapName);
       const response = await this.runObservedStructuredCall<JudgeResult>({
         callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_judge`,
         attemptNumber: input.observabilityAttempt,
@@ -2457,23 +2465,23 @@ class Phase12SimulationEngine implements SimulationEngine {
         roundNumber: input.roundNumber,
         validateResponseData: (data) => {
           try {
-            return judgePromptContext.validateAndTranslate(judgeResultSchema.parse(normalizeJudgeResultPayload(data)));
+            const translatedJudgeResult = judgePromptContext.validateAndTranslate(judgeResultSchema.parse(normalizeJudgeResultPayload(data)));
+            return ensureJudgeDiagnostic({
+              judgeResult: translatedJudgeResult,
+              roundNumber: input.roundNumber,
+              sideAssignment: input.sideAssignment,
+              teamA: input.teamA,
+              teamB: input.teamB,
+              ...(input.teamPlans ? { teamPlans: input.teamPlans } : {}),
+              agentOutputs: input.agentOutputs,
+              ...(mapSemanticContext ? { mapSemanticContext } : {})
+            });
           } catch (error) {
             throw translateJudgePromptError(error, judgePromptContext);
           }
         }
       });
-      const authoritativeJudgeResult = ensureJudgeDiagnostic({
-        judgeResult: response.data,
-        roundNumber: input.roundNumber,
-        sideAssignment: input.sideAssignment,
-        teamA: input.teamA,
-        teamB: input.teamB,
-        ...(input.teamPlans ? { teamPlans: input.teamPlans } : {}),
-        ...(readPhase18MapSemanticContext(this.context, input.mapGame.mapName)
-          ? { mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName) }
-          : {})
-      });
+      const authoritativeJudgeResult = response.data;
       if (!this.context.useJudgeBiasGuardrail) {
         return authoritativeJudgeResult;
       }
@@ -2532,11 +2540,15 @@ class Phase12SimulationEngine implements SimulationEngine {
     });
 
     const margin: JudgeResult["margin"] = input.roundNumber % 3 === 0 ? "decisive" : "standard";
+    const roundWinType = buildFallbackJudgeRoundWinType(winnerTeamId, input.sideAssignment);
 
     return {
       winnerTeamId,
       loserTeamId,
       margin,
+      roundWinType,
+      attackWinConditionMet: roundWinType.startsWith("attack_"),
+      defenseWinConditionMet: roundWinType.startsWith("defense_"),
       reason: buildJudgeReason({
         mapName: input.mapGame.mapName,
         roundNumber: input.roundNumber,
@@ -2595,23 +2607,24 @@ class Phase12SimulationEngine implements SimulationEngine {
       roundNumber: input.roundNumber,
       validateResponseData: (data) => {
         try {
-          return input.judgePromptContext.validateAndTranslate(judgeResultSchema.parse(normalizeJudgeResultPayload(data)));
+          const translatedJudgeResult = input.judgePromptContext.validateAndTranslate(judgeResultSchema.parse(normalizeJudgeResultPayload(data)));
+          const mapSemanticContext = readPhase18MapSemanticContext(this.context, input.mapGame.mapName);
+          return ensureJudgeDiagnostic({
+            judgeResult: translatedJudgeResult,
+            roundNumber: input.roundNumber,
+            sideAssignment: input.sideAssignment,
+            teamA: input.teamA,
+            teamB: input.teamB,
+            ...(teamPlans ? { teamPlans } : {}),
+            agentOutputs: input.judgePromptContext.actualAgentOutputs,
+            ...(mapSemanticContext ? { mapSemanticContext } : {})
+          });
         } catch (error) {
           throw translateJudgePromptError(error, input.judgePromptContext);
         }
       }
     });
-    const reviewedJudgeResult = ensureJudgeDiagnostic({
-      judgeResult: response.data,
-      roundNumber: input.roundNumber,
-      sideAssignment: input.sideAssignment,
-      teamA: input.teamA,
-      teamB: input.teamB,
-      ...(teamPlans ? { teamPlans } : {}),
-      ...(readPhase18MapSemanticContext(this.context, input.mapGame.mapName)
-        ? { mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName) }
-        : {})
-    });
+    const reviewedJudgeResult = response.data;
     const loserTeam = reviewedJudgeResult.loserTeamId === input.teamA.id ? input.teamA : input.teamB;
     const loserPlan = teamPlans?.[loserTeam.id];
     if (!loserPlan || !hasDetailedLoserPlanExplanation(reviewedJudgeResult.reason, loserTeam, loserPlan)) {
@@ -2689,22 +2702,27 @@ class Phase12SimulationEngine implements SimulationEngine {
 
     let latestResponse: LlmResponse<TData> | undefined;
     try {
+      assertNoMojibakePayload(input.requestInput, `${input.task} request`);
+      const messages = buildPhase18StructuredMessages({
+        task: input.task,
+        schemaName: input.schemaName,
+        requestInput: input.requestInput
+      });
+      assertNoMojibakePayload(messages, `${input.task} prompt messages`);
       const response = await this.context.llmGateway.generateStructured<TData, unknown>({
         task: input.task,
         driverModelId: input.driverModelId,
         input: input.requestInput,
         schemaName: input.schemaName,
-        messages: buildPhase18StructuredMessages({
-          task: input.task,
-          schemaName: input.schemaName,
-          requestInput: input.requestInput
-        }),
+        messages,
         responseFormat: input.responseFormat,
         seed: input.seed,
         modelTier: input.modelTier,
         temperature: input.temperature
       });
       latestResponse = response;
+      assertNoMojibakePayload(response.rawText, `${input.task} raw response`);
+      assertNoMojibakePayload(response.data, `${input.task} structured response`);
       const data = input.validateResponseData ? input.validateResponseData(response.data) : response.data;
       const validatedResponse: LlmResponse<TData> = { ...response, data };
       const completedAt = timestamp();
@@ -4361,6 +4379,7 @@ function validateJudgeResult(input: {
   teamB: Team;
   activeA: Agent[];
   activeB: Agent[];
+  sideAssignment: SideAssignment;
   teamPlans?: Record<string, TeamRoundPlanDecision> | undefined;
 }): JudgeResult {
   const validWinnerTeamIds = new Set([input.teamA.id, input.teamB.id]);
@@ -4377,6 +4396,7 @@ function validateJudgeResult(input: {
   if (!winnerAgents.some((agent) => agent.id === input.judgeResult.mvpAgentId)) {
     throw new Error(`Judge returned an invalid mvpAgentId: ${input.judgeResult.mvpAgentId}`);
   }
+  validateJudgeWinSemantics(input.judgeResult, input.sideAssignment);
   if (input.teamPlans) {
     const winnerTeam = input.judgeResult.winnerTeamId === input.teamA.id ? input.teamA : input.teamB;
     const loserTeam = input.judgeResult.loserTeamId === input.teamA.id ? input.teamA : input.teamB;
@@ -4402,40 +4422,330 @@ function ensureJudgeDiagnostic(input: {
   teamA: Team;
   teamB: Team;
   teamPlans?: Record<string, TeamRoundPlanDecision>;
+  agentOutputs?: AgentOutput[];
   mapSemanticContext?: Record<string, unknown> | undefined;
 }): JudgeResult {
-  if (input.judgeResult.diagnostic) {
-    return {
-      ...input.judgeResult,
-      diagnostic: judgeDiagnosticSchema.parse(input.judgeResult.diagnostic)
-    };
+  const proposition = readUnknownRecord(input.mapSemanticContext?.proposition);
+  const parsedDiagnostic = judgeDiagnosticSchema.safeParse(input.judgeResult.diagnostic);
+  if (!parsedDiagnostic.success) {
+    throw new Error("Judge diagnostic is required for Phase 2.0-pre real LLM rounds.");
   }
 
-  const proposition = readUnknownRecord(input.mapSemanticContext?.proposition);
-  const attackingPlan = input.teamPlans?.[input.sideAssignment.attackingTeamId];
-  const defendingPlan = input.teamPlans?.[input.sideAssignment.defendingTeamId];
-  const currentSubTheme =
-    (proposition ? resolvePhase18SubTheme(proposition, input.roundNumber) : undefined) ??
-    pickString(proposition, "coreQuestion") ??
-    "当前子命题待明确";
-  const winnerTeam = input.judgeResult.winnerTeamId === input.teamA.id ? input.teamA : input.teamB;
-  const loserTeam = input.judgeResult.loserTeamId === input.teamA.id ? input.teamA : input.teamB;
+  const diagnostic = parsedDiagnostic.data;
+  const expectedSubTheme = proposition ? resolvePhase18SubTheme(proposition, input.roundNumber) : undefined;
+  if (expectedSubTheme && !sameSemanticLabel(diagnostic.currentSubTheme, expectedSubTheme)) {
+    throw new Error(`Judge diagnostic currentSubTheme must match ${expectedSubTheme}.`);
+  }
+
+  const validZoneIds = collectPhase18MapZoneIds(input.mapSemanticContext);
+  if (validZoneIds.size > 0) {
+    if (!validZoneIds.has(diagnostic.mainAttackZoneId)) {
+      throw new Error(`Judge diagnostic mainAttackZoneId is not a valid map zone: ${diagnostic.mainAttackZoneId}`);
+    }
+    if (!validZoneIds.has(diagnostic.mainDefenseZoneId)) {
+      throw new Error(`Judge diagnostic mainDefenseZoneId is not a valid map zone: ${diagnostic.mainDefenseZoneId}`);
+    }
+  }
+
+  validateJudgeReasonZoneConsistency({
+    reason: input.judgeResult.reason,
+    diagnostic,
+    mapSemanticContext: input.mapSemanticContext
+  });
+  validateJudgeDiagnosticNarrativeQuality({
+    diagnostic,
+    reason: input.judgeResult.reason,
+    teamA: input.teamA,
+    teamB: input.teamB,
+    mapSemanticContext: input.mapSemanticContext,
+    agentOutputs: input.agentOutputs ?? []
+  });
+  validateJudgeConfidenceAndMargin({
+    judgeResult: input.judgeResult
+  });
 
   return {
     ...input.judgeResult,
-    diagnostic: {
-      currentSubTheme,
-      attackedOpportunityGap:
-        attackingPlan?.risk ??
-        `${loserTeam.displayName} 在当前命题下暴露出可以被集中打击的缺口。`,
-      defendedCoreProposition:
-        defendingPlan?.winCondition ??
-        `${winnerTeam.displayName} 在当前命题下守住了更关键的核心成立点。`,
-      mainAttackZoneId: attackingPlan?.primaryZoneId ?? "buyer_mid",
-      mainDefenseZoneId: defendingPlan?.primaryZoneId ?? "conversion_site_a",
-      decisiveEvidence: normalizeChineseFirstJudgeReason(input.judgeResult.reason)
-    }
+    diagnostic
   };
+}
+
+function validateJudgeWinSemantics(judgeResult: JudgeResult, sideAssignment: SideAssignment): void {
+  if (!judgeResult.roundWinType) {
+    throw new Error("Judge roundWinType is required for Phase 2.0-pre real LLM rounds.");
+  }
+  if (typeof judgeResult.attackWinConditionMet !== "boolean" || typeof judgeResult.defenseWinConditionMet !== "boolean") {
+    throw new Error("Judge attackWinConditionMet and defenseWinConditionMet are required for Phase 2.0-pre real LLM rounds.");
+  }
+  const attackWin = judgeResult.roundWinType.startsWith("attack_");
+  const defenseWin = judgeResult.roundWinType.startsWith("defense_");
+  if (attackWin === defenseWin) {
+    throw new Error(`Judge returned an invalid roundWinType: ${judgeResult.roundWinType}`);
+  }
+
+  const expectedWinnerTeamId = attackWin ? sideAssignment.attackingTeamId : sideAssignment.defendingTeamId;
+  if (judgeResult.winnerTeamId !== expectedWinnerTeamId) {
+    throw new Error(
+      `Judge roundWinType ${judgeResult.roundWinType} conflicts with winnerTeamId ${judgeResult.winnerTeamId}.`
+    );
+  }
+
+  if (judgeResult.attackWinConditionMet !== attackWin) {
+    throw new Error(`Judge attackWinConditionMet conflicts with roundWinType ${judgeResult.roundWinType}.`);
+  }
+  if (judgeResult.defenseWinConditionMet !== defenseWin) {
+    throw new Error(`Judge defenseWinConditionMet conflicts with roundWinType ${judgeResult.roundWinType}.`);
+  }
+}
+
+function buildFallbackJudgeRoundWinType(winnerTeamId: string, sideAssignment: SideAssignment): JudgeRoundWinType {
+  return winnerTeamId === sideAssignment.attackingTeamId ? "attack_elimination" : "defense_elimination";
+}
+
+function sameSemanticLabel(left: string, right: string): boolean {
+  const normalizedLeft = normalizeForJudgeReason(left);
+  const normalizedRight = normalizeForJudgeReason(right);
+  return normalizedLeft === normalizedRight || normalizedLeft.includes(normalizedRight) || normalizedRight.includes(normalizedLeft);
+}
+
+function collectPhase18MapZoneIds(mapSemanticContext: Record<string, unknown> | undefined): Set<string> {
+  const proposition = readUnknownRecord(mapSemanticContext?.proposition);
+  const displayZoneNames = readUnknownRecord(proposition?.displayZoneNames) ?? readUnknownRecord(proposition?.display_zone_names);
+  const zoneSemantics = readUnknownRecord(proposition?.zoneSemantics) ?? readUnknownRecord(proposition?.zone_semantics);
+  return new Set([
+    ...Object.keys(displayZoneNames ?? {}),
+    ...Object.keys(zoneSemantics ?? {})
+  ]);
+}
+
+function validateJudgeReasonZoneConsistency(input: {
+  reason: string;
+  diagnostic: JudgeDiagnostic;
+  mapSemanticContext: Record<string, unknown> | undefined;
+}): void {
+  const mentionedZoneIds = collectMentionedPhase18Zones(input.reason, input.mapSemanticContext);
+  if (mentionedZoneIds.size === 0) {
+    return;
+  }
+
+  const diagnosticZoneIds = new Set([input.diagnostic.mainAttackZoneId, input.diagnostic.mainDefenseZoneId]);
+  const unmatchedZoneIds = [...mentionedZoneIds].filter((zoneId) => !diagnosticZoneIds.has(zoneId));
+  const matchedDiagnosticZoneIds = [...diagnosticZoneIds].filter((zoneId) => mentionedZoneIds.has(zoneId));
+  if (unmatchedZoneIds.length > 0 && matchedDiagnosticZoneIds.length === 0) {
+    throw new Error(`Judge reason and diagnostic zone focus conflict: ${unmatchedZoneIds.join(", ")}`);
+  }
+}
+
+function validateJudgeDiagnosticNarrativeQuality(input: {
+  diagnostic: JudgeDiagnostic;
+  reason: string;
+  teamA: Team;
+  teamB: Team;
+  mapSemanticContext: Record<string, unknown> | undefined;
+  agentOutputs: AgentOutput[];
+}): void {
+  validateJudgeNarrativeField({
+    label: "Judge diagnostic attackedOpportunityGap",
+    value: input.diagnostic.attackedOpportunityGap,
+    teamA: input.teamA,
+    teamB: input.teamB
+  });
+  validateJudgeNarrativeField({
+    label: "Judge diagnostic defendedCoreProposition",
+    value: input.diagnostic.defendedCoreProposition,
+    teamA: input.teamA,
+    teamB: input.teamB
+  });
+  validateJudgeDecisiveEvidence({
+    value: input.diagnostic.decisiveEvidence,
+    teamA: input.teamA,
+    teamB: input.teamB,
+    mapSemanticContext: input.mapSemanticContext
+  });
+  validateJudgeUnsupportedMicroCombatDetails({
+    reason: input.reason,
+    decisiveEvidence: input.diagnostic.decisiveEvidence,
+    agentOutputs: input.agentOutputs
+  });
+
+  if (input.diagnostic.mainAttackZoneId !== input.diagnostic.mainDefenseZoneId) {
+    validateJudgeZoneRelationExplanation(input);
+  }
+}
+
+function validateJudgeZoneRelationExplanation(input: {
+  diagnostic: JudgeDiagnostic;
+  reason: string;
+  teamA: Team;
+  teamB: Team;
+  mapSemanticContext: Record<string, unknown> | undefined;
+}): void {
+  const relationText = [
+    input.reason,
+    input.diagnostic.attackedOpportunityGap,
+    input.diagnostic.defendedCoreProposition,
+    input.diagnostic.decisiveEvidence
+  ].join("\n");
+  const normalized = normalizeForJudgeReason(relationText);
+  const mentionedZones = collectMentionedPhase18Zones(relationText, input.mapSemanticContext);
+  const mentionsAttackZone = mentionedZones.has(input.diagnostic.mainAttackZoneId);
+  const mentionsDefenseZone = mentionedZones.has(input.diagnostic.mainDefenseZoneId);
+  const hasRelationCue = /(因为|导致|说明|证明|验证|暴露|但|虽然|同时|而|从而|因此|并非|不是|未能|守住|失守|打中)/.test(normalized);
+  const hasOutcomeCue = /(成功|失败|获胜|输|赢|守住|失守|打中|未能|暴露|验证|下包|引爆|拆包|清场|全歼)/.test(normalized);
+
+  if (!mentionsAttackZone || !mentionsDefenseZone || !hasRelationCue || !hasOutcomeCue) {
+    throw new Error("Judge must explain the relationship between mainAttackZoneId and mainDefenseZoneId through facts, not fixed wording.");
+  }
+
+  if (containsZoneDeterminismShortcut(relationText)) {
+    throw new Error("Judge must not treat matching or different zones as an automatic win/loss rule.");
+  }
+}
+
+function containsZoneDeterminismShortcut(value: string): boolean {
+  const normalized = normalizeForJudgeReason(value);
+  const clauses = normalized.split(/\s*(?:[。；;，,]|但是|但|而|同时|并且)\s*/u).filter((clause) => clause.length > 0);
+  return clauses.some((clause) => {
+    const hasZoneRelation = /(同区|相同|一致|不同|不一致|错开|避开|绕开|守a|打a|守b|打b|主攻区|主守区|主攻|主守|防守区|进攻区)/.test(clause);
+    const hasOutcomeCue = /(赢|输|获胜|失败|成功|失守|守住)/.test(clause);
+    const hasNegatedShortcutCue = /(不是|并非|不能|不可|不得|禁止).*(必然|一定|天然|自动|肯定|必定|只要.*就|所以|因此|从而)/.test(clause);
+    const hasHardDeterministicCue =
+      /(必然|一定|天然|自动|肯定|必定)/.test(clause) ||
+      /(?:所以|因此|从而).*(?:赢|输|获胜|失败|成功|失守|守住)/.test(clause) ||
+      /只要.*就.*(?:赢|输|获胜|失败|成功|失守|守住)/.test(clause);
+    return hasZoneRelation && hasOutcomeCue && hasHardDeterministicCue && !hasNegatedShortcutCue;
+  });
+}
+
+function validateJudgeNarrativeField(input: {
+  label: string;
+  value: string;
+  teamA: Team;
+  teamB: Team;
+}): void {
+  const normalized = input.value.trim();
+  if (normalized.length < 10) {
+    throw new Error(`${input.label} is too abstract.`);
+  }
+
+  const hasActorCue =
+    [input.teamA.displayName, input.teamB.displayName].some((name) => normalized.includes(name)) ||
+    /(攻方|守方|进攻方|防守方|对手|本队|己方|敌方)/.test(normalized);
+  const hasReasonCue = /(因为|导致|暴露|说明|证明|未能|使得|通过|从而|意味着|形成|守住|失守|验证)/.test(normalized);
+  if (!hasActorCue || !hasReasonCue) {
+    throw new Error(`${input.label} must name the side and explain why the gap or proposition matters.`);
+  }
+}
+
+function validateJudgeDecisiveEvidence(input: {
+  value: string;
+  teamA: Team;
+  teamB: Team;
+  mapSemanticContext: Record<string, unknown> | undefined;
+}): void {
+  const normalized = input.value.trim();
+  if (normalized.length < 18) {
+    throw new Error("Judge diagnostic decisiveEvidence is too thin.");
+  }
+
+  const hasActorCue =
+    [input.teamA.displayName, input.teamB.displayName].some((name) => normalized.includes(name)) ||
+    /(攻方|守方|进攻方|防守方|选手|队伍计划|行动|执行|下包|引爆|拆包|时间耗尽|清场|回防|补枪|推进|防守|进攻|协同|轮转|信息|布局|买型|经济)/.test(
+      normalized
+    );
+  const mentionedZones = collectMentionedPhase18Zones(normalized, input.mapSemanticContext);
+  if (!hasActorCue || mentionedZones.size === 0) {
+    throw new Error("Judge diagnostic decisiveEvidence must stay anchored to actual plans, actions, and map zones.");
+  }
+}
+
+function validateJudgeUnsupportedMicroCombatDetails(input: {
+  reason: string;
+  decisiveEvidence: string;
+  agentOutputs: AgentOutput[];
+}): void {
+  for (const [label, text] of [
+    ["reason", input.reason],
+    ["diagnostic.decisiveEvidence", input.decisiveEvidence]
+  ] as const) {
+    const unsupportedTerms = collectUnsupportedMicroCombatTerms(text, input.agentOutputs);
+    if (unsupportedTerms.length > 0) {
+      throw new Error(`Judge ${label} contains unsupported micro-combat detail: ${unsupportedTerms.join(", ")}`);
+    }
+  }
+}
+
+function collectUnsupportedMicroCombatTerms(text: string, agentOutputs: AgentOutput[]): string[] {
+  const normalizedText = normalizeForJudgeReason(text);
+  const sourceTexts = agentOutputs.map((output) => normalizeForJudgeReason(output.action)).filter((value) => value.length > 0);
+  const unsupported: string[] = [];
+  for (const rule of unsupportedMicroCombatDetailRules) {
+    if (!rule.pattern.test(normalizedText)) {
+      continue;
+    }
+    const supportedByAgentAction = sourceTexts.some((sourceText) => rule.pattern.test(sourceText));
+    if (!supportedByAgentAction) {
+      unsupported.push(rule.label);
+    }
+  }
+  return [...new Set(unsupported)];
+}
+
+const unsupportedMicroCombatDetailRules = [
+  { label: "秒级动作", pattern: /(?:\d+\s*秒|秒内|秒级|瞬间|立刻清|立即清|快速清点)/ },
+  { label: "清点过程", pattern: /(?:清点|清包点|清空包点|清完|清除进攻者|清除防守者)/ },
+  { label: "封锁回防路径", pattern: /(?:封锁回防|锁死回防|阻断回防|回防路径|回防通道)/ },
+  { label: "精确枪线", pattern: /(?:精确枪线|精准枪线|架死|锁死.*(?:枪线|通道|入口)|长枪线)/ },
+  { label: "击杀链", pattern: /(?:击杀链|完成首杀|关键首杀|首杀|多杀|双杀|三杀|团灭链|补枪链)/ },
+  { label: "投掷物落点", pattern: /(?:投掷物落点|烟雾落点|闪光落点|火落点|雷点)/ }
+] as const;
+
+function validateJudgeConfidenceAndMargin(input: { judgeResult: JudgeResult }): void {
+  const normalizedReason = normalizeForJudgeReason(input.judgeResult.reason);
+  if (
+    input.judgeResult.confidence >= 0.9 &&
+    !/(成功|失败|守住|失守|赢|输|证明|未能|击穿|拖时|拆包|引爆|清场)/.test(normalizedReason)
+  ) {
+    throw new Error("Judge confidence is too high for a reason that does not explain the ruling.");
+  }
+
+  if (
+    input.judgeResult.margin === "decisive" &&
+    !/(彻底|完全|明确|显著|决定性| decisively | decisive | full wipe | 团灭 | 清场 | 引爆 | 拆包)/i.test(
+      input.judgeResult.reason
+    )
+  ) {
+    throw new Error("Judge margin decisive must be supported by a clearly decisive reason.");
+  }
+}
+
+function collectMentionedPhase18Zones(reason: string, mapSemanticContext: Record<string, unknown> | undefined): Set<string> {
+  const proposition = readUnknownRecord(mapSemanticContext?.proposition);
+  const displayZoneNames = readUnknownRecord(proposition?.displayZoneNames) ?? readUnknownRecord(proposition?.display_zone_names);
+  const zoneSemantics = readUnknownRecord(proposition?.zoneSemantics) ?? readUnknownRecord(proposition?.zone_semantics);
+  const normalizedReason = normalizeForJudgeReason(reason);
+  const mentioned = new Set<string>();
+
+  for (const [zoneId, displayName] of Object.entries(displayZoneNames ?? {})) {
+    if (mentionsZone(normalizedReason, zoneId, displayName)) {
+      mentioned.add(zoneId);
+    }
+  }
+  for (const [zoneId, semantics] of Object.entries(zoneSemantics ?? {})) {
+    const displayName = pickString(readUnknownRecord(semantics), "displayName");
+    if (mentionsZone(normalizedReason, zoneId, displayName)) {
+      mentioned.add(zoneId);
+    }
+  }
+
+  return mentioned;
+}
+
+function mentionsZone(normalizedReason: string, zoneId: string, displayName: unknown): boolean {
+  if (normalizedReason.includes(normalizeForJudgeReason(zoneId))) {
+    return true;
+  }
+  return typeof displayName === "string" && normalizedReason.includes(normalizeForJudgeReason(displayName));
 }
 
 function buildJudgePromptContext(input: {
@@ -4550,6 +4860,7 @@ function buildJudgePromptContext(input: {
       recentPublicRoundSummaries: input.recentPublicRoundSummaries.map((summary) => sanitizeJudgeText(summary, sanitizeReplacements))
     },
     ...(input.teamPlans ? { actualTeamPlans: input.teamPlans } : {}),
+    actualAgentOutputs: input.agentOutputs,
     validateAndTranslate: (judgeResult: JudgeResult) => {
       const promptValidated = validateJudgeResult({
         judgeResult,
@@ -4557,6 +4868,7 @@ function buildJudgePromptContext(input: {
         teamB: promptTeamB,
         activeA: promptActiveA,
         activeB: promptActiveB,
+        sideAssignment: promptSideAssignment,
         ...(promptTeamPlans ? { teamPlans: promptTeamPlans } : {})
       });
       const actualWinnerTeamId = actualTeamIdByPromptTeamId.get(promptValidated.winnerTeamId);
@@ -4571,10 +4883,27 @@ function buildJudgePromptContext(input: {
         winnerTeamId: actualWinnerTeamId,
         loserTeamId: actualLoserTeamId,
         mvpAgentId: actualMvpAgentId,
-        reason: normalizeChineseFirstJudgeReason(desanitizeJudgeText(promptValidated.reason, desanitizeReplacements))
+        reason: normalizeChineseFirstJudgeText(desanitizeJudgeText(promptValidated.reason, desanitizeReplacements)),
+        ...(promptValidated.diagnostic
+          ? { diagnostic: desanitizeJudgeDiagnostic(promptValidated.diagnostic, desanitizeReplacements) }
+          : {})
       };
     },
     translatePromptText: (value: string) => desanitizeJudgeText(value, desanitizeReplacements)
+  };
+}
+
+function desanitizeJudgeDiagnostic(
+  diagnostic: JudgeDiagnostic,
+  replacements: Array<{ source: string; target: string }>
+): JudgeDiagnostic {
+  return {
+    currentSubTheme: normalizeChineseFirstJudgeText(desanitizeJudgeText(diagnostic.currentSubTheme, replacements)),
+    attackedOpportunityGap: normalizeChineseFirstJudgeText(desanitizeJudgeText(diagnostic.attackedOpportunityGap, replacements)),
+    defendedCoreProposition: normalizeChineseFirstJudgeText(desanitizeJudgeText(diagnostic.defendedCoreProposition, replacements)),
+    mainAttackZoneId: diagnostic.mainAttackZoneId,
+    mainDefenseZoneId: diagnostic.mainDefenseZoneId,
+    decisiveEvidence: normalizeChineseFirstJudgeText(desanitizeJudgeText(diagnostic.decisiveEvidence, replacements))
   };
 }
 
@@ -4680,31 +5009,36 @@ function normalizeJudgeResultPayload(data: unknown): unknown {
   }
 
   const margin = normalizeJudgeMargin(record.margin);
+  const roundWinType = normalizeJudgeRoundWinType(record.roundWinType);
   return {
     ...record,
     ...(margin ? { margin } : {}),
+    ...(roundWinType ? { roundWinType } : {}),
+    ...(record.attackWinConditionMet !== undefined
+      ? { attackWinConditionMet: normalizeJudgeBoolean(record.attackWinConditionMet) }
+      : {}),
+    ...(record.defenseWinConditionMet !== undefined
+      ? { defenseWinConditionMet: normalizeJudgeBoolean(record.defenseWinConditionMet) }
+      : {}),
     ...(readUnknownRecord(record.diagnostic)
       ? { diagnostic: normalizeJudgeDiagnosticPayload(record.diagnostic, record.reason) }
       : {})
   };
 }
 
-function normalizeJudgeDiagnosticPayload(diagnostic: unknown, reason: unknown): unknown {
+function normalizeJudgeDiagnosticPayload(diagnostic: unknown, _reason: unknown): unknown {
   const record = readUnknownRecord(diagnostic);
   if (!record) {
     return diagnostic;
   }
 
-  const reasonText = normalizeCoachTimeoutText(reason) ?? "裁判判词已给出本回合决定性证据。";
   return {
-    currentSubTheme: normalizeCoachTimeoutText(record.currentSubTheme) ?? "当前子命题待明确",
-    attackedOpportunityGap:
-      normalizeCoachTimeoutText(record.attackedOpportunityGap) ?? "胜方打中了对手方案中的关键机会缺口。",
-    defendedCoreProposition:
-      normalizeCoachTimeoutText(record.defendedCoreProposition) ?? "败方未能守住本回合核心成立点。",
-    mainAttackZoneId: normalizeCoachTimeoutText(record.mainAttackZoneId) ?? "buyer_mid",
-    mainDefenseZoneId: normalizeCoachTimeoutText(record.mainDefenseZoneId) ?? "conversion_site_a",
-    decisiveEvidence: normalizeCoachTimeoutText(record.decisiveEvidence) ?? normalizeChineseFirstJudgeReason(reasonText)
+    currentSubTheme: normalizeCoachTimeoutText(record.currentSubTheme),
+    attackedOpportunityGap: normalizeCoachTimeoutText(record.attackedOpportunityGap),
+    defendedCoreProposition: normalizeCoachTimeoutText(record.defendedCoreProposition),
+    mainAttackZoneId: normalizeCoachTimeoutText(record.mainAttackZoneId),
+    mainDefenseZoneId: normalizeCoachTimeoutText(record.mainDefenseZoneId),
+    decisiveEvidence: normalizeCoachTimeoutText(record.decisiveEvidence)
   };
 }
 
@@ -4930,6 +5264,70 @@ function normalizeJudgeMargin(value: unknown): JudgeResult["margin"] | undefined
   }
 }
 
+function normalizeJudgeRoundWinType(value: unknown): JudgeRoundWinType | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const normalized = value.trim().toLowerCase().replace(/[\s_-]+/g, "_");
+  switch (normalized) {
+    case "attack_elimination":
+    case "attacker_elimination":
+    case "t_elimination":
+    case "attack_kill":
+    case "all_kill_attack":
+    case "attack_full_elimination":
+      return "attack_elimination";
+    case "attack_bomb_explosion":
+    case "bomb_explosion":
+    case "plant_and_explode":
+    case "attack_explosion":
+    case "attack_bomb":
+      return "attack_bomb_explosion";
+    case "defense_elimination":
+    case "defender_elimination":
+    case "ct_elimination":
+    case "defense_kill":
+    case "all_kill_defense":
+    case "defense_full_elimination":
+      return "defense_elimination";
+    case "defense_timeout_no_plant":
+    case "timeout_no_plant":
+    case "defense_timeout":
+    case "timeout":
+    case "no_plant_timeout":
+      return "defense_timeout_no_plant";
+    case "defense_defuse":
+    case "defuse":
+    case "bomb_defuse":
+    case "defense_bomb_defuse":
+      return "defense_defuse";
+    default:
+      return undefined;
+  }
+}
+
+function normalizeJudgeBoolean(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "number") {
+    return value !== 0;
+  }
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (["true", "yes", "1", "success", "met"].includes(normalized)) {
+    return true;
+  }
+  if (["false", "no", "0", "failed", "not_met", "notmet"].includes(normalized)) {
+    return false;
+  }
+  return undefined;
+}
+
 function sanitizeJudgeRecord(
   value: Record<string, unknown> | undefined,
   replacements: Array<{ source: string; target: string }>
@@ -4998,10 +5396,23 @@ function buildPhase18SchemaContract(schemaName: string): string {
   if (schemaName === "JudgeResult") {
     return [
       "json 输出契约：",
-      "只返回一个顶层对象，字段包括：winnerTeamId、loserTeamId、margin、reason、mvpAgentId、confidence。",
-      "如果能提供更稳定的裁判证据，请额外返回 diagnostic，字段包括：currentSubTheme、attackedOpportunityGap、defendedCoreProposition、mainAttackZoneId、mainDefenseZoneId、decisiveEvidence。",
+      "只返回一个顶层对象，字段包括：winnerTeamId、loserTeamId、margin、roundWinType、attackWinConditionMet、defenseWinConditionMet、reason、mvpAgentId、confidence、diagnostic。",
+      "roundWinType 必须严格是 attack_elimination、attack_bomb_explosion、defense_elimination、defense_timeout_no_plant、defense_defuse 五者之一。",
+      "attackWinConditionMet 和 defenseWinConditionMet 必须是布尔值，且只能有一方为 true；它们必须与 roundWinType 和 winnerTeamId 一致。",
+      "diagnostic 是必填对象，字段必须完整包括：currentSubTheme、attackedOpportunityGap、defendedCoreProposition、mainAttackZoneId、mainDefenseZoneId、decisiveEvidence。",
+      "diagnostic.currentSubTheme 必须对应当前 round theme；mainAttackZoneId 和 mainDefenseZoneId 必须使用输入区域 id，不要写显示名。",
+      "reason 是给人读的最终判词；diagnostic 是给系统审计、前端展示和 coach 复盘消费的结构化裁判事实。",
+      "attackedOpportunityGap 和 defendedCoreProposition 不能只写抽象词，必须写出对象、缺口或成立点，以及为什么成立或失守。",
+      "decisiveEvidence 必须锚定已给定事实层：team_plan、agent_action、地图区域、买型、当前已公开摘要；不要补写未被支持的微观枪线、秒级动作、击杀链、清点过程或封锁回防路径。",
+      "如果要引用具体选手动作，只能引用 agent_action 中已经出现的动作；不要把宏观动作扩写成未落库的击杀、首杀、多杀、投掷物落点或精确枪线。",
       "margin 必须严格是 narrow、standard、decisive 三者之一，不要使用 clear、close、solid、dominant 等同义词。",
-      "reason 必须明确解释胜方为什么成功、败方为什么失败，并保留‘成功/失败’或 succeeded/failed 这类稳定标记。",
+      "margin=decisive 只允许在证据强到足以说明决定性成立时使用；否则使用 standard 或 narrow。",
+      "reason 必须明确解释本局是如何赢的、胜方为什么成功、败方为什么失败，并保留‘成功/失败’或 succeeded/failed 这类稳定标记。",
+      "mainAttackZoneId 表示进攻真正执行区，mainDefenseZoneId 表示守方试图捍卫的命题焦点；两者相同或不同都不能自动决定胜负。",
+      "如果 mainAttackZoneId 和 mainDefenseZoneId 不同，reason 或 diagnostic 必须解释这种区域关系如何接回计划执行、行动结果和胜负原因；不要只拼固定词。",
+      "禁止把区域关系当作胜负捷径：守 A/打 A 不代表守方天然赢，守 A/打 B 不代表守方天然输，攻守同区或异区都必须回到事实链判断。",
+      "合格区域表达示例：区域错位导致某命题未被检验；辅助区域只是路径证据，不改变主攻/主守焦点。",
+      "非法表达示例：因为打 B 守 A 所以攻方必胜；因为守方就在 A 所以防守天然合理；某选手三秒清点并锁死回防但事实层没有对应 agent_action 或 combat ledger。",
       "winnerTeamId 必须是输入两队之一，loserTeamId 必须是另一队。",
       "mvpAgentId 必须来自胜方 active roster，confidence 必须是 0 到 1 之间的数字。",
       "自然语言部分默认使用中文。",
@@ -5056,7 +5467,15 @@ function buildPhase18TaskInstruction(
       return [
         "任务说明：",
         "你只能根据双方 initialProposalSummary、双方 teamPlan、10 名选手动作、地图命题与裁判规程来判定本回合。",
-        "必须解释进攻方打中了什么，防守方守住或没守住什么，并说明这为什么符合当前地图命题。",
+        "先判断双方计划分别想证明什么，再判断双方行动是否真的执行了该证明路径，再判断本局 CS 胜负方式，最后判断结果更支持哪一方商业判断。",
+        "你要同时完成两层裁决：第一层是 CS 回合胜负方式；第二层是商业攻防命题是否成立。",
+        "必须解释本局是如何赢的，进攻方打中了什么，防守方守住或没守住什么，并说明这为什么符合当前地图命题。",
+        "区域关系只能作为证据，不能作为规则。不能因为守方主守区就是被进攻区域就自动判守方更合理，也不能因为攻方避开主守区就自动判攻方更合理。",
+        "只有当区域关系与双方计划执行、选手动作、回合结果和 CS 胜利方式一致时，才能把它作为裁判证据。",
+        "必须返回完整 diagnostic：当前子命题、攻方打中的缺口、守方核心成立点、主攻区、主守区、决定性证据。",
+        "可以引用的证据只有：team_plan、agent_action、地图区域、买型、CS 胜利方式、已公开回合摘要；不要脑补未被支持的微观枪线、秒级交火、投掷物落点、清点过程、封锁回防路径或未落库击杀链。",
+        "如果证据只能支持标准胜或小胜，就不要写 decisive；decisive 必须说明为什么证据强到足以决定性成立。",
+        "区域错位可以说明某命题未被检验，辅助区域可以作为路径证据，但二者都不能被写成自动胜负规则。",
         "reason 必须同时写出胜方成功与败方失败，不能只写单边赞美，也不能按队伍顺序、名气或比分领先做判断。",
         "自然语言内容用中文，不要在中文句子里夹英文分句。"
       ].join("\n");
@@ -5065,6 +5484,8 @@ function buildPhase18TaskInstruction(
         "任务说明：",
         "在同一裁判规程下，带着更强的反偏置要求重新评估上一版裁判结果。",
         "只有当败方解释完整、结论仍然锚定当前子命题与核心裁判轴时，才保留原判。",
+        "区域关系不能直接决定胜负；必须重新检查计划、行动、CS 胜利方式和商业命题之间是否真的一致。",
+        "必须返回完整 diagnostic，并确保它与 reason、地图区域和当前 round theme 一致。",
         "如果上一版只是叙事性偏置或理由残缺，请直接纠正。自然语言内容用中文，不要夹英文分句。"
       ].join("\n");
     case "coach_timeout":
@@ -5233,8 +5654,16 @@ function resolvePhase18SubTheme(proposition: Record<string, unknown>, roundNumbe
     return undefined;
   }
 
-  const regulationRoundThemes = Array.isArray(proposition.regulationRoundThemes) ? proposition.regulationRoundThemes : [];
-  const overtimeRoundThemes = Array.isArray(proposition.overtimeRoundThemes) ? proposition.overtimeRoundThemes : [];
+  const regulationRoundThemes = Array.isArray(proposition.regulationRoundThemes)
+    ? proposition.regulationRoundThemes
+    : Array.isArray(proposition.regulation_round_themes)
+      ? proposition.regulation_round_themes
+      : [];
+  const overtimeRoundThemes = Array.isArray(proposition.overtimeRoundThemes)
+    ? proposition.overtimeRoundThemes
+    : Array.isArray(proposition.overtime_round_themes)
+      ? proposition.overtime_round_themes
+      : [];
   const inRegulation = roundNumber <= 12;
   const themeSource = inRegulation ? regulationRoundThemes : overtimeRoundThemes;
   const normalizedRound = inRegulation ? ((roundNumber - 1) % 6) + 1 : ((roundNumber - 13) % 3) + 1;
@@ -5504,7 +5933,7 @@ function desanitizeJudgeText(value: string, replacements: Array<{ source: string
   return output;
 }
 
-function normalizeChineseFirstJudgeReason(value: string): string {
+function normalizeChineseFirstJudgeText(value: string): string {
   const replacements = [
     {
       source: "their user is real rather than aspirational",
@@ -5657,22 +6086,7 @@ const WIN_CONDITION_SYNONYMS = [
   "痛点",
   "场景",
   "切口",
-  "鑳滃埄鏉′欢",
-  "鑾疯儨鏉′欢",
-  "鍙栬儨鏉′欢",
-  "鑳滆礋鏉′欢",
   "成立点",
-  "璁″垝",
-  "鏂规",
-  "鍛介",
-  "子命题",
-  "鏍稿績鍒ゆ柇",
-  "鏈轰細缂哄彛",
-  "鐢ㄦ埛瀹氫箟",
-  "鏍稿績鐢ㄦ埛",
-  "鐥涚偣",
-  "鍦烘櫙",
-  "鍒囧彛",
   "价值"
 ];
 const WINNER_EXPLANATION_CUES = [
@@ -5699,21 +6113,7 @@ const WINNER_EXPLANATION_CUES = [
   "塑造",
   "锚定",
   "完成",
-  "鎴愬姛",
-  "鎵撴垚",
-  "鎵撶┛",
-  "鎵撳嚮",
-  "绮惧噯鎵撳嚮",
-  "鍘嬪埗",
-  "瀹堜綇",
-  "鎷夸笅",
-  "璧㈠緱",
-  "鍏戠幇",
-  "寤虹珛",
-  "塑造",
-  "閿氬畾",
-  "瀹屾垚",
-  "鎴愮珛"
+  "成立"
 ];
 const LOSER_EXPLANATION_CUES = [
   "failed",
@@ -5738,20 +6138,7 @@ const LOSER_EXPLANATION_CUES = [
   "被压制",
   "没有",
   "不足",
-  "澶辫触",
-  "鏈兘",
-  "娌¤兘",
-  "涓嶈兘",
-  "鏃犳硶",
-  "缂轰箯",
-  "鏆撮湶",
-  "琚揩",
-  "娌︿负",
-  "涓㈠け",
-  "被打穿",
-  "被压制",
-  "娌℃湁",
-  "涓嶈冻"
+  "失守"
 ];
 const COMMON_PLAN_WORDS = new Set([
   "the",
@@ -5849,6 +6236,32 @@ function containsAny(value: string, candidates: string[]): boolean {
 
 function normalizeForJudgeReason(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, " ").trim();
+}
+
+function assertNoMojibakePayload(value: unknown, label: string): void {
+  const text = typeof value === "string" ? value : safeStringifyForMojibakeScan(value);
+  if (!text || !hasLikelyMojibake(text)) {
+    return;
+  }
+
+  throw new Error(`LLM context encoding is corrupted in ${label}. Restart the dev server and regenerate from clean materials.`);
+}
+
+function safeStringifyForMojibakeScan(value: unknown): string {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function hasLikelyMojibake(text: string): boolean {
+  const matches = text.match(/(?:杩|鍦|鐐|鍚|瀹|鎴|绔|鍏|鏍|鐢|鎵|妫|棰|鍥|鍒|涓|鈥|銆|锛|锟|�|€||)/g) ?? [];
+  if (matches.length < 8) {
+    return false;
+  }
+
+  return matches.length / Math.max(text.length, 1) > 0.003;
 }
 
 function sideForTeam(teamId: string, teamAId: string, activeSide: "teamA" | "teamB"): "active" | "reactive" {

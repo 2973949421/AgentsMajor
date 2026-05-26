@@ -36,9 +36,19 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
       )
     ).toBe(true);
     expect(firstRound?.roundReport.agentOutputs.every((output) => output.action.startsWith("LLM action"))).toBe(true);
-    expect(firstRound?.roundReport.judgeResult.reason).toBe("Ghost NAV 胜利条件成立; Ghost FUR 胜利条件失守.");
-    expect(firstRound?.roundReport.judgeResult.reason).not.toContain("win condition");
+    expect(firstRound?.roundReport.judgeResult.reason).toContain("攻方全歼胜");
+    expect(firstRound?.roundReport.judgeResult.reason).toContain("成功");
+    expect(firstRound?.roundReport.judgeResult.reason).toContain("失败");
     expect(firstRound?.roundReport.judgeResult.winnerTeamId).toBe("team_ghost_nav");
+    expect(firstRound?.roundReport.judgeResult.roundWinType).toBe("attack_elimination");
+    expect(firstRound?.roundReport.judgeResult.attackWinConditionMet).toBe(true);
+    expect(firstRound?.roundReport.judgeResult.defenseWinConditionMet).toBe(false);
+    expect(firstRound?.roundReport.judgeResult.diagnostic).toMatchObject({
+      currentSubTheme: "ICP",
+      mainAttackZoneId: "buyer_mid",
+      mainDefenseZoneId: "conversion_site_a"
+    });
+    expect(firstRound?.roundReport.judgeDiagnostic).toEqual(firstRound?.roundReport.judgeResult.diagnostic);
     expect(firstRound?.roundReport.summary).toContain("全甲全弹");
     expect(firstRound?.roundReport.summary).not.toMatch(/\uFFFD/u);
     expect(firstRound?.roundReport.summary).not.toContain("Tactical:");
@@ -147,16 +157,124 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     expect(replay?.rounds[0]?.roundReport.judgeResult.winnerTeamId).toBe("team_ghost_nav");
   });
 
-  it("fills missing judge diagnostic evidence from the judge reason", async () => {
+  it("rejects missing judge diagnostics without committing the round", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(new MissingDiagnosticJudgeGateway());
+
+    await expect(engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId })).rejects.toThrow(
+      "Judge diagnostic is required"
+    );
+    expect(await repositories.rounds.listByMapGame(phase11DemoIds.mapGameId)).toHaveLength(0);
+  });
+
+  it("rejects incomplete judge diagnostic fields without committing the round", async () => {
     const { repositories, engine } = await createPhase18DemoEngine(new PartialDiagnosticJudgeGateway());
+
+    await expect(engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId })).rejects.toThrow("decisiveEvidence");
+    expect(await repositories.rounds.listByMapGame(phase11DemoIds.mapGameId)).toHaveLength(0);
+  });
+
+  it("rejects invalid judge diagnostic map zones without committing the round", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(new InvalidDiagnosticZoneJudgeGateway());
+
+    await expect(engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId })).rejects.toThrow(
+      "mainAttackZoneId is not a valid map zone"
+    );
+    expect(await repositories.rounds.listByMapGame(phase11DemoIds.mapGameId)).toHaveLength(0);
+  });
+
+  it("rejects judge reasons that conflict with diagnostic zone focus", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(new ConflictingDiagnosticJudgeGateway());
+
+    await expect(engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId })).rejects.toThrow(
+      "Judge reason and diagnostic zone focus conflict"
+    );
+    expect(await repositories.rounds.listByMapGame(phase11DemoIds.mapGameId)).toHaveLength(0);
+  });
+
+  it("allows judge reasons to mention auxiliary zones when the diagnostic focus is still present", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(new AuxiliaryZoneJudgeGateway());
 
     await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
     const replay = await readMapReplay(repositories, phase11DemoIds.mapGameId);
-    const diagnostic = replay?.rounds[0]?.roundReport.judgeResult.diagnostic;
+    const judgeResult = replay?.rounds[0]?.roundReport.judgeResult;
 
-    expect(diagnostic?.decisiveEvidence).toContain("胜利条件成立");
-    expect(diagnostic?.decisiveEvidence).toContain("胜利条件失守");
-    expect(replay?.rounds[0]?.roundReport.judgeDiagnostic?.decisiveEvidence).toBe(diagnostic?.decisiveEvidence);
+    expect(judgeResult?.diagnostic?.mainAttackZoneId).toBe("conversion_site_a");
+    expect(judgeResult?.diagnostic?.mainDefenseZoneId).toBe("conversion_site_a");
+    expect(judgeResult?.reason).toContain("pricing_ramp");
+    expect(judgeResult?.reason).toContain("buyer_mid");
+  });
+
+  it("accepts semantic zone relationship explanations without fixed bridge phrases", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(new SemanticZoneBridgeJudgeGateway());
+
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    const replay = await readMapReplay(repositories, phase11DemoIds.mapGameId);
+    const reason = replay?.rounds[0]?.roundReport.judgeResult.reason ?? "";
+
+    expect(reason).toContain("buyer_mid");
+    expect(reason).toContain("conversion_site_a");
+    expect(reason).not.toContain("主攻落点");
+    expect(reason).not.toContain("守方命题焦点");
+  });
+
+  it("rejects judges that treat zone relation as an automatic win rule", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(new ZoneDeterminismShortcutJudgeGateway());
+
+    await expect(engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId })).rejects.toThrow(
+      "automatic win/loss rule"
+    );
+    expect(await repositories.rounds.listByMapGame(phase11DemoIds.mapGameId)).toHaveLength(0);
+  });
+
+  it("accepts zone mismatch explanations that connect to proof failure instead of automatic victory", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(new ZoneMismatchProofFailureJudgeGateway());
+
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    const replay = await readMapReplay(repositories, phase11DemoIds.mapGameId);
+
+    expect(replay?.rounds[0]?.roundReport.judgeResult.diagnostic).toMatchObject({
+      mainAttackZoneId: "buyer_mid",
+      mainDefenseZoneId: "conversion_site_a"
+    });
+    expect(replay?.rounds[0]?.roundReport.judgeResult.reason).toContain("防守焦点脱离");
+  });
+
+  it("rejects unsupported judge micro-combat details without committing the round", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(new UnsupportedMicroCombatJudgeGateway());
+
+    await expect(engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId })).rejects.toThrow(
+      "unsupported micro-combat detail"
+    );
+    expect(await repositories.rounds.listByMapGame(phase11DemoIds.mapGameId)).toHaveLength(0);
+  });
+
+  it("allows judge micro-combat wording only when it is already present in agent_action", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(new AgentActionSupportedMicroCombatJudgeGateway());
+
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    const replay = await readMapReplay(repositories, phase11DemoIds.mapGameId);
+
+    expect(replay?.rounds[0]?.roundReport.agentOutputs.some((output) => output.action.includes("清点"))).toBe(true);
+    expect(replay?.rounds[0]?.roundReport.judgeResult.reason).toContain("清点");
+  });
+
+  it("accepts decisive margins when the judge gives strong non-micro evidence", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(new StrongDecisiveJudgeGateway());
+
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    const replay = await readMapReplay(repositories, phase11DemoIds.mapGameId);
+
+    expect(replay?.rounds[0]?.roundReport.judgeResult.margin).toBe("decisive");
+    expect(replay?.rounds[0]?.roundReport.judgeResult.reason).toContain("决定性");
+  });
+
+  it("rejects mojibake LLM responses before committing the round", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(new CorruptedJudgeRawTextGateway());
+
+    await expect(engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId })).rejects.toThrow(
+      "LLM context encoding is corrupted in judge raw response"
+    );
+    expect(await repositories.rounds.listByMapGame(phase11DemoIds.mapGameId)).toHaveLength(0);
   });
 
   it("accepts Chinese judge reasons that explain winner success and loser failure paths", async () => {
@@ -377,13 +495,20 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
 
   it("creates one pending post-match review per team after the BO3 ends", async () => {
     const { repositories, engine } = await createPhase18DemoEngine(new SuccessfulPhase18Gateway());
-    await engine.runCurrentMatch({
-      matchId: phase11DemoIds.matchId,
-      selectedMapIds: ["DUST2", "INFERNO", "MIRAGE"]
-    });
+    await engine.runCurrentMap({ mapGameId: phase11DemoIds.mapGameId });
     const match = await repositories.matches.getById(phase11DemoIds.matchId);
+    const completedMatch = {
+      ...match!,
+      status: "completed" as const
+    };
+    await repositories.matches.save(completedMatch);
+    await (
+      engine as unknown as {
+        generateCoachPostMatchReviewsIfNeeded: (input: typeof completedMatch) => Promise<void>;
+      }
+    ).generateCoachPostMatchReviewsIfNeeded(completedMatch);
 
-    expect(match?.status).toBe("completed");
+    expect(completedMatch.status).toBe("completed");
     const teamAReview = await repositories.summaries.getLatestByScope("team", "team_ghost_nav");
     const teamBReview = await repositories.summaries.getLatestByScope("team", "team_ghost_fur");
     const teamAReviewPayload = teamAReview?.payload as { kind?: string; status?: string; matchId?: string } | undefined;
@@ -656,16 +781,54 @@ class SuccessfulPhase18Gateway implements LlmGateway {
     input: JudgeRequestInput,
     reason: string,
     confidence = 0.88,
-    margin: string = "standard"
+    margin: string = "standard",
+    winnerTeamId = input.teamAId,
+    loserTeamId = input.teamBId
   ): LlmResponse<TData> {
+    const outcome = resolveFixtureJudgeOutcome(input, winnerTeamId);
+    const normalizedReason = ensureZoneBridge(reason, outcome.roundWinType, input);
+    return {
+      data: {
+        winnerTeamId,
+        loserTeamId,
+        margin,
+        roundWinType: outcome.roundWinType,
+        attackWinConditionMet: outcome.attackWinConditionMet,
+        defenseWinConditionMet: outcome.defenseWinConditionMet,
+        reason: normalizedReason,
+        mvpAgentId: outcome.mvpAgentId,
+        confidence,
+        diagnostic: buildJudgeDiagnostic(input, normalizedReason, winnerTeamId, loserTeamId)
+      } as TData,
+      usage: {
+        promptTokens: 30,
+        completionTokens: 20,
+        totalTokens: 50
+      }
+    };
+  }
+}
+
+class MissingDiagnosticJudgeGateway extends SuccessfulPhase18Gateway {
+  override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
+    if (request.task !== "judge") {
+      return super.generateStructured(request);
+    }
+
+    this.requests.push(request as LlmRequest<unknown>);
+    this.tasks.push(request.task);
+    const input = request.input as JudgeRequestInput;
     return {
       data: {
         winnerTeamId: input.teamAId,
         loserTeamId: input.teamBId,
-        margin,
-        reason,
+        margin: "standard",
+        roundWinType: "attack_elimination",
+        attackWinConditionMet: true,
+        defenseWinConditionMet: false,
+        reason: buildPromptJudgeReason(input),
         mvpAgentId: input.activeTeamAAgentIds[0],
-        confidence
+        confidence: 0.88
       } as TData,
       usage: {
         promptTokens: 30,
@@ -707,6 +870,9 @@ class PartialDiagnosticJudgeGateway extends SuccessfulPhase18Gateway {
         winnerTeamId: input.teamAId,
         loserTeamId: input.teamBId,
         margin: "standard",
+        roundWinType: "attack_elimination",
+        attackWinConditionMet: true,
+        defenseWinConditionMet: false,
         reason: buildPromptJudgeReason(input),
         mvpAgentId: input.activeTeamAAgentIds[0],
         confidence: 0.88,
@@ -723,6 +889,307 @@ class PartialDiagnosticJudgeGateway extends SuccessfulPhase18Gateway {
         completionTokens: 20,
         totalTokens: 50
       }
+    };
+  }
+}
+
+class InvalidDiagnosticZoneJudgeGateway extends SuccessfulPhase18Gateway {
+  override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
+    if (request.task !== "judge") {
+      return super.generateStructured(request);
+    }
+
+    this.requests.push(request as LlmRequest<unknown>);
+    this.tasks.push(request.task);
+    const input = request.input as JudgeRequestInput;
+    return {
+      data: {
+        winnerTeamId: input.teamAId,
+        loserTeamId: input.teamBId,
+        margin: "standard",
+        roundWinType: "attack_elimination",
+        attackWinConditionMet: true,
+        defenseWinConditionMet: false,
+        reason: buildPromptJudgeReason(input),
+        mvpAgentId: input.activeTeamAAgentIds[0],
+        confidence: 0.88,
+        diagnostic: {
+          ...buildJudgeDiagnostic(input, buildPromptJudgeReason(input)),
+          mainAttackZoneId: "unknown_zone"
+        }
+      } as TData,
+      usage: {
+        promptTokens: 30,
+        completionTokens: 20,
+        totalTokens: 50
+      }
+    };
+  }
+}
+
+class ConflictingDiagnosticJudgeGateway extends SuccessfulPhase18Gateway {
+  override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
+    if (request.task !== "judge") {
+      return super.generateStructured(request);
+    }
+
+    this.requests.push(request as LlmRequest<unknown>);
+    this.tasks.push(request.task);
+    const input = request.input as JudgeRequestInput;
+    return {
+      data: {
+        winnerTeamId: input.teamAId,
+        loserTeamId: input.teamBId,
+        margin: "standard",
+        roundWinType: "attack_elimination",
+        attackWinConditionMet: true,
+        defenseWinConditionMet: false,
+        reason: `${input.teamAName ?? input.teamAId} 围绕 A Site 成功推进；${input.teamBName ?? input.teamBId} 未能守住核心成立点。`,
+        mvpAgentId: input.activeTeamAAgentIds[0],
+        confidence: 0.88,
+        diagnostic: {
+          ...buildJudgeDiagnostic(input, buildPromptJudgeReason(input)),
+          mainAttackZoneId: "buyer_mid",
+          mainDefenseZoneId: "buyer_mid"
+        }
+      } as TData,
+      usage: {
+        promptTokens: 30,
+        completionTokens: 20,
+        totalTokens: 50
+      }
+    };
+  }
+}
+
+class AuxiliaryZoneJudgeGateway extends SuccessfulPhase18Gateway {
+  override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
+    if (request.task !== "judge") {
+      return super.generateStructured(request);
+    }
+
+    this.requests.push(request as LlmRequest<unknown>);
+    this.tasks.push(request.task);
+    const input = request.input as JudgeRequestInput;
+    const reason =
+      `本局胜利方式是攻方全歼胜。${input.teamAName ?? input.teamAId} 成功围绕 conversion_site_a 执行进攻并打中机会缺口；` +
+      `${input.teamBName ?? input.teamBId} 失败在于未能守住 conversion_site_a 的核心成立点。` +
+      "判词可以引用 pricing_ramp、buyer_mid 和 retention_connector 作为进攻路径、架枪或信息辅助区域，但这些不是主焦点。";
+    return {
+      data: {
+        winnerTeamId: input.teamAId,
+        loserTeamId: input.teamBId,
+        margin: "standard",
+        roundWinType: "attack_elimination",
+        attackWinConditionMet: true,
+        defenseWinConditionMet: false,
+        reason,
+        mvpAgentId: input.activeTeamAAgentIds[0],
+        confidence: 0.88,
+        diagnostic: {
+          ...buildJudgeDiagnostic(input, reason),
+          mainAttackZoneId: "conversion_site_a",
+          mainDefenseZoneId: "conversion_site_a",
+          decisiveEvidence:
+            `${input.teamAName ?? input.teamAId} 的 team_plan 与 agent_action 主体落在 conversion_site_a；` +
+            "pricing_ramp、buyer_mid 与 retention_connector 只作为辅助路径证据，不改变主攻/主守焦点。"
+        }
+      } as TData,
+      usage: {
+        promptTokens: 30,
+        completionTokens: 20,
+        totalTokens: 50
+      }
+    };
+  }
+}
+
+class SemanticZoneBridgeJudgeGateway extends SuccessfulPhase18Gateway {
+  override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
+    if (request.task !== "judge") {
+      return super.generateStructured(request);
+    }
+
+    this.requests.push(request as LlmRequest<unknown>);
+    this.tasks.push(request.task);
+    const input = request.input as JudgeRequestInput;
+    const zones = resolveFixtureZones(input);
+    const reason =
+      `本局胜利方式是攻方全歼胜。${input.teamAName ?? input.teamAId} 成功围绕 ${zones.attackZoneId} 执行同步计划并打中机会缺口；` +
+      `${input.teamBName ?? input.teamBId} 失败在于虽然把 ${zones.defenseZoneId} 作为核心成立点防守，但未能用计划和选手行动阻断攻方从 ${zones.attackZoneId} 展开的验证路径。`;
+    return {
+      data: {
+        winnerTeamId: input.teamAId,
+        loserTeamId: input.teamBId,
+        margin: "standard",
+        roundWinType: "attack_elimination",
+        attackWinConditionMet: true,
+        defenseWinConditionMet: false,
+        reason,
+        mvpAgentId: input.activeTeamAAgentIds[0],
+        confidence: 0.88,
+        diagnostic: buildJudgeDiagnostic(input, reason)
+      } as TData,
+      usage: {
+        promptTokens: 30,
+        completionTokens: 20,
+        totalTokens: 50
+      }
+    };
+  }
+}
+
+class ZoneDeterminismShortcutJudgeGateway extends SuccessfulPhase18Gateway {
+  override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
+    if (request.task !== "judge") {
+      return super.generateStructured(request);
+    }
+
+    this.requests.push(request as LlmRequest<unknown>);
+    this.tasks.push(request.task);
+    const input = request.input as JudgeRequestInput;
+    const zones = resolveFixtureZones(input);
+    const reason =
+      `本局胜利方式是攻方全歼胜。${input.teamAName ?? input.teamAId} 成功执行计划；${input.teamBName ?? input.teamBId} 失败在于未能守住计划。` +
+      `因为主攻区 ${zones.attackZoneId} 和主守区 ${zones.defenseZoneId} 不同，所以攻方一定获胜。`;
+    return {
+      data: {
+        winnerTeamId: input.teamAId,
+        loserTeamId: input.teamBId,
+        margin: "standard",
+        roundWinType: "attack_elimination",
+        attackWinConditionMet: true,
+        defenseWinConditionMet: false,
+        reason,
+        mvpAgentId: input.activeTeamAAgentIds[0],
+        confidence: 0.88,
+        diagnostic: buildJudgeDiagnostic(input, reason)
+      } as TData,
+      usage: {
+        promptTokens: 30,
+        completionTokens: 20,
+        totalTokens: 50
+      }
+    };
+  }
+}
+
+class ZoneMismatchProofFailureJudgeGateway extends SuccessfulPhase18Gateway {
+  override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
+    if (request.task !== "judge") {
+      return super.generateStructured(request);
+    }
+
+    this.requests.push(request as LlmRequest<unknown>);
+    this.tasks.push(request.task);
+    const input = request.input as JudgeRequestInput;
+    const reason =
+      `本局胜利方式是攻方下包爆炸胜。${input.teamAName ?? input.teamAId} 成功通过中路快攻打中机会缺口；` +
+      `${input.teamBName ?? input.teamBId} 失败在于主守区与实际被攻击区错位，导致其核心命题未被真正检验，防守焦点脱离了攻方提出的替代方案失效证据链。`;
+    return {
+      data: {
+        winnerTeamId: input.teamAId,
+        loserTeamId: input.teamBId,
+        margin: "standard",
+        roundWinType: "attack_bomb_explosion",
+        attackWinConditionMet: true,
+        defenseWinConditionMet: false,
+        reason,
+        mvpAgentId: input.activeTeamAAgentIds[0],
+        confidence: 0.83,
+        diagnostic: {
+          ...buildJudgeDiagnostic(input, reason),
+          mainAttackZoneId: "buyer_mid",
+          mainDefenseZoneId: "conversion_site_a",
+          decisiveEvidence:
+            `${input.teamAName ?? input.teamAId} 的 team_plan 与 agent_action 指向 buyer_mid；` +
+            `${input.teamBName ?? input.teamBId} 的防守计划集中在 conversion_site_a，回合结果直接证伪其防守命题，但不是因为区域不同就自动获胜。`
+        }
+      } as TData,
+      usage: {
+        promptTokens: 30,
+        completionTokens: 20,
+        totalTokens: 50
+      }
+    };
+  }
+}
+
+class UnsupportedMicroCombatJudgeGateway extends SuccessfulPhase18Gateway {
+  override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
+    if (request.task !== "judge") {
+      return super.generateStructured(request);
+    }
+
+    this.requests.push(request as LlmRequest<unknown>);
+    this.tasks.push(request.task);
+    const input = request.input as JudgeRequestInput;
+    const reason =
+      `本局胜利方式是攻方全歼胜。${input.teamAName ?? input.teamAId} 成功打中机会缺口，三秒内清点包点并封锁回防路径；` +
+      `${input.teamBName ?? input.teamBId} 失败在于未能守住核心成立点。`;
+    return this.buildJudgeResponse(input, reason) as LlmResponse<TData>;
+  }
+}
+
+class AgentActionSupportedMicroCombatJudgeGateway extends SuccessfulPhase18Gateway {
+  override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
+    if (request.task === "agent_action") {
+      this.requests.push(request as LlmRequest<unknown>);
+      this.tasks.push(request.task);
+      const input = request.input as { agentId: string };
+      return {
+        data: {
+          action: "执行 A 点清点，确认主攻区控制",
+          confidence: 0.91,
+          fingerprint: `fp_${input.agentId}`
+        } as TData,
+        usage: {
+          promptTokens: 10,
+          completionTokens: 12,
+          totalTokens: 22
+        }
+      };
+    }
+    if (request.task !== "judge") {
+      return super.generateStructured(request);
+    }
+
+    this.requests.push(request as LlmRequest<unknown>);
+    this.tasks.push(request.task);
+    const input = request.input as JudgeRequestInput;
+    const reason =
+      `本局胜利方式是攻方全歼胜。${input.teamAName ?? input.teamAId} 成功执行 agent_action 中已有的 A 点清点动作并打中机会缺口；` +
+      `${input.teamBName ?? input.teamBId} 失败在于未能守住核心成立点。`;
+    return this.buildJudgeResponse(input, reason) as LlmResponse<TData>;
+  }
+}
+
+class StrongDecisiveJudgeGateway extends SuccessfulPhase18Gateway {
+  override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
+    if (request.task !== "judge") {
+      return super.generateStructured(request);
+    }
+
+    this.requests.push(request as LlmRequest<unknown>);
+    this.tasks.push(request.task);
+    const input = request.input as JudgeRequestInput;
+    const reason =
+      `本局胜利方式是攻方下包爆炸胜。${input.teamAName ?? input.teamAId} 成功以全队一致的 team_plan 与 agent_action 打中 conversion_site_a 机会缺口，` +
+      `${input.teamBName ?? input.teamBId} 失败在于其计划、行动、买型与主守区全部未能回应该缺口；这些证据明确且决定性地证明胜方商业判断成立。`;
+    return this.buildJudgeResponse(input, reason, 0.88, "decisive") as LlmResponse<TData>;
+  }
+}
+
+class CorruptedJudgeRawTextGateway extends SuccessfulPhase18Gateway {
+  override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
+    if (request.task !== "judge") {
+      return super.generateStructured(request);
+    }
+
+    const response = await super.generateStructured<TData, TInput>(request);
+    return {
+      ...response,
+      rawText: "鍦 鍦 鍦 鍦 鍦 鍦 鍦 鍦 鍦 鍦 鍦 鍦 鍦 鍦 鍦 鍦"
     };
   }
 }
@@ -807,6 +1274,13 @@ interface JudgeRequestInput {
   teamBName?: string;
   activeTeamAAgentIds: string[];
   activeTeamBAgentIds: string[];
+  mapSemanticContext?: {
+    proposition?: Record<string, unknown>;
+  };
+  sideAssignment?: {
+    attackingTeamId: string;
+    defendingTeamId: string;
+  };
 }
 
 class InvalidTeamPlanGateway extends SuccessfulPhase18Gateway {
@@ -885,21 +1359,14 @@ class ConsecutiveLossTimeoutGateway extends SuccessfulPhase18Gateway {
     this.judgeCalls += 1;
     const input = request.input as JudgeRequestInput;
     if (this.judgeCalls <= 2) {
-      return {
-        data: {
-          winnerTeamId: input.teamBId,
-          loserTeamId: input.teamAId,
-          margin: "standard",
-          reason: `${input.teamBName ?? input.teamBId} win condition succeeded; ${input.teamAName ?? input.teamAId} win condition failed.`,
-          mvpAgentId: input.activeTeamBAgentIds[0],
-          confidence: 0.86
-        } as TData,
-        usage: {
-          promptTokens: 30,
-          completionTokens: 20,
-          totalTokens: 50
-        }
-      };
+      return this.buildJudgeResponse(
+        input,
+        buildPromptJudgeReason(input, input.teamBId, input.teamAId),
+        0.86,
+        "standard",
+        input.teamBId,
+        input.teamAId
+      ) as LlmResponse<TData>;
     }
 
     return this.buildJudgeResponse(input, buildPromptJudgeReason(input), 0.87) as LlmResponse<TData>;
@@ -1008,6 +1475,9 @@ class InvalidJudgeGateway extends SuccessfulPhase18Gateway {
         winnerTeamId: input.teamAId,
         loserTeamId: input.teamBId,
         margin: "standard",
+        roundWinType: "attack_elimination",
+        attackWinConditionMet: true,
+        defenseWinConditionMet: false,
         reason: "Invalid judge payload",
         mvpAgentId: "agent_missing",
         confidence: 0.5
@@ -1048,17 +1518,133 @@ class RetryableJudgeGateway extends SuccessfulPhase18Gateway {
   }
 }
 
-function buildPromptJudgeReason(input: JudgeRequestInput): string {
-  return `${input.teamAName ?? input.teamAId} win condition succeeded; ${input.teamBName ?? input.teamBId} win condition failed.`;
+function buildPromptJudgeReason(
+  input: JudgeRequestInput,
+  winnerTeamId = input.teamAId,
+  loserTeamId = input.teamBId
+): string {
+  const outcome = resolveFixtureJudgeOutcome(input, winnerTeamId);
+  const winnerName = formatFixtureTeamName(input, winnerTeamId);
+  const loserName = formatFixtureTeamName(input, loserTeamId);
+  const zones = resolveFixtureZones(input);
+
+  if (outcome.roundWinType === "defense_elimination") {
+    return `本局胜利方式是守方全歼胜。${winnerName} 成功守住核心成立点并阻断对手验证入口；${loserName} 失败在于未能把机会缺口转化为有效突破。主攻落点在${zones.attackZoneLabel}，守方命题焦点在${zones.defenseZoneLabel}，因为攻方试图从 ${zones.attackZoneId} 打开验证入口，但守方把 ${zones.defenseZoneId} 维持为未被击穿的核心证明区。`;
+  }
+
+  return `本局胜利方式是攻方全歼胜。${winnerName} 成功打中对手的机会缺口；${loserName} 失败在于未能守住核心成立点。主攻落点在${zones.attackZoneLabel}，守方命题焦点在${zones.defenseZoneLabel}，因为攻方先在 ${zones.attackZoneId} 打开验证入口，再把 ${zones.defenseZoneId} 作为守方必须捍卫的核心证明区。`;
+}
+
+function ensureZoneBridge(
+  reason: string,
+  roundWinType: "attack_elimination" | "defense_elimination" = "attack_elimination",
+  input?: JudgeRequestInput
+): string {
+  const zones = resolveFixtureZones(input);
+  return reason.includes("主攻落点") && reason.includes("守方命题焦点")
+    ? reason
+    : roundWinType === "defense_elimination"
+      ? `${reason} 主攻落点在${zones.attackZoneLabel}，守方命题焦点在${zones.defenseZoneLabel}，因为 ${zones.attackZoneId} 是攻方试图打开的验证入口，而 ${zones.defenseZoneId} 是守方成功保住的核心证明区。`
+      : `${reason} 主攻落点在${zones.attackZoneLabel}，守方命题焦点在${zones.defenseZoneLabel}，因为 ${zones.attackZoneId} 是攻方先打开的验证入口，而 ${zones.defenseZoneId} 是守方最终失守的核心证明区。`;
+}
+
+function buildJudgeDiagnostic(
+  input: JudgeRequestInput,
+  reason: string,
+  winnerTeamId = input.teamAId,
+  loserTeamId = input.teamBId
+) {
+  const outcome = resolveFixtureJudgeOutcome(input, winnerTeamId);
+  const winnerName = formatFixtureTeamName(input, winnerTeamId);
+  const loserName = formatFixtureTeamName(input, loserTeamId);
+  const zones = resolveFixtureZones(input);
+  return {
+    currentSubTheme: "ICP",
+    attackedOpportunityGap:
+      outcome.roundWinType === "defense_elimination"
+        ? `${loserName} 试图攻击 ${winnerName} 在第一用户定义上的缺口，但未能把 ${zones.attackZoneId} 的验证入口转化为对 ${zones.defenseZoneId} 的有效突破。`
+        : `${winnerName} 攻击了 ${loserName} 在第一用户定义上的缺口，因为对手未能把核心用户判断收束到单一高价值场景。`,
+    defendedCoreProposition:
+      outcome.roundWinType === "defense_elimination"
+        ? `${winnerName} 守住了第一用户证明这一核心成立点，因为其始终把 ${zones.defenseZoneId} 维持为未被击穿的核心证明区。`
+        : `${winnerName} 守住了第一用户证明这一核心成立点，因为其进攻与验证动作都围绕同一主命题持续推进。`,
+    mainAttackZoneId: zones.attackZoneId,
+    mainDefenseZoneId: zones.defenseZoneId,
+    decisiveEvidence: `${winnerName} 与 ${loserName} 的 team_plan、agent_action 和回合结果都围绕 ${zones.attackZoneId} 到 ${zones.defenseZoneId} 的攻守关系展开；最终判词是：${reason}`
+  };
 }
 
 function buildDetailedPromptJudgeReason(input: JudgeRequestInput): string {
-  return `${input.teamAName ?? input.teamAId} win condition succeeded through synchronized utility and trades; ${
+  return `本局胜利方式是攻方全歼胜。${input.teamAName ?? input.teamAId} win condition succeeded through synchronized utility and trades; ${
     input.teamBName ?? input.teamBId
-  } failed to keep synchronized utility and trades after losing the first duel and breaking spacing.`;
+  } failed to keep synchronized utility and trades after losing the first duel and breaking spacing. 主攻落点在中路，守方命题焦点在 A 点，因为 buyer_mid 是攻方先打开的验证入口，而 conversion_site_a 是守方最终失守的核心证明区。`;
 }
 
 function buildIncompletePromptJudgeReason(input: JudgeRequestInput): string {
   return `${input.teamAName ?? input.teamAId} wins by cleaner trading.`;
+}
+
+function resolveFixtureJudgeOutcome(input: JudgeRequestInput, winnerTeamId: string) {
+  const winnerIsDefender = input.sideAssignment?.defendingTeamId === winnerTeamId;
+  const winnerIsAttacker = input.sideAssignment?.attackingTeamId === winnerTeamId || !winnerIsDefender;
+
+  return {
+    roundWinType: winnerIsDefender ? "defense_elimination" as const : "attack_elimination" as const,
+    attackWinConditionMet: winnerIsAttacker && !winnerIsDefender,
+    defenseWinConditionMet: winnerIsDefender,
+    mvpAgentId: winnerTeamId === input.teamAId ? input.activeTeamAAgentIds[0] : input.activeTeamBAgentIds[0]
+  };
+}
+
+function resolveFixtureZones(input?: JudgeRequestInput) {
+  const proposition = asRecord(input?.mapSemanticContext?.proposition);
+  const displayZoneNames = asRecord(proposition?.displayZoneNames) ?? asRecord(proposition?.display_zone_names);
+  const zoneSemantics = asRecord(proposition?.zoneSemantics) ?? asRecord(proposition?.zone_semantics);
+  const zoneIds = [...new Set([...Object.keys(displayZoneNames ?? {}), ...Object.keys(zoneSemantics ?? {})])];
+  const attackZoneId = zoneIds.includes("buyer_mid") ? "buyer_mid" : zoneIds[0] ?? "buyer_mid";
+  const defenseZoneId =
+    zoneIds.includes("conversion_site_a")
+      ? "conversion_site_a"
+      : zoneIds.find((zoneId) => zoneId !== attackZoneId) ?? attackZoneId;
+
+  return {
+    attackZoneId,
+    defenseZoneId,
+    attackZoneLabel: readZoneLabel(displayZoneNames, zoneSemantics, attackZoneId),
+    defenseZoneLabel: readZoneLabel(displayZoneNames, zoneSemantics, defenseZoneId)
+  };
+}
+
+function formatFixtureTeamName(input: JudgeRequestInput, teamId: string): string {
+  if (teamId === input.teamAId) {
+    return input.teamAName ?? input.teamAId;
+  }
+  if (teamId === input.teamBId) {
+    return input.teamBName ?? input.teamBId;
+  }
+  return teamId;
+}
+
+function readZoneLabel(
+  displayZoneNames: Record<string, unknown> | undefined,
+  zoneSemantics: Record<string, unknown> | undefined,
+  zoneId: string
+): string {
+  const displayName = displayZoneNames?.[zoneId];
+  if (typeof displayName === "string" && displayName.trim().length > 0) {
+    return displayName;
+  }
+
+  const semantics = asRecord(zoneSemantics?.[zoneId]);
+  const semanticDisplayName = semantics?.displayName;
+  if (typeof semanticDisplayName === "string" && semanticDisplayName.trim().length > 0) {
+    return semanticDisplayName;
+  }
+
+  return zoneId;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
 }
 

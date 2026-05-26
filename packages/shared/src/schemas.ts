@@ -358,10 +358,22 @@ export const judgeDiagnosticSchema = z.object({
 });
 export type JudgeDiagnostic = z.infer<typeof judgeDiagnosticSchema>;
 
+export const judgeRoundWinTypes = [
+  "attack_elimination",
+  "attack_bomb_explosion",
+  "defense_elimination",
+  "defense_timeout_no_plant",
+  "defense_defuse"
+] as const;
+export type JudgeRoundWinType = (typeof judgeRoundWinTypes)[number];
+
 export const judgeResultSchema = z.object({
   winnerTeamId: z.string().min(1),
   loserTeamId: z.string().min(1),
   margin: z.enum(["narrow", "standard", "decisive"]),
+  roundWinType: z.enum(judgeRoundWinTypes).optional(),
+  attackWinConditionMet: z.boolean().optional(),
+  defenseWinConditionMet: z.boolean().optional(),
   reason: z.string().min(1),
   mvpAgentId: z.string().min(1),
   confidence: z.number().min(0).max(1),

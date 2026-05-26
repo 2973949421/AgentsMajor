@@ -766,15 +766,65 @@ function RoundEvidencePanel({ evidence }: { evidence: RoundEvidenceViewModel }) 
               <div className={styles.judgeEvidenceMeta}>
                 <span>胜方：{evidence.judge.winnerLabel}</span>
                 <span>败方：{evidence.judge.loserLabel}</span>
+                <span>本局胜利方式：{evidence.judge.roundWinTypeLabel}</span>
                 <span>幅度：{evidence.judge.marginLabel}</span>
                 <span>MVP：{evidence.judge.mvpLabel}</span>
                 <span>置信度：{evidence.judge.confidenceLabel}</span>
               </div>
+              <p className={styles.judgeMethodDetail}>{evidence.judge.roundWinTypeDetail}</p>
+              <div className={styles.judgeEvidenceMeta}>
+                <span>进攻方胜利条件：{evidence.judge.attackWinConditionLabel}</span>
+                <span>防守方胜利条件：{evidence.judge.defenseWinConditionLabel}</span>
+              </div>
               <p>{evidence.judge.reason}</p>
+              {evidence.judge.diagnostic ? (
+                <div className={styles.judgeDiagnosticGrid}>
+                  <div>
+                    <span>当前子命题</span>
+                    <strong>{evidence.judge.diagnostic.currentSubTheme}</strong>
+                  </div>
+                  <div>
+                    <span>主攻落点</span>
+                    <strong>{evidence.judge.diagnostic.mainAttackZoneLabel}</strong>
+                  </div>
+                  <div>
+                    <span>守方命题焦点</span>
+                    <strong>{evidence.judge.diagnostic.mainDefenseZoneLabel}</strong>
+                  </div>
+                  <div>
+                    <span>攻守关系说明</span>
+                    <strong>{evidence.judge.diagnostic.zoneRelationLabel}</strong>
+                  </div>
+                  <div>
+                    <span>攻方打中的缺口</span>
+                    <strong>{evidence.judge.diagnostic.attackedOpportunityGap}</strong>
+                  </div>
+                  <div>
+                    <span>守方核心成立点</span>
+                    <strong>{evidence.judge.diagnostic.defendedCoreProposition}</strong>
+                  </div>
+                  <div>
+                    <span>决定性证据</span>
+                    <strong>{evidence.judge.diagnostic.decisiveEvidence}</strong>
+                  </div>
+                </div>
+              ) : (
+                <small className={styles.muted}>{evidence.judge.diagnosticMissingLabel}</small>
+              )}
               <details className={styles.evidenceRawDetails}>
                 <summary>查看原文</summary>
                 <div className={styles.evidenceRawBlock}>
                   <small>{evidence.judge.reasonRaw}</small>
+                  {evidence.judge.diagnostic ? (
+                    <>
+                      <small>原文子命题：{evidence.judge.diagnostic.currentSubThemeRaw}</small>
+                      <small>原文机会缺口：{evidence.judge.diagnostic.attackedOpportunityGapRaw}</small>
+                      <small>原文核心成立点：{evidence.judge.diagnostic.defendedCorePropositionRaw}</small>
+                      <small>原文主攻区：{evidence.judge.diagnostic.mainAttackZoneId}</small>
+                      <small>原文主守区：{evidence.judge.diagnostic.mainDefenseZoneId}</small>
+                      <small>原文决定性证据：{evidence.judge.diagnostic.decisiveEvidenceRaw}</small>
+                    </>
+                  ) : null}
                 </div>
               </details>
             </article>

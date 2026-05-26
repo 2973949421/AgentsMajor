@@ -254,6 +254,7 @@ export function RunMatchControls({
       ? formatLocalStateLabel(state)
       : formatRunStatusLabel(progress.status)
     : formatLocalStateLabel(state);
+  const failedAttemptNotice = progress ? buildFailedAttemptNotice(progress) : null;
 
   const runSummaryItems = progress
     ? [
@@ -392,6 +393,7 @@ export function RunMatchControls({
             <span>已完成 {progress.llmSummary.completedCalls}</span>
             <span>已失败 {progress.llmSummary.failedCalls}</span>
           </div>
+          {failedAttemptNotice ? <span className={styles.opsMetaLine}>{failedAttemptNotice}</span> : null}
           {progress.error ? <span className={styles.opsErrorText}>最近错误：{progress.error}</span> : null}
         </div>
       ) : null}
@@ -810,6 +812,19 @@ function formatRunStatusLabel(status: RunStatus): string {
     default:
       return "完成";
   }
+}
+
+function buildFailedAttemptNotice(progress: WebRunProgress): string | null {
+  if (progress.status !== "failed" || !progress.currentRoundNumber) {
+    return null;
+  }
+
+  const committedLabel = progress.latestCommittedRoundNumber > 0 ? `R${progress.latestCommittedRoundNumber}` : "尚无已提交回合";
+  if (progress.currentRoundNumber > progress.latestCommittedRoundNumber) {
+    return `当前播放仍停留在 ${committedLabel}；最新失败尝试发生在 R${progress.currentRoundNumber}。`;
+  }
+
+  return `最新失败尝试发生在 R${progress.currentRoundNumber}。`;
 }
 
 function formatLocalStateLabel(state: RunState): string {

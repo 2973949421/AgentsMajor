@@ -152,16 +152,55 @@ describe("Phase 1.9 watch view model", () => {
     });
   });
 
+  it("maps judge diagnostic facts as the primary audit evidence", () => {
+    const replay = replayFixture();
+    const currentRound = replay.maps[0]!.rounds[0]!;
+    const frame = buildRoundFrame(currentRound, 15000);
+
+    const evidence = buildRoundEvidenceViewModel({ replay, currentRound, frame });
+
+    expect(evidence.judge?.diagnostic).toMatchObject({
+      currentSubTheme: "用户定义战",
+      mainAttackZoneLabel: "A 点",
+      mainDefenseZoneLabel: "中路",
+      attackedOpportunityGap: "VitaLLMty 的第一用户定义不够集中",
+      defendedCoreProposition: "Falcon-7B 守住了首位用户证明"
+    });
+    expect(evidence.judge?.diagnosticMissingLabel).toBeUndefined();
+  });
+
+  it("keeps old rounds without judge diagnostic explicit instead of fabricating audit facts", () => {
+    const replay = replayFixture();
+    const currentRound = {
+      ...replay.maps[0]!.rounds[0]!,
+      roundReport: {
+        ...replay.maps[0]!.rounds[0]!.roundReport,
+        judgeDiagnostic: undefined,
+        judgeResult: {
+          ...replay.maps[0]!.rounds[0]!.roundReport.judgeResult,
+          diagnostic: undefined
+        }
+      }
+    };
+    const frame = buildRoundFrame(currentRound, 15000);
+
+    const evidence = buildRoundEvidenceViewModel({ replay, currentRound, frame });
+
+    expect(evidence.judge?.diagnostic).toBeNull();
+    expect(evidence.judge?.diagnosticMissingLabel).toContain("旧回合未归档裁判诊断");
+  });
+
   it("derives different win methods and casualty densities from kill ledger shape", () => {
     const cases = [
       {
-        title: "attack preplant elimination",
+        title: "attack elimination",
         winnerTeamId: "team-a",
         attackingTeamId: "team-a",
         killCount: 8,
         margin: "decisive" as const,
         tacticalResult: "attack_breakthrough" as const,
-        expectLabel: "攻方下包前清场胜",
+        roundWinType: "attack_elimination",
+        expectLabel: "攻方全歼胜",
         expectDensity: "极高战损"
       },
       {
@@ -171,6 +210,7 @@ describe("Phase 1.9 watch view model", () => {
         killCount: 1,
         margin: "standard" as const,
         tacticalResult: "trade_even" as const,
+        roundWinType: "attack_bomb_explosion",
         expectLabel: "攻方下包爆炸胜",
         expectDensity: "低战损"
       },
@@ -181,6 +221,7 @@ describe("Phase 1.9 watch view model", () => {
         killCount: 4,
         margin: "standard" as const,
         tacticalResult: "rotate_success" as const,
+        roundWinType: "defense_defuse",
         expectLabel: "守方拆包胜",
         expectDensity: "中战损"
       },
@@ -191,6 +232,7 @@ describe("Phase 1.9 watch view model", () => {
         killCount: 1,
         margin: "narrow" as const,
         tacticalResult: "defense_hold" as const,
+        roundWinType: "defense_timeout_no_plant",
         expectLabel: "守方超时未下包胜",
         expectDensity: "低战损"
       }
@@ -207,7 +249,8 @@ describe("Phase 1.9 watch view model", () => {
           winnerTeamId: testCase.winnerTeamId,
           judgeResult: {
             ...currentRound.roundReport.judgeResult,
-            margin: testCase.margin
+            margin: testCase.margin,
+            roundWinType: testCase.roundWinType
           }
         },
         tacticalRound: {
@@ -426,9 +469,28 @@ function roundFixture(input: {
         winnerTeamId: "team-a",
         loserTeamId: "team-b",
         margin: "standard",
+        roundWinType: "attack_elimination",
+        attackWinConditionMet: true,
+        defenseWinConditionMet: false,
         reason: "Falcon-7B 成功证明首位用户切口，VitaLLMty 未能守住反论点。",
         mvpAgentId: "agent-a-1",
-        confidence: 0.82
+        confidence: 0.82,
+        diagnostic: {
+          currentSubTheme: "用户定义战",
+          attackedOpportunityGap: "VitaLLMty 的第一用户定义不够集中",
+          defendedCoreProposition: "Falcon-7B 守住了首位用户证明",
+          mainAttackZoneId: "conversion_site_a",
+          mainDefenseZoneId: "buyer_mid",
+          decisiveEvidence: "Falcon-7B 用 A 点推进证明了首位用户切口。"
+        }
+      },
+      judgeDiagnostic: {
+        currentSubTheme: "用户定义战",
+        attackedOpportunityGap: "VitaLLMty 的第一用户定义不够集中",
+        defendedCoreProposition: "Falcon-7B 守住了首位用户证明",
+        mainAttackZoneId: "conversion_site_a",
+        mainDefenseZoneId: "buyer_mid",
+        decisiveEvidence: "Falcon-7B 用 A 点推进证明了首位用户切口。"
       },
       appliedCoachTimeoutCorrection: {
         teamId: "team-a",

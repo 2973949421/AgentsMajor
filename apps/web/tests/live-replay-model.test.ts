@@ -297,6 +297,9 @@ function roundItem(roundNumber: number, timelineEvents: LiveReplayTimelineEvent[
         winnerTeamId: "team-a",
         loserTeamId: "team-b",
         margin: "standard",
+        roundWinType: "attack_elimination",
+        attackWinConditionMet: true,
+        defenseWinConditionMet: false,
         reason: "Team A converted the round while Team B failed to hold.",
         mvpAgentId: "agent-a",
         confidence: 0.82
