@@ -2385,7 +2385,7 @@ class Phase12SimulationEngine implements SimulationEngine {
             temperature: 0
           });
       const llmDecision = this.context.useLlmAgentActions ? (response.data as AgentActionDecision) : undefined;
-      outputs.push({
+      const output = {
         id: `out_${input.round.id}_${agent.id}`,
         agentId: agent.id,
         teamId: agent.teamId,
@@ -2394,7 +2394,8 @@ class Phase12SimulationEngine implements SimulationEngine {
         action: llmDecision?.action ?? `${agent.displayName} uses ${buyType} ${posture} tempo on ${input.mapGame.mapName}`,
         confidence: llmDecision?.confidence ?? 0.72 + (stableNumber(agent.id, 18) / 100),
         rawFingerprint: llmDecision?.fingerprint ?? response.data.fingerprint ?? stableHex(`${input.round.id}:${agent.id}`)
-      });
+      };
+      outputs.push(output);
     }
 
     return outputs;
@@ -2448,39 +2449,60 @@ class Phase12SimulationEngine implements SimulationEngine {
         ...judgePromptContext.requestInput
       };
       const mapSemanticContext = readPhase18MapSemanticContext(this.context, input.mapGame.mapName);
-      const response = await this.runObservedStructuredCall<JudgeResult>({
-        callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_judge`,
-        attemptNumber: input.observabilityAttempt,
-        task: "judge",
-        schemaName: "JudgeResult",
-        driverModelId: input.activeA[0]?.driverModelId ?? input.activeB[0]?.driverModelId ?? "",
-        requestInput: judgeRequestInput,
-        responseFormat: "json_object",
-        seed: `judge:${input.round.id}`,
-        modelTier: "cheap",
-        temperature: 0,
-        match: input.match,
-        mapGame: input.mapGame,
-        round: input.round,
-        roundNumber: input.roundNumber,
-        validateResponseData: (data) => {
-          try {
-            const translatedJudgeResult = judgePromptContext.validateAndTranslate(judgeResultSchema.parse(normalizeJudgeResultPayload(data)));
-            return ensureJudgeDiagnostic({
-              judgeResult: translatedJudgeResult,
-              roundNumber: input.roundNumber,
-              sideAssignment: input.sideAssignment,
-              teamA: input.teamA,
-              teamB: input.teamB,
-              ...(input.teamPlans ? { teamPlans: input.teamPlans } : {}),
-              agentOutputs: input.agentOutputs,
-              ...(mapSemanticContext ? { mapSemanticContext } : {})
-            });
-          } catch (error) {
-            throw translateJudgePromptError(error, judgePromptContext);
-          }
+      const validateJudgeResponseData = (data: unknown) => {
+        try {
+          const translatedJudgeResult = judgePromptContext.validateAndTranslate(judgeResultSchema.parse(normalizeJudgeResultPayload(data)));
+          return ensureJudgeDiagnostic({
+            judgeResult: translatedJudgeResult,
+            roundNumber: input.roundNumber,
+            sideAssignment: input.sideAssignment,
+            teamA: input.teamA,
+            teamB: input.teamB,
+            ...(input.teamPlans ? { teamPlans: input.teamPlans } : {}),
+            agentOutputs: input.agentOutputs,
+            ...(mapSemanticContext ? { mapSemanticContext } : {})
+          });
+        } catch (error) {
+          throw translateJudgePromptError(error, judgePromptContext);
         }
-      });
+      };
+      let response: LlmResponse<JudgeResult>;
+      try {
+        response = await this.runObservedStructuredCall<JudgeResult>({
+          callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_judge`,
+          attemptNumber: input.observabilityAttempt,
+          task: "judge",
+          schemaName: "JudgeResult",
+          driverModelId: input.activeA[0]?.driverModelId ?? input.activeB[0]?.driverModelId ?? "",
+          requestInput: judgeRequestInput,
+          responseFormat: "json_object",
+          seed: `judge:${input.round.id}`,
+          modelTier: "cheap",
+          temperature: 0,
+          match: input.match,
+          mapGame: input.mapGame,
+          round: input.round,
+          roundNumber: input.roundNumber,
+          validateResponseData: validateJudgeResponseData
+        });
+      } catch (error) {
+        const validationError = error instanceof Error ? error.message : String(error);
+        if (!shouldAttemptJudgeRepair(validationError)) {
+          throw error;
+        }
+        response = await this.repairInvalidJudgeResult({
+          validationError,
+          judgeRequestInput,
+          judgePromptContext,
+          match: input.match,
+          mapGame: input.mapGame,
+          round: input.round,
+          roundNumber: input.roundNumber,
+          observabilityAttempt: input.observabilityAttempt,
+          driverModelId: input.activeA[0]?.driverModelId ?? input.activeB[0]?.driverModelId ?? "",
+          validateResponseData: validateJudgeResponseData
+        });
+      }
       const authoritativeJudgeResult = response.data;
       if (!this.context.useJudgeBiasGuardrail) {
         return authoritativeJudgeResult;
@@ -2632,6 +2654,51 @@ class Phase12SimulationEngine implements SimulationEngine {
     }
 
     return reviewedJudgeResult;
+  }
+
+  private async repairInvalidJudgeResult(input: {
+    validationError: string;
+    judgeRequestInput: unknown;
+    judgePromptContext: Phase18JudgePromptContext;
+    match: Match;
+    mapGame: MapGame;
+    round: Round;
+    roundNumber: number;
+    observabilityAttempt: number;
+    driverModelId: string;
+    validateResponseData: (data: unknown) => JudgeResult;
+  }): Promise<LlmResponse<JudgeResult>> {
+    return this.runObservedStructuredCall<JudgeResult>({
+      callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_judge_repair`,
+      attemptNumber: input.observabilityAttempt,
+      task: "judge_review",
+      schemaName: "JudgeResult",
+      driverModelId: input.driverModelId,
+      requestInput: {
+        objective:
+          "The first judge output failed validation. Regenerate one complete JudgeResult that satisfies the same contract. Do not loosen the ruling; fix only structure, evidence boundaries, and unsupported assertions.",
+        validationError: input.validationError,
+        originalJudgeInput: input.judgeRequestInput,
+        repairRules: [
+          "保留比赛裁判与商业裁判两层判断。",
+          "如果原输出把计划或意图误写成已发生事实，请改成计划/意图/证据不足表述。",
+          "可以引用 team_plan、agent_action 意图、区域、买型、roundWinType 和公开摘要。",
+          "不要把未落库的清点、击杀链、秒级动作、封锁回防写成已发生事实。",
+          "如果区域关系是证据，必须解释它如何接回计划执行、行动结果与胜负方式；不要写成自动胜负规则。"
+        ],
+        mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName),
+        judgeRubricContext: readPhase18JudgeRubricContext(this.context, input.mapGame.mapName)
+      },
+      responseFormat: "json_object",
+      seed: `judge_repair:${input.round.id}`,
+      modelTier: "cheap",
+      temperature: 0,
+      match: input.match,
+      mapGame: input.mapGame,
+      round: input.round,
+      roundNumber: input.roundNumber,
+      validateResponseData: input.validateResponseData
+    });
   }
 
   private async runObservedStructuredCall<TData>(input: {
@@ -4502,6 +4569,10 @@ function buildFallbackJudgeRoundWinType(winnerTeamId: string, sideAssignment: Si
   return winnerTeamId === sideAssignment.attackingTeamId ? "attack_elimination" : "defense_elimination";
 }
 
+function shouldAttemptJudgeRepair(errorMessage: string): boolean {
+  return /unsupported micro-combat detail|does not parse as JSON|invalid_enum_value|Expected array, received object/i.test(errorMessage);
+}
+
 function sameSemanticLabel(left: string, right: string): boolean {
   const normalizedLeft = normalizeForJudgeReason(left);
   const normalizedRight = normalizeForJudgeReason(right);
@@ -4564,8 +4635,7 @@ function validateJudgeDiagnosticNarrativeQuality(input: {
   });
   validateJudgeUnsupportedMicroCombatDetails({
     reason: input.reason,
-    decisiveEvidence: input.diagnostic.decisiveEvidence,
-    agentOutputs: input.agentOutputs
+    decisiveEvidence: input.diagnostic.decisiveEvidence
   });
 
   if (input.diagnostic.mainAttackZoneId !== input.diagnostic.mainDefenseZoneId) {
@@ -4606,12 +4676,12 @@ function containsZoneDeterminismShortcut(value: string): boolean {
   const normalized = normalizeForJudgeReason(value);
   const clauses = normalized.split(/\s*(?:[。；;，,]|但是|但|而|同时|并且)\s*/u).filter((clause) => clause.length > 0);
   return clauses.some((clause) => {
-    const hasZoneRelation = /(同区|相同|一致|不同|不一致|错开|避开|绕开|守a|打a|守b|打b|主攻区|主守区|主攻|主守|防守区|进攻区)/.test(clause);
+    const hasZoneRelation = /(同区|相同|一致|不同|不一致|错开|避开|绕开|覆盖|布防|部署|守a|打a|守b|打b|主攻区|主守区|主攻|主守|防守区|进攻区)/.test(clause);
     const hasOutcomeCue = /(赢|输|获胜|失败|成功|失守|守住)/.test(clause);
-    const hasNegatedShortcutCue = /(不是|并非|不能|不可|不得|禁止).*(必然|一定|天然|自动|肯定|必定|只要.*就|所以|因此|从而)/.test(clause);
+    const hasNegatedShortcutCue = /(不是|并非|不能|不可|不得|禁止).*(必然|一定|天然|自动|肯定|必定|必胜|必败|只要.*就|所以|因此|从而|直接证明)/.test(clause);
     const hasHardDeterministicCue =
-      /(必然|一定|天然|自动|肯定|必定)/.test(clause) ||
-      /(?:所以|因此|从而).*(?:赢|输|获胜|失败|成功|失守|守住)/.test(clause) ||
+      /(必然|一定|天然|自动|肯定|必定|必胜|必败)/.test(clause) ||
+      /(?:没有覆盖|未覆盖|无覆盖|无有效布防|未布防|未部署).*(?:直接证明|直接说明).*(?:赢|输|获胜|失败|成功|失守|守住|证伪)/.test(clause) ||
       /只要.*就.*(?:赢|输|获胜|失败|成功|失守|守住)/.test(clause);
     return hasZoneRelation && hasOutcomeCue && hasHardDeterministicCue && !hasNegatedShortcutCue;
   });
@@ -4628,13 +4698,20 @@ function validateJudgeNarrativeField(input: {
     throw new Error(`${input.label} is too abstract.`);
   }
 
-  const hasActorCue =
-    [input.teamA.displayName, input.teamB.displayName].some((name) => normalized.includes(name)) ||
-    /(攻方|守方|进攻方|防守方|对手|本队|己方|敌方)/.test(normalized);
+  const hasActorCue = hasJudgeSideCue(normalized, input.teamA, input.teamB);
   const hasReasonCue = /(因为|导致|暴露|说明|证明|未能|使得|通过|从而|意味着|形成|守住|失守|验证)/.test(normalized);
   if (!hasActorCue || !hasReasonCue) {
     throw new Error(`${input.label} must name the side and explain why the gap or proposition matters.`);
   }
+}
+
+function hasJudgeSideCue(value: string, teamA: Team, teamB: Team): boolean {
+  return (
+    [teamA.displayName, teamB.displayName, teamA.id, teamB.id].some((name) => value.includes(name)) ||
+    /\bteam\s*(?:alpha|bravo)\b/i.test(value) ||
+    /\b(?:alpha|bravo)\b/i.test(value) ||
+    /(攻方|守方|进攻方|防守方|对手|本队|己方|敌方)/.test(value)
+  );
 }
 
 function validateJudgeDecisiveEvidence(input: {
@@ -4649,8 +4726,8 @@ function validateJudgeDecisiveEvidence(input: {
   }
 
   const hasActorCue =
-    [input.teamA.displayName, input.teamB.displayName].some((name) => normalized.includes(name)) ||
-    /(攻方|守方|进攻方|防守方|选手|队伍计划|行动|执行|下包|引爆|拆包|时间耗尽|清场|回防|补枪|推进|防守|进攻|协同|轮转|信息|布局|买型|经济)/.test(
+    hasJudgeSideCue(normalized, input.teamA, input.teamB) ||
+    /(选手|队伍计划|行动|执行|下包|引爆|拆包|时间耗尽|清场|回防|补枪|推进|防守|进攻|协同|轮转|信息|布局|买型|经济)/.test(
       normalized
     );
   const mentionedZones = collectMentionedPhase18Zones(normalized, input.mapSemanticContext);
@@ -4662,37 +4739,83 @@ function validateJudgeDecisiveEvidence(input: {
 function validateJudgeUnsupportedMicroCombatDetails(input: {
   reason: string;
   decisiveEvidence: string;
-  agentOutputs: AgentOutput[];
 }): void {
   for (const [label, text] of [
     ["reason", input.reason],
     ["diagnostic.decisiveEvidence", input.decisiveEvidence]
   ] as const) {
-    const unsupportedTerms = collectUnsupportedMicroCombatTerms(text, input.agentOutputs);
-    if (unsupportedTerms.length > 0) {
-      throw new Error(`Judge ${label} contains unsupported micro-combat detail: ${unsupportedTerms.join(", ")}`);
+    const unsupportedAssertions = collectUnsupportedMicroCombatAssertions(text);
+    if (unsupportedAssertions.length > 0) {
+      throw new Error(`Judge ${label} contains unsupported micro-combat detail: ${unsupportedAssertions.join(", ")}`);
     }
   }
 }
 
-function collectUnsupportedMicroCombatTerms(text: string, agentOutputs: AgentOutput[]): string[] {
-  const normalizedText = normalizeForJudgeReason(text);
-  const sourceTexts = agentOutputs.map((output) => normalizeForJudgeReason(output.action)).filter((value) => value.length > 0);
+function collectUnsupportedMicroCombatAssertions(text: string): string[] {
   const unsupported: string[] = [];
-  for (const rule of unsupportedMicroCombatDetailRules) {
-    if (!rule.pattern.test(normalizedText)) {
+  const clauses = splitJudgeEvidenceClauses(text);
+  for (const clause of clauses) {
+    const normalizedClause = normalizeForJudgeReason(clause);
+    if (isGuardedCombatReference(normalizedClause)) {
       continue;
     }
-    const supportedByAgentAction = sourceTexts.some((sourceText) => rule.pattern.test(sourceText));
-    if (!supportedByAgentAction) {
-      unsupported.push(rule.label);
+
+    const isFactualCombatClaim = hasUnsupportedCombatFactCue(normalizedClause);
+    if (!isFactualCombatClaim) {
+      continue;
+    }
+
+    for (const rule of unsupportedMicroCombatDetailRules) {
+      if (rule.pattern.test(normalizedClause)) {
+        unsupported.push(rule.label);
+      }
     }
   }
+
   return [...new Set(unsupported)];
 }
 
+function splitJudgeEvidenceClauses(text: string): string[] {
+  return text
+    .split(/\s*(?:[。；;，,]|但是|但|同时|并且|且|；|\n)\s*/u)
+    .map((clause) => clause.trim())
+    .filter((clause) => clause.length > 0);
+}
+
+function isGuardedCombatReference(normalizedClause: string): boolean {
+  if (
+    /(未|没有|无|无法|不能|不支持|不应|不可|不得|缺乏|仅|只是|并非|不是|未能|尚未).*(combat ledger|落库|支持|证明|显示|完成|发生|呈现|提供|支撑|事实)/.test(
+      normalizedClause
+    )
+  ) {
+    return true;
+  }
+  if (/(combat ledger|未落库|已落库|事实层|证据层).*(未|没有|无|无法|不能|不支持|缺乏|仅|只是|并非|不是|未能|尚未|支持|证明)/.test(normalizedClause)) {
+    return true;
+  }
+  if (/(teamplan|team plan|队伍计划|计划|要求|指令|目标|意图|试图|尝试|准备|期望|任务|写明|声明).*(秒|清点|清包点|击杀|首杀|多杀|封锁回防|锁死回防|架死|投掷物落点)/.test(normalizedClause)) {
+    return true;
+  }
+  if (/(秒|清点|清包点|击杀|首杀|多杀|封锁回防|锁死回防|架死|投掷物落点).*(计划|要求|指令|目标|意图|试图|尝试|准备|期望|任务|写明|声明)/.test(normalizedClause)) {
+    return true;
+  }
+  return false;
+}
+
+function hasUnsupportedCombatFactCue(normalizedClause: string): boolean {
+  if (/(成功|完成|最终|已经|已|直接|精准|精确|锁死|封锁|清空|清除|架死|首杀|多杀|双杀|三杀|团灭链|击杀链|补枪链)/.test(normalizedClause)) {
+    return true;
+  }
+  for (const rule of unsupportedMicroCombatDetailRules) {
+    if (rule.pattern.test(normalizedClause)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 const unsupportedMicroCombatDetailRules = [
-  { label: "秒级动作", pattern: /(?:\d+\s*秒|秒内|秒级|瞬间|立刻清|立即清|快速清点)/ },
+  { label: "秒级动作", pattern: /(?:(?:\d+\s*秒|秒内|秒级).*(?:清点|清包点|击杀|首杀|多杀|安包|下包|爆破|封锁|架死|交火)|(?:瞬间|立刻清|立即清|快速清点))/ },
   { label: "清点过程", pattern: /(?:清点|清包点|清空包点|清完|清除进攻者|清除防守者)/ },
   { label: "封锁回防路径", pattern: /(?:封锁回防|锁死回防|阻断回防|回防路径|回防通道)/ },
   { label: "精确枪线", pattern: /(?:精确枪线|精准枪线|架死|锁死.*(?:枪线|通道|入口)|长枪线)/ },
@@ -4742,10 +4865,23 @@ function collectMentionedPhase18Zones(reason: string, mapSemanticContext: Record
 }
 
 function mentionsZone(normalizedReason: string, zoneId: string, displayName: unknown): boolean {
-  if (normalizedReason.includes(normalizeForJudgeReason(zoneId))) {
+  if (mentionsNormalizedZoneAlias(normalizedReason, normalizeForJudgeReason(zoneId))) {
     return true;
   }
-  return typeof displayName === "string" && normalizedReason.includes(normalizeForJudgeReason(displayName));
+  return typeof displayName === "string" && mentionsNormalizedZoneAlias(normalizedReason, normalizeForJudgeReason(displayName));
+}
+
+function mentionsNormalizedZoneAlias(normalizedText: string, normalizedAlias: string): boolean {
+  if (!normalizedAlias) {
+    return false;
+  }
+  if (normalizedText.includes(normalizedAlias)) {
+    return true;
+  }
+
+  const compactText = normalizedText.replace(/\s+/g, "");
+  const compactAlias = normalizedAlias.replace(/\s+/g, "");
+  return compactAlias.length > 0 && compactText.includes(compactAlias);
 }
 
 function buildJudgePromptContext(input: {
@@ -5378,6 +5514,7 @@ function buildPhase18SchemaContract(schemaName: string): string {
       '只返回一个顶层对象：{"action":"<简洁战术动作>","confidence":0.0,"fingerprint":"<可选稳定标记>"}',
       "必填字段：action、confidence。",
       "confidence 必须是 0 到 1 之间的数字。",
+      "action 只能表达计划性动作、职责、路线、准备动作或观察/支援/牵制/转点意图；可以写节奏词和准备击杀意图，但不要写已经发生的击杀、清点完成、封锁回防或补枪残局。",
       "自然语言字段用中文表达，不要写成中英混杂句子。"
     ].join("\n");
   }
@@ -5403,8 +5540,8 @@ function buildPhase18SchemaContract(schemaName: string): string {
       "diagnostic.currentSubTheme 必须对应当前 round theme；mainAttackZoneId 和 mainDefenseZoneId 必须使用输入区域 id，不要写显示名。",
       "reason 是给人读的最终判词；diagnostic 是给系统审计、前端展示和 coach 复盘消费的结构化裁判事实。",
       "attackedOpportunityGap 和 defendedCoreProposition 不能只写抽象词，必须写出对象、缺口或成立点，以及为什么成立或失守。",
-      "decisiveEvidence 必须锚定已给定事实层：team_plan、agent_action、地图区域、买型、当前已公开摘要；不要补写未被支持的微观枪线、秒级动作、击杀链、清点过程或封锁回防路径。",
-      "如果要引用具体选手动作，只能引用 agent_action 中已经出现的动作；不要把宏观动作扩写成未落库的击杀、首杀、多杀、投掷物落点或精确枪线。",
+      "decisiveEvidence 必须锚定已给定事实层：team_plan、agent_action 的意图与职责、地图区域、买型、当前已公开摘要；不要补写未被支持的微观枪线、秒级动作、击杀链、清点过程或封锁回防路径。",
+      "agent_action 不是 combat ledger，不能被当作已经发生击杀、清点、封锁回防或补枪残局的事实来源。",
       "margin 必须严格是 narrow、standard、decisive 三者之一，不要使用 clear、close、solid、dominant 等同义词。",
       "margin=decisive 只允许在证据强到足以说明决定性成立时使用；否则使用 standard 或 narrow。",
       "reason 必须明确解释本局是如何赢的、胜方为什么成功、败方为什么失败，并保留‘成功/失败’或 succeeded/failed 这类稳定标记。",
@@ -5412,7 +5549,7 @@ function buildPhase18SchemaContract(schemaName: string): string {
       "如果 mainAttackZoneId 和 mainDefenseZoneId 不同，reason 或 diagnostic 必须解释这种区域关系如何接回计划执行、行动结果和胜负原因；不要只拼固定词。",
       "禁止把区域关系当作胜负捷径：守 A/打 A 不代表守方天然赢，守 A/打 B 不代表守方天然输，攻守同区或异区都必须回到事实链判断。",
       "合格区域表达示例：区域错位导致某命题未被检验；辅助区域只是路径证据，不改变主攻/主守焦点。",
-      "非法表达示例：因为打 B 守 A 所以攻方必胜；因为守方就在 A 所以防守天然合理；某选手三秒清点并锁死回防但事实层没有对应 agent_action 或 combat ledger。",
+      "非法表达示例：因为打 B 守 A 所以攻方必胜；因为守方就在 A 所以防守天然合理；agent_action 写了准备清点就断言包点已清空；某选手三秒清点并锁死回防但事实层没有 combat ledger。",
       "winnerTeamId 必须是输入两队之一，loserTeamId 必须是另一队。",
       "mvpAgentId 必须来自胜方 active roster，confidence 必须是 0 到 1 之间的数字。",
       "自然语言部分默认使用中文。",
@@ -5461,6 +5598,8 @@ function buildPhase18TaskInstruction(
         "任务说明：",
         "从 roleResponsibilities、teamPlan、playerDirective、proposalAnchor 和 coachContext 里，为这名选手选出一个具体动作。",
         "选手负责执行，不负责重新发明整队方案。动作必须具体到能影响回合，但保持单个选手动作的粒度。",
+        "只能写计划性动作、职责、路线、准备动作或观察/支援/牵制/转点意图；不要把意图写成已经发生的战斗结果。",
+        "可以写节奏词和准备击杀意图，但禁止写完成击杀、首杀、多杀、补枪残局、清点完成、清角完成、架死、锁死回防、封锁回援或具体投掷物落点。",
         "不要虚构隐藏情报、装备库存或无根据的故事背景。自然语言内容用中文。"
       ].join("\n");
     case "judge":
@@ -5473,7 +5612,8 @@ function buildPhase18TaskInstruction(
         "区域关系只能作为证据，不能作为规则。不能因为守方主守区就是被进攻区域就自动判守方更合理，也不能因为攻方避开主守区就自动判攻方更合理。",
         "只有当区域关系与双方计划执行、选手动作、回合结果和 CS 胜利方式一致时，才能把它作为裁判证据。",
         "必须返回完整 diagnostic：当前子命题、攻方打中的缺口、守方核心成立点、主攻区、主守区、决定性证据。",
-        "可以引用的证据只有：team_plan、agent_action、地图区域、买型、CS 胜利方式、已公开回合摘要；不要脑补未被支持的微观枪线、秒级交火、投掷物落点、清点过程、封锁回防路径或未落库击杀链。",
+        "可以引用的证据只有：team_plan、agent_action 的意图与职责、地图区域、买型、CS 胜利方式、已公开回合摘要；agent_action 不是 combat ledger，不能被当作已发生击杀、清点或封锁回防的事实来源。",
+        "不要脑补未被支持的微观枪线、秒级交火、投掷物落点、清点过程、封锁回防路径或未落库击杀链。",
         "如果证据只能支持标准胜或小胜，就不要写 decisive；decisive 必须说明为什么证据强到足以决定性成立。",
         "区域错位可以说明某命题未被检验，辅助区域可以作为路径证据，但二者都不能被写成自动胜负规则。",
         "reason 必须同时写出胜方成功与败方失败，不能只写单边赞美，也不能按队伍顺序、名气或比分领先做判断。",
@@ -5486,6 +5626,7 @@ function buildPhase18TaskInstruction(
         "只有当败方解释完整、结论仍然锚定当前子命题与核心裁判轴时，才保留原判。",
         "区域关系不能直接决定胜负；必须重新检查计划、行动、CS 胜利方式和商业命题之间是否真的一致。",
         "必须返回完整 diagnostic，并确保它与 reason、地图区域和当前 round theme 一致。",
+        "agent_action 只能作为意图与职责证据，不是 combat ledger；不得把它扩写成已发生的击杀、清点、封锁回防或补枪残局。",
         "如果上一版只是叙事性偏置或理由残缺，请直接纠正。自然语言内容用中文，不要夹英文分句。"
       ].join("\n");
     case "coach_timeout":
