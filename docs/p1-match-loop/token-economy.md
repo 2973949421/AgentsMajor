@@ -40,22 +40,22 @@ SubmittedOutput:
 根据本回合购买预算裁剪后的有效输出，进入 Judge、RoundReport、事件拆解和转播素材。
 ```
 
-### 2.3 可见上下文预算边界
+### 2.3 `visibleContextBudget` 兼容字段边界
 
-`visibleContextBudget` 是比赛内信息可见度预算，不是真实 API 输入 token 限额。
+`visibleContextBudget` 是历史兼容字段，不是真实 API 输入 token 限额。`Phase 2.0-pre` 不使用它按经济裁剪双方共同的公开输入。
 
 ```text
 真实 API 输入 token：
 工程成本和可观测性问题，由 LLM Driver / Observability 记录。
 
 visibleContextBudget：
-Agent 本回合能看到多少比赛上下文摘要，例如最近回合、地图摘要、暴露弱点和经济趋势。
+当前冻结为兼容字段，不参与经济闭环，不裁剪地图、比分、攻守方、公开历史、回合子命题等公开输入。
 
 outputBudget：
 Agent 本回合能提交给 Judge 的有效输出预算。
 ```
 
-经济系统可以制造信息差，但不能把真实供应商 token 限额、价格或模型上下文窗口混入比赛经济。
+经济系统不制造赛前公开输入差；它只制造有效提交差、文本火力差和论证完整度差。真实供应商 token 限额、价格或模型上下文窗口不能混入比赛经济。
 
 ### 2.4 不进入经济系统的内容
 
@@ -105,7 +105,7 @@ Agent 本回合能提交给 Judge 的有效输出预算。
 | 购买类型 | `buyType` | `BuyType` | 是 | fullBuy、halfBuy、eco、forceBuy、save。 |
 | 连败次数 | `lossStreak` | `number` | 是 | 连败补偿输入。 |
 | 可用暂停数 | `timeoutsRemaining` | `number` | 是 | Coach 相关资源。 |
-| 可见上下文预算 | `visibleContextBudget` | `number` | 否 | 本回合可见比赛上下文预算，不代表真实 API 输入 token 上限。 |
+| 兼容上下文字段 | `visibleContextBudget` | `number` | 否 | Phase 2.0-pre 兼容保留，不参与当前经济闭环，不裁剪公开输入。 |
 | 输出预算 | `outputBudget` | `number` | 否 | 本回合 SubmittedOutput 预算。 |
 | 创建时间 | `createdAt` | `string` | 是 | ISO 时间字符串。 |
 
@@ -201,7 +201,7 @@ Agent 主动低消耗，保留经济到后续回合
 1. 读取每个 active Agent 的 EconomyState。
 2. Agent 独立决定 buyType。
 3. 允许 Agent 之间执行 drop。
-4. 确认每个 Agent 的 spendBudget、visibleContextBudget、outputBudget。
+4. 确认每个 Agent 的 spendBudget、outputBudget；visibleContextBudget 仅保留兼容值，不参与当前经济闭环。
 5. 写入 economy_snapshot_created、buy_type_decided、drop_created 等事件。
 6. LLM Driver 完整生成 RawOutput。
 7. Output Gate 根据 spendBudget 裁剪 SubmittedOutput。
@@ -441,6 +441,8 @@ P1.2 需要产生或消费以下事件。
 }
 ```
 
+`visibleContextBudget` 在该 payload 中仅为历史兼容字段。Phase 2.0-pre 不得用它制造双方公开输入差。
+
 ### 11.3 `drop_created`
 
 记录 Agent 之间的 token 转移。
@@ -580,7 +582,7 @@ highlightTags
 完成 P1.2 后应满足：
 
 - 能解释每个 Agent 为什么是 fullBuy、halfBuy、eco、forceBuy 或 save。
-- 能从单个 Agent 的 `EconomyState` 推导本回合 `spendBudget`、`visibleContextBudget`、`outputBudget`。
+- 能从单个 Agent 的 `EconomyState` 推导本回合 `spendBudget` 与 `outputBudget`，并确认 `visibleContextBudget` 仅兼容保留。
 - 能验证 drop 不会让接收方超过 `agentTokenCap`。
 - 能验证 forceBuy 会花光或接近花光当前 Agent 经济。
 - 能验证 save 只消耗极少预算，并在回合结算后保留经济优势。

@@ -218,7 +218,7 @@ AgentsMajor/
 - Output Gate 裁剪。
 - income / loss bonus。
 - force buy、save、drop、timeout。
-- 根据经济决定上下文长度、active agent 数、timeout 可用性、信息可见度、输出预算。
+- 根据经济决定 buy type、Output Gate、timeout 可用性和输出预算；不根据经济裁剪双方共同的公开输入。
 - 不根据经济切换 `driverModelId`。`Agent` 是比赛角色，`LLM driver` 是执行引擎，两者通过调度层绑定，但不进入第一版经济平衡。
 
 ### Broadcast Engine
@@ -584,7 +584,7 @@ Force Buy: 低于 full buy 时主动花掉大部分或全部当前经济
 Save: 只花极少预算，保留经济到后续回合
 ```
 
-真实 LLM 调用完整生成 RawOutput；比赛内 Token 经济通过 Output Gate 裁剪 SubmittedOutput。Judge 只评价 SubmittedOutput 和可见经济状态，`driverModelId` 不因经济状态变化。
+真实 LLM 调用完整生成 RawOutput；比赛内 Token 经济通过 Output Gate 裁剪 SubmittedOutput。Judge 只评价 SubmittedOutput 和裁判结算层经济状态，`driverModelId` 不因经济状态变化。
 
 ### Buy Type 对提交输出的影响
 

@@ -107,6 +107,7 @@ export interface RoundEvidenceViewModel {
   teamPlans: TeamPlanEvidenceViewModel[];
   playerActions: PlayerActionEvidenceViewModel[];
   judge: JudgeEvidenceViewModel | null;
+  combatResolution: CombatResolutionEvidenceViewModel | null;
   emptyMessage?: string;
 }
 
@@ -165,6 +166,7 @@ export interface PlayerActionEvidenceViewModel {
   directiveLabelRaw: string;
   action: string;
   actionRaw: string;
+  actionSections: Array<{ label: string; value: string; rawValue: string }>;
   confidenceLabel: string;
   fingerprintLabel: string;
 }
@@ -179,10 +181,19 @@ export interface JudgeEvidenceViewModel {
   defenseWinConditionLabel: string;
   mvpLabel: string;
   confidenceLabel: string;
+  inference: JudgeInferenceEvidenceViewModel | null;
   diagnostic: JudgeDiagnosticEvidenceViewModel | null;
   diagnosticMissingLabel?: string;
   reason: string;
   reasonRaw: string;
+}
+
+export interface JudgeInferenceEvidenceViewModel {
+  sourceLabel: string;
+  boundary: string;
+  csResolution: string;
+  combatNarrative: string;
+  evidenceBasis: string[];
 }
 
 export interface JudgeDiagnosticEvidenceViewModel {
@@ -197,8 +208,20 @@ export interface JudgeDiagnosticEvidenceViewModel {
   mainDefenseZoneLabel: string;
   mainDefenseZoneId: string;
   zoneRelationLabel: string;
+  zoneRelationDetail: string;
   decisiveEvidence: string;
   decisiveEvidenceRaw: string;
+}
+
+export interface CombatResolutionEvidenceViewModel {
+  sourceLabel: string;
+  winTypeLabel: string;
+  killCountLabel: string;
+  survivorLabel: string;
+  bombEventLabel: string;
+  openingDuelLabel: string;
+  clutchLabel: string;
+  mvpEvidence: string;
 }
 
 export type MatchHudViewModel = BroadcastHudViewModel;
@@ -504,6 +527,7 @@ export function buildRoundEvidenceViewModel(input: {
       teamPlans: [],
       playerActions: [],
       judge: null,
+      combatResolution: null,
       emptyMessage: "当前还没有可审计的已提交回合。"
     };
   }
@@ -517,6 +541,7 @@ export function buildRoundEvidenceViewModel(input: {
   const teamPlans = buildTeamPlanEvidence(input.replay, roundReport.llmTeamPlans);
   const playerActions = buildPlayerActionEvidence(input.replay, roundReport.agentOutputs, roundReport.llmTeamPlans);
   const judge = buildJudgeEvidence(input.replay, roundReport);
+  const combatResolution = buildCombatResolutionEvidence(input.replay, roundReport);
 
   return {
     roundLabel: `R${input.currentRound.roundNumber}`,
@@ -526,6 +551,7 @@ export function buildRoundEvidenceViewModel(input: {
     teamPlans,
     playerActions,
     judge,
+    combatResolution,
     ...(teamPlans.length === 0 && playerActions.length === 0 && !judge && !coachTimeoutCorrection
       ? { emptyMessage: "当前回合还没有可审计的 LLM 事实链。" }
       : {})
@@ -669,6 +695,7 @@ function buildPlayerActionEvidence(
     .map((output) => {
       const agent = replay.agentsById[output.agentId];
       const directive = planByTeamId[output.teamId]?.playerDirectives.find((item: TeamDirective) => item.agentId === output.agentId)?.directive;
+      const actionSections = buildPlayerActionSections(output);
       return {
         agentId: output.agentId,
         teamId: output.teamId,
@@ -678,12 +705,36 @@ function buildPlayerActionEvidence(
         dutyLabel: buildDutyLabel(agent),
         directiveLabel: translateEvidenceText(directive ?? "这个已提交回合没有写入队伍计划事实；旧回合不会伪回填。"),
         directiveLabelRaw: directive ?? "",
-        action: translateEvidenceText(output.action),
-        actionRaw: output.action,
+        action: actionSections[0]?.value ?? translateEvidenceText(output.action ?? "旧回合没有结构化选手行动。"),
+        actionRaw: output.action ?? (output.actionDetail ? JSON.stringify(output.actionDetail, null, 2) : ""),
+        actionSections,
         confidenceLabel: formatConfidence(output.confidence),
         fingerprintLabel: output.rawFingerprint
       };
     });
+}
+
+function buildPlayerActionSections(output: LiveAgentOutput): PlayerActionEvidenceViewModel["actionSections"] {
+  if (!output.actionDetail) {
+    return [
+      {
+        label: "旧版行动",
+        value: translateEvidenceText(output.action ?? "旧回合没有结构化选手行动。"),
+        rawValue: output.action ?? ""
+      }
+    ];
+  }
+
+  const detail = output.actionDetail;
+  return [
+    { label: "本回合目标", value: translateEvidenceText(detail.roundObjective), rawValue: detail.roundObjective },
+    { label: "执行计划", value: translateEvidenceText(detail.executionPlan), rawValue: detail.executionPlan },
+    { label: "队友配合", value: translateEvidenceText(detail.coordinationPlan), rawValue: detail.coordinationPlan },
+    { label: "职责使用", value: translateEvidenceText(detail.roleResponsibilityUsage), rawValue: detail.roleResponsibilityUsage },
+    { label: "风险判断", value: translateEvidenceText(detail.riskRead), rawValue: detail.riskRead },
+    { label: "失败修正", value: translateEvidenceText(detail.contingencyPlan), rawValue: detail.contingencyPlan },
+    { label: "预期贡献", value: translateEvidenceText(detail.expectedContribution), rawValue: detail.expectedContribution }
+  ];
 }
 
 function buildJudgeEvidence(
@@ -693,6 +744,7 @@ function buildJudgeEvidence(
   const judge = roundReport.judgeResult;
   const mvpAgent = replay.agentsById[judge.mvpAgentId];
   const diagnostic = buildJudgeDiagnosticEvidence(roundReport);
+  const inference = buildJudgeInferenceEvidence(judge.judgeInference);
   const winMethod = toRoundWinMethod(judge.roundWinType);
   const winMethodMeta = WIN_METHOD_META[winMethod];
   return {
@@ -709,10 +761,27 @@ function buildJudgeEvidence(
         : "旧回合未归档",
     mvpLabel: mvpAgent?.displayName ?? judge.mvpAgentId,
     confidenceLabel: formatConfidence(judge.confidence),
+    inference,
     diagnostic,
     ...(diagnostic ? {} : { diagnosticMissingLabel: "旧回合未归档裁判诊断；不会根据判词伪造补齐。" }),
     reason: translateEvidenceText(judge.reason),
     reasonRaw: judge.reason
+  };
+}
+
+function buildJudgeInferenceEvidence(
+  inference: LiveReplayRound["roundReport"]["judgeResult"]["judgeInference"]
+): JudgeInferenceEvidenceViewModel | null {
+  if (!inference) {
+    return null;
+  }
+
+  return {
+    sourceLabel: "裁判推断",
+    boundary: translateEvidenceText(inference.boundary),
+    csResolution: translateEvidenceText(inference.csResolution),
+    combatNarrative: translateEvidenceText(inference.combatNarrative),
+    evidenceBasis: inference.evidenceBasis.map(translateEvidenceText)
   };
 }
 
@@ -733,12 +802,50 @@ function buildJudgeDiagnosticEvidence(roundReport: LiveReplayRound["roundReport"
     mainAttackZoneId: diagnostic.mainAttackZoneId,
     mainDefenseZoneLabel: formatZoneName(diagnostic.mainDefenseZoneId),
     mainDefenseZoneId: diagnostic.mainDefenseZoneId,
-    zoneRelationLabel:
-      diagnostic.mainAttackZoneId === diagnostic.mainDefenseZoneId
-        ? "主攻落点与守方命题焦点一致"
-        : "主攻落点与守方命题焦点不同，表示攻守双方围绕不同关键区交锋",
+    zoneRelationLabel: diagnostic.zoneRelation
+      ? translateZoneRelationType(diagnostic.zoneRelation.relationType)
+      : diagnostic.mainAttackZoneId === diagnostic.mainDefenseZoneId
+        ? "同区焦点"
+        : "跨区交锋",
+    zoneRelationDetail: diagnostic.zoneRelation
+      ? `${translateEvidenceText(diagnostic.zoneRelation.relationSummary)} ${translateEvidenceText(diagnostic.zoneRelation.outcomeImpact)}`
+      : diagnostic.mainAttackZoneId === diagnostic.mainDefenseZoneId
+        ? "主攻落点与守方命题焦点一致。"
+        : "主攻落点与守方命题焦点不同，表示攻守双方围绕不同关键区交锋。",
     decisiveEvidence: translateEvidenceText(diagnostic.decisiveEvidence),
     decisiveEvidenceRaw: diagnostic.decisiveEvidence
+  };
+}
+
+function buildCombatResolutionEvidence(
+  replay: LiveReplayData,
+  roundReport: LiveReplayRound["roundReport"]
+): CombatResolutionEvidenceViewModel | null {
+  const resolution = roundReport.roundCombatResolution;
+  if (!resolution) {
+    return null;
+  }
+  const teamAAlive = resolution.survivors.teamAAgentIds.length;
+  const teamBAlive = resolution.survivors.teamBAgentIds.length;
+  const bombEventLabel = resolution.defuseEvent
+    ? `下包后拆包：${resolution.defuseEvent.text}`
+    : resolution.explosionEvent
+      ? `下包后爆炸：${resolution.explosionEvent.text}`
+      : resolution.plantEvent
+        ? `已下包：${resolution.plantEvent.text}`
+        : "本局没有成功下包。";
+  const openingActor = resolution.openingDuel ? replay.agentsById[resolution.openingDuel.actorAgentId]?.displayName : null;
+  const openingTarget = resolution.openingDuel ? replay.agentsById[resolution.openingDuel.targetAgentId]?.displayName : null;
+
+  return {
+    sourceLabel: resolution.source === "judge_inference" ? "裁判推断映射" : "规则映射",
+    winTypeLabel: WIN_METHOD_META[toRoundWinMethod(resolution.roundWinType)].label,
+    killCountLabel: `${resolution.killEvents.length} 次击杀`,
+    survivorLabel: `${replay.teams.teamA.shortName} 存活 ${teamAAlive} / ${replay.teams.teamB.shortName} 存活 ${teamBAlive}`,
+    bombEventLabel,
+    openingDuelLabel: openingActor && openingTarget ? `${openingActor} 首杀 ${openingTarget}` : "无首杀映射",
+    clutchLabel: translateClutchTag(resolution.clutchTag ?? "none"),
+    mvpEvidence: translateEvidenceText(resolution.mvpEvidence)
   };
 }
 
@@ -754,6 +861,29 @@ function formatZoneName(zoneId: string): string {
     spawn_b: "CT 出生点"
   };
   return labels[zoneId] ?? zoneId.replaceAll("_", " ");
+}
+
+function translateZoneRelationType(type: string): string {
+  const labels: Record<string, string> = {
+    same_focus: "同区焦点",
+    cross_hit: "跨区打击",
+    split_pressure: "分压牵制",
+    failed_probe: "试探失败",
+    rotation_test: "轮转测试",
+    weak_side_hit: "弱侧命中"
+  };
+  return labels[type] ?? translateToken(type);
+}
+
+function translateClutchTag(tag: string): string {
+  const labels: Record<string, string> = {
+    none: "无残局标签",
+    one_v_x: "残局多打少",
+    retake: "回防拆包",
+    save_denial: "阻止保枪",
+    post_plant_hold: "下包后守包"
+  };
+  return labels[tag] ?? translateToken(tag);
 }
 
 function teamNameById(replay: LiveReplayData, teamId: string): string {

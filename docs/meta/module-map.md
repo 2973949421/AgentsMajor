@@ -18,7 +18,7 @@
 ```text
 比赛层关心：队伍（team）/ 智能体（agent）/ 角色（role）/ 地图（map）/ 回合（round）/ 裁判（judge）/ 事件（event）
 执行层关心：模型供应商（provider）/ 模型（model）/ 提示词（prompt）/ 解析器（parser）/ 重试（retry）/ 限流（rate limit）
-经济层关心：可见上下文预算（visible context budget）/ 激活智能体（active agent）数量 / 战术暂停（timeout）/ 信息可见度 / 输出预算
+经济层关心：Agent 经济 / buy type / Output Gate / 战术暂停（timeout）/ 输出预算 / SubmittedOutput；`visibleContextBudget` 仅为 Phase 2.0-pre 兼容冻结字段
 ```
 
 ## 2. 顶层模块总览
@@ -307,8 +307,8 @@ Phase 1.7 后：
 ### 8.3 经济影响（Economy Effects）
 
 - 单个 Agent 的购买预算。
-- 可见上下文预算（visibleContextBudget）。
-- 可见历史范围。
+- `visibleContextBudget` 兼容冻结字段，不参与 Phase 2.0-pre 经济闭环，不裁剪公开输入。
+- 公开历史摘要作为双方平等输入，不由经济裁剪。
 - 战术暂停（timeout）可用性。
 - 输出预算。
 - 输出闸门（Output Gate）裁剪。

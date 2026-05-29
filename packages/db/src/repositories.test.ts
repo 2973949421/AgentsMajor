@@ -7,6 +7,42 @@ import { describe, expect, it } from "vitest";
 import { createSqliteRepositories } from "./repositories.js";
 
 describe("sqlite repositories", () => {
+  it("round-trips optional prompt contract ids on llm calls", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-major-db-"));
+    const repositories = createSqliteRepositories(join(tempDir, "test.sqlite"));
+    try {
+      repositories.sqlite
+        .prepare(
+          "INSERT INTO driver_models (id, provider, model_name, capabilities_json, enabled, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+        )
+        .run("driver_prompt_contract", "fake", "fake", "[]", 1, "2026-05-01T00:00:00.000Z");
+
+      await repositories.llmCalls.save({
+        id: "llm_prompt_contract",
+        driverModelId: "driver_prompt_contract",
+        taskType: "judge",
+        promptHash: "hash_with_contract",
+        promptContractId: "phase20pre-prompt-contract-v1",
+        createdAt: "2026-05-01T00:00:00.000Z"
+      });
+      await repositories.llmCalls.save({
+        id: "llm_legacy_without_contract",
+        driverModelId: "driver_prompt_contract",
+        taskType: "judge",
+        promptHash: "legacy_hash",
+        createdAt: "2026-05-01T00:00:01.000Z"
+      });
+
+      expect(await repositories.llmCalls.getById("llm_prompt_contract")).toMatchObject({
+        promptContractId: "phase20pre-prompt-contract-v1"
+      });
+      expect((await repositories.llmCalls.getById("llm_legacy_without_contract"))?.promptContractId).toBeUndefined();
+    } finally {
+      repositories.close();
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("normalizes legacy primary roles without dropping closer secondary tags", async () => {
     const tempDir = mkdtempSync(join(tmpdir(), "agent-major-db-"));
     const repositories = createSqliteRepositories(join(tempDir, "test.sqlite"));
@@ -74,4 +110,3 @@ describe("sqlite repositories", () => {
     }
   });
 });
-

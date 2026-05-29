@@ -301,6 +301,7 @@ export const llmCalls = sqliteTable(
     driverModelId: text("driver_model_id").notNull().references(() => driverModels.id),
     taskType: text("task_type").notNull(),
     promptHash: text("prompt_hash"),
+    promptContractId: text("prompt_contract_id"),
     requestArtifactId: text("request_artifact_id").references(() => artifacts.id),
     responseArtifactId: text("response_artifact_id").references(() => artifacts.id),
     inputTokens: integer("input_tokens"),

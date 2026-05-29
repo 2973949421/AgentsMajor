@@ -357,7 +357,7 @@ materialRefJson.runtimeEnabled 在 Phase 1.7 必须为 false。
 | `buyType` | `text` | fullBuy / halfBuy / eco / forceBuy / save。 |
 | `lossStreak` | `integer` | 连败次数。 |
 | `timeoutsRemaining` | `integer` | 暂停数。 |
-| `visibleContextBudget` | `integer null` | 可见上下文预算。 |
+| `visibleContextBudget` | `integer null` | 兼容冻结字段；Phase 2.0-pre 不参与经济闭环，不裁剪公开输入。 |
 | `outputBudget` | `integer null` | 有效提交预算。 |
 | `createdAt` | `text` | 创建时间。 |
 

@@ -57,6 +57,7 @@ export interface WebRunLlmCallProgress {
   roundNumber: number;
   agentId?: string;
   driverModelId: string;
+  promptContractId?: string;
   status: WebRunLlmCallStatus;
   startedAt: string;
   latencyMs?: number;
@@ -770,6 +771,11 @@ function readLlmCalls(repositories: ReturnType<typeof createSqliteRepositories>,
       roundNumber: typeof payload.roundNumber === "number" ? payload.roundNumber : current?.roundNumber ?? 0,
       ...(payload.agentId ? { agentId: payload.agentId } : current?.agentId ? { agentId: current.agentId } : {}),
       driverModelId: payload.driverModelId ?? current?.driverModelId ?? "unknown",
+      ...(payload.promptContractId
+        ? { promptContractId: payload.promptContractId }
+        : current?.promptContractId
+          ? { promptContractId: current.promptContractId }
+          : {}),
       status: payload.status ?? current?.status ?? "started",
       startedAt: payload.startedAt ?? current?.startedAt ?? "",
       ...(typeof payload.latencyMs === "number" ? { latencyMs: payload.latencyMs } : current?.latencyMs ? { latencyMs: current.latencyMs } : {}),
@@ -817,6 +823,7 @@ function parseLlmCallPayload(value: unknown): Partial<WebRunLlmCallProgress> & {
       ...(typeof parsed.roundNumber === "number" ? { roundNumber: parsed.roundNumber } : {}),
       ...(typeof parsed.agentId === "string" ? { agentId: parsed.agentId } : {}),
       ...(typeof parsed.driverModelId === "string" ? { driverModelId: parsed.driverModelId } : {}),
+      ...(typeof parsed.promptContractId === "string" ? { promptContractId: parsed.promptContractId } : {}),
       ...(parsed.status === "started" || parsed.status === "completed" || parsed.status === "failed" ? { status: parsed.status } : {}),
       ...(typeof parsed.startedAt === "string" ? { startedAt: parsed.startedAt } : {}),
       ...(typeof parsed.latencyMs === "number" ? { latencyMs: parsed.latencyMs } : {}),

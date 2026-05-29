@@ -271,7 +271,13 @@ export const scorePairSchema = z.object({
 export type ScorePair = z.infer<typeof scorePairSchema>;
 
 export const agentActionDecisionSchema = z.object({
-  action: z.string().min(1),
+  roundObjective: z.string().min(1),
+  executionPlan: z.string().min(1),
+  coordinationPlan: z.string().min(1),
+  roleResponsibilityUsage: z.string().min(1),
+  riskRead: z.string().min(1),
+  contingencyPlan: z.string().min(1),
+  expectedContribution: z.string().min(1),
   confidence: z.number().min(0).max(1),
   fingerprint: z.string().min(1).optional()
 });
@@ -303,7 +309,8 @@ export const agentOutputSchema = z.object({
   teamId: z.string().min(1),
   role: z.string().min(1),
   driverModelId: z.string().min(1),
-  action: z.string().min(1),
+  action: z.string().min(1).optional(),
+  actionDetail: agentActionDecisionSchema.optional(),
   confidence: z.number().min(0).max(1),
   rawFingerprint: z.string().min(1)
 });
@@ -348,12 +355,32 @@ export const coachPostMatchReviewSchema = z.object({
 });
 export type CoachPostMatchReview = z.infer<typeof coachPostMatchReviewSchema>;
 
+export const judgeZoneRelationTypes = [
+  "same_focus",
+  "cross_hit",
+  "split_pressure",
+  "failed_probe",
+  "rotation_test",
+  "weak_side_hit"
+] as const;
+export type JudgeZoneRelationType = (typeof judgeZoneRelationTypes)[number];
+
+export const judgeZoneRelationSchema = z.object({
+  attackZoneId: z.string().min(1),
+  defenseZoneId: z.string().min(1),
+  relationType: z.enum(judgeZoneRelationTypes),
+  relationSummary: z.string().min(1),
+  outcomeImpact: z.string().min(1)
+});
+export type JudgeZoneRelation = z.infer<typeof judgeZoneRelationSchema>;
+
 export const judgeDiagnosticSchema = z.object({
   currentSubTheme: z.string().min(1),
   attackedOpportunityGap: z.string().min(1),
   defendedCoreProposition: z.string().min(1),
   mainAttackZoneId: z.string().min(1),
   mainDefenseZoneId: z.string().min(1),
+  zoneRelation: judgeZoneRelationSchema.optional(),
   decisiveEvidence: z.string().min(1)
 });
 export type JudgeDiagnostic = z.infer<typeof judgeDiagnosticSchema>;
@@ -367,6 +394,15 @@ export const judgeRoundWinTypes = [
 ] as const;
 export type JudgeRoundWinType = (typeof judgeRoundWinTypes)[number];
 
+export const judgeInferenceSchema = z.object({
+  source: z.literal("judge_inference"),
+  boundary: z.string().min(1),
+  csResolution: z.string().min(1),
+  combatNarrative: z.string().min(1),
+  evidenceBasis: stringArray
+});
+export type JudgeInference = z.infer<typeof judgeInferenceSchema>;
+
 export const judgeResultSchema = z.object({
   winnerTeamId: z.string().min(1),
   loserTeamId: z.string().min(1),
@@ -377,6 +413,7 @@ export const judgeResultSchema = z.object({
   reason: z.string().min(1),
   mvpAgentId: z.string().min(1),
   confidence: z.number().min(0).max(1),
+  judgeInference: judgeInferenceSchema.optional(),
   diagnostic: judgeDiagnosticSchema.optional()
 });
 export type JudgeResult = z.infer<typeof judgeResultSchema>;
@@ -546,9 +583,47 @@ export const roundKillLedgerEntrySchema = z.object({
   impact: z.string().min(1),
   keyEventId: z.string().optional(),
   sourceEventId: z.string().optional(),
+  tradeType: z.enum(["opening", "trade", "multi_kill", "clutch", "exit"]).optional(),
   sourceAgentOutputIds: stringArray.optional()
 });
 export type RoundKillLedgerEntry = z.infer<typeof roundKillLedgerEntrySchema>;
+
+export const roundBombEventSchema = z.object({
+  type: z.enum(["plant", "defuse", "explosion"]),
+  siteZoneId: z.string().min(1),
+  actorAgentId: z.string().min(1).optional(),
+  actorTeamId: z.string().min(1),
+  atMs: z.number().int().nonnegative(),
+  text: z.string().min(1)
+});
+export type RoundBombEvent = z.infer<typeof roundBombEventSchema>;
+
+export const roundCombatResolutionSchema = z.object({
+  source: z.enum(["judge_inference", "deterministic_resolution"]),
+  roundWinType: z.enum(judgeRoundWinTypes),
+  killEvents: z.array(roundKillLedgerEntrySchema),
+  plantEvent: roundBombEventSchema.optional(),
+  defuseEvent: roundBombEventSchema.optional(),
+  explosionEvent: roundBombEventSchema.optional(),
+  survivors: z.object({
+    teamAAgentIds: stringArray,
+    teamBAgentIds: stringArray
+  }),
+  openingDuel: z.object({
+    killEventId: z.string().min(1),
+    actorAgentId: z.string().min(1),
+    targetAgentId: z.string().min(1),
+    zoneId: z.string().min(1)
+  }).optional(),
+  tradeSequence: z.array(z.object({
+    killEventId: z.string().min(1),
+    tradeType: z.enum(["opening", "trade", "multi_kill", "clutch", "exit"]),
+    summary: z.string().min(1)
+  })),
+  clutchTag: z.enum(["none", "one_v_x", "retake", "save_denial", "post_plant_hold"]).optional(),
+  mvpEvidence: z.string().min(1)
+});
+export type RoundCombatResolution = z.infer<typeof roundCombatResolutionSchema>;
 
 export const agentEconomyDeltaSchema = z.object({
   agentId: z.string().min(1),
@@ -612,6 +687,7 @@ export const roundReportSchema = z.object({
   appliedCoachTimeoutCorrection: coachTimeoutCorrectionSchema.optional(),
   keyEvents: z.array(roundKeyEventSchema),
   killLedger: z.array(roundKillLedgerEntrySchema).optional(),
+  roundCombatResolution: roundCombatResolutionSchema.optional(),
   economyDelta: economyDeltaSchema,
   tokenSubmission: tokenSubmissionSchema,
   highlightTags: z.array(z.string()).optional(),
@@ -718,6 +794,7 @@ export const llmCallSchema = z.object({
   driverModelId: z.string().min(1),
   taskType: z.string().min(1),
   promptHash: z.string().optional(),
+  promptContractId: z.string().optional(),
   requestArtifactId: z.string().optional(),
   responseArtifactId: z.string().optional(),
   inputTokens: z.number().int().nonnegative().optional(),

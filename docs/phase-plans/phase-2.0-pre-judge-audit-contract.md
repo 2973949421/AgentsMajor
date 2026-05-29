@@ -124,12 +124,12 @@ judge 只能引用当前已给出的真实事实层：
 - `mapSemanticContext`
 - `judgeRubricContext`
 - `sideAssignment`
-- `buy type / economy tags`
+- 裁判结算层的 `buy type / economy tags`，它们不是双方参赛 prompt 的公开输入
 - 当前已公开的回合摘要
 
 如果 `mapSemanticContext`、`judgeRubricContext`、`team_plan`、`agent_action`、`reason` 或 `diagnostic` 出现明显中文编码损坏，当前 round 必须 fail。系统不能把乱码当作同义词容错，也不能继续把损坏上下文送入 judge。
 
-证据边界优先于文采。当前没有完整、可供 judge 引用的 combat ledger 时，judge 不得为了让 replay 更精彩而扩写微观战斗过程。
+证据边界优先于文采。Judge 可以在结算层读取双方真实经济和双方 `SubmittedOutput`，但不得引用 `RawOutput` 或被 Output Gate 裁掉的内容。当前没有完整、可供 judge 引用的 combat ledger 时，judge 不得为了让 replay 更精彩而扩写微观战斗过程。
 
 judge 不允许补写未被支持的微观事实，例如：
 

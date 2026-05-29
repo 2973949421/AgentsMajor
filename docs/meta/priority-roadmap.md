@@ -216,7 +216,7 @@ docs/p1-match-loop/token-economy.md
 
 关键勾稽：
 
-- 经济状态（EconomyState）约束 M05 单个 Agent 的购买、提交输出、上下文和预算。
+- 经济状态（EconomyState）约束 M05 单个 Agent 的购买、提交输出和预算；不裁剪双方共同的公开输入。
 - 经济事件（EconomyEvent）进入 M08。
 - 经济数据（EconomyStats）进入 M11。
 - 不影响 M04 驾驶员模型（driver model）。

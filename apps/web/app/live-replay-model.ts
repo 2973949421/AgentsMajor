@@ -93,6 +93,7 @@ export interface LiveReplayRoundReport {
   llmTeamPlans?: Record<string, LiveTeamPlan>;
   keyEvents: LiveRoundKeyEvent[];
   killLedger?: LiveRoundKillLedgerEntry[];
+  roundCombatResolution?: SourceRoundReport["roundCombatResolution"];
   economyDelta: {
     agents: EconomyRow[];
     teamTotals: {
@@ -515,6 +516,7 @@ function toLiveRound(item: RoundReplayItem, agentsById: Record<string, LiveRepla
             )
           }
         : {}),
+      ...(item.roundReport.roundCombatResolution ? { roundCombatResolution: item.roundReport.roundCombatResolution } : {}),
       economyDelta: {
         agents: item.roundReport.economyDelta.agents.map((row) => toEconomyRow(row, agentsById)),
         teamTotals: item.roundReport.economyDelta.teamTotals

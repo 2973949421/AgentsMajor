@@ -741,12 +741,24 @@ function RoundEvidencePanel({ evidence }: { evidence: RoundEvidenceViewModel }) 
                   </small>
                 </div>
                 <p>{action.action}</p>
+                <div className={styles.evidenceRawBlock}>
+                  {action.actionSections.slice(1).map((section) => (
+                    <small key={section.label}>
+                      {section.label}：{section.value}
+                    </small>
+                  ))}
+                </div>
                 <small>长期职责：{action.dutyLabel}</small>
                 <small>本回合指令：{action.directiveLabel}</small>
                 <details className={styles.evidenceRawDetails}>
                   <summary>查看原文</summary>
                   <div className={styles.evidenceRawBlock}>
-                    <small>原文行动：{action.actionRaw}</small>
+                    {action.actionSections.map((section) => (
+                      <small key={section.label}>
+                        原文{section.label}：{section.rawValue}
+                      </small>
+                    ))}
+                    <small>原始结构：{action.actionRaw}</small>
                     <small>原文指令：{action.directiveLabelRaw}</small>
                     <small>调试指纹：{action.fingerprintLabel}</small>
                   </div>
@@ -776,6 +788,13 @@ function RoundEvidencePanel({ evidence }: { evidence: RoundEvidenceViewModel }) 
                 <span>进攻方胜利条件：{evidence.judge.attackWinConditionLabel}</span>
                 <span>防守方胜利条件：{evidence.judge.defenseWinConditionLabel}</span>
               </div>
+              {evidence.judge.inference ? (
+                <div className={styles.judgeEvidenceMeta}>
+                  <span>来源边界：{evidence.judge.inference.sourceLabel}</span>
+                  <span>{evidence.judge.inference.boundary}</span>
+                  <span>{evidence.judge.inference.csResolution}</span>
+                </div>
+              ) : null}
               <p>{evidence.judge.reason}</p>
               {evidence.judge.diagnostic ? (
                 <div className={styles.judgeDiagnosticGrid}>
@@ -794,6 +813,7 @@ function RoundEvidencePanel({ evidence }: { evidence: RoundEvidenceViewModel }) 
                   <div>
                     <span>攻守关系说明</span>
                     <strong>{evidence.judge.diagnostic.zoneRelationLabel}</strong>
+                    <small>{evidence.judge.diagnostic.zoneRelationDetail}</small>
                   </div>
                   <div>
                     <span>攻方打中的缺口</span>
@@ -815,6 +835,13 @@ function RoundEvidencePanel({ evidence }: { evidence: RoundEvidenceViewModel }) 
                 <summary>查看原文</summary>
                 <div className={styles.evidenceRawBlock}>
                   <small>{evidence.judge.reasonRaw}</small>
+                  {evidence.judge.inference ? (
+                    <>
+                      <small>推断边界：{evidence.judge.inference.boundary}</small>
+                      <small>CS 结算：{evidence.judge.inference.csResolution}</small>
+                      <small>战斗叙事：{evidence.judge.inference.combatNarrative}</small>
+                    </>
+                  ) : null}
                   {evidence.judge.diagnostic ? (
                     <>
                       <small>原文子命题：{evidence.judge.diagnostic.currentSubThemeRaw}</small>
@@ -827,6 +854,26 @@ function RoundEvidencePanel({ evidence }: { evidence: RoundEvidenceViewModel }) 
                   ) : null}
                 </div>
               </details>
+            </article>
+          </section>
+        ) : null}
+
+        {evidence.combatResolution ? (
+          <section className={styles.evidenceSection}>
+            <div className={styles.evidenceSectionHeader}>
+              <span>战斗结算映射</span>
+              <small>{evidence.combatResolution.sourceLabel}</small>
+            </div>
+            <article className={styles.judgeEvidenceCard}>
+              <div className={styles.judgeEvidenceMeta}>
+                <span>胜利方式：{evidence.combatResolution.winTypeLabel}</span>
+                <span>击杀：{evidence.combatResolution.killCountLabel}</span>
+                <span>存活：{evidence.combatResolution.survivorLabel}</span>
+                <span>残局：{evidence.combatResolution.clutchLabel}</span>
+              </div>
+              <p>{evidence.combatResolution.bombEventLabel}</p>
+              <p>{evidence.combatResolution.openingDuelLabel}</p>
+              <p>{evidence.combatResolution.mvpEvidence}</p>
             </article>
           </section>
         ) : null}

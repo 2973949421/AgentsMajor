@@ -318,6 +318,43 @@ describe("Phase 1.9 watch view model", () => {
       casualtyDensityLabel: expect.any(String)
     });
   });
+
+  it("shows structured agent action sections when new RawOutput details exist", () => {
+    const replay = replayFixture();
+    const baseRound = replay.maps[0]!.rounds[0]!;
+    const currentRound = {
+      ...baseRound,
+      roundReport: {
+        ...baseRound.roundReport,
+        agentOutputs: baseRound.roundReport.agentOutputs.map((item, index) =>
+          index === 0
+            ? {
+                ...item,
+                actionDetail: {
+                  roundObjective: "本回合目标：用 Entry 职责建立第一接触压力。",
+                  executionPlan: "执行计划：按队伍窗口推进，不声明已经完成击杀。",
+                  coordinationPlan: "队友配合：等待 Support 闪光并保持可交易距离。",
+                  roleResponsibilityUsage: "职责使用：把先手职责转化为可审计的空间压力。",
+                  riskRead: "风险判断：如果第一波没有信息，不单人扩大承诺。",
+                  contingencyPlan: "失败修正：主线受阻时回撤等待二次组织。",
+                  expectedContribution: "预期贡献：提交清晰的进攻压力和协同证据。",
+                  confidence: 0.86,
+                  fingerprint: "structured-agent-a-1"
+                }
+              }
+            : item
+        )
+      }
+    };
+    const frame = buildRoundFrame(currentRound, 15000);
+    const evidence = buildRoundEvidenceViewModel({ replay, currentRound, frame });
+
+    expect(evidence.playerActions[0]?.actionSections).toHaveLength(7);
+    expect(evidence.playerActions[0]?.actionSections[0]).toMatchObject({
+      label: "本回合目标",
+      rawValue: "本回合目标：用 Entry 职责建立第一接触压力。"
+    });
+  });
 });
 
 function replayFixture(): LiveReplayData {

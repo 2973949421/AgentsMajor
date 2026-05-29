@@ -9,6 +9,8 @@
 - `agent_action` 当前不作为硬失败入口；模型偶尔写出偏微观的战术语言时，不直接中断 round。
 - `judge` 只能引用计划、行动意图、区域、买型、胜负方式和公开摘要之间的关系。
 - `agent_action` 不是 `combat ledger`，不能被 judge 当作已经发生击杀、清点或封锁回防的事实来源。
+- 经济只影响 `RawOutput -> SubmittedOutput` 后进入裁判的有效提交；`RawOutput` 和被 Output Gate 裁掉的内容不能作为裁判证据。
+- 双方 agent 的公开输入平等；己方经济属于队内私有信息，对手真实经济、买型和输出预算不是公开输入。
 
 ## Agent Action 推荐边界
 
@@ -27,6 +29,7 @@
 - 把 `agent_action` 的计划性动作扩写成已发生战斗事实。
 - 在没有正式 `kill/combat ledger` 输入时写玩家级微观战斗过程。
 - 用“某选手清点完成”“锁死回防路径”“完成击杀链”等细节支撑裁判结论。
+- 引用任一方 `RawOutput` 或被 Output Gate 裁剪掉的内容作为胜负证据。
 
 ## Judge 允许引用的微观词上下文
 

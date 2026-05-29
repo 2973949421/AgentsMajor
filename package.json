@@ -38,6 +38,7 @@
     "phase18:export": "pnpm build:cli && node packages/cli/dist/phase18.js export",
     "phase18:clean:dry": "node scripts/clean-phase18-runs.mjs",
     "phase18:clean": "node scripts/clean-phase18-runs.mjs --apply",
+    "economy:calibrate": "node scripts/economy-calibration-report.mjs",
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --sort typecheck"
   },

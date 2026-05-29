@@ -205,13 +205,14 @@ export class DashScopeOpenAiProvider implements LlmGateway {
         {
           role: "system",
           content:
-            "You repair structured outputs. Return only one valid json object. Do not include markdown, code fences, prose, comments, or copied input."
+            "You repair structured outputs. Return only one valid json object. Preserve every field required by the named schema. Do not summarize, compress, or downgrade the response. Do not include markdown, code fences, prose, comments, or copied input."
         },
         {
           role: "user",
           content: [
             `Repair this response into valid JSON for schema ${input.request.schemaName}.`,
             outputContract,
+            "Repair rule: keep the same schema shape. If the source contains long structured fields, fix syntax and escaping only. Do not replace it with a shorter legacy object.",
             "Original non-JSON response:",
             input.originalRawText
           ].join("\n")
@@ -219,7 +220,10 @@ export class DashScopeOpenAiProvider implements LlmGateway {
       ],
       stream: false,
       temperature: 0,
-      max_tokens: input.request.maxOutputTokens ?? resolveDriverModelConfig(input.request.driverModelId).defaultMaxOutputTokens,
+      max_tokens: Math.max(
+        input.request.maxOutputTokens ?? resolveDriverModelConfig(input.request.driverModelId).defaultMaxOutputTokens ?? 0,
+        1200
+      ),
       response_format: { type: "json_object" }
     });
 
@@ -339,10 +343,11 @@ function outputContractForSchema(schemaName: string): string {
     return [
       "Output contract:",
       "Return exactly one top-level JSON object with these fields:",
-      '{"action":"<one concise tactical action string>","confidence":0.0,"fingerprint":"<optional short stable string>"}',
-      "Required fields: action, confidence.",
+      '{"roundObjective":"<1-2 complete Chinese sentences>","executionPlan":"<1-2 complete Chinese sentences>","coordinationPlan":"<1-2 complete Chinese sentences>","roleResponsibilityUsage":"<1-2 complete Chinese sentences>","riskRead":"<1-2 complete Chinese sentences>","contingencyPlan":"<1-2 complete Chinese sentences>","expectedContribution":"<1-2 complete Chinese sentences>","confidence":0.0,"fingerprint":"<optional short stable string>"}',
+      "Required fields: roundObjective, executionPlan, coordinationPlan, roleResponsibilityUsage, riskRead, contingencyPlan, expectedContribution, confidence.",
       "Optional field: fingerprint.",
-      "Do not return actionDecision. Do not include roundId, agentId, mapName, role, buyType, sideContext, or other copied input fields.",
+      "Do not return the legacy action field. Do not return actionDecision. Do not include roundId, agentId, mapName, role, buyType, sideContext, or other copied input fields.",
+      "Each natural-language field must be specific but bounded to 1-2 sentences so the whole object stays valid JSON.",
       "confidence must be a number between 0 and 1."
     ].join("\n");
   }
@@ -363,10 +368,14 @@ function outputContractForSchema(schemaName: string): string {
     return [
       "Output contract:",
       "Return exactly one top-level JSON object with these fields:",
-      '{"winnerTeamId":"<teamAId or teamBId>","loserTeamId":"<the other team id>","margin":"narrow|standard|decisive","reason":"<brief reason>","mvpAgentId":"<agent id from the winning active roster>","confidence":0.0}',
-      "Required fields: winnerTeamId, loserTeamId, margin, reason, mvpAgentId, confidence.",
+      '{"winnerTeamId":"<teamAId or teamBId>","loserTeamId":"<the other team id>","margin":"narrow|standard|decisive","roundWinType":"attack_elimination|attack_bomb_explosion|defense_elimination|defense_timeout_no_plant|defense_defuse","attackWinConditionMet":true,"defenseWinConditionMet":false,"reason":"<Chinese judge ruling>","mvpAgentId":"<agent id from the winning active roster>","confidence":0.0,"judgeInference":{"source":"judge_inference","boundary":"<state that combat/result details are judge inference, not agent_action raw facts>","csResolution":"<CS win method resolution>","combatNarrative":"<inferred kills/plant/defuse/clearance if needed>","evidenceBasis":["<team_plan/agent_action/zone/economy basis>"]},"diagnostic":{"currentSubTheme":"<round subtheme>","attackedOpportunityGap":"<attack gap>","defendedCoreProposition":"<defense core>","mainAttackZoneId":"<zone id>","mainDefenseZoneId":"<zone id>","zoneRelation":{"attackZoneId":"<same as mainAttackZoneId>","defenseZoneId":"<same as mainDefenseZoneId>","relationType":"same_focus|cross_hit|split_pressure|failed_probe|rotation_test|weak_side_hit","relationSummary":"<why these zones are related>","outcomeImpact":"<how this relation affected the ruling>"},"decisiveEvidence":"<decisive evidence>"}}',
+      "Required fields: winnerTeamId, loserTeamId, margin, roundWinType, attackWinConditionMet, defenseWinConditionMet, reason, mvpAgentId, confidence, judgeInference, diagnostic.",
       "margin must be exactly one of: narrow, standard, decisive. Do not use clear, close, solid, dominant, or other synonyms.",
+      "roundWinType must be one of: attack_elimination, attack_bomb_explosion, defense_elimination, defense_timeout_no_plant, defense_defuse.",
+      "judgeInference.source must be exactly judge_inference and must mark combat/result details as judge inference rather than agent_action facts.",
+      "diagnostic.zoneRelation.attackZoneId must equal diagnostic.mainAttackZoneId; diagnostic.zoneRelation.defenseZoneId must equal diagnostic.mainDefenseZoneId.",
       "reason must explicitly name both teams and explain the winner success path plus the loser failure path.",
+      "For stable validation in Chinese, reason should include 成功 and 失败/未能.",
       "For stable validation, include succeeded and failed, or Chinese equivalents 成功 and 失败/未能, in reason.",
       "winnerTeamId must be one of the input team ids. loserTeamId must be the other team id.",
       "mvpAgentId must come from the winning team's active agent id list.",

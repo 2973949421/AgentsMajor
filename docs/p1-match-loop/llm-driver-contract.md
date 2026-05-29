@@ -375,7 +375,7 @@ glm-5
 说明：
 
 - 仲裁调用必须看到两个裁判的结构化判定。
-- 仲裁只能基于 `submittedOutput`、地图目标、经济状态、回合上下文和两份裁判意见。
+- 仲裁只能基于 `submittedOutput`、地图目标、裁判结算层经济状态、回合上下文和两份裁判意见。
 - 仲裁不能读取未提交的 `rawOutput`。
 
 ### 6.2 RoundReport 模型
@@ -886,7 +886,7 @@ artifactId
 - 双方 `submittedOutput`。
 - 地图目标。
 - 回合目标。
-- 经济状态。
+- 裁判结算层经济状态。
 - 关键上下文摘要。
 
 禁止输入：
@@ -916,7 +916,7 @@ artifactId
 - 两份 JudgeDecision。
 - 双方 `submittedOutput`。
 - 地图目标。
-- 经济状态。
+- 裁判结算层经济状态。
 
 输出：
 

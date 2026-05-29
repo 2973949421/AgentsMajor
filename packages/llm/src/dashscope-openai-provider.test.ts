@@ -185,7 +185,7 @@ describe("Phase 1.5 DashScope OpenAI provider", () => {
         seenBodies.push(JSON.parse(String(init?.body)));
         return new Response(
           JSON.stringify({
-            choices: [{ message: { content: "{\"action\":\"push A long\",\"confidence\":0.82}" } }],
+            choices: [{ message: { content: JSON.stringify(agentActionDecisionFixture()) } }],
             usage: { prompt_tokens: 20, completion_tokens: 8, total_tokens: 28 }
           }),
           { status: 200, headers: { "content-type": "application/json" } }
@@ -204,9 +204,59 @@ describe("Phase 1.5 DashScope OpenAI provider", () => {
     const promptText = ((seenBodies[0] as { messages?: Array<{ content?: string }> }).messages ?? [])
       .map((message) => message.content ?? "")
       .join("\n");
-    expect(promptText).toContain('"action"');
+    expect(promptText).toContain("roundObjective");
+    expect(promptText).toContain("executionPlan");
+    expect(promptText).toContain("expectedContribution");
     expect(promptText).toContain('"confidence"');
-    expect(promptText).toContain("Do not return actionDecision");
+    expect(promptText).toContain("Do not return the legacy action field");
+    expect(promptText).not.toContain('{"action"');
+  });
+
+  it("repairs truncated AgentActionDecision JSON without downgrading to legacy action", async () => {
+    const seenBodies: unknown[] = [];
+    const fixture = agentActionDecisionFixture();
+    const truncated = `${JSON.stringify(fixture).slice(0, -1)},`;
+    const provider = new DashScopeOpenAiProvider({
+      baseUrl: "https://example.test/v1",
+      apiKey: "secret-key",
+      maxRetries: 0,
+      fetchFn: async (_url, init) => {
+        seenBodies.push(JSON.parse(String(init?.body)));
+        const content = seenBodies.length === 1 ? truncated : JSON.stringify(fixture);
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content } }],
+            usage: { prompt_tokens: 20, completion_tokens: 8, total_tokens: 28 }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+    });
+
+    const response = await provider.generateStructured<typeof fixture>({
+      task: "agent_action",
+      driverModelId: "driver_kimi_k2_5",
+      input: { agentId: "agent-1" },
+      schemaName: "AgentActionDecision",
+      responseFormat: "json_object",
+      maxOutputTokens: 700
+    });
+
+    expect(response.data).toMatchObject({
+      roundObjective: fixture.roundObjective,
+      expectedContribution: fixture.expectedContribution
+    });
+    expect(response.structuredRepair).toMatchObject({
+      originalRawText: truncated,
+      repairRawText: JSON.stringify(fixture)
+    });
+    const repairBody = seenBodies[1] as { max_tokens?: number; messages?: Array<{ content?: string }> };
+    expect(repairBody.max_tokens).toBeGreaterThanOrEqual(1200);
+    const repairPrompt = (repairBody.messages ?? []).map((message) => message.content ?? "").join("\n");
+    expect(repairPrompt).toContain("Preserve every field required");
+    expect(repairPrompt).toContain("Do not replace it with a shorter legacy object");
+    expect(repairPrompt).toContain("roundObjective");
+    expect(repairPrompt).not.toContain('{"action"');
   });
 
   it("includes team_plan and anti-bias judge JSON contracts", async () => {
@@ -303,3 +353,17 @@ describe("Phase 1.5 DashScope OpenAI provider", () => {
     ).rejects.toMatchObject({ errorType: "timeout", retryable: true });
   });
 });
+
+function agentActionDecisionFixture() {
+  return {
+    roundObjective: "本回合目标：围绕队伍主计划建立第一接触压力。",
+    executionPlan: "执行计划：按队伍窗口推进并保持可交易距离。",
+    coordinationPlan: "配合计划：等待支援位资源后再扩大承诺。",
+    roleResponsibilityUsage: "职责使用：把先手职责转化为可审计的空间压力。",
+    riskRead: "风险判断：如果第一波没有信息，不单人扩大承诺。",
+    contingencyPlan: "失败修正：主线受阻时回撤等待二次组织。",
+    expectedContribution: "预期贡献：提交清晰的进攻压力和协同证据。",
+    confidence: 0.82,
+    fingerprint: "agent-action-v2-fixture"
+  };
+}

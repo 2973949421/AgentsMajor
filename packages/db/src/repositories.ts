@@ -451,6 +451,7 @@ CREATE TABLE IF NOT EXISTS llm_calls (
   driver_model_id text NOT NULL REFERENCES driver_models(id),
   task_type text NOT NULL,
   prompt_hash text,
+  prompt_contract_id text,
   request_artifact_id text REFERENCES artifacts(id),
   response_artifact_id text REFERENCES artifacts(id),
   input_tokens integer,
@@ -499,10 +500,12 @@ CREATE INDEX IF NOT EXISTS summaries_scope_idx ON summaries(scope_type, scope_id
   ensureSqliteColumn(sqlite, "round_reports", "llm_team_plans_json", "text");
   ensureSqliteColumn(sqlite, "round_reports", "applied_coach_timeout_correction_json", "text");
   ensureSqliteColumn(sqlite, "round_reports", "kill_ledger_json", "text");
+  ensureSqliteColumn(sqlite, "round_reports", "round_combat_resolution_json", "text");
   ensureSqliteColumn(sqlite, "round_reports", "judge_diagnostic_json", "text");
   ensureSqliteColumn(sqlite, "agents", "secondary_roles_json", "text");
   ensureSqliteColumn(sqlite, "agents", "role_profile_json", "text");
   ensureSqliteColumn(sqlite, "agents", "material_ref_json", "text");
+  ensureSqliteColumn(sqlite, "llm_calls", "prompt_contract_id", "text");
 }
 
 function ensureSqliteColumn(sqlite: SqliteDatabase, tableName: string, columnName: string, definition: string): void {
@@ -825,8 +828,8 @@ class RoundReportSqliteRepository implements RoundReportRepository {
     const item = roundReportSchema.parse(entity);
     this.sqlite
       .prepare(
-        `INSERT INTO round_reports (id, tournament_id, match_id, map_game_id, round_id, round_number, map_name, winner_team_id, score_before_round_json, score_after_round_json, judge_result_json, agent_outputs_json, llm_team_plans_json, applied_coach_timeout_correction_json, key_events_json, kill_ledger_json, economy_delta_json, token_submission_json, highlight_tags_json, judge_diagnostic_json, tactical_context_json, summary, event_projection_json, created_at)
-         VALUES (@id, @tournamentId, @matchId, @mapGameId, @roundId, @roundNumber, @mapName, @winnerTeamId, @scoreBeforeRoundJson, @scoreAfterRoundJson, @judgeResultJson, @agentOutputsJson, @llmTeamPlansJson, @appliedCoachTimeoutCorrectionJson, @keyEventsJson, @killLedgerJson, @economyDeltaJson, @tokenSubmissionJson, @highlightTagsJson, @judgeDiagnosticJson, @tacticalContextJson, @summary, @eventProjectionJson, @createdAt)
+        `INSERT INTO round_reports (id, tournament_id, match_id, map_game_id, round_id, round_number, map_name, winner_team_id, score_before_round_json, score_after_round_json, judge_result_json, agent_outputs_json, llm_team_plans_json, applied_coach_timeout_correction_json, key_events_json, kill_ledger_json, round_combat_resolution_json, economy_delta_json, token_submission_json, highlight_tags_json, judge_diagnostic_json, tactical_context_json, summary, event_projection_json, created_at)
+         VALUES (@id, @tournamentId, @matchId, @mapGameId, @roundId, @roundNumber, @mapName, @winnerTeamId, @scoreBeforeRoundJson, @scoreAfterRoundJson, @judgeResultJson, @agentOutputsJson, @llmTeamPlansJson, @appliedCoachTimeoutCorrectionJson, @keyEventsJson, @killLedgerJson, @roundCombatResolutionJson, @economyDeltaJson, @tokenSubmissionJson, @highlightTagsJson, @judgeDiagnosticJson, @tacticalContextJson, @summary, @eventProjectionJson, @createdAt)
          ON CONFLICT(id) DO UPDATE SET
          tournament_id = excluded.tournament_id, match_id = excluded.match_id, map_game_id = excluded.map_game_id,
          round_id = excluded.round_id, round_number = excluded.round_number, map_name = excluded.map_name,
@@ -834,7 +837,7 @@ class RoundReportSqliteRepository implements RoundReportRepository {
          score_after_round_json = excluded.score_after_round_json, judge_result_json = excluded.judge_result_json,
          agent_outputs_json = excluded.agent_outputs_json, llm_team_plans_json = excluded.llm_team_plans_json,
          applied_coach_timeout_correction_json = excluded.applied_coach_timeout_correction_json, key_events_json = excluded.key_events_json,
-         kill_ledger_json = excluded.kill_ledger_json,
+         kill_ledger_json = excluded.kill_ledger_json, round_combat_resolution_json = excluded.round_combat_resolution_json,
          economy_delta_json = excluded.economy_delta_json, token_submission_json = excluded.token_submission_json,
          highlight_tags_json = excluded.highlight_tags_json, judge_diagnostic_json = excluded.judge_diagnostic_json,
          tactical_context_json = excluded.tactical_context_json, summary = excluded.summary,
@@ -851,6 +854,7 @@ class RoundReportSqliteRepository implements RoundReportRepository {
           appliedCoachTimeoutCorrectionJson: stringifyOptional(item.appliedCoachTimeoutCorrection),
           keyEventsJson: JSON.stringify(item.keyEvents),
           killLedgerJson: stringifyOptional(item.killLedger),
+          roundCombatResolutionJson: stringifyOptional(item.roundCombatResolution),
           economyDeltaJson: JSON.stringify(item.economyDelta),
           tokenSubmissionJson: JSON.stringify(item.tokenSubmission),
           highlightTagsJson: stringifyOptional(item.highlightTags),
@@ -1134,12 +1138,12 @@ class LlmCallSqliteRepository implements LlmCallRepository {
     const item = llmCallSchema.parse(entity);
     this.sqlite
       .prepare(
-        `INSERT INTO llm_calls (id, tournament_id, match_id, round_id, agent_id, driver_model_id, task_type, prompt_hash, request_artifact_id, response_artifact_id, input_tokens, output_tokens, estimated_cost, created_at)
-         VALUES (@id, @tournamentId, @matchId, @roundId, @agentId, @driverModelId, @taskType, @promptHash, @requestArtifactId, @responseArtifactId, @inputTokens, @outputTokens, @estimatedCost, @createdAt)
+        `INSERT INTO llm_calls (id, tournament_id, match_id, round_id, agent_id, driver_model_id, task_type, prompt_hash, prompt_contract_id, request_artifact_id, response_artifact_id, input_tokens, output_tokens, estimated_cost, created_at)
+         VALUES (@id, @tournamentId, @matchId, @roundId, @agentId, @driverModelId, @taskType, @promptHash, @promptContractId, @requestArtifactId, @responseArtifactId, @inputTokens, @outputTokens, @estimatedCost, @createdAt)
          ON CONFLICT(id) DO UPDATE SET
          tournament_id = excluded.tournament_id, match_id = excluded.match_id, round_id = excluded.round_id,
          agent_id = excluded.agent_id, driver_model_id = excluded.driver_model_id, task_type = excluded.task_type,
-         prompt_hash = excluded.prompt_hash, request_artifact_id = excluded.request_artifact_id,
+         prompt_hash = excluded.prompt_hash, prompt_contract_id = excluded.prompt_contract_id, request_artifact_id = excluded.request_artifact_id,
          response_artifact_id = excluded.response_artifact_id, input_tokens = excluded.input_tokens,
          output_tokens = excluded.output_tokens, estimated_cost = excluded.estimated_cost, created_at = excluded.created_at`
       )
@@ -1358,6 +1362,7 @@ function mapRoundReport(row: Row) {
     ...optionalObject("appliedCoachTimeoutCorrection", parseOptionalJson(row.applied_coach_timeout_correction_json)),
     keyEvents: parseJson(row.key_events_json),
     ...optionalObject("killLedger", parseOptionalJson(row.kill_ledger_json)),
+    ...optionalObject("roundCombatResolution", parseOptionalJson(row.round_combat_resolution_json)),
     economyDelta: parseJson(row.economy_delta_json),
     tokenSubmission: parseJson(row.token_submission_json),
     ...optionalObject("highlightTags", parseOptionalJson(row.highlight_tags_json)),
@@ -1502,6 +1507,7 @@ function mapLlmCall(row: Row) {
     driverModelId: asString(row.driver_model_id),
     taskType: asString(row.task_type),
     promptHash: nullableString(row.prompt_hash),
+    promptContractId: nullableString(row.prompt_contract_id),
     requestArtifactId: nullableString(row.request_artifact_id),
     responseArtifactId: nullableString(row.response_artifact_id),
     inputTokens: nullableNumber(row.input_tokens),

@@ -25,6 +25,7 @@ export interface WebRunLlmCallProgress {
   roundNumber: number;
   agentId?: string;
   driverModelId: string;
+  promptContractId?: string;
   status: "started" | "completed" | "failed";
   startedAt: string;
   latencyMs?: number;
@@ -409,6 +410,7 @@ export function RunMatchControls({
                     <th>回合</th>
                     <th>任务</th>
                     <th>执行者</th>
+                    <th>契约</th>
                     <th>模型</th>
                     <th>状态</th>
                     <th>耗时</th>
@@ -421,6 +423,7 @@ export function RunMatchControls({
                       <td>R{call.roundNumber}</td>
                       <td>{formatTaskType(call.taskType)}</td>
                       <td>{formatLlmActor(call)}</td>
+                      <td>{call.promptContractId ?? "--"}</td>
                       <td>{call.driverModelId}</td>
                       <td>{call.repaired ? `${formatLlmStatus(call.status)} / 已修复` : formatLlmStatus(call.status)}</td>
                       <td>{typeof call.latencyMs === "number" ? `${call.latencyMs} ms` : "--"}</td>

@@ -513,6 +513,8 @@ site_execute_resolved 必须引用 JudgeResult、SubmittedOutput 或 RoundReport
 }
 ```
 
+`visibleContextBudget` 在该事件中仅为兼容冻结字段，Phase 2.0-pre 不得用它裁剪双方共同的公开输入。
+
 #### Drop 创建（drop_created）
 
 字段：`schemaVersion`、`roundId`、`fromAgentId`、`toAgentId`、`amount`、`reason`。

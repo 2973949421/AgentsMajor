@@ -805,7 +805,7 @@ Phase 1.6 后，`playNextRound` 的同步关键路径可扩展为：
 6. 根据计划构建双方各自可见的 Prompt Context。
 7. LLM Driver 生成 RawOutput。
 8. Output Gate 生成 SubmittedOutput。
-9. Judge 使用 SubmittedOutput + 战术计划摘要 + 经济状态做碰撞判定。
+9. Judge 使用 SubmittedOutput + 战术计划摘要 + 裁判结算层经济状态做碰撞判定。
 10. RoundReport 写入关键区域、战术碰撞结果和高光标签。
 ```
 
@@ -843,7 +843,7 @@ Judge 可以看到双方提交后的有效内容和必要战术摘要。
 ```text
 1. 每个 active Agent 决定 buyType。
 2. 处理 Drop。
-3. 计算 spendBudget、visibleContextBudget、outputBudget。
+3. 计算 spendBudget、outputBudget；visibleContextBudget 仅保留兼容值，不参与当前经济闭环。
 4. 写入 economy_snapshot_created。
 5. 写入 buy_type_decided。
 6. 如有 Drop，写入 drop_created。
@@ -866,13 +866,14 @@ Judge 可以看到双方提交后的有效内容和必要战术摘要。
 当前 Tournament / Match / MapGame / Round。
 当前地图主题和回合目标。
 当前比分。
-当前 EconomyPlan。
+当前 EconomyPlan（只包含本队真实经济；对手真实经济不进入参赛方 prompt）。
 当前 SideAssignment（Phase 1.6 后）。
 当前 AttackPlan / DefenseDeployment 摘要（Phase 1.6 后）。
 active Agent 档案。
 最近 2-3 个 RoundReport 摘要。
 map_summary。
 关键事件和暴露弱点。
+双方平等可见的公开历史摘要。
 ```
 
 上下文不应包含：
@@ -882,6 +883,7 @@ map_summary。
 真实 API Key。
 未提交的对手 RawOutput。
 已被 Output Gate 裁掉的内容。
+对手当前计划、对手 exact economy、对手 buyType、对手 outputBudget。
 ```
 
 输出：

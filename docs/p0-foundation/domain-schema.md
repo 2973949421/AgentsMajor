@@ -480,7 +480,7 @@ P0.1 只定义骨架，完整经济公式和策略由 `P1.2 Token 经济说明` 
 | 购买类型 | `buyType` | `BuyType` | 是 | full buy、eco 等。 |
 | 连败次数 | `lossStreak` | `number` | 是 | 经济补偿的输入之一。 |
 | 可用暂停数 | `timeoutsRemaining` | `number` | 是 | 教练暂停资源。 |
-| 可见上下文预算 | `visibleContextBudget` | `number` | 否 | 本回合可见比赛上下文预算，不代表真实 API 输入 token 上限。 |
+| 兼容上下文字段 | `visibleContextBudget` | `number` | 否 | Phase 2.0-pre 兼容冻结字段，不参与当前经济闭环，不裁剪公开输入。 |
 | 输出预算 | `outputBudget` | `number` | 否 | 本回合可用输出预算。 |
 | 创建时间 | `createdAt` | `string` | 是 | ISO 时间字符串。 |
 
@@ -991,7 +991,7 @@ RoundReport.highlightTags
 ```text
 EconomyState.tokenBank
 EconomyState.buyType
-EconomyState.visibleContextBudget
+EconomyState.visibleContextBudget（兼容冻结字段，不参与当前 Phase 2.0-pre 经济闭环）
 EconomyState.outputBudget
 ```
 
