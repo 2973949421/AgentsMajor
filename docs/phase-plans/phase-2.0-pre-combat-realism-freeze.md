@@ -218,6 +218,23 @@ combat synthesis 本身就是按固定索引配对生成击杀。
 - `K/D`（或 `K/D/A` 中的 `A` 暂留 `--`）
 - HP 占位
 - 总经济
+
+## 10. 2026-05-30 Stability Addendum
+
+最近完整真实样本 `phase18_run_mpqtbys9` 已经证明两件事必须先收口：
+
+- `combat_resolution` 作为 LLM 完整事实草案时失败率过高，不能作为默认运行路径。
+- 历史完整 run 必须可重复打开和审计，不能被最新 run 覆盖。
+
+因此 Phase 2.0-pre 当前硬约束补充如下：
+
+- 默认路径不调用 `combat_resolution` LLM；战斗事实由代码 deterministic resolver 生成并通过 validator 校验。
+- `combat_resolution` LLM 只能作为显式 opt-in 的草案增强层，且不是最终事实源。
+- 草案无效时不再产生每回合 repair 噪音；直接回退 deterministic resolver。
+- `plannedDemoWinnerSideForMap()` 只允许显式 demo/test fallback 使用，真实 LLM run 不能静默落入预设赢家。
+- `phase18_run_mpqtbys9` 保留为 Phase 2.0-pre 历史基准样本，用于回看、审计和稳定性对照；不得伪修复、覆盖或删除。
+
+这不是正式解冻 combat realism，而是把最不稳定的 LLM combat 链路从默认事实路径中移除。正式解冻仍需满足第 7 节条件。
 - 当前回合消费占位
 
 ## 10. Final Decision
@@ -229,3 +246,21 @@ combat synthesis 本身就是按固定索引配对生成击杀。
 但本轮不立即深修，先冻结；
 等经济系统、裁判约束、战术到战斗映射补一版后，再正式解冻处理。
 ```
+
+## 11. Limited Unfreeze For v4 Stability
+
+`phase20pre-prompt-contract-v5` 允许一次有限解冻，但范围只限于“上游条件补齐 + 代码验收 + 可回退 combat draft”，不是无条件深修节目级击杀真实感。
+
+允许实施：
+
+- 两段式 judge：`judge_verdict` 锁定胜法、区域、MVP 和 diagnostic，`judge_narrative` 只负责解释。
+- `combat_resolution` 受限草案：LLM 可以提出非固定 1v1 的击杀链、爆弹事件、存活列表和残局标签。
+- 代码校验器作为最终事实边界：校验胜法、生死、重复死亡、存活人数、下包/拆包/爆炸、区域一致性、`one_v_x` 条件和 MVP 击杀上限。
+- deterministic fallback：combat draft 或 repair 失败时回退确定性 resolver，round 仍可提交，并标记 `source = deterministic_fallback`。
+
+仍然禁止：
+
+- 让 LLM 绕过代码校验直接写最终 combat facts。
+- 前端伪造 HP、枪械、护甲、投掷物或雷达信息。
+- 为了观感让 `roundWinType`、judge reason、summary、kill feed 和 combat resolution 互相矛盾。
+- 把本次有限解冻扩大成完整枪械/HP/投掷物模拟。

@@ -39,6 +39,9 @@ describe("Phase 1.9 watch view model", () => {
       hpLabel: "--",
       totalEconomyLabel: "$6400",
       roundSpendLabel: "$1900",
+      lossCountLabel: "连败 0",
+      postureLabel: "FullBuy",
+      dropLabel: "--",
       highlight: "mvp"
     });
     expect(teamA.players[0]).not.toHaveProperty("metaLabel");
@@ -51,7 +54,7 @@ describe("Phase 1.9 watch view model", () => {
       kdaLabel: "2 / 2 / --",
       roundKillLabel: "1"
     });
-    expect(teamA.coachLabel).toContain("Coach zonic");
+    expect(teamA.coachLabel).toContain("教练 zonic");
     expect(teamA.proposalLabel).toContain("首位用户");
   });
 
@@ -166,10 +169,17 @@ describe("Phase 1.9 watch view model", () => {
       attackedOpportunityGap: "VitaLLMty 的第一用户定义不够集中",
       defendedCoreProposition: "Falcon-7B 守住了首位用户证明"
     });
+    expect(evidence.judge?.scorecard).toMatchObject({
+      winnerFromScoreLabel: "Falcon-7B",
+      scoreDeltaLabel: "1.15 分",
+      decisiveDimensionsLabel: "目标完成 / 命题证明"
+    });
+    expect(evidence.judge?.scorecard?.dimensions).toHaveLength(7);
+    expect(evidence.judge?.scorecardMissingLabel).toBeUndefined();
     expect(evidence.judge?.diagnosticMissingLabel).toBeUndefined();
   });
 
-  it("keeps old rounds without judge diagnostic explicit instead of fabricating audit facts", () => {
+  it("keeps old rounds without judge diagnostic or scorecard explicit instead of fabricating audit facts", () => {
     const replay = replayFixture();
     const currentRound = {
       ...replay.maps[0]!.rounds[0]!,
@@ -178,7 +188,8 @@ describe("Phase 1.9 watch view model", () => {
         judgeDiagnostic: undefined,
         judgeResult: {
           ...replay.maps[0]!.rounds[0]!.roundReport.judgeResult,
-          diagnostic: undefined
+          diagnostic: undefined,
+          judgeScorecard: undefined
         }
       }
     };
@@ -188,6 +199,8 @@ describe("Phase 1.9 watch view model", () => {
 
     expect(evidence.judge?.diagnostic).toBeNull();
     expect(evidence.judge?.diagnosticMissingLabel).toContain("旧回合未归档裁判诊断");
+    expect(evidence.judge?.scorecard).toBeNull();
+    expect(evidence.judge?.scorecardMissingLabel).toContain("旧裁判，无评分表");
   });
 
   it("derives different win methods and casualty densities from kill ledger shape", () => {
@@ -512,6 +525,7 @@ function roundFixture(input: {
         reason: "Falcon-7B 成功证明首位用户切口，VitaLLMty 未能守住反论点。",
         mvpAgentId: "agent-a-1",
         confidence: 0.82,
+        judgeScorecard: buildJudgeScorecardFixture(),
         diagnostic: {
           currentSubTheme: "用户定义战",
           attackedOpportunityGap: "VitaLLMty 的第一用户定义不够集中",
@@ -659,6 +673,69 @@ function output(agentId: string, teamId: string, role: string, action: string) {
     action,
     confidence: 0.82,
     rawFingerprint: `${agentId}-fp`
+  };
+}
+
+function buildJudgeScorecardFixture() {
+  const dimensions = [
+    "objectiveScore",
+    "mapControlScore",
+    "submissionQualityScore",
+    "coordinationScore",
+    "economyAdjustedScore",
+    "riskControlScore",
+    "proofScore"
+  ] as const;
+  const dimensionWeights = Object.fromEntries(dimensions.map((dimension) => [dimension, Number((1 / 7).toFixed(4))]));
+  const teamScore = (teamId: string, side: "attack" | "defense", totalScore: number) => {
+    const dimension = (source: string) => ({
+      score: totalScore,
+      evidence: `${teamId} 基于 team_plan、SubmittedOutput 和地图命题获得 ${totalScore} 分。`,
+      evidenceSource: source
+    });
+    return {
+      teamId,
+      side,
+      objectiveScore: dimension("round_context"),
+      mapControlScore: dimension("zone_relation"),
+      submissionQualityScore: dimension("submitted_output"),
+      coordinationScore: dimension("team_plan"),
+      economyAdjustedScore: dimension("economy"),
+      riskControlScore: dimension("round_context"),
+      proofScore: dimension("judge_rubric_context"),
+      totalScore
+    };
+  };
+  return {
+    rubricProfile: {
+      profileId: "rubric_fixture_dust2_r1",
+      baseVersion: "baseJudgeRubric-v1",
+      dimensions: [...dimensions],
+      dimensionWeights,
+      mapAdjustment: {
+        source: "judgeRubricContext",
+        applied: true,
+        summary: "Dust2 地图修正强调地图控制和命题证明。",
+        emphasizedDimensions: ["mapControlScore", "proofScore"]
+      },
+      roundAdjustment: {
+        source: "currentSubTheme",
+        subTheme: "用户定义战",
+        summary: "R1 用户定义战：重点检查目标完成与命题证明。",
+        emphasizedDimensions: ["objectiveScore", "proofScore"]
+      },
+      evidenceRequirements: ["必须引用双方 team_plan 和 SubmittedOutput。"],
+      forbiddenBiases: ["历史连胜偏置", "防守命题天然成立偏置"]
+    },
+    teamScores: {
+      "team-a": teamScore("team-a", "attack", 7.1),
+      "team-b": teamScore("team-b", "defense", 5.95)
+    },
+    scoreDelta: 1.15,
+    winnerFromScore: "team-a",
+    marginFromScore: "standard",
+    decisiveDimensions: ["objectiveScore", "proofScore"],
+    roundWinTypeJustification: "attack_elimination 与评分胜方一致。"
   };
 }
 

@@ -31,7 +31,7 @@ describe("Phase 1.6 tactical match chain", () => {
     const rounds = replay.maps.flatMap((mapReplay) => mapReplay.rounds);
     expect(rounds.length).toBeGreaterThan(0);
     expect(rounds.every((roundReplay) => Boolean(roundReplay.roundReport.tacticalContext))).toBe(true);
-    expect(rounds.every((roundReplay) => roundReplay.roundReport.summary.includes("Tactical:"))).toBe(true);
+    expect(rounds.every((roundReplay) => roundReplay.roundReport.summary.includes("战术碰撞："))).toBe(true);
     expect(rounds.every((roundReplay) => roundReplay.roundReport.keyEvents.some((event) => event.zoneId === roundReplay.roundReport.tacticalContext?.collision.primaryZoneId))).toBe(
       true
     );

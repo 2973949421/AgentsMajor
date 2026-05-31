@@ -100,6 +100,10 @@ export interface LiveReplayRoundReport {
       teamA: number;
       teamB: number;
     };
+    teamNetDelta?: {
+      teamA: number;
+      teamB: number;
+    };
   };
   highlightTags: string[];
   summary: string;
@@ -173,6 +177,13 @@ export interface EconomyRow {
   afterTokenBank: number;
   buyType: string;
   lossStreak: number;
+  lossCount?: number;
+  economyPosture?: string;
+  loadoutPackage?: string;
+  survived?: boolean;
+  dropSent?: number;
+  dropReceived?: number;
+  notes?: string[];
 }
 
 export interface VirtualZone {
@@ -519,7 +530,8 @@ function toLiveRound(item: RoundReplayItem, agentsById: Record<string, LiveRepla
       ...(item.roundReport.roundCombatResolution ? { roundCombatResolution: item.roundReport.roundCombatResolution } : {}),
       economyDelta: {
         agents: item.roundReport.economyDelta.agents.map((row) => toEconomyRow(row, agentsById)),
-        teamTotals: item.roundReport.economyDelta.teamTotals
+        teamTotals: item.roundReport.economyDelta.teamTotals,
+        ...(item.roundReport.economyDelta.teamNetDelta ? { teamNetDelta: item.roundReport.economyDelta.teamNetDelta } : {})
       },
       highlightTags: item.roundReport.highlightTags ?? [],
       summary: item.roundReport.summary
@@ -1066,7 +1078,14 @@ function toEconomyRow(row: SourceRoundReport["economyDelta"]["agents"][number], 
     reward: row.reward,
     afterTokenBank: row.afterTokenBank,
     buyType: row.buyType,
-    lossStreak: row.lossStreak
+    lossStreak: row.lossStreak ?? row.lossCount ?? 0,
+    ...(typeof row.lossCount === "number" ? { lossCount: row.lossCount } : {}),
+    ...(row.economyPosture ? { economyPosture: row.economyPosture } : {}),
+    ...(row.loadoutPackage ? { loadoutPackage: row.loadoutPackage } : {}),
+    ...(typeof row.survived === "boolean" ? { survived: row.survived } : {}),
+    ...(typeof row.dropSent === "number" ? { dropSent: row.dropSent } : {}),
+    ...(typeof row.dropReceived === "number" ? { dropReceived: row.dropReceived } : {}),
+    ...(row.notes ? { notes: row.notes } : {})
   };
 }
 

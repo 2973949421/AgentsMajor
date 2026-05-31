@@ -230,7 +230,8 @@ function roundReportFixture(): RoundReport {
     ],
     economyDelta: {
       agents: [],
-      teamTotals: { teamA: 4000, teamB: -3000 }
+      teamTotals: { teamA: 25000, teamB: 18000 },
+      teamNetDelta: { teamA: 4000, teamB: -3000 }
     },
     tokenSubmission: {
       activeAgentIds: ["agent-a"],

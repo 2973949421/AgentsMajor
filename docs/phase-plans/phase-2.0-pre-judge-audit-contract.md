@@ -13,15 +13,30 @@ judge 的职责固定为：
 
 ## 2. 输出分层
 
-每个真实 LLM judge 结果都必须同时返回两层内容：
+`phase20pre-prompt-contract-v5` 起，真实 LLM judge 拆成两段；`phase20pre-prompt-contract-v6` 起，`judge_verdict` 必须先产出评分表再产出裁决：
+
+- `judge_verdict`
+  - 短结构裁决
+  - 锁定 `winnerTeamId / loserTeamId / margin / roundWinType / attackWinConditionMet / defenseWinConditionMet / mvpAgentId / judgeScorecard / diagnostic`
+  - `judgeScorecard` 必须使用代码生成的 `rubricProfile`
+  - 不写长判词，不输出 `judgeInference`
+- `judge_narrative`
+  - 给人读的最终判词和裁判推断边界
+  - 只能解释已锁定 verdict，不能改变胜负、胜法、MVP 或区域焦点
+- 最终落库仍组合为兼容的 `JudgeResult`
+
+每个真实 LLM judge 最终结果都必须同时返回两层内容：
 
 - `reason`
   - 给人读的最终判词
   - 必须解释本局是怎么赢的、胜方为什么成功、败方为什么失败
 - `diagnostic`
   - 给系统审计、前端展示、coach 暂停修正与赛后复盘消费的结构化裁判事实
+- `judgeScorecard`
+  - 给系统审计、前端展示和赛后复盘消费的结构化评分表
+  - 必须解释 winner 与 margin 如何从分数得出
 
-仅有 `reason` 不算完成裁判输出。`diagnostic` 不能在后处理阶段从 `reason` 反推伪造。
+仅有 `reason` 不算完成裁判输出。`diagnostic` 不能在后处理阶段从 `reason` 反推伪造。新 run 中仅有 `diagnostic` 也不算完成裁判输出，必须有 `judgeScorecard`。
 
 ## 3. JudgeResult 必填字段
 
@@ -36,9 +51,53 @@ judge 的职责固定为：
 - `reason`
 - `mvpAgentId`
 - `confidence`
+- `judgeInference`
+- `judgeScorecard`
 - `diagnostic`
 
-### 3.1 胜负方式字段
+## 3.1 judgeScorecard 评分根基
+
+`judgeScorecard` 是新裁判主审计层，必须在 `judge_verdict` 阶段生成。评分表采用“全局根基 + 地图修正 + 回合修正”：
+
+- 全局根基固定为 `baseJudgeRubric-v1`
+- 地图修正只能来自 `judgeRubricContext`
+- 回合修正只能来自 `currentSubTheme / roundNumber / sideAssignment / economyPosture`
+- LLM 只能消费代码生成的 `rubricProfile`，不能自造评分标准
+
+固定 7 个评分维度：
+
+- `objectiveScore`
+- `mapControlScore`
+- `submissionQualityScore`
+- `coordinationScore`
+- `economyAdjustedScore`
+- `riskControlScore`
+- `proofScore`
+
+每个维度必须包含：
+
+- `score`：0-10
+- `evidence`：一句中文证据
+- `evidenceSource`：只能来自 `team_plan / submitted_output / economy / zone_relation / map_semantic_context / judge_rubric_context / round_context / combat_resolution / public_history`
+
+硬约束：
+
+- `teamScores` 必须同时包含双方
+- `totalScore` 必须等于各维度加权分
+- `winnerTeamId` 必须等于 `winnerFromScore`
+- `margin` 必须等于 `marginFromScore`
+- `dimensionWeights` 总和必须为 1
+- 单维度权重只能在基础等权附近有限浮动，不能出现地图黑箱偏置
+- `public_history` 不能作为直接评分证据，只能作为公开背景
+
+防偏置规则：
+
+- 防守方不能只凭 `defendedCoreProposition` 获胜，必须在当前回合证据中获得分数优势
+- 攻方的目标推进、区域突破、下包/全歼和有效提交质量必须被同等量化
+- 双方经济恢复后，历史连胜/连败不能影响分数
+- 不允许隐藏 comeback bonus、追分剧本或节目效果加分
+
+### 3.2 胜负方式字段
 
 `roundWinType` 只允许以下 5 种值：
 
@@ -129,9 +188,11 @@ judge 只能引用当前已给出的真实事实层：
 
 如果 `mapSemanticContext`、`judgeRubricContext`、`team_plan`、`agent_action`、`reason` 或 `diagnostic` 出现明显中文编码损坏，当前 round 必须 fail。系统不能把乱码当作同义词容错，也不能继续把损坏上下文送入 judge。
 
-证据边界优先于文采。Judge 可以在结算层读取双方真实经济和双方 `SubmittedOutput`，但不得引用 `RawOutput` 或被 Output Gate 裁掉的内容。当前没有完整、可供 judge 引用的 combat ledger 时，judge 不得为了让 replay 更精彩而扩写微观战斗过程。
+证据边界优先于文采。Judge 可以在结算层读取双方真实经济和双方 `SubmittedOutput`，但不得引用 `RawOutput` 或被 Output Gate 裁掉的内容。当前没有完整、可供 judge 引用的 combat ledger 时，judge 的微观战斗叙事只能停留在 `judgeInference`，并且必须明确是裁判推断；后续由 `roundCombatResolution` 代码校验器落成最终事实。
 
-judge 不允许补写未被支持的微观事实，例如：
+judge 允许在 `judgeInference` 中生成“裁判推断”的结果叙事，包括击杀、全歼、下包、拆包、回防等，但必须明确这些是结算层推断，不是 `agent_action` 原始事实。未标注推断边界的微观事实仍然非法。
+
+judge 不允许补写未被支持且未标注为裁判推断的微观事实，例如：
 
 - 精确枪线
 - 秒级交火顺序
@@ -166,6 +227,8 @@ judge 不允许补写未被支持的微观事实，例如：
 - `reason` 只夸胜方，不解释败方失败
 - `reason` 与 `diagnostic` 明显冲突
 - `reason` 把区域相同或不同当成自动胜负规则
+- `judge_narrative` 改变 `judge_verdict` 已锁定的胜负、胜法、MVP 或区域
+- `reason / judgeInference` 与 `roundWinType` 冲突，例如 `attack_elimination` 却把“成功下包爆炸”写成本局胜因
 - 输入或输出出现明显中文编码损坏
 - `reason` 或 `decisiveEvidence` 出现未被事实层支持的微观战斗细节
 - `margin` 或 `confidence` 与理由强度显著不匹配

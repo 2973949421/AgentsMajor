@@ -5,8 +5,13 @@ import {
   agentActionDecisionSchema,
   coachPostMatchReviewSchema,
   coachTimeoutCorrectionSchema,
+  combatResolutionDraftSchema,
   judgeDiagnosticSchema,
+  judgeRubricProfileSchema,
+  judgeScoreDimensions,
+  judgeNarrativeDecisionSchema,
   judgeResultSchema,
+  judgeVerdictDecisionSchema,
   teamInitialProposalSchema,
   teamInitialProposalSummarySchema,
   teamProposalAnchorSchema,
@@ -18,11 +23,20 @@ import {
   type BuyType,
   type CoachPostMatchReview,
   type CoachTimeoutCorrection,
+  type CombatResolutionDraft,
+  type EconomyPosture,
   type EconomyState,
   type Event,
   type JudgeDiagnostic,
+  type JudgeRubricProfile,
+  type JudgeScoreDimension,
+  type JudgeScoreDimensionWeights,
+  type JudgeScorecard,
+  type JudgeNarrativeDecision,
   type JudgeRoundWinType,
   type JudgeResult,
+  type JudgeVerdictDecision,
+  type LoadoutPackage,
   type MapGame,
   type Match,
   type ProjectedEvent,
@@ -33,6 +47,7 @@ import {
   type RoundKillLedgerEntry,
   type ScorePair,
   type SideAssignment,
+  type SubmittedAgentOutput,
   type Summary,
   type TacticalCollision,
   type Team,
@@ -83,7 +98,11 @@ export interface EngineContext {
   useLlmTeamPlans?: boolean;
   useLlmAgentActions?: boolean;
   useLlmJudgeResults?: boolean;
+  useLlmCombatResolution?: boolean;
+  useLlmCoachTimeouts?: boolean;
+  useLlmCoachPostMatchReviews?: boolean;
   useJudgeBiasGuardrail?: boolean;
+  allowPlannedDemoJudgeFallback?: boolean;
   phase18MapSemanticsByMapName?: Record<string, Record<string, unknown>>;
   eventSourceModule?: string;
 }
@@ -158,12 +177,16 @@ interface RoundGeneration {
   scoreAfterRound: ScorePair;
   teamABuyType: BuyType;
   teamBBuyType: BuyType;
+  teamEconomyPlans: Record<string, TeamEconomyPlan>;
+  buyDecisions: AgentBuyDecision[];
+  dropDecisions: DropDecision[];
   beforeEconomy: EconomyState[];
   economyStates: EconomyState[];
   economyDelta: RoundReport["economyDelta"];
   coachTimeout?: ResolvedCoachTimeout;
   teamPlans?: Record<string, TeamRoundPlanDecision>;
   agentOutputs: AgentOutput[];
+  submittedAgentOutputs: SubmittedAgentOutput[];
   judgeResult: JudgeResult;
   tacticalRound?: TacticalRoundGeneration;
   keyEvents: RoundKeyEvent[];
@@ -180,6 +203,45 @@ interface ResolvedCoachTimeout {
   responseArtifactId?: string;
   timeoutsRemainingBefore: number;
   timeoutsRemainingAfter: number;
+  tokenBankBefore: number;
+  tokenBankAfter: number;
+}
+
+interface DropDecision {
+  fromAgentId: string;
+  toAgentId: string;
+  amount: number;
+  reason: string;
+}
+
+interface AgentBuyDecision {
+  agentId: string;
+  teamId: string;
+  tokenBankBefore: number;
+  tokenBankAfterDrop: number;
+  buyType: BuyType;
+  economyPosture: EconomyPosture;
+  loadoutPackage: LoadoutPackage;
+  spend: number;
+  outputBudget: number;
+  dropSent: number;
+  dropReceived: number;
+  notes: string[];
+}
+
+type RoundEconomyPhase = "pistol_round" | "post_pistol" | "gun_round";
+
+interface TeamEconomyPlan {
+  teamId: string;
+  side: "attack" | "defense";
+  phase: RoundEconomyPhase;
+  lossCount: number;
+  posture: EconomyPosture;
+  postureReason: string;
+  summaryBuyType: BuyType;
+  totalCash: number;
+  dropDecisions: DropDecision[];
+  decisions: AgentBuyDecision[];
 }
 
 interface CommittedRoundGeneration {
@@ -217,8 +279,12 @@ interface Phase18JudgePromptContext {
   requestInput: {
     sideAssignment: SideAssignment;
     buyTypesByTeam: Record<string, BuyType>;
+    economyContextByTeam?: Record<string, { posture: EconomyPosture; lossCount: number; totalCash: number; postureReason: string }>;
+    competitiveParityNote?: string | undefined;
+    recentPublicRoundRecapPolicy?: string | undefined;
     mapSemanticContext?: Record<string, unknown>;
     judgeRubricContext?: Record<string, unknown>;
+    rubricProfile?: JudgeRubricProfile;
     evaluationOrder: Array<{
       teamId: string;
       teamName: string;
@@ -273,19 +339,19 @@ export function createPhase10SimulationEngine(): SimulationEngine {
 }
 
 export function createPhase11SimulationEngine(context: EngineContext): SimulationEngine {
-  return new Phase12SimulationEngine(context);
+  return new Phase12SimulationEngine({ ...context, allowPlannedDemoJudgeFallback: true });
 }
 
 export function createPhase12SimulationEngine(context: EngineContext): SimulationEngine {
-  return new Phase12SimulationEngine(context);
+  return new Phase12SimulationEngine({ ...context, allowPlannedDemoJudgeFallback: true });
 }
 
 export function createPhase13SimulationEngine(context: EngineContext): SimulationEngine {
-  return new Phase12SimulationEngine(context);
+  return new Phase12SimulationEngine({ ...context, allowPlannedDemoJudgeFallback: true });
 }
 
 export function createPhase16SimulationEngine(context: EngineContext): SimulationEngine {
-  return new Phase12SimulationEngine({ ...context, tacticalProtocol: "rule" });
+  return new Phase12SimulationEngine({ ...context, tacticalProtocol: "rule", allowPlannedDemoJudgeFallback: true });
 }
 
 export function createPhase18SimulationEngine(context: EngineContext): SimulationEngine {
@@ -296,7 +362,11 @@ export function createPhase18SimulationEngine(context: EngineContext): Simulatio
     useLlmTeamPlans: true,
     useLlmAgentActions: true,
     useLlmJudgeResults: true,
+    useLlmCombatResolution: false,
+    useLlmCoachTimeouts: true,
+    useLlmCoachPostMatchReviews: true,
     useJudgeBiasGuardrail: true,
+    allowPlannedDemoJudgeFallback: false,
     eventSourceModule: "core.phase18"
   });
 }
@@ -650,15 +720,34 @@ class Phase12SimulationEngine implements SimulationEngine {
     const allActive = [...activeA, ...activeB];
     const beforeEconomy: EconomyState[] = await Promise.all(
       allActive.map(async (agent) => {
-        if (isOvertimeEconomyResetRound(roundNumber)) {
+        if (isEconomyResetRound(roundNumber)) {
           return initialEconomy(agent, mapGame.id, now);
         }
 
         return (await this.context.repositories.economyStates.getLatestByAgent(agent.id, mapGame.id)) ?? initialEconomy(agent, mapGame.id, now);
       })
     );
-    const teamABuyType = decideTeamBuyType(beforeEconomy.filter((state) => state.teamId === teamA.id));
-    const teamBBuyType = decideTeamBuyType(beforeEconomy.filter((state) => state.teamId === teamB.id));
+    const recentRoundReports = (await this.context.repositories.roundReports.listByMapGame(mapGame.id)).slice(-3);
+    const recentPublicRoundSummaries = recentRoundReports.map((report) =>
+      buildNeutralPublicRoundSummary({
+        report,
+        teamA,
+        teamB
+      })
+    );
+    const teamEconomyPlans = decideTeamEconomyPlans({
+      roundNumber,
+      scoreBeforeRound,
+      teamA,
+      teamB,
+      activeA,
+      activeB,
+      beforeEconomy,
+      sideContext,
+      previousRoundReport: recentRoundReports.at(-1)
+    });
+    const teamABuyType = teamEconomyPlans[teamA.id]?.summaryBuyType ?? decideTeamBuyType(beforeEconomy.filter((state) => state.teamId === teamA.id));
+    const teamBBuyType = teamEconomyPlans[teamB.id]?.summaryBuyType ?? decideTeamBuyType(beforeEconomy.filter((state) => state.teamId === teamB.id));
     const round: Round = {
       id: roundId,
       mapGameId: mapGame.id,
@@ -675,6 +764,11 @@ class Phase12SimulationEngine implements SimulationEngine {
       [teamA.id, teamABuyType],
       [teamB.id, teamBBuyType]
     ]);
+    const buyDecisionByAgent = new Map(
+      Object.values(teamEconomyPlans)
+        .flatMap((plan) => plan.decisions)
+        .map((decision) => [decision.agentId, decision] as const)
+    );
     const sideAssignment = createSideAssignment({
       roundId,
       roundNumber,
@@ -682,8 +776,6 @@ class Phase12SimulationEngine implements SimulationEngine {
       teamBId: teamB.id,
       sideContext
     });
-    const recentRoundReports = (await this.context.repositories.roundReports.listByMapGame(mapGame.id)).slice(-3);
-    const recentPublicRoundSummaries = recentRoundReports.map((report) => report.summary);
     const coachTimeout = await this.resolveCoachTimeoutIfNeeded({
       match,
       mapGame,
@@ -732,6 +824,7 @@ class Phase12SimulationEngine implements SimulationEngine {
           activeA,
           activeB,
           buyTypeByTeam,
+          teamEconomyPlans,
           beforeEconomy,
           ...(tacticalPlans ? { tacticalPlans } : {}),
           recentPublicRoundSummaries,
@@ -748,9 +841,14 @@ class Phase12SimulationEngine implements SimulationEngine {
       sideContext,
       teamA,
       teamB,
-      buyTypeByTeam,
+      buyDecisionByAgent,
+      teamEconomyPlans,
       ...(teamPlans ? { teamPlans } : {}),
       ...(coachTimeout ? { coachTimeout } : {})
+    });
+    const submittedAgentOutputs = buildSubmittedAgentOutputs({
+      agentOutputs,
+      buyDecisionByAgent
     });
     const judgeResult = await this.judgeRound({
       match,
@@ -765,10 +863,11 @@ class Phase12SimulationEngine implements SimulationEngine {
       activeB,
       teamABuyType,
       teamBBuyType,
+      teamEconomyPlans,
       sideAssignment,
       ...(teamPlans ? { teamPlans } : {}),
       ...(coachTimeout ? { coachTimeout } : {}),
-      agentOutputs,
+      agentOutputs: submittedAgentOutputs,
       recentPublicRoundSummaries,
       recentWinnerTeamIds: recentRoundReports.map((report) => report.winnerTeamId)
     });
@@ -781,9 +880,13 @@ class Phase12SimulationEngine implements SimulationEngine {
     const economyDelta = calculateEconomyDelta({
       beforeEconomy,
       winnerTeamId,
+      loserTeamId,
       teamAId: teamA.id,
       teamBId: teamB.id,
-      buyTypeByTeam
+      roundWinType: judgeResult.roundWinType ?? "attack_elimination",
+      teamEconomyPlans,
+      activeA,
+      activeB
     });
     const economyStates = (economyDelta.agents as AgentEconomyDelta[]).map((delta) => economyStateFromDelta(delta, mapGame.id, roundId, now));
     const tacticalRound =
@@ -840,9 +943,13 @@ class Phase12SimulationEngine implements SimulationEngine {
           teamABuyType,
           teamBBuyType
         });
-    const roundCombatResolution = buildRoundCombatResolution({
+    const roundCombatResolution = await this.resolveRoundCombatResolution({
       roundId,
       roundNumber,
+      observabilityAttempt,
+      match,
+      mapGame,
+      round,
       winnerTeamId,
       loserTeamId,
       activeA,
@@ -872,18 +979,113 @@ class Phase12SimulationEngine implements SimulationEngine {
       scoreAfterRound,
       teamABuyType,
       teamBBuyType,
+      teamEconomyPlans,
+      buyDecisions: Object.values(teamEconomyPlans).flatMap((plan) => plan.decisions),
+      dropDecisions: Object.values(teamEconomyPlans).flatMap((plan) => plan.dropDecisions),
       beforeEconomy,
       economyStates,
       economyDelta,
       ...(coachTimeout ? { coachTimeout } : {}),
       ...(teamPlans ? { teamPlans } : {}),
       agentOutputs,
+      submittedAgentOutputs,
       judgeResult,
       ...(tacticalRound ? { tacticalRound } : {}),
       keyEvents,
       killLedger,
       roundCombatResolution
     };
+  }
+
+  private async resolveRoundCombatResolution(input: {
+    roundId: string;
+    roundNumber: number;
+    observabilityAttempt: number;
+    match: Match;
+    mapGame: MapGame;
+    round: Round;
+    winnerTeamId: string;
+    loserTeamId: string;
+    activeA: Agent[];
+    activeB: Agent[];
+    agentOutputs: AgentOutput[];
+    judgeResult: JudgeResult;
+    economyDelta: RoundReport["economyDelta"];
+    teamABuyType: BuyType;
+    teamBBuyType: BuyType;
+    keyEvents: RoundKeyEvent[];
+    tacticalCollision: TacticalCollision | undefined;
+  }): Promise<RoundCombatResolution> {
+    const deterministic = (source: "deterministic_resolution" | "deterministic_fallback") =>
+      buildRoundCombatResolution({ ...input, source });
+
+    if (!this.context.useLlmCombatResolution) {
+      return deterministic("deterministic_resolution");
+    }
+
+    const driverModelId = input.activeA[0]?.driverModelId ?? input.activeB[0]?.driverModelId ?? "";
+    const requestInput = buildCombatResolutionRequestInput(input);
+    const validateDraft = (data: unknown): RoundCombatResolution => {
+      const draft = combatResolutionDraftSchema.parse(data);
+      return materializeCombatDraft({
+        draft,
+        roundId: input.roundId,
+        activeA: input.activeA,
+        activeB: input.activeB,
+        judgeResult: input.judgeResult
+      });
+    };
+
+    try {
+      const response = await this.runObservedStructuredCall<RoundCombatResolution>({
+        callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_combat_resolution`,
+        attemptNumber: input.observabilityAttempt,
+        task: "combat_resolution",
+        schemaName: "CombatResolutionDraft",
+        driverModelId,
+        requestInput,
+        responseFormat: "json_object",
+        seed: `combat_resolution:${input.round.id}`,
+        modelTier: "cheap",
+        temperature: 0,
+        maxOutputTokens: 1100,
+        match: input.match,
+        mapGame: input.mapGame,
+        round: input.round,
+        roundNumber: input.roundNumber,
+        validateResponseData: validateDraft
+      });
+      return response.data;
+    } catch (error) {
+      const validationError = error instanceof Error ? error.message : String(error);
+      try {
+        const repair = await this.runObservedStructuredCall<RoundCombatResolution>({
+          callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_combat_resolution_repair`,
+          attemptNumber: input.observabilityAttempt,
+          task: "combat_resolution",
+          schemaName: "CombatResolutionDraft",
+          driverModelId,
+          requestInput: {
+            ...requestInput,
+            objective: "Repair the combat draft. Keep verdict facts unchanged and return a valid CombatResolutionDraft.",
+            validationError
+          },
+          responseFormat: "json_object",
+          seed: `combat_resolution_repair:${input.round.id}`,
+          modelTier: "cheap",
+          temperature: 0,
+          maxOutputTokens: 1100,
+          match: input.match,
+          mapGame: input.mapGame,
+          round: input.round,
+          roundNumber: input.roundNumber,
+          validateResponseData: validateDraft
+        });
+        return repair.data;
+      } catch {
+        return deterministic("deterministic_fallback");
+      }
+    }
   }
 
   private async commitRoundGeneration(generation: RoundGeneration): Promise<Round> {
@@ -1274,11 +1476,16 @@ class Phase12SimulationEngine implements SimulationEngine {
           economyDelta: generation.economyDelta,
           tokenSubmission: {
             activeAgentIds: generation.allActive.map((agent) => agent.id),
-            submittedOutputIds: generation.agentOutputs.map((output) => output.id),
-            totalOutputBudget: generation.economyStates.reduce((sum, state) => sum + (state.outputBudget ?? 0), 0),
+            submittedOutputIds: generation.submittedAgentOutputs.map((output) => output.id),
+            submittedOutputs: generation.submittedAgentOutputs,
+            totalOutputBudget: generation.submittedAgentOutputs.reduce((sum, output) => sum + output.outputBudget, 0),
             outputGate: {
               applied: true,
-              reason: "本地确定性输出闸门：按 active agent 数量与本回合买型态势限制输出预算。"
+              reason: "本地确定性 Output Gate：RawOutput 完整保留用于审计，Judge 只消费按个人经济态势裁剪后的 SubmittedOutput。",
+              teamPostures: {
+                [generation.teamA.id]: generation.teamEconomyPlans[generation.teamA.id]?.posture ?? "eco",
+                [generation.teamB.id]: generation.teamEconomyPlans[generation.teamB.id]?.posture ?? "eco"
+              }
             }
           },
           highlightTags,
@@ -1291,6 +1498,8 @@ class Phase12SimulationEngine implements SimulationEngine {
             teamB,
             mapName: mapGame.mapName,
             keyEvents: generation.keyEvents,
+            roundCombatResolution: generation.roundCombatResolution,
+            economyDelta: generation.economyDelta,
             scoreBeforeRound: generation.scoreBeforeRound,
             scoreAfterRound: generation.scoreAfterRound,
             sideContext: generation.sideContext,
@@ -1351,6 +1560,7 @@ class Phase12SimulationEngine implements SimulationEngine {
             mapGameId: mapGame.id,
             teamId: generation.coachTimeout.teamId,
             timeoutsRemaining: generation.coachTimeout.timeoutsRemainingAfter,
+            tokenBank: generation.coachTimeout.tokenBankAfter,
             lastTimeoutRoundNumber: generation.coachTimeout.triggerRoundNumber,
             updatedAt: now
           });
@@ -1766,6 +1976,7 @@ class Phase12SimulationEngine implements SimulationEngine {
         mapGameId: mapGame.id,
         teamId,
         timeoutsRemaining: 2,
+        tokenBank: cs2EconomyRules.coachInitialBank,
         updatedAt: now
       });
     }
@@ -1796,6 +2007,10 @@ class Phase12SimulationEngine implements SimulationEngine {
     if (!coachState || coachState.timeoutsRemaining <= 0) {
       return undefined;
     }
+    const coachTokenBank = coachState.tokenBank ?? cs2EconomyRules.coachInitialBank;
+    if (coachTokenBank < cs2EconomyRules.coachTimeoutCost) {
+      return undefined;
+    }
     if (input.roundNumber < coachTimeoutMinRoundNumber) {
       return undefined;
     }
@@ -1814,6 +2029,10 @@ class Phase12SimulationEngine implements SimulationEngine {
       teamBId: input.teamB.id
     });
     if (!triggerReason) {
+      return undefined;
+    }
+
+    if (!this.context.useLlmCoachTimeouts) {
       return undefined;
     }
 
@@ -1885,7 +2104,9 @@ class Phase12SimulationEngine implements SimulationEngine {
       correction: response.data,
       ...(response.responseArtifactId ? { responseArtifactId: response.responseArtifactId } : {}),
       timeoutsRemainingBefore: coachState.timeoutsRemaining,
-      timeoutsRemainingAfter: Math.max(0, coachState.timeoutsRemaining - 1)
+      timeoutsRemainingAfter: Math.max(0, coachState.timeoutsRemaining - 1),
+      tokenBankBefore: coachTokenBank,
+      tokenBankAfter: Math.max(0, coachTokenBank - cs2EconomyRules.coachTimeoutCost)
     };
   }
 
@@ -1904,6 +2125,10 @@ class Phase12SimulationEngine implements SimulationEngine {
   }
 
   private async generateCoachPostMatchReviewsIfNeeded(match: Match): Promise<void> {
+    if (!this.context.useLlmCoachPostMatchReviews) {
+      return;
+    }
+
     const [teamA, teamB] = (await Promise.all([
       required(this.context.repositories.teams.getById(match.teamAId), `Team not found: ${match.teamAId}`),
       required(this.context.repositories.teams.getById(match.teamBId), `Team not found: ${match.teamBId}`)
@@ -2068,6 +2293,18 @@ class Phase12SimulationEngine implements SimulationEngine {
       },
       createdAt: startedAt
     });
+    await this.context.repositories.llmCalls.save(removeUndefined({
+      id: input.callId,
+      tournamentId: input.match.tournamentId,
+      matchId: input.match.id,
+      driverModelId: input.driverModelId,
+      taskType: input.task,
+      promptContractId,
+      promptHash,
+      requestArtifactId,
+      status: "started",
+      createdAt: startedAt
+    }));
 
     let latestResponse: LlmResponse<TData> | undefined;
     try {
@@ -2127,6 +2364,10 @@ class Phase12SimulationEngine implements SimulationEngine {
         responseArtifactId,
         inputTokens: validatedResponse.usage.promptTokens,
         outputTokens: validatedResponse.usage.completionTokens,
+        status: "completed",
+        completedAt,
+        latencyMs: Date.parse(completedAt) - Date.parse(startedAt),
+        repaired: Boolean(validatedResponse.structuredRepair),
         createdAt: startedAt
       }));
       await this.appendEvent({
@@ -2198,6 +2439,11 @@ class Phase12SimulationEngine implements SimulationEngine {
         responseArtifactId,
         inputTokens: failedUsage?.promptTokens,
         outputTokens: failedUsage?.completionTokens,
+        status: "failed",
+        error: errorMessage,
+        completedAt: failedAt,
+        latencyMs: Date.parse(failedAt) - Date.parse(startedAt),
+        repaired: Boolean(latestResponse?.structuredRepair),
         createdAt: startedAt
       }));
       await this.appendEvent({
@@ -2244,6 +2490,7 @@ class Phase12SimulationEngine implements SimulationEngine {
     activeA: Agent[];
     activeB: Agent[];
     buyTypeByTeam: Map<string, BuyType>;
+    teamEconomyPlans: Record<string, TeamEconomyPlan>;
     beforeEconomy: EconomyState[];
     tacticalPlans?: RuleBasedTacticalPlans;
     recentPublicRoundSummaries: string[];
@@ -2281,6 +2528,10 @@ class Phase12SimulationEngine implements SimulationEngine {
           sideAssignment: input.sideAssignment,
           scoreBeforeRound: input.scoreBeforeRound,
           buyType: input.buyTypeByTeam.get(side.team.id) ?? "eco",
+          economyPosture: input.teamEconomyPlans[side.team.id]?.posture ?? "eco",
+          roundEconomyPhase: input.teamEconomyPlans[side.team.id]?.phase ?? resolveRoundEconomyPhase(input.round.roundNumber),
+          economyPostureReason: input.teamEconomyPlans[side.team.id]?.postureReason ?? "默认经济态势。",
+          teamLossCount: input.teamEconomyPlans[side.team.id]?.lossCount ?? 1,
           teamEconomy: sumEconomyByTeam(input.beforeEconomy, side.team.id),
           activeAgents: side.activeAgents.map((agent) => ({
             id: agent.id,
@@ -2288,8 +2539,16 @@ class Phase12SimulationEngine implements SimulationEngine {
             role: agent.role,
             secondaryRoles: agent.secondaryRoles ?? [],
             roleResponsibilities: agent.roleProfile?.agentMajorResponsibilities ?? [],
-            baseProfile: agent.baseProfile
+            baseProfile: agent.baseProfile,
+            tokenBank: input.beforeEconomy.find((state) => state.agentId === agent.id)?.tokenBank ?? 0,
+            currentBuyType: input.teamEconomyPlans[side.team.id]?.decisions.find((decision) => decision.agentId === agent.id)?.buyType ?? "eco",
+            currentPosture: input.teamEconomyPlans[side.team.id]?.decisions.find((decision) => decision.agentId === agent.id)?.economyPosture ?? "eco",
+            loadoutPackage:
+              input.teamEconomyPlans[side.team.id]?.decisions.find((decision) => decision.agentId === agent.id)?.loadoutPackage ??
+              "pistol_eco_pack"
           })),
+          dropPlan: input.teamEconomyPlans[side.team.id]?.dropDecisions ?? [],
+          competitiveParityNote: buildCompetitiveParityNote(input.teamEconomyPlans, side.team.id),
           tacticalHint:
             teamSide === "attack"
               ? input.tacticalPlans?.attackPlan
@@ -2329,13 +2588,15 @@ class Phase12SimulationEngine implements SimulationEngine {
     sideContext: SideContext;
     teamA: Team;
     teamB: Team;
-    buyTypeByTeam: Map<string, BuyType>;
+    buyDecisionByAgent: Map<string, AgentBuyDecision>;
+    teamEconomyPlans: Record<string, TeamEconomyPlan>;
     teamPlans?: Record<string, TeamRoundPlanDecision>;
     coachTimeout?: ResolvedCoachTimeout;
   }): Promise<AgentOutput[]> {
     const outputs: AgentOutput[] = [];
     for (const agent of input.agents) {
-      const buyType = input.buyTypeByTeam.get(agent.teamId) ?? "eco";
+      const buyDecision = input.buyDecisionByAgent.get(agent.id);
+      const buyType = buyDecision?.buyType ?? "eco";
       const posture = sideForTeam(agent.teamId, input.teamA.id, input.sideContext.activeSide) === "active" ? "active-side" : "reactive-side";
       const agentTeam = agent.teamId === input.teamA.id ? input.teamA : input.teamB;
       const opponentTeam = agent.teamId === input.teamA.id ? input.teamB : input.teamA;
@@ -2372,6 +2633,13 @@ class Phase12SimulationEngine implements SimulationEngine {
         playerDirective,
         ...(coachAdjustment ? { coachAdjustment } : {}),
         buyType,
+        economyPosture: buyDecision?.economyPosture ?? input.teamEconomyPlans[agent.teamId]?.posture ?? "eco",
+        roundEconomyPhase: input.teamEconomyPlans[agent.teamId]?.phase ?? resolveRoundEconomyPhase(input.round.roundNumber),
+        economyPostureReason: input.teamEconomyPlans[agent.teamId]?.postureReason ?? "默认经济态势。",
+        loadoutPackage: buyDecision?.loadoutPackage ?? "pistol_eco_pack",
+        outputBudget: buyDecision?.outputBudget ?? 180,
+        economyIntent: teamPlan?.economyIntent,
+        competitiveParityNote: buildCompetitiveParityNote(input.teamEconomyPlans, agent.teamId),
         posture,
         sideContext: input.sideContext
       };
@@ -2416,7 +2684,7 @@ class Phase12SimulationEngine implements SimulationEngine {
         confidence: 0.72 + (stableNumber(agent.id, 18) / 100),
         fingerprint: response.data.fingerprint ?? stableHex(`${input.round.id}:${agent.id}`)
       };
-      const actionDetail = llmDecision ?? fallbackActionDetail;
+      const actionDetail = normalizeAgentActionDecision(llmDecision ?? fallbackActionDetail);
       const output = {
         id: `out_${input.round.id}_${agent.id}`,
         agentId: agent.id,
@@ -2446,6 +2714,7 @@ class Phase12SimulationEngine implements SimulationEngine {
     activeB: Agent[];
     teamABuyType: BuyType;
     teamBBuyType: BuyType;
+    teamEconomyPlans: Record<string, TeamEconomyPlan>;
     sideAssignment: SideAssignment;
     teamPlans?: Record<string, TeamRoundPlanDecision>;
     coachTimeout?: ResolvedCoachTimeout;
@@ -2454,10 +2723,20 @@ class Phase12SimulationEngine implements SimulationEngine {
     recentWinnerTeamIds: string[];
   }): Promise<JudgeResult> {
     if (this.context.useLlmJudgeResults) {
-      const judgePromptContext = buildJudgePromptContext({
-        roundId: input.round.id,
+      const mapSemanticContext = readPhase18MapSemanticContext(this.context, input.mapGame.mapName);
+      const judgeRubricContext = readPhase18JudgeRubricContext(this.context, input.mapGame.mapName);
+      const rubricProfile = buildJudgeRubricProfile({
+        mapName: input.mapGame.mapName,
         roundNumber: input.roundNumber,
         sideAssignment: input.sideAssignment,
+        teamEconomyPlans: input.teamEconomyPlans,
+        mapSemanticContext,
+        judgeRubricContext
+      });
+      const judgePromptContext = buildJudgePromptContext({
+          roundId: input.round.id,
+          roundNumber: input.roundNumber,
+          sideAssignment: input.sideAssignment,
         scoreBeforeRound: input.scoreBeforeRound,
         teamA: input.teamA,
         teamB: input.teamB,
@@ -2465,78 +2744,58 @@ class Phase12SimulationEngine implements SimulationEngine {
         activeB: input.activeB,
         teamABuyType: input.teamABuyType,
         teamBBuyType: input.teamBBuyType,
-        ...(input.teamPlans ? { teamPlans: input.teamPlans } : {}),
-        agentOutputs: input.agentOutputs,
-        recentPublicRoundSummaries: input.recentPublicRoundSummaries
-      });
+          teamEconomyPlans: input.teamEconomyPlans,
+          ...(input.teamPlans ? { teamPlans: input.teamPlans } : {}),
+          agentOutputs: input.agentOutputs,
+          recentPublicRoundSummaries: input.recentPublicRoundSummaries,
+          rubricProfile
+        });
       const judgeRequestInput = {
         objective: "Judge this round from both teams' plans and player actions without team-order, fame, or score-lead bias.",
         roundId: input.round.id,
         roundNumber: input.roundNumber,
         mapName: input.mapGame.mapName,
         scoreBeforeRound: input.scoreBeforeRound,
-        mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName),
-        judgeRubricContext: readPhase18JudgeRubricContext(this.context, input.mapGame.mapName),
+        mapSemanticContext,
+        judgeRubricContext,
+        rubricProfile,
         ...(input.coachTimeout ? { appliedCoachCorrection: input.coachTimeout.correction } : {}),
         ...judgePromptContext.requestInput
       };
-      const mapSemanticContext = readPhase18MapSemanticContext(this.context, input.mapGame.mapName);
-      const validateJudgeResponseData = (data: unknown) => {
-        try {
-          const translatedJudgeResult = judgePromptContext.validateAndTranslate(judgeResultSchema.parse(normalizeJudgeResultPayload(data)));
-          return ensureJudgeDiagnostic({
-            judgeResult: translatedJudgeResult,
-            roundNumber: input.roundNumber,
-            sideAssignment: input.sideAssignment,
-            teamA: input.teamA,
-            teamB: input.teamB,
-            ...(input.teamPlans ? { teamPlans: input.teamPlans } : {}),
-            agentOutputs: input.agentOutputs,
-            ...(mapSemanticContext ? { mapSemanticContext } : {})
-          });
-        } catch (error) {
-          throw translateJudgePromptError(error, judgePromptContext);
-        }
-      };
-      let response: LlmResponse<JudgeResult>;
-      try {
-        response = await this.runObservedStructuredCall<JudgeResult>({
-          callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_judge`,
-          attemptNumber: input.observabilityAttempt,
-          task: "judge",
-          schemaName: "JudgeResult",
-          driverModelId: input.activeA[0]?.driverModelId ?? input.activeB[0]?.driverModelId ?? "",
-          requestInput: judgeRequestInput,
-          responseFormat: "json_object",
-          seed: `judge:${input.round.id}`,
-          modelTier: "cheap",
-          temperature: 0,
-          maxOutputTokens: 1300,
-          match: input.match,
-          mapGame: input.mapGame,
-          round: input.round,
-          roundNumber: input.roundNumber,
-          validateResponseData: validateJudgeResponseData
-        });
-      } catch (error) {
-        const validationError = error instanceof Error ? error.message : String(error);
-        if (!shouldAttemptJudgeRepair(validationError)) {
-          throw error;
-        }
-        response = await this.repairInvalidJudgeResult({
-          validationError,
-          judgeRequestInput,
-          judgePromptContext,
-          match: input.match,
-          mapGame: input.mapGame,
-          round: input.round,
-          roundNumber: input.roundNumber,
-          observabilityAttempt: input.observabilityAttempt,
-          driverModelId: input.activeA[0]?.driverModelId ?? input.activeB[0]?.driverModelId ?? "",
-          validateResponseData: validateJudgeResponseData
-        });
-      }
-      const authoritativeJudgeResult = response.data;
+      const driverModelId = input.activeA[0]?.driverModelId ?? input.activeB[0]?.driverModelId ?? "";
+      const verdictResponse = await this.generateJudgeVerdict({
+        judgeRequestInput,
+        judgePromptContext,
+        match: input.match,
+        mapGame: input.mapGame,
+        round: input.round,
+        roundNumber: input.roundNumber,
+        observabilityAttempt: input.observabilityAttempt,
+        driverModelId
+      });
+      const narrativeResponse = await this.generateJudgeNarrative({
+        verdict: verdictResponse.data,
+        judgeRequestInput,
+        judgePromptContext,
+        match: input.match,
+        mapGame: input.mapGame,
+        round: input.round,
+        roundNumber: input.roundNumber,
+        observabilityAttempt: input.observabilityAttempt,
+        driverModelId
+      });
+      const authoritativeJudgeResult = this.composeJudgeResultFromStages({
+        verdict: verdictResponse.data,
+        narrative: narrativeResponse.data,
+        judgePromptContext,
+        roundNumber: input.roundNumber,
+        sideAssignment: input.sideAssignment,
+        teamA: input.teamA,
+        teamB: input.teamB,
+        ...(input.teamPlans ? { teamPlans: input.teamPlans } : {}),
+        agentOutputs: input.agentOutputs,
+        ...(mapSemanticContext ? { mapSemanticContext } : {})
+      });
       if (!this.context.useJudgeBiasGuardrail) {
         return authoritativeJudgeResult;
       }
@@ -2571,6 +2830,10 @@ class Phase12SimulationEngine implements SimulationEngine {
       });
     }
 
+    if (!this.context.allowPlannedDemoJudgeFallback) {
+      throw new Error("Planned demo judge fallback is disabled for real Phase 2.0-pre runs.");
+    }
+
     const plannedWinnerSide = plannedDemoWinnerSideForMap(input.mapGame, input.roundNumber);
     const winnerTeamId = plannedWinnerSide === "teamA" ? input.teamA.id : input.teamB.id;
     const loserTeamId = winnerTeamId === input.teamA.id ? input.teamB.id : input.teamA.id;
@@ -2596,6 +2859,14 @@ class Phase12SimulationEngine implements SimulationEngine {
 
     const margin: JudgeResult["margin"] = input.roundNumber % 3 === 0 ? "decisive" : "standard";
     const roundWinType = buildFallbackJudgeRoundWinType(winnerTeamId, input.sideAssignment);
+    const fallbackRubricProfile = buildJudgeRubricProfile({
+      mapName: input.mapGame.mapName,
+      roundNumber: input.roundNumber,
+      sideAssignment: input.sideAssignment,
+      teamEconomyPlans: input.teamEconomyPlans,
+      mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName),
+      judgeRubricContext: readPhase18JudgeRubricContext(this.context, input.mapGame.mapName)
+    });
 
     return {
       winnerTeamId,
@@ -2615,8 +2886,250 @@ class Phase12SimulationEngine implements SimulationEngine {
         margin
       }),
       mvpAgentId: mvpAgent.id,
-      confidence: 0.84
+      confidence: 0.84,
+      judgeScorecard: buildDeterministicJudgeScorecard({
+        rubricProfile: fallbackRubricProfile,
+        winnerTeamId,
+        loserTeamId,
+        teamAId: input.teamA.id,
+        teamBId: input.teamB.id,
+        sideAssignment: input.sideAssignment,
+        margin,
+        roundWinType,
+        reason: "本地 demo fallback 评分，仅用于显式 fake/demo/test 模式。"
+      })
     };
+  }
+
+  private async generateJudgeVerdict(input: {
+    judgeRequestInput: unknown;
+    judgePromptContext: Phase18JudgePromptContext;
+    match: Match;
+    mapGame: MapGame;
+    round: Round;
+    roundNumber: number;
+    observabilityAttempt: number;
+    driverModelId: string;
+  }): Promise<LlmResponse<JudgeVerdictDecision>> {
+    const validateResponseData = (data: unknown) => {
+      try {
+        const normalizedPayload = normalizeJudgeVerdictPayload(data);
+        const legacyRecord = readUnknownRecord(normalizedPayload);
+        if (legacyRecord && !legacyRecord.diagnostic) {
+          throw new Error("Judge diagnostic is required.");
+        }
+        const parsedVerdict = judgeVerdictDecisionSchema.parse(normalizedPayload);
+        const verdict = {
+          ...parsedVerdict,
+          ...(typeof legacyRecord?.reason === "string" ? { reason: legacyRecord.reason } : {}),
+          ...(legacyRecord?.judgeInference ? { judgeInference: legacyRecord.judgeInference } : {})
+        } as JudgeVerdictDecision;
+        validateJudgeVerdictDecision({
+          verdict,
+          teamAId: input.judgePromptContext.requestInput.teamAId,
+          teamBId: input.judgePromptContext.requestInput.teamBId,
+          activeTeamAAgentIds: input.judgePromptContext.requestInput.activeTeamAAgentIds,
+          activeTeamBAgentIds: input.judgePromptContext.requestInput.activeTeamBAgentIds,
+          sideAssignment: input.judgePromptContext.requestInput.sideAssignment,
+          ...(input.judgePromptContext.requestInput.rubricProfile
+            ? { rubricProfile: input.judgePromptContext.requestInput.rubricProfile }
+            : {}),
+          mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName)
+        });
+        return verdict;
+      } catch (error) {
+        throw translateJudgePromptError(error, input.judgePromptContext);
+      }
+    };
+
+    try {
+      return await this.runObservedStructuredCall<JudgeVerdictDecision>({
+        callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_judge_verdict`,
+        attemptNumber: input.observabilityAttempt,
+        task: "judge_verdict",
+        schemaName: "JudgeVerdictDecision",
+        driverModelId: input.driverModelId,
+        requestInput: input.judgeRequestInput,
+        responseFormat: "json_object",
+        seed: `judge_verdict:${input.round.id}`,
+        modelTier: "cheap",
+        temperature: 0,
+        maxOutputTokens: 900,
+        match: input.match,
+        mapGame: input.mapGame,
+        round: input.round,
+        roundNumber: input.roundNumber,
+        validateResponseData
+      });
+    } catch (error) {
+      const validationError = error instanceof Error ? error.message : String(error);
+      if (!shouldAttemptJudgeRepair(validationError)) {
+        throw error;
+      }
+      return this.runObservedStructuredCall<JudgeVerdictDecision>({
+        callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_judge_verdict_repair`,
+        attemptNumber: input.observabilityAttempt,
+        task: "judge_verdict",
+        schemaName: "JudgeVerdictDecision",
+        driverModelId: input.driverModelId,
+        requestInput: {
+          ...(readUnknownRecord(input.judgeRequestInput) ?? {}),
+          objective: "Repair the failed judge verdict. Return one complete JudgeVerdictDecision only; do not include reason or judgeInference.",
+          validationError,
+          originalJudgeInput: input.judgeRequestInput,
+          repairRules: [
+            "必须补齐 judgeScorecard，并且 judgeScorecard.rubricProfile 必须与输入 rubricProfile 完全一致。",
+            "必须按 objectiveScore、mapControlScore、submissionQualityScore、coordinationScore、economyAdjustedScore、riskControlScore、proofScore 七个固定维度分别给两队打 0-10 分。",
+            "winnerTeamId 必须等于 judgeScorecard.winnerFromScore；margin 必须等于 judgeScorecard.marginFromScore。",
+            "补齐 diagnostic.currentSubTheme、attackedOpportunityGap、defendedCoreProposition、mainAttackZoneId、mainDefenseZoneId、zoneRelation、decisiveEvidence。",
+            "保持 roundWinType、winnerTeamId、attackWinConditionMet 和 defenseWinConditionMet 与攻守关系一致。",
+            "不要输出长判词。"
+          ],
+          mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName),
+          judgeRubricContext: readPhase18JudgeRubricContext(this.context, input.mapGame.mapName)
+        },
+        responseFormat: "json_object",
+        seed: `judge_verdict_repair:${input.round.id}`,
+        modelTier: "cheap",
+        temperature: 0,
+        maxOutputTokens: 900,
+        match: input.match,
+        mapGame: input.mapGame,
+        round: input.round,
+        roundNumber: input.roundNumber,
+        validateResponseData
+      });
+    }
+  }
+
+  private async generateJudgeNarrative(input: {
+    verdict: JudgeVerdictDecision;
+    judgeRequestInput: unknown;
+    judgePromptContext: Phase18JudgePromptContext;
+    match: Match;
+    mapGame: MapGame;
+    round: Round;
+    roundNumber: number;
+    observabilityAttempt: number;
+    driverModelId: string;
+  }): Promise<LlmResponse<JudgeNarrativeDecision>> {
+    const validateResponseData = (data: unknown) => {
+      try {
+        const narrative = normalizeJudgeNarrativeDecisionForVerdict(
+          judgeNarrativeDecisionSchema.parse(normalizeJudgeNarrativePayload(data)),
+          input.verdict
+        );
+        validateJudgeNarrativeAgainstVerdict(narrative, input.verdict);
+        return narrative;
+      } catch (error) {
+        throw translateJudgePromptError(error, input.judgePromptContext);
+      }
+    };
+    const requestInput = {
+      objective: "Write the readable judge narrative and judgeInference for the locked verdict. Do not change verdict facts.",
+      verdict: input.verdict,
+      originalJudgeInput: input.judgeRequestInput,
+      narrativeLocks: {
+        winnerTeamId: input.verdict.winnerTeamId,
+        loserTeamId: input.verdict.loserTeamId,
+        roundWinType: input.verdict.roundWinType,
+        mvpAgentId: input.verdict.mvpAgentId,
+        mainAttackZoneId: input.verdict.diagnostic.mainAttackZoneId,
+        mainDefenseZoneId: input.verdict.diagnostic.mainDefenseZoneId
+      },
+      mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName),
+      judgeRubricContext: readPhase18JudgeRubricContext(this.context, input.mapGame.mapName)
+    };
+
+    try {
+      return await this.runObservedStructuredCall<JudgeNarrativeDecision>({
+        callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_judge_narrative`,
+        attemptNumber: input.observabilityAttempt,
+        task: "judge_narrative",
+        schemaName: "JudgeNarrativeDecision",
+        driverModelId: input.driverModelId,
+        requestInput,
+        responseFormat: "json_object",
+        seed: `judge_narrative:${input.round.id}`,
+        modelTier: "cheap",
+        temperature: 0,
+        maxOutputTokens: 950,
+        match: input.match,
+        mapGame: input.mapGame,
+        round: input.round,
+        roundNumber: input.roundNumber,
+        validateResponseData
+      });
+    } catch (error) {
+      const validationError = error instanceof Error ? error.message : String(error);
+      if (!shouldAttemptJudgeRepair(validationError)) {
+        throw error;
+      }
+      return this.runObservedStructuredCall<JudgeNarrativeDecision>({
+        callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_judge_narrative_repair`,
+        attemptNumber: input.observabilityAttempt,
+        task: "judge_narrative",
+        schemaName: "JudgeNarrativeDecision",
+        driverModelId: input.driverModelId,
+        requestInput: {
+          ...requestInput,
+          objective: "Repair the failed judge narrative. Return one complete JudgeNarrativeDecision only.",
+          validationError,
+          repairRules: [
+            "不得改变 verdict 的胜方、败方、胜法、MVP、主攻区或主守区。",
+            "judgeInference.source 必须是 judge_inference。",
+            "boundary 必须说明战斗结果是裁判推断，不是 agent_action 原始事实。"
+          ]
+        },
+        responseFormat: "json_object",
+        seed: `judge_narrative_repair:${input.round.id}`,
+        modelTier: "cheap",
+        temperature: 0,
+        maxOutputTokens: 950,
+        match: input.match,
+        mapGame: input.mapGame,
+        round: input.round,
+        roundNumber: input.roundNumber,
+        validateResponseData
+      });
+    }
+  }
+
+  private composeJudgeResultFromStages(input: {
+    verdict: JudgeVerdictDecision;
+    narrative: JudgeNarrativeDecision;
+    judgePromptContext: Phase18JudgePromptContext;
+    roundNumber: number;
+    sideAssignment: SideAssignment;
+    teamA: Team;
+    teamB: Team;
+    teamPlans?: Record<string, TeamRoundPlanDecision>;
+    agentOutputs: AgentOutput[];
+    mapSemanticContext?: Record<string, unknown> | undefined;
+  }): JudgeResult {
+    try {
+      const promptJudgeResult = judgeResultSchema.parse({
+        ...input.verdict,
+        reason: input.narrative.reason,
+        judgeInference: input.narrative.judgeInference
+      });
+      const translatedJudgeResult = input.judgePromptContext.validateAndTranslate(promptJudgeResult);
+      return ensureStagedJudgeDiagnostic({
+        judgeResult: translatedJudgeResult,
+        roundNumber: input.roundNumber,
+        sideAssignment: input.sideAssignment,
+        teamA: input.teamA,
+        teamB: input.teamB,
+        ...(input.teamPlans ? { teamPlans: input.teamPlans } : {}),
+        agentOutputs: input.agentOutputs,
+        ...(input.judgePromptContext.requestInput.rubricProfile
+          ? { rubricProfile: input.judgePromptContext.requestInput.rubricProfile }
+          : {}),
+        ...(input.mapSemanticContext ? { mapSemanticContext: input.mapSemanticContext } : {})
+      });
+    } catch (error) {
+      throw translateJudgePromptError(error, input.judgePromptContext);
+    }
   }
 
   private async reviewSuspiciousJudgeResult(input: {
@@ -2666,13 +3179,23 @@ class Phase12SimulationEngine implements SimulationEngine {
           const translatedJudgeResult = input.judgePromptContext.validateAndTranslate(judgeResultSchema.parse(normalizeJudgeResultPayload(data)));
           const mapSemanticContext = readPhase18MapSemanticContext(this.context, input.mapGame.mapName);
           return ensureJudgeDiagnostic({
-            judgeResult: translatedJudgeResult,
+            judgeResult: normalizeLegacyJudgeScorecardForReview(translatedJudgeResult, {
+              sideAssignment: input.sideAssignment,
+              teamAId: input.teamA.id,
+              teamBId: input.teamB.id,
+              ...(input.judgePromptContext.requestInput.rubricProfile
+                ? { rubricProfile: input.judgePromptContext.requestInput.rubricProfile }
+                : {})
+            }),
             roundNumber: input.roundNumber,
             sideAssignment: input.sideAssignment,
             teamA: input.teamA,
             teamB: input.teamB,
             ...(teamPlans ? { teamPlans } : {}),
             agentOutputs: input.judgePromptContext.actualAgentOutputs,
+            ...(input.judgePromptContext.requestInput.rubricProfile
+              ? { rubricProfile: input.judgePromptContext.requestInput.rubricProfile }
+              : {}),
             ...(mapSemanticContext ? { mapSemanticContext } : {})
           });
         } catch (error) {
@@ -2715,6 +3238,7 @@ class Phase12SimulationEngine implements SimulationEngine {
         originalJudgeInput: input.judgeRequestInput,
         repairRules: [
           "保留比赛裁判与商业裁判两层判断。",
+          "必须补齐 judgeScorecard；winnerTeamId 必须来自 scorecard.winnerFromScore，margin 必须来自 marginFromScore。",
           "如果原输出把计划或意图误写成已发生事实，请改成计划/意图/证据不足表述。",
           "可以引用 team_plan、agent_action 意图、区域、买型、roundWinType 和公开摘要。",
           "不要把未落库的清点、击杀链、秒级动作、封锁回防写成已发生事实。",
@@ -2739,7 +3263,7 @@ class Phase12SimulationEngine implements SimulationEngine {
   private async runObservedStructuredCall<TData>(input: {
     callId: string;
     attemptNumber: number;
-    task: "team_plan" | "agent_action" | "judge" | "judge_review" | "coach_timeout";
+    task: "team_plan" | "agent_action" | "judge_verdict" | "judge_narrative" | "judge_review" | "combat_resolution" | "coach_timeout";
     schemaName: string;
     driverModelId: string;
     requestInput: unknown;
@@ -2806,6 +3330,19 @@ class Phase12SimulationEngine implements SimulationEngine {
       },
       createdAt: startedAt
     });
+    await this.context.repositories.llmCalls.save(removeUndefined({
+      id: input.callId,
+      tournamentId: input.match.tournamentId,
+      matchId: input.match.id,
+      agentId: input.agent?.id,
+      driverModelId: input.driverModelId,
+      taskType: input.task,
+      promptContractId,
+      promptHash,
+      requestArtifactId,
+      status: "started",
+      createdAt: startedAt
+    }));
 
     let latestResponse: LlmResponse<TData> | undefined;
     try {
@@ -2858,18 +3395,22 @@ class Phase12SimulationEngine implements SimulationEngine {
         }
       });
       await this.context.repositories.llmCalls.save(removeUndefined({
-        id: input.callId,
-        tournamentId: input.match.tournamentId,
-        matchId: input.match.id,
-        agentId: input.agent?.id,
-        driverModelId: input.driverModelId,
-        taskType: input.task,
+      id: input.callId,
+      tournamentId: input.match.tournamentId,
+      matchId: input.match.id,
+      agentId: input.agent?.id,
+      driverModelId: input.driverModelId,
+      taskType: input.task,
         promptContractId,
         promptHash,
         requestArtifactId,
         responseArtifactId,
         inputTokens: validatedResponse.usage.promptTokens,
         outputTokens: validatedResponse.usage.completionTokens,
+        status: "completed",
+        completedAt,
+        latencyMs: Date.parse(completedAt) - Date.parse(startedAt),
+        repaired: Boolean(validatedResponse.structuredRepair),
         createdAt: startedAt
       }));
       await this.appendEvent({
@@ -2939,18 +3480,23 @@ class Phase12SimulationEngine implements SimulationEngine {
         }
       });
       await this.context.repositories.llmCalls.save(removeUndefined({
-        id: input.callId,
-        tournamentId: input.match.tournamentId,
-        matchId: input.match.id,
-        agentId: input.agent?.id,
-        driverModelId: input.driverModelId,
-        taskType: input.task,
+      id: input.callId,
+      tournamentId: input.match.tournamentId,
+      matchId: input.match.id,
+      agentId: input.agent?.id,
+      driverModelId: input.driverModelId,
+      taskType: input.task,
         promptContractId,
         promptHash,
         requestArtifactId,
         responseArtifactId,
         inputTokens: failedUsage?.promptTokens,
         outputTokens: failedUsage?.completionTokens,
+        status: "failed",
+        error: errorMessage,
+        completedAt: failedAt,
+        latencyMs: Date.parse(failedAt) - Date.parse(startedAt),
+        repaired: Boolean(latestResponse?.structuredRepair),
         createdAt: startedAt
       }));
       await this.appendEvent({
@@ -3065,12 +3611,15 @@ function initialEconomy(agent: Agent, mapGameId: string, createdAt: string): Eco
     teamId: agent.teamId,
     mapGameId,
     phase: "before_buy",
-    tokenBank: 8000,
-    buyType: "fullBuy",
-    lossStreak: 0,
+    tokenBank: cs2EconomyRules.initialMoney,
+    buyType: "eco",
+    lossStreak: 1,
+    lossCount: 1,
+    economyPosture: "pistol_round",
+    loadoutPackage: "pistol_round_pack",
     timeoutsRemaining: 1,
     visibleContextBudget: 1200,
-    outputBudget: 700,
+    outputBudget: outputBudgetForEconomyPosture("pistol_round"),
     createdAt
   };
 }
@@ -3093,15 +3642,50 @@ function decideTeamBuyType(states: EconomyState[]): BuyType {
 function calculateEconomyDelta(input: {
   beforeEconomy: EconomyState[];
   winnerTeamId: string;
+  loserTeamId: string;
   teamAId: string;
   teamBId: string;
-  buyTypeByTeam: Map<string, BuyType>;
+  roundWinType: JudgeRoundWinType;
+  teamEconomyPlans: Record<string, TeamEconomyPlan>;
+  activeA: Agent[];
+  activeB: Agent[];
 }): RoundReport["economyDelta"] {
+  const teamALossCountBefore = inferTeamLossCount(input.beforeEconomy, input.teamAId);
+  const teamBLossCountBefore = inferTeamLossCount(input.beforeEconomy, input.teamBId);
+  const teamLossCountsBefore: Record<string, number> = {
+    [input.teamAId]: teamALossCountBefore,
+    [input.teamBId]: teamBLossCountBefore
+  };
+  const teamALossCountAfter =
+    input.winnerTeamId === input.teamAId ? Math.max(0, teamALossCountBefore - 1) : Math.min(4, teamALossCountBefore + 1);
+  const teamBLossCountAfter =
+    input.winnerTeamId === input.teamBId ? Math.max(0, teamBLossCountBefore - 1) : Math.min(4, teamBLossCountBefore + 1);
+  const teamLossCountsAfter: Record<string, number> = {
+    [input.teamAId]: teamALossCountAfter,
+    [input.teamBId]: teamBLossCountAfter
+  };
+  const roundOutcomeContext = buildRoundEconomyOutcomeContext({
+    roundWinType: input.roundWinType,
+    winnerTeamId: input.winnerTeamId,
+    loserTeamId: input.loserTeamId,
+    teamAId: input.teamAId,
+    teamBId: input.teamBId,
+    activeA: input.activeA,
+    activeB: input.activeB,
+    teamEconomyPlans: input.teamEconomyPlans
+  });
   const agents: AgentEconomyDelta[] = input.beforeEconomy.map((state) => {
-    const buyType = input.buyTypeByTeam.get(state.teamId) ?? state.buyType;
-    const spent = spendForBuyType(buyType);
+    const teamPlan = input.teamEconomyPlans[state.teamId];
+    const buyDecision = teamPlan?.decisions.find((decision) => decision.agentId === state.agentId);
+    const buyType = buyDecision?.buyType ?? state.buyType;
+    const spent = buyDecision?.spend ?? spendForBuyType(buyType);
     const won = state.teamId === input.winnerTeamId;
-    const reward = won ? 2500 : 1400 + Math.min(state.lossStreak, 3) * 400;
+    const priorLossCount = typeof state.lossCount === "number" ? state.lossCount : typeof state.lossStreak === "number" ? state.lossStreak : 1;
+    const baseReward = won
+      ? roundOutcomeContext.winnerRewardByTeam[state.teamId] ?? cs2EconomyRules.roundWinStandard
+      : roundOutcomeContext.loserRewardByAgent[state.agentId] ?? lossBonusForCount(teamLossCountsBefore[state.teamId] ?? 1);
+    const bonusReward = roundOutcomeContext.bonusRewardByAgent[state.agentId] ?? 0;
+    const reward = Math.max(0, baseReward + bonusReward);
     const afterTokenBank = Math.max(0, state.tokenBank - spent) + reward;
     return {
       agentId: state.agentId,
@@ -3111,15 +3695,34 @@ function calculateEconomyDelta(input: {
       reward,
       afterTokenBank,
       buyType,
-      lossStreak: won ? 0 : state.lossStreak + 1
+      lossStreak: won ? Math.max(0, priorLossCount - 1) : priorLossCount + 1,
+      lossCount: teamLossCountsAfter[state.teamId] ?? 1,
+      ...(buyDecision?.economyPosture ? { economyPosture: buyDecision.economyPosture } : {}),
+      ...(buyDecision?.loadoutPackage ? { loadoutPackage: buyDecision.loadoutPackage } : {}),
+      survived: roundOutcomeContext.survivorIds.has(state.agentId),
+      dropSent: buyDecision?.dropSent ?? 0,
+      dropReceived: buyDecision?.dropReceived ?? 0,
+      notes: roundOutcomeContext.agentNotesById[state.agentId] ?? []
     };
   });
 
   return {
     agents,
     teamTotals: {
-      teamA: sumByTeam(agents, input.teamAId),
-      teamB: sumByTeam(agents, input.teamBId)
+      teamA: sumEconomyDeltaByTeam(agents, input.teamAId),
+      teamB: sumEconomyDeltaByTeam(agents, input.teamBId)
+    },
+    teamNetDelta: {
+      teamA: sumEconomyNetDeltaByTeam(agents, input.teamAId),
+      teamB: sumEconomyNetDeltaByTeam(agents, input.teamBId)
+    },
+    teamLossCounts: {
+      teamA: teamLossCountsAfter[input.teamAId] ?? 1,
+      teamB: teamLossCountsAfter[input.teamBId] ?? 1
+    },
+    teamEconomyPostures: {
+      teamA: input.teamEconomyPlans[input.teamAId]?.posture ?? "eco",
+      teamB: input.teamEconomyPlans[input.teamBId]?.posture ?? "eco"
     }
   };
 }
@@ -3134,10 +3737,13 @@ function economyStateFromDelta(delta: AgentEconomyDelta, mapGameId: string, roun
     phase: "after_round",
     tokenBank: delta.afterTokenBank,
     buyType: delta.buyType,
-    lossStreak: delta.lossStreak,
+    lossStreak: delta.lossStreak ?? delta.lossCount,
+    lossCount: delta.lossCount,
+    ...(delta.economyPosture ? { economyPosture: delta.economyPosture } : {}),
+    ...(delta.loadoutPackage ? { loadoutPackage: delta.loadoutPackage } : {}),
     timeoutsRemaining: 1,
     visibleContextBudget: 1200,
-    outputBudget: outputBudgetForBuyType(delta.buyType),
+    outputBudget: delta.economyPosture ? outputBudgetForEconomyPosture(delta.economyPosture) : outputBudgetForBuyType(delta.buyType),
     createdAt
   };
 }
@@ -3221,7 +3827,7 @@ function buildKeyEvents(input: {
       targetAgentId: targetAgent.id,
       targetTeamId: input.loserTeamId,
       zoneId: collisionZoneId,
-      impact: `${mvpAgent.displayName} 在 Conversion Site A 完成${lateEventType === "clutch" ? "残局收束" : "优势转化"}，把回合推进为有效得分。`,
+      impact: `${mvpAgent.displayName} 在 ${formatKillLedgerZoneLabel(collisionZoneId)} 完成${lateEventType === "clutch" ? "残局收束" : "优势转化"}，把回合推进为有效得分。`,
       sourceAgentOutputIds: sourceOutputIds(input.agentOutputs, mvpAgent.id)
     }
   ];
@@ -3229,8 +3835,12 @@ function buildKeyEvents(input: {
   const winnerBuyType = buyTypeForTeam(input.winnerTeamId, teamAId, input.teamABuyType, input.teamBBuyType);
   const loserBuyType = buyTypeForTeam(input.loserTeamId, teamAId, input.teamABuyType, input.teamBBuyType);
   if (isEconomySwing(input.economyDelta) || winnerBuyType !== loserBuyType) {
-    const winnerEconomyDelta = economyTotalForTeam(input.economyDelta, input.winnerTeamId, teamAId);
-    const loserEconomyDelta = economyTotalForTeam(input.economyDelta, input.loserTeamId, teamAId);
+    const winnerEconomyDelta = economyNetDeltaForTeam(input.economyDelta, input.winnerTeamId, teamAId);
+    const loserEconomyDelta = economyNetDeltaForTeam(input.economyDelta, input.loserTeamId, teamAId);
+    const winnerPosture =
+      input.winnerTeamId === teamAId ? input.economyDelta.teamEconomyPostures?.teamA : input.economyDelta.teamEconomyPostures?.teamB;
+    const loserPosture =
+      input.loserTeamId === teamAId ? input.economyDelta.teamEconomyPostures?.teamA : input.economyDelta.teamEconomyPostures?.teamB;
     events.push({
       id: `ke_${input.roundId}_economy`,
       type: "economy_swing",
@@ -3238,7 +3848,7 @@ function buildKeyEvents(input: {
       actorTeamId: input.winnerTeamId,
       targetTeamId: input.loserTeamId,
       zoneId: "token_economy",
-      impact: `${mvpAgent.displayName} 带队以 ${formatBuyType(winnerBuyType)} 对抗 ${formatBuyType(loserBuyType)}，回合后相对经济变化 ${formatSignedNumber(winnerEconomyDelta - loserEconomyDelta)}。`,
+      impact: `${mvpAgent.displayName} 带队以 ${formatEconomyDescriptor(winnerBuyType, winnerPosture)} 对抗 ${formatEconomyDescriptor(loserBuyType, loserPosture)}，回合后相对经济变化 ${formatSignedNumber(winnerEconomyDelta - loserEconomyDelta)}。`,
       sourceAgentOutputIds: sourceOutputIds(input.agentOutputs, mvpAgent.id)
     });
   }
@@ -3260,6 +3870,7 @@ function buildRoundCombatResolution(input: {
   teamBBuyType: BuyType;
   keyEvents: RoundKeyEvent[];
   tacticalCollision: TacticalCollision | undefined;
+  source?: RoundCombatResolution["source"];
 }): RoundCombatResolution {
   const teamAId = input.activeA[0]?.teamId;
   const teamBId = input.activeB[0]?.teamId;
@@ -3280,8 +3891,11 @@ function buildRoundCombatResolution(input: {
     roundId: input.roundId,
     roundWinType
   });
-  const attackersToDie = selectDeathTargets(attackerAgents, killPlan.attackerDeaths, input.roundId, "attackers");
-  const defendersToDie = selectDeathTargets(defenderAgents, killPlan.defenderDeaths, input.roundId, "defenders");
+  const attackerWins = input.winnerTeamId === attackerTeamId;
+  const attackerDeathCount = Math.min(killPlan.attackerDeaths, Math.max(0, attackerAgents.length - (attackerWins ? 1 : 0)));
+  const defenderDeathCount = Math.min(killPlan.defenderDeaths, Math.max(0, defenderAgents.length - (attackerWins ? 0 : 1)));
+  const attackersToDie = selectDeathTargets(attackerAgents, attackerDeathCount, input.roundId, "attackers");
+  const defendersToDie = selectDeathTargets(defenderAgents, defenderDeathCount, input.roundId, "defenders");
   const deathOrder = buildDeathOrder({
     roundWinType,
     attackerTeamId,
@@ -3298,22 +3912,34 @@ function buildRoundCombatResolution(input: {
     [teamAId, [...(activeByTeam.get(teamAId) ?? [])]],
     [teamBId, [...(activeByTeam.get(teamBId) ?? [])]]
   ]);
+  const killCountsByAgentId = new Map<string, number>();
 
   const killEvents = deathOrder.map((target, index) => {
     const actorTeamId = target.teamId === teamAId ? teamBId : teamAId;
     const actorPool = aliveByTeam.get(actorTeamId) ?? [];
     const targetPool = aliveByTeam.get(target.teamId) ?? [];
     const targetAgent = targetPool.find((agent) => agent.id === target.id);
-    const actor = pickCombatActor({
+    let actor = pickCombatActor({
       candidates: actorPool,
       mvpAgentId: input.judgeResult.mvpAgentId,
       index,
       roundId: input.roundId,
       preferredTeamWon: actorTeamId === input.winnerTeamId
     });
+    if (actor?.id === input.judgeResult.mvpAgentId && (killCountsByAgentId.get(actor.id) ?? 0) >= 2) {
+      actor =
+        pickCombatActor({
+          candidates: actorPool.filter((candidate) => candidate.id !== input.judgeResult.mvpAgentId),
+          mvpAgentId: input.judgeResult.mvpAgentId,
+          index,
+          roundId: `${input.roundId}:non_mvp_${index}`,
+          preferredTeamWon: actorTeamId === input.winnerTeamId
+        }) ?? actor;
+    }
     if (!actor || !targetAgent) {
       throw new Error("Cannot build combat resolution without valid alive actor and target agents.");
     }
+    killCountsByAgentId.set(actor.id, (killCountsByAgentId.get(actor.id) ?? 0) + 1);
 
     aliveByTeam.set(target.teamId, targetPool.filter((agent) => agent.id !== targetAgent.id));
     const keyEvent = keyEvents[index] ?? keyEvents.at(-1);
@@ -3408,7 +4034,7 @@ function buildRoundCombatResolution(input: {
       }
     : undefined;
   const resolution: RoundCombatResolution = {
-    source: input.judgeResult.judgeInference ? "judge_inference" : "deterministic_resolution",
+    source: input.source ?? (input.judgeResult.judgeInference ? "judge_inference" : "deterministic_resolution"),
     roundWinType,
     killEvents,
     ...(plantEvent ? { plantEvent } : {}),
@@ -3424,11 +4050,138 @@ function buildRoundCombatResolution(input: {
       tradeType: kill.tradeType ?? (index === 0 ? "opening" : "trade"),
       summary: `${formatKillLedgerZoneLabel(kill.zoneId)}：${kill.impact}`
     })),
-    clutchTag: determineClutchTag(roundWinType, killEvents, input.judgeResult.mvpAgentId),
+    clutchTag: determineClutchTag({
+      roundWinType,
+      killEvents,
+      mvpAgentId: input.judgeResult.mvpAgentId,
+      survivors: {
+        teamAAgentIds: (aliveByTeam.get(teamAId) ?? []).map((agent) => agent.id),
+        teamBAgentIds: (aliveByTeam.get(teamBId) ?? []).map((agent) => agent.id)
+      },
+      winnerTeamId: input.winnerTeamId,
+      teamAId,
+      teamBId
+    }),
     mvpEvidence: buildCombatMvpEvidence(input.judgeResult, killEvents, plantEvent, defuseEvent, explosionEvent)
   };
 
-  validateRoundCombatResolution({ resolution, activeA: input.activeA, activeB: input.activeB, attackerTeamId, defenderTeamId, teamAId, teamBId });
+  validateRoundCombatResolution({
+    resolution,
+    activeA: input.activeA,
+    activeB: input.activeB,
+    attackerTeamId,
+    defenderTeamId,
+    winnerTeamId: input.winnerTeamId,
+    teamAId,
+    teamBId,
+    mvpAgentId: input.judgeResult.mvpAgentId
+  });
+  return resolution;
+}
+
+function buildCombatResolutionRequestInput(input: {
+  roundId: string;
+  roundNumber: number;
+  winnerTeamId: string;
+  loserTeamId: string;
+  activeA: Agent[];
+  activeB: Agent[];
+  agentOutputs: AgentOutput[];
+  judgeResult: JudgeResult;
+  keyEvents: RoundKeyEvent[];
+  tacticalCollision: TacticalCollision | undefined;
+}): Record<string, unknown> {
+  const teamAId = input.activeA[0]?.teamId ?? "";
+  const teamBId = input.activeB[0]?.teamId ?? "";
+  const roundWinType = input.judgeResult.roundWinType ?? "attack_elimination";
+  const attackerTeamId = roundWinType.startsWith("attack_") ? input.winnerTeamId : input.loserTeamId;
+  const defenderTeamId = attackerTeamId === teamAId ? teamBId : teamAId;
+  return {
+    objective: "Create a bounded combat draft for this round. The code validator is final authority.",
+    roundId: input.roundId,
+    roundNumber: input.roundNumber,
+    verdict: {
+      winnerTeamId: input.winnerTeamId,
+      loserTeamId: input.loserTeamId,
+      roundWinType,
+      mvpAgentId: input.judgeResult.mvpAgentId,
+      margin: input.judgeResult.margin,
+      diagnostic: input.judgeResult.diagnostic
+    },
+    attackerTeamId,
+    defenderTeamId,
+    teamAId,
+    teamBId,
+    activeRosters: {
+      teamA: input.activeA.map((agent) => ({ id: agent.id, teamId: agent.teamId, displayName: agent.displayName, role: agent.role })),
+      teamB: input.activeB.map((agent) => ({ id: agent.id, teamId: agent.teamId, displayName: agent.displayName, role: agent.role }))
+    },
+    agentOutputs: input.agentOutputs.map((output) => ({
+      id: output.id,
+      agentId: output.agentId,
+      teamId: output.teamId,
+      role: output.role,
+      actionDetail: output.actionDetail
+    })),
+    keyEvents: input.keyEvents,
+    tacticalCollision: input.tacticalCollision,
+    hardRules: [
+      "同一 targetAgentId 只能死亡一次。",
+      "actorAgentId 和 targetAgentId 必须来自 activeRosters 且属于不同队伍。",
+      "survivors 必须等于 active roster 减去 killEvents.targetAgentId。",
+      "roundWinType 决定爆弹事件，不允许叙事和事件矛盾。",
+      "one_v_x 只有 MVP 是胜方唯一存活者时才允许。",
+      "MVP 不应常规性拿 4-5 杀。"
+    ]
+  };
+}
+
+function materializeCombatDraft(input: {
+  draft: CombatResolutionDraft;
+  roundId: string;
+  activeA: Agent[];
+  activeB: Agent[];
+  judgeResult: JudgeResult;
+}): RoundCombatResolution {
+  const teamAId = input.activeA[0]?.teamId;
+  const teamBId = input.activeB[0]?.teamId;
+  if (!teamAId || !teamBId) {
+    throw new Error("Cannot validate combat draft without both active teams.");
+  }
+  const roundWinType = input.judgeResult.roundWinType ?? input.draft.roundWinType;
+  if (input.draft.roundWinType !== roundWinType) {
+    throw new Error("Combat draft roundWinType must match judge verdict.");
+  }
+  const attackerTeamId = roundWinType.startsWith("attack_") ? input.judgeResult.winnerTeamId : input.judgeResult.loserTeamId;
+  const defenderTeamId = attackerTeamId === teamAId ? teamBId : teamAId;
+  const resolution: RoundCombatResolution = {
+    source: "combat_llm_validated",
+    roundWinType,
+    killEvents: input.draft.killEvents.map((kill, index) => ({
+      ...kill,
+      id: kill.id || `kl_${input.roundId}_${index + 1}`,
+      sourceAgentOutputIds: kill.sourceAgentOutputIds ?? []
+    })),
+    ...(input.draft.plantEvent ? { plantEvent: input.draft.plantEvent } : {}),
+    ...(input.draft.defuseEvent ? { defuseEvent: input.draft.defuseEvent } : {}),
+    ...(input.draft.explosionEvent ? { explosionEvent: input.draft.explosionEvent } : {}),
+    survivors: input.draft.survivors,
+    ...(input.draft.openingDuel ? { openingDuel: input.draft.openingDuel } : {}),
+    tradeSequence: input.draft.tradeSequence,
+    clutchTag: input.draft.clutchTag ?? "none",
+    mvpEvidence: input.draft.mvpEvidence
+  };
+  validateRoundCombatResolution({
+    resolution,
+    activeA: input.activeA,
+    activeB: input.activeB,
+    attackerTeamId,
+    defenderTeamId,
+    winnerTeamId: input.judgeResult.winnerTeamId,
+    teamAId,
+    teamBId,
+    mvpAgentId: input.judgeResult.mvpAgentId
+  });
   return resolution;
 }
 
@@ -3596,8 +4349,10 @@ function validateRoundCombatResolution(input: {
   activeB: Agent[];
   attackerTeamId: string;
   defenderTeamId: string;
+  winnerTeamId: string;
   teamAId: string;
   teamBId: string;
+  mvpAgentId: string;
 }): void {
   const activeIdsByTeam = new Map([
     [input.teamAId, new Set(input.activeA.map((agent) => agent.id))],
@@ -3622,10 +4377,13 @@ function validateRoundCombatResolution(input: {
   const hasDefuse = Boolean(input.resolution.defuseEvent);
   const hasExplosion = Boolean(input.resolution.explosionEvent);
 
-  if (input.resolution.roundWinType === "attack_elimination" && defenderDeaths !== 5) {
+  const attackerCount = activeIdsByTeam.get(input.attackerTeamId)?.size ?? 0;
+  const defenderCount = activeIdsByTeam.get(input.defenderTeamId)?.size ?? 0;
+
+  if (input.resolution.roundWinType === "attack_elimination" && defenderDeaths !== defenderCount) {
     throw new Error("Invalid combat resolution: attack_elimination requires all defenders dead.");
   }
-  if (input.resolution.roundWinType === "defense_elimination" && attackerDeaths !== 5) {
+  if (input.resolution.roundWinType === "defense_elimination" && attackerDeaths !== attackerCount) {
     throw new Error("Invalid combat resolution: defense_elimination requires all attackers dead.");
   }
   if (input.resolution.roundWinType === "attack_bomb_explosion" && (!hasPlant || !hasExplosion || hasDefuse)) {
@@ -3637,6 +4395,29 @@ function validateRoundCombatResolution(input: {
   if (input.resolution.roundWinType === "defense_timeout_no_plant" && (hasPlant || hasDefuse || hasExplosion)) {
     throw new Error("Invalid combat resolution: defense_timeout_no_plant cannot contain bomb events.");
   }
+  const survivorIds = new Set([...input.resolution.survivors.teamAAgentIds, ...input.resolution.survivors.teamBAgentIds]);
+  for (const [teamId, activeIds] of activeIdsByTeam) {
+    const expectedSurvivors = [...activeIds].filter((agentId) => !deadIdsByTeam.get(teamId)?.has(agentId)).sort();
+    const actualSurvivors = (teamId === input.teamAId ? input.resolution.survivors.teamAAgentIds : input.resolution.survivors.teamBAgentIds).sort();
+    if (JSON.stringify(expectedSurvivors) !== JSON.stringify(actualSurvivors)) {
+      throw new Error(`Invalid combat resolution: survivor list does not match kill events for ${teamId}.`);
+    }
+  }
+  if (input.resolution.clutchTag === "one_v_x") {
+    const winnerSurvivors = input.winnerTeamId === input.teamAId ? input.resolution.survivors.teamAAgentIds : input.resolution.survivors.teamBAgentIds;
+    if (winnerSurvivors.length !== 1 || winnerSurvivors[0] !== input.mvpAgentId) {
+      throw new Error("Invalid combat resolution: one_v_x requires MVP to be the sole winning survivor.");
+    }
+  }
+  const mvpKills = input.resolution.killEvents.filter((kill) => kill.actorAgentId === input.mvpAgentId).length;
+  if (mvpKills > 3 && input.resolution.clutchTag !== "one_v_x") {
+    throw new Error("Invalid combat resolution: MVP kill count is too high without a real clutch.");
+  }
+  for (const kill of input.resolution.killEvents) {
+    if (survivorIds.has(kill.targetAgentId)) {
+      throw new Error(`Invalid combat resolution: dead target ${kill.targetAgentId} is listed as survivor.`);
+    }
+  }
 }
 
 function resolveBombSiteZoneId(zoneId: string): string {
@@ -3646,19 +4427,24 @@ function resolveBombSiteZoneId(zoneId: string): string {
   return "conversion_site_a";
 }
 
-function determineClutchTag(
-  roundWinType: JudgeRoundWinType,
-  killEvents: RoundKillLedgerEntry[],
-  mvpAgentId: string
-): NonNullable<RoundCombatResolution["clutchTag"]> {
-  const mvpKills = killEvents.filter((kill) => kill.actorAgentId === mvpAgentId).length;
-  if (roundWinType === "defense_defuse") {
+function determineClutchTag(input: {
+  roundWinType: JudgeRoundWinType;
+  killEvents: RoundKillLedgerEntry[];
+  mvpAgentId: string;
+  survivors: RoundCombatResolution["survivors"];
+  winnerTeamId: string;
+  teamAId: string;
+  teamBId: string;
+}): NonNullable<RoundCombatResolution["clutchTag"]> {
+  if (input.roundWinType === "defense_defuse") {
     return "retake";
   }
-  if (roundWinType === "attack_bomb_explosion") {
+  if (input.roundWinType === "attack_bomb_explosion") {
     return "post_plant_hold";
   }
-  if (mvpKills >= 3) {
+  const winnerSurvivors = input.winnerTeamId === input.teamAId ? input.survivors.teamAAgentIds : input.survivors.teamBAgentIds;
+  const mvpKills = input.killEvents.filter((kill) => kill.actorAgentId === input.mvpAgentId).length;
+  if (winnerSurvivors.length === 1 && winnerSurvivors[0] === input.mvpAgentId && mvpKills >= 2) {
     return "one_v_x";
   }
   return "none";
@@ -3907,7 +4693,9 @@ function buildTimelineEvents(input: {
       sourceEventIds: [input.economyEvent.id],
       payload: {
         economyDelta: input.roundReport.economyDelta,
-        economySwing: input.roundReport.economyDelta.teamTotals.teamA - input.roundReport.economyDelta.teamTotals.teamB
+        economySwing:
+          (input.roundReport.economyDelta.teamNetDelta?.teamA ?? input.roundReport.economyDelta.teamTotals.teamA) -
+          (input.roundReport.economyDelta.teamNetDelta?.teamB ?? input.roundReport.economyDelta.teamTotals.teamB)
       }
     },
     ...buildTacticalTimelineItems(input),
@@ -4109,8 +4897,10 @@ function buildCasterSetupLine(input: {
   generationMode: "rule";
   qualityStatus: "ready";
 } {
-  const teamABuy = input.round.teamABuyType ? formatBuyType(input.round.teamABuyType) : "未知买型";
-  const teamBBuy = input.round.teamBBuyType ? formatBuyType(input.round.teamBBuyType) : "未知买型";
+  const teamAPosture = input.roundReport.economyDelta.teamEconomyPostures?.teamA;
+  const teamBPosture = input.roundReport.economyDelta.teamEconomyPostures?.teamB;
+  const teamABuy = input.round.teamABuyType ? formatEconomyDescriptor(input.round.teamABuyType, teamAPosture) : "未知买型";
+  const teamBBuy = input.round.teamBBuyType ? formatEconomyDescriptor(input.round.teamBBuyType, teamBPosture) : "未知买型";
   return {
     speakerRole: "main_caster",
     text: `第 ${input.round.roundNumber} 回合开局，${formatSidePhase(input.sideContext.phase)}，比分 ${formatScore(input.roundReport.scoreBeforeRound)}。${input.teamA.shortName} ${teamABuy} 对 ${input.teamB.shortName} ${teamBBuy}，先看第一波资源分配。`,
@@ -4152,6 +4942,8 @@ function buildSummary(input: {
   teamB: Team;
   mapName: string;
   keyEvents: RoundKeyEvent[];
+  roundCombatResolution?: RoundCombatResolution;
+  economyDelta: RoundReport["economyDelta"];
   scoreBeforeRound: ScorePair;
   scoreAfterRound: ScorePair;
   sideContext: SideContext;
@@ -4163,10 +4955,49 @@ function buildSummary(input: {
   const winnerName = input.winnerTeamId === input.teamA.id ? input.teamA.displayName : input.teamB.displayName;
   const winnerBuyType = input.winnerTeamId === input.teamA.id ? input.teamABuyType : input.teamBBuyType;
   const loserBuyType = input.winnerTeamId === input.teamA.id ? input.teamBBuyType : input.teamABuyType;
-  const keyLine = input.keyEvents.slice(0, 2).map((event) => event.impact).join(" ");
+  const winnerPosture =
+    input.winnerTeamId === input.teamA.id ? input.economyDelta.teamEconomyPostures?.teamA : input.economyDelta.teamEconomyPostures?.teamB;
+  const loserPosture =
+    input.winnerTeamId === input.teamA.id ? input.economyDelta.teamEconomyPostures?.teamB : input.economyDelta.teamEconomyPostures?.teamA;
+  const combatLine = input.roundCombatResolution
+    ? summarizeCombatResolution(input.roundCombatResolution)
+    : input.keyEvents.slice(0, 2).map((event) => event.impact).join(" ");
   const sideLine = input.sideContext.activeSide === "teamA" ? `${input.teamA.shortName} 主动进攻` : `${input.teamB.shortName} 主动进攻`;
   const highlightLine = summarizeHighlightTags(input.highlightTags);
-  return `${winnerName} 在 ${input.mapName} 第 ${input.roundNumber} 回合完成收束，比分 ${formatScore(input.scoreBeforeRound)} -> ${formatScore(input.scoreAfterRound)}。${sideLine}，买型对位为 ${formatBuyType(winnerBuyType)} 对 ${formatBuyType(loserBuyType)}。关键事件：${keyLine}${highlightLine}`;
+  const tacticalLine = input.tacticalContext
+    ? `战术碰撞：主区 ${formatKillLedgerZoneLabel(input.tacticalContext.collision.primaryZoneId)}，结果 ${formatTacticalCollisionResult(input.tacticalContext.collision.result)}。`
+    : "";
+  return `${winnerName} 在 ${input.mapName} 第 ${input.roundNumber} 回合完成收束，比分 ${formatScore(input.scoreBeforeRound)} -> ${formatScore(input.scoreAfterRound)}。${sideLine}，经济态势对位为 ${formatEconomyDescriptor(winnerBuyType, winnerPosture)} 对 ${formatEconomyDescriptor(loserBuyType, loserPosture)}。${tacticalLine}战斗结算：${combatLine}${highlightLine}`;
+}
+
+function summarizeCombatResolution(resolution: RoundCombatResolution): string {
+  const opening = resolution.openingDuel
+    ? `首个接触发生在 ${formatKillLedgerZoneLabel(resolution.openingDuel.zoneId)}`
+    : "首个接触未形成击杀";
+  const bomb = resolution.defuseEvent
+    ? `，${resolution.defuseEvent.text}`
+    : resolution.explosionEvent
+      ? `，${resolution.explosionEvent.text}`
+      : resolution.plantEvent
+        ? `，${resolution.plantEvent.text}`
+        : "";
+  const survivors = `存活人数 ${resolution.survivors.teamAAgentIds.length}-${resolution.survivors.teamBAgentIds.length}`;
+  return `${formatRoundWinType(resolution.roundWinType)}，${opening}，共 ${resolution.killEvents.length} 次击杀，${survivors}${bomb}。`;
+}
+
+function formatRoundWinType(roundWinType: JudgeRoundWinType): string {
+  switch (roundWinType) {
+    case "attack_elimination":
+      return "攻方全歼胜";
+    case "attack_bomb_explosion":
+      return "攻方爆弹胜";
+    case "defense_elimination":
+      return "防守方全歼胜";
+    case "defense_timeout_no_plant":
+      return "防守方拖时胜";
+    case "defense_defuse":
+      return "防守方拆包胜";
+  }
 }
 
 function buildMapSummary(input: {
@@ -4219,6 +5050,23 @@ function buildMapSummary(input: {
     sourceEventIds: [...new Set(input.sourceEventIds)],
     createdAt: input.createdAt
   };
+}
+
+function formatTacticalCollisionResult(result: TacticalCollision["result"]): string {
+  switch (result) {
+    case "attack_breakthrough":
+      return "攻方突破";
+    case "defense_hold":
+      return "防守守住";
+    case "rotate_success":
+      return "回防成功";
+    case "fake_success":
+      return "假打奏效";
+    case "economy_steal":
+      return "经济偷点";
+    case "trade_even":
+      return "均势交换";
+  }
 }
 
 function selectKeyRoundReports(roundReports: RoundReport[]): RoundReport[] {
@@ -4332,11 +5180,17 @@ function mapWinTargetForRound(roundNumber: number): number {
 }
 
 function isEconomySwing(economyDelta: RoundReport["economyDelta"]): boolean {
-  return Math.abs(economyDelta.teamTotals.teamA - economyDelta.teamTotals.teamB) >= 2000;
+  const netDelta = economyDelta.teamNetDelta ?? economyDelta.teamTotals;
+  return Math.abs(netDelta.teamA - netDelta.teamB) >= 2000;
 }
 
 function economyTotalForTeam(economyDelta: RoundReport["economyDelta"], teamId: string, teamAId: string): number {
   return teamId === teamAId ? economyDelta.teamTotals.teamA : economyDelta.teamTotals.teamB;
+}
+
+function economyNetDeltaForTeam(economyDelta: RoundReport["economyDelta"], teamId: string, teamAId: string): number {
+  const netDelta = economyDelta.teamNetDelta ?? economyDelta.teamTotals;
+  return teamId === teamAId ? netDelta.teamA : netDelta.teamB;
 }
 
 function buyTypeForTeam(teamId: string, teamAId: string, teamABuyType: BuyType, teamBBuyType: BuyType): BuyType {
@@ -4356,6 +5210,73 @@ function formatBuyType(buyType: BuyType): string {
     case "eco":
       return "经济局";
   }
+}
+
+function formatEconomyPosture(posture: EconomyPosture): string {
+  switch (posture) {
+    case "pistol_round":
+      return "手枪局";
+    case "full_eco":
+      return "全E";
+    case "eco":
+      return "小E";
+    case "pistol_armor_force":
+      return "手枪甲强起";
+    case "light_buy":
+      return "轻买";
+    case "force_buy":
+      return "强起";
+    case "half_buy":
+      return "半起";
+    case "bonus_round":
+      return "奖励局";
+    case "rifle_buy":
+      return "长枪局";
+    case "awp_buy":
+      return "狙击局";
+    case "double_awp":
+      return "双狙局";
+    case "broken_buy":
+      return "破产混起";
+    case "save_play":
+      return "保枪局";
+  }
+}
+
+function formatEconomyDescriptor(buyType: BuyType, posture?: EconomyPosture): string {
+  return posture ? formatEconomyPosture(posture) : formatBuyType(buyType);
+}
+
+function buildCompetitiveParityNote(
+  teamEconomyPlans: Record<string, TeamEconomyPlan>,
+  focusTeamId?: string
+): string | undefined {
+  const plans = Object.values(teamEconomyPlans);
+  if (plans.length < 2) {
+    return undefined;
+  }
+  if (focusTeamId && !plans.some((plan) => plan.teamId === focusTeamId)) {
+    return undefined;
+  }
+  const completePostures: EconomyPosture[] = ["rifle_buy", "awp_buy", "double_awp"];
+  const bothRecovered = plans.slice(0, 2).every((plan) => completePostures.includes(plan.posture));
+  if (!bothRecovered) {
+    return undefined;
+  }
+  return "双方当前都已恢复完整购买，必须按本回合提交内容平等评估，不得因为前几回合连胜、连败或历史摘要默认偏向任一方。";
+}
+
+function buildNeutralPublicRoundSummary(input: {
+  report: RoundReport;
+  teamA: Team;
+  teamB: Team;
+}): string {
+  const winnerName = input.report.winnerTeamId === input.teamA.id ? input.teamA.shortName : input.teamB.shortName;
+  const teamAPosture = input.report.economyDelta.teamEconomyPostures?.teamA;
+  const teamBPosture = input.report.economyDelta.teamEconomyPostures?.teamB;
+  const teamALabel = teamAPosture ? formatEconomyPosture(teamAPosture) : "经济局";
+  const teamBLabel = teamBPosture ? formatEconomyPosture(teamBPosture) : "经济局";
+  return `R${input.report.roundNumber}：${winnerName} ${formatRoundWinType(input.report.judgeResult.roundWinType ?? "attack_elimination")}，比分 ${formatScore(input.report.scoreBeforeRound)} -> ${formatScore(input.report.scoreAfterRound)}，${input.teamA.shortName} ${teamALabel} / ${input.teamB.shortName} ${teamBLabel}。仅作公开历史，不代表当前回合强弱。`;
 }
 
 function formatScore(score: ScorePair): string {
@@ -4441,6 +5362,521 @@ async function required<T>(promise: Promise<T | null>, message: string): Promise
 
 function timestamp(): string {
   return "2026-05-01T00:00:00.000Z";
+}
+
+const cs2EconomyRules = {
+  initialMoney: 800,
+  maxMoney: 16000,
+  roundWinStandard: 3250,
+  roundWinBomb: 3500,
+  objectiveActorReward: 300,
+  tPlantButDefusedTeamReward: 600,
+  coachInitialBank: 5000,
+  coachTimeoutCost: 2500,
+  tComfortRifleMin: 4800,
+  ctComfortRifleMin: 5500,
+  tLowRifleMin: 4000,
+  ctLowRifleMin: 4800,
+  tAwpMin: 6500,
+  ctAwpMin: 7000
+} as const;
+
+const lossBonusByCount = [1400, 1900, 2400, 2900, 3400] as const;
+
+function isEconomyResetRound(roundNumber: number): boolean {
+  return roundNumber === 1 || roundNumber === mr6MapRules.roundsPerHalf + 1 || isOvertimeEconomyResetRound(roundNumber);
+}
+
+function inferTeamLossCount(states: EconomyState[], teamId: string): number {
+  const candidate =
+    states.find((state) => state.teamId === teamId)?.lossCount ?? states.find((state) => state.teamId === teamId)?.lossStreak ?? 1;
+  return Math.max(0, Math.min(4, candidate));
+}
+
+function lossBonusForCount(lossCount: number): number {
+  return lossBonusByCount[Math.max(0, Math.min(4, lossCount))] ?? lossBonusByCount[1];
+}
+
+function teamEconomySide(teamId: string, teamAId: string, sideContext: SideContext): "attack" | "defense" {
+  return sideForTeam(teamId, teamAId, sideContext.activeSide) === "active" ? "attack" : "defense";
+}
+
+function decideTeamEconomyPlans(input: {
+  roundNumber: number;
+  scoreBeforeRound: ScorePair;
+  teamA: Team;
+  teamB: Team;
+  activeA: Agent[];
+  activeB: Agent[];
+  beforeEconomy: EconomyState[];
+  sideContext: SideContext;
+  previousRoundReport: RoundReport | undefined;
+}): Record<string, TeamEconomyPlan> {
+  const teamAPlan = buildTeamEconomyPlan({
+    roundNumber: input.roundNumber,
+    teamScore: input.scoreBeforeRound.teamA,
+    opponentScore: input.scoreBeforeRound.teamB,
+    team: input.teamA,
+    activeAgents: input.activeA,
+    states: input.beforeEconomy.filter((state) => state.teamId === input.teamA.id),
+    side: teamEconomySide(input.teamA.id, input.teamA.id, input.sideContext),
+    previousRoundReport: input.previousRoundReport
+  });
+  const teamBPlan = buildTeamEconomyPlan({
+    roundNumber: input.roundNumber,
+    teamScore: input.scoreBeforeRound.teamB,
+    opponentScore: input.scoreBeforeRound.teamA,
+    team: input.teamB,
+    activeAgents: input.activeB,
+    states: input.beforeEconomy.filter((state) => state.teamId === input.teamB.id),
+    side: teamEconomySide(input.teamB.id, input.teamA.id, input.sideContext),
+    previousRoundReport: input.previousRoundReport
+  });
+  return {
+    [input.teamA.id]: teamAPlan,
+    [input.teamB.id]: teamBPlan
+  };
+}
+
+function buildTeamEconomyPlan(input: {
+  roundNumber: number;
+  teamScore: number;
+  opponentScore: number;
+  team: Team;
+  activeAgents: Agent[];
+  states: EconomyState[];
+  side: "attack" | "defense";
+  previousRoundReport: RoundReport | undefined;
+}): TeamEconomyPlan {
+  const sortedAgents = sortAgentsForRound(input.activeAgents);
+  const statesByAgentId = new Map(input.states.map((state) => [state.agentId, state] as const));
+  const phase = resolveRoundEconomyPhase(input.roundNumber);
+  const lossCount = inferTeamLossCount(input.states, input.team.id);
+  const teamScore = input.teamScore;
+  const opponentScore = input.opponentScore;
+  const totalCash = input.states.reduce((sum, state) => sum + state.tokenBank, 0);
+  const roleAwpers = sortedAgents.filter((agent) => agent.role === "awper");
+  const richestCash = Math.max(...input.states.map((state) => state.tokenBank), 0);
+  const poorestCash = Math.min(...input.states.map((state) => state.tokenBank), cs2EconomyRules.maxMoney);
+  const previousPackages = input.states.map((state) => state.loadoutPackage).filter((value): value is LoadoutPackage => Boolean(value));
+  const previousBuyTypes = input.states.map((state) => state.buyType);
+  const richThreshold = input.side === "attack" ? cs2EconomyRules.tComfortRifleMin : cs2EconomyRules.ctComfortRifleMin;
+  const lowRifleThreshold = input.side === "attack" ? cs2EconomyRules.tLowRifleMin : cs2EconomyRules.ctLowRifleMin;
+  const awpThreshold = input.side === "attack" ? cs2EconomyRules.tAwpMin : cs2EconomyRules.ctAwpMin;
+  const comfortTeamCash = input.side === "attack" ? 24000 : 26000;
+  const lowTeamCash = input.side === "attack" ? 12500 : 14000;
+  const wonPreviousRound = input.previousRoundReport?.winnerTeamId === input.team.id;
+  const previousBonusCarry =
+    wonPreviousRound && previousPackages.some((value) => value === "smg_force_pack" || value === "bonus_carry_pack");
+  const explicitSaveContext = previousBuyTypes.filter((buyType) => buyType === "save").length >= 2;
+  const richEnoughForRifles = input.states.filter((state) => state.tokenBank >= richThreshold).length;
+  const canLowRifle = input.states.filter((state) => state.tokenBank >= lowRifleThreshold).length;
+  const awpReadyCount = input.states.filter((state) => state.tokenBank >= awpThreshold).length;
+  const isBrokenBuy = richestCash - poorestCash >= 2600 && richEnoughForRifles >= 1 && poorestCash <= 1800;
+  const postPistolFollowup = isPostPistolFollowupRound(input.roundNumber);
+  const trailingBy = Math.max(0, opponentScore - teamScore);
+  const lateHalfPressure = roundsRemainingInCurrentHalf(input.roundNumber) <= 2;
+  const canContestWithForce =
+    totalCash >= 10000 &&
+    totalCash < comfortTeamCash &&
+    (canLowRifle >= 3 || input.states.filter((state) => state.tokenBank >= 2000).length >= 4) &&
+    (trailingBy >= 2 || lateHalfPressure || (postPistolFollowup && input.side === "attack"));
+
+  let posture: EconomyPosture;
+  let postureReason: string;
+  if (phase === "pistol_round") {
+    posture = "pistol_round";
+    postureReason = "半场手枪局，采用独立的手枪对抗策略，不按没钱局处理。";
+  } else if (isBrokenBuy) {
+    posture = "broken_buy";
+    postureReason = "队内贫富差明显，围绕 drop 和局部完整配置打破产混起。";
+  } else if (explicitSaveContext && totalCash >= lowTeamCash && richEnoughForRifles <= 2) {
+    posture = "save_play";
+    postureReason = "上一回合已进入保枪/保经济上下文，本回合延续省钱策略。";
+  } else if (awpReadyCount >= 2 && totalCash >= 35000) {
+    posture = "double_awp";
+    postureReason = "队内有双狙经济条件，允许双狙高配局。";
+  } else if (awpReadyCount >= 1 && totalCash >= 32500 && roleAwpers.length > 0) {
+    posture = "awp_buy";
+    postureReason = "主狙经济到位，围绕 AWP 完整配置。";
+  } else if (richEnoughForRifles >= Math.max(4, sortedAgents.length - 1) || (canLowRifle >= 4 && totalCash >= comfortTeamCash)) {
+    posture = "rifle_buy";
+    postureReason = "队伍已接近完整长枪线，按标准枪局处理。";
+  } else if (postPistolFollowup && wonPreviousRound && totalCash >= lowTeamCash && totalCash < comfortTeamCash) {
+    posture = "bonus_round";
+    postureReason = "手枪局或上一局取胜后延续低成本武器，进入奖励局。";
+  } else if (previousBonusCarry && lossCount <= 1 && totalCash >= 15000 && totalCash < comfortTeamCash) {
+    posture = "bonus_round";
+    postureReason = "上一回合取胜且保留低价枪，继续打 bonus。";
+  } else if (input.states.every((state) => state.tokenBank <= cs2EconomyRules.initialMoney)) {
+    posture = "full_eco";
+    postureReason = "当前经济极低，进入兼容的全E态势。";
+  } else if (input.states.every((state) => state.tokenBank <= 1500)) {
+    posture = "eco";
+    postureReason = "现金不足，只能以小E攒钱并争取下枪/安包收益。";
+  } else if (postPistolFollowup && input.states.every((state) => state.tokenBank >= 1800 && state.tokenBank <= 2800)) {
+    posture = "pistol_armor_force";
+    postureReason = "手枪局后的强起窗口，允许手枪甲与局部激进购买。";
+  } else if (input.states.every((state) => state.tokenBank >= 1200 && state.tokenBank <= 2200)) {
+    posture = "pistol_armor_force";
+    postureReason = "低额手枪甲区间，优先考虑手枪甲强起或局部保留。";
+  } else if (canLowRifle >= 2 && totalCash >= lowTeamCash && totalCash < comfortTeamCash) {
+    posture = "half_buy";
+    postureReason = "当前回合能形成局部战斗力，同时为下一回合完整长枪保留余钱。";
+  } else if (canContestWithForce) {
+    posture = "force_buy";
+    postureReason = "比分或回合窗口要求抢分，且当前现金足以支撑一次可执行的强起。";
+  } else if (totalCash >= 9000 && totalCash < lowTeamCash) {
+    posture = "light_buy";
+    postureReason = "现金不足以组织完整长枪，但可以轻买控费并保留后手。";
+  } else if (totalCash >= lowTeamCash && totalCash < comfortTeamCash) {
+    posture = "light_buy";
+    postureReason = "接近长枪线但不适合硬起，采用轻买/低配枪局。";
+  } else {
+    posture = totalCash >= 9000 ? "light_buy" : "eco";
+    postureReason = totalCash >= 9000 ? "默认进入轻买控费态势。" : "默认进入小E积累经济。";
+  }
+
+  const agentSnapshots = sortedAgents.map((agent) => {
+    const state = statesByAgentId.get(agent.id) ?? initialEconomy(agent, input.team.id, timestamp());
+    return {
+      agent,
+      tokenBank: state.tokenBank,
+      state
+    };
+  });
+  const mutableCashByAgent = new Map(agentSnapshots.map((snapshot) => [snapshot.agent.id, snapshot.tokenBank] as const));
+  const dropDecisions: DropDecision[] = [];
+  if (posture === "rifle_buy" || posture === "awp_buy" || posture === "double_awp" || posture === "broken_buy") {
+    const receivers = [...agentSnapshots]
+      .filter((snapshot) => mutableCashByAgent.get(snapshot.agent.id)! < lowRifleThreshold)
+      .sort((left, right) => mutableCashByAgent.get(left.agent.id)! - mutableCashByAgent.get(right.agent.id)!);
+    const donors = [...agentSnapshots]
+      .filter((snapshot) => mutableCashByAgent.get(snapshot.agent.id)! > richThreshold + 1200)
+      .sort((left, right) => mutableCashByAgent.get(right.agent.id)! - mutableCashByAgent.get(left.agent.id)!);
+    for (const receiver of receivers) {
+      let deficit = lowRifleThreshold - (mutableCashByAgent.get(receiver.agent.id) ?? 0);
+      for (const donor of donors) {
+        if (deficit <= 0) {
+          break;
+        }
+        if (donor.agent.id === receiver.agent.id) {
+          continue;
+        }
+        const donorCash = mutableCashByAgent.get(donor.agent.id) ?? 0;
+        const donorExcess = donorCash - richThreshold;
+        if (donorExcess <= 0) {
+          continue;
+        }
+        const transfer = Math.min(deficit, donorExcess);
+        if (transfer <= 0) {
+          continue;
+        }
+        mutableCashByAgent.set(donor.agent.id, donorCash - transfer);
+        mutableCashByAgent.set(receiver.agent.id, (mutableCashByAgent.get(receiver.agent.id) ?? 0) + transfer);
+        dropDecisions.push({
+          fromAgentId: donor.agent.id,
+          toAgentId: receiver.agent.id,
+          amount: transfer,
+          reason: posture === "awp_buy" || posture === "double_awp" ? "围绕长枪/AWP 完整度补枪" : "平衡 broken buy 与长枪线"
+        });
+        deficit -= transfer;
+      }
+    }
+  }
+
+  const decisions = agentSnapshots.map(({ agent, tokenBank, state }) => {
+    const tokenBankAfterDrop = mutableCashByAgent.get(agent.id) ?? tokenBank;
+    const dropSent = dropDecisions.filter((decision) => decision.fromAgentId === agent.id).reduce((sum, decision) => sum + decision.amount, 0);
+    const dropReceived = dropDecisions.filter((decision) => decision.toAgentId === agent.id).reduce((sum, decision) => sum + decision.amount, 0);
+    const agentDecision = decideAgentBuyDecision({
+      agent,
+      side: input.side,
+      posture,
+      tokenBankBefore: tokenBank,
+      tokenBankAfterDrop,
+      richThreshold,
+      lowRifleThreshold,
+      awpThreshold,
+      hasDedicatedAwper: roleAwpers.length > 0
+    });
+    return {
+      ...agentDecision,
+      dropSent,
+      dropReceived,
+      notes: [...agentDecision.notes, ...(dropReceived > 0 ? ["收到队友 drop"] : []), ...(dropSent > 0 ? ["向队友发枪"] : [])]
+    };
+  });
+
+  return {
+    teamId: input.team.id,
+    side: input.side,
+    phase,
+    lossCount,
+    posture,
+    postureReason,
+    summaryBuyType: summarizeBuyTypeFromTeamPosture(posture, decisions),
+    totalCash,
+    dropDecisions,
+    decisions
+  };
+}
+
+function decideAgentBuyDecision(input: {
+  agent: Agent;
+  side: "attack" | "defense";
+  posture: EconomyPosture;
+  tokenBankBefore: number;
+  tokenBankAfterDrop: number;
+  richThreshold: number;
+  lowRifleThreshold: number;
+  awpThreshold: number;
+  hasDedicatedAwper: boolean;
+}): Omit<AgentBuyDecision, "dropSent" | "dropReceived"> {
+  const isAwper = input.agent.role === "awper";
+  const canAwp = isAwper && input.tokenBankAfterDrop >= input.awpThreshold;
+  const canFullRifle = input.tokenBankAfterDrop >= input.richThreshold;
+  const canLowRifle = input.tokenBankAfterDrop >= input.lowRifleThreshold;
+  let buyType: BuyType;
+  let economyPosture = input.posture;
+  let loadoutPackage: LoadoutPackage;
+  let spend: number;
+  let notes: string[] = [];
+
+  switch (input.posture) {
+    case "pistol_round":
+      buyType = "halfBuy";
+      loadoutPackage = "pistol_round_pack";
+      spend = Math.min(input.tokenBankAfterDrop, suggestedPistolRoundSpend(input.agent.role, input.side));
+      notes = ["手枪局采用独立打法，不按没钱局处理。"];
+      break;
+    case "full_eco":
+      buyType = "eco";
+      loadoutPackage = "pistol_eco_pack";
+      spend = Math.min(input.tokenBankAfterDrop, 200);
+      break;
+    case "eco":
+      buyType = "eco";
+      loadoutPackage = "pistol_eco_pack";
+      spend = Math.min(input.tokenBankAfterDrop, 400);
+      break;
+    case "pistol_armor_force":
+      if (shouldPrioritizePistolArmorForce(input.agent.role) || input.tokenBankAfterDrop >= 2600) {
+        buyType = "forceBuy";
+        loadoutPackage = "pistol_armor_force_pack";
+        spend = Math.min(input.tokenBankAfterDrop, input.side === "attack" ? 1800 : 2000);
+        notes = ["手枪甲强起窗口内优先给突破位和核心角色足够配置。"];
+      } else {
+        buyType = input.tokenBankAfterDrop >= 1500 ? "halfBuy" : "eco";
+        economyPosture = input.tokenBankAfterDrop >= 1500 ? "pistol_armor_force" : "eco";
+        loadoutPackage = input.tokenBankAfterDrop >= 1500 ? "pistol_armor_force_pack" : "pistol_eco_pack";
+        spend = Math.min(input.tokenBankAfterDrop, input.tokenBankAfterDrop >= 1500 ? 1400 : 400);
+        notes = ["手枪甲强起窗口内保持局部分化，不跟随全员硬起。"];
+      }
+      break;
+    case "light_buy":
+      if (canLowRifle) {
+        buyType = "halfBuy";
+        loadoutPackage = input.side === "attack" ? "rifle_low_t_pack" : "rifle_low_ct_pack";
+        spend = Math.min(input.tokenBankAfterDrop, Math.max(1800, input.lowRifleThreshold - 200));
+      } else if (input.tokenBankAfterDrop >= 1800) {
+        buyType = "halfBuy";
+        loadoutPackage = "pistol_armor_force_pack";
+        spend = Math.min(input.tokenBankAfterDrop, input.side === "attack" ? 1800 : 2000);
+      } else {
+        buyType = "eco";
+        economyPosture = "eco";
+        loadoutPackage = "pistol_eco_pack";
+        spend = Math.min(input.tokenBankAfterDrop, 400);
+      }
+      notes = ["轻买控费，不默认升级为全员强起"];
+      break;
+    case "force_buy":
+      buyType = "forceBuy";
+      loadoutPackage = canLowRifle ? (input.side === "attack" ? "rifle_low_t_pack" : "rifle_low_ct_pack") : "smg_force_pack";
+      spend = Math.min(input.tokenBankAfterDrop, canLowRifle ? input.lowRifleThreshold : 3000);
+      break;
+    case "half_buy":
+      buyType = "halfBuy";
+      loadoutPackage = canLowRifle ? (input.side === "attack" ? "rifle_low_t_pack" : "rifle_low_ct_pack") : "pistol_armor_force_pack";
+      spend = Math.min(input.tokenBankAfterDrop, canLowRifle ? input.lowRifleThreshold - 200 : 1800);
+      notes = ["为下一回合完整长枪保留余钱"];
+      break;
+    case "bonus_round":
+      buyType = "halfBuy";
+      loadoutPackage = "bonus_carry_pack";
+      spend = Math.min(input.tokenBankAfterDrop, 1800);
+      notes = ["保留低价枪继续打 bonus"];
+      break;
+    case "rifle_buy":
+      buyType = "fullBuy";
+      loadoutPackage = input.side === "attack" ? "rifle_full_t_pack" : "rifle_full_ct_pack";
+      spend = Math.min(input.tokenBankAfterDrop, input.richThreshold);
+      break;
+    case "awp_buy":
+    case "double_awp":
+      buyType = "fullBuy";
+      if (canAwp) {
+        loadoutPackage = "awp_pack";
+        spend = Math.min(input.tokenBankAfterDrop, input.awpThreshold);
+        notes = [input.posture === "double_awp" ? "双狙态势" : "围绕 AWP 配置"];
+      } else if (canFullRifle) {
+        loadoutPackage = input.side === "attack" ? "rifle_full_t_pack" : "rifle_full_ct_pack";
+        spend = Math.min(input.tokenBankAfterDrop, input.richThreshold);
+      } else {
+        loadoutPackage = input.side === "attack" ? "rifle_low_t_pack" : "rifle_low_ct_pack";
+        spend = Math.min(input.tokenBankAfterDrop, input.lowRifleThreshold);
+      }
+      break;
+    case "broken_buy":
+      if (canAwp && isAwper) {
+        buyType = "fullBuy";
+        loadoutPackage = "awp_pack";
+        spend = Math.min(input.tokenBankAfterDrop, input.awpThreshold);
+      } else if (canFullRifle) {
+        buyType = "fullBuy";
+        loadoutPackage = input.side === "attack" ? "rifle_full_t_pack" : "rifle_full_ct_pack";
+        spend = Math.min(input.tokenBankAfterDrop, input.richThreshold);
+      } else if (canLowRifle) {
+        buyType = "forceBuy";
+        loadoutPackage = "broken_buy_pack";
+        spend = Math.min(input.tokenBankAfterDrop, input.lowRifleThreshold);
+      } else {
+        buyType = "eco";
+        economyPosture = "eco";
+        loadoutPackage = "broken_buy_pack";
+        spend = Math.min(input.tokenBankAfterDrop, 500);
+      }
+      notes = ["队内经济不均，围绕 drop 拼配置"];
+      break;
+    case "save_play":
+      buyType = "save";
+      loadoutPackage = "save_support_pack";
+      spend = Math.min(input.tokenBankAfterDrop, 600);
+      notes = ["主动保枪/保经济"];
+      break;
+  }
+
+  return {
+    agentId: input.agent.id,
+    teamId: input.agent.teamId,
+    tokenBankBefore: input.tokenBankBefore,
+    tokenBankAfterDrop: input.tokenBankAfterDrop,
+    buyType,
+    economyPosture,
+    loadoutPackage,
+    spend,
+    outputBudget: outputBudgetForEconomyPosture(economyPosture),
+    notes
+  };
+}
+
+function summarizeBuyTypeFromTeamPosture(posture: EconomyPosture, decisions: AgentBuyDecision[]): BuyType {
+  switch (posture) {
+    case "pistol_round":
+      return "halfBuy";
+    case "full_eco":
+    case "eco":
+      return "eco";
+    case "light_buy":
+    case "half_buy":
+    case "bonus_round":
+      return "halfBuy";
+    case "save_play":
+      return "save";
+    case "rifle_buy":
+    case "awp_buy":
+    case "double_awp":
+      return "fullBuy";
+    case "broken_buy":
+      return decisions.filter((decision) => decision.buyType === "fullBuy").length >= 3 ? "halfBuy" : "forceBuy";
+    default:
+      return "forceBuy";
+  }
+}
+
+function buildRoundEconomyOutcomeContext(input: {
+  roundWinType: JudgeRoundWinType;
+  winnerTeamId: string;
+  loserTeamId: string;
+  teamAId: string;
+  teamBId: string;
+  activeA: Agent[];
+  activeB: Agent[];
+  teamEconomyPlans: Record<string, TeamEconomyPlan>;
+}): {
+  winnerRewardByTeam: Record<string, number>;
+  loserRewardByAgent: Record<string, number>;
+  bonusRewardByAgent: Record<string, number>;
+  survivorIds: Set<string>;
+  agentNotesById: Record<string, string[]>;
+} {
+  const attackerTeamId = input.roundWinType.startsWith("attack_") ? input.winnerTeamId : input.loserTeamId;
+  const defenderTeamId = attackerTeamId === input.teamAId ? input.teamBId : input.teamAId;
+  const activeByTeam = {
+    [input.teamAId]: sortAgentsForRound(input.activeA),
+    [input.teamBId]: sortAgentsForRound(input.activeB)
+  };
+  const winnerReward =
+    input.roundWinType === "attack_bomb_explosion" || input.roundWinType === "defense_defuse"
+      ? cs2EconomyRules.roundWinBomb
+      : cs2EconomyRules.roundWinStandard;
+  const winnerRewardByTeam = {
+    [input.winnerTeamId]: winnerReward
+  } as Record<string, number>;
+  const loserLossCount = input.teamEconomyPlans[input.loserTeamId]?.lossCount ?? 1;
+  const defaultLoserReward = lossBonusForCount(loserLossCount);
+  const loserRewardByAgent: Record<string, number> = Object.fromEntries(
+    (activeByTeam[input.loserTeamId] ?? []).map((agent) => [agent.id, defaultLoserReward])
+  );
+  const bonusRewardByAgent: Record<string, number> = {};
+  const survivorIds = new Set<string>();
+  const agentNotesById: Record<string, string[]> = {};
+
+  if (input.roundWinType === "attack_bomb_explosion") {
+    const planter = activeByTeam[attackerTeamId]?.find((agent) => agent.role === "igl") ?? activeByTeam[attackerTeamId]?.[0];
+    if (planter) {
+      bonusRewardByAgent[planter.id] = (bonusRewardByAgent[planter.id] ?? 0) + cs2EconomyRules.objectiveActorReward;
+      agentNotesById[planter.id] = [...(agentNotesById[planter.id] ?? []), "安包奖励 +300"];
+    }
+  }
+
+  if (input.roundWinType === "defense_defuse") {
+    const defuser = activeByTeam[defenderTeamId]?.find((agent) => agent.role === "support") ?? activeByTeam[defenderTeamId]?.[0];
+    if (defuser) {
+      bonusRewardByAgent[defuser.id] = (bonusRewardByAgent[defuser.id] ?? 0) + cs2EconomyRules.objectiveActorReward;
+      agentNotesById[defuser.id] = [...(agentNotesById[defuser.id] ?? []), "拆包奖励 +300"];
+    }
+    for (const attacker of activeByTeam[attackerTeamId] ?? []) {
+      bonusRewardByAgent[attacker.id] = (bonusRewardByAgent[attacker.id] ?? 0) + cs2EconomyRules.tPlantButDefusedTeamReward;
+      agentNotesById[attacker.id] = [...(agentNotesById[attacker.id] ?? []), "安包被拆团队补偿 +600"];
+    }
+  }
+
+  if (input.roundWinType === "defense_timeout_no_plant") {
+    const losingPlan = input.teamEconomyPlans[attackerTeamId];
+    const prioritizedSurvivors = (activeByTeam[attackerTeamId] ?? [])
+      .filter((agent) => losingPlan?.decisions.find((decision) => decision.agentId === agent.id)?.economyPosture === "save_play");
+    const designatedSurvivors =
+      prioritizedSurvivors.length > 0 ? prioritizedSurvivors : (activeByTeam[attackerTeamId] ?? []).slice(0, 1);
+    for (const survivor of designatedSurvivors) {
+      survivorIds.add(survivor.id);
+      loserRewardByAgent[survivor.id] = 0;
+      agentNotesById[survivor.id] = [...(agentNotesById[survivor.id] ?? []), "T 超时存活：不拿失败奖金"];
+    }
+  }
+
+  for (const winner of activeByTeam[input.winnerTeamId] ?? []) {
+    survivorIds.add(winner.id);
+  }
+
+  return {
+    winnerRewardByTeam,
+    loserRewardByAgent,
+    bonusRewardByAgent,
+    survivorIds,
+    agentNotesById
+  };
 }
 
 const defaultPhase13MapIds = ["DUST2", "INFERNO", "MIRAGE"] as const;
@@ -4554,12 +5990,203 @@ function outputBudgetForBuyType(buyType: BuyType): number {
   }
 }
 
-function sumByTeam(items: AgentEconomyDelta[], teamId: string): number {
+function outputBudgetForEconomyPosture(posture: EconomyPosture): number {
+  switch (posture) {
+    case "pistol_round":
+      return 260;
+    case "full_eco":
+      return 110;
+    case "eco":
+      return 180;
+    case "pistol_armor_force":
+      return 240;
+    case "light_buy":
+      return 280;
+    case "force_buy":
+      return 300;
+    case "half_buy":
+      return 380;
+    case "bonus_round":
+      return 420;
+    case "rifle_buy":
+      return 580;
+    case "awp_buy":
+      return 640;
+    case "double_awp":
+      return 660;
+    case "broken_buy":
+      return 320;
+    case "save_play":
+      return 120;
+  }
+}
+
+function buildSubmittedAgentOutputs(input: {
+  agentOutputs: AgentOutput[];
+  buyDecisionByAgent: Map<string, AgentBuyDecision>;
+}): SubmittedAgentOutput[] {
+  return input.agentOutputs.map((output) => {
+    const buyDecision = input.buyDecisionByAgent.get(output.agentId);
+    const buyType = buyDecision?.buyType ?? "eco";
+    const economyPosture = buyDecision?.economyPosture;
+    const loadoutPackage = buyDecision?.loadoutPackage;
+    const outputBudget = buyDecision?.outputBudget ?? outputBudgetForBuyType(buyType);
+    return buildSubmittedAgentOutput(output, buyType, outputBudget, economyPosture, loadoutPackage);
+  });
+}
+
+function buildSubmittedAgentOutput(
+  output: AgentOutput,
+  buyType: BuyType,
+  outputBudget: number,
+  economyPosture?: EconomyPosture,
+  loadoutPackage?: LoadoutPackage
+): SubmittedAgentOutput {
+  const rawDetail = output.actionDetail;
+  const budgetTier = outputGateTierForEconomyPosture(economyPosture ?? buyTypeToEconomyPosture(buyType));
+  const omittedFields: string[] = [];
+  const postureLabel = economyPosture ? formatEconomyPosture(economyPosture) : formatBuyType(buyType);
+  const gateSummary = `Output Gate 已按${postureLabel}提交，预算 ${outputBudget}，Judge 只能消费 SubmittedOutput，不能读取被裁剪 RawOutput。`;
+  const submittedDetail: AgentActionDecision | undefined = rawDetail
+    ? {
+        roundObjective: gateActionText(rawDetail.roundObjective, budgetTier),
+        executionPlan: gateActionText(rawDetail.executionPlan, budgetTier),
+        coordinationPlan: gateActionText(rawDetail.coordinationPlan, budgetTier),
+        roleResponsibilityUsage: gateActionText(rawDetail.roleResponsibilityUsage, budgetTier),
+        riskRead:
+          budgetTier >= 2
+            ? gateActionText(rawDetail.riskRead, budgetTier)
+            : recordOmittedField("riskRead", omittedFields, "经济预算不足：风险判断被压缩，Judge 只能看到核心执行意图。"),
+        contingencyPlan:
+          budgetTier >= 3
+            ? gateActionText(rawDetail.contingencyPlan, budgetTier)
+            : recordOmittedField("contingencyPlan", omittedFields, "经济预算不足：备选方案被裁剪，Judge 不能把 RawOutput 中的完整备选路径当作证据。"),
+        expectedContribution:
+          budgetTier >= 2
+            ? gateActionText(rawDetail.expectedContribution, budgetTier)
+            : recordOmittedField("expectedContribution", omittedFields, "经济预算不足：预期贡献被压缩为核心目标和执行计划。"),
+        confidence: output.confidence,
+        ...(rawDetail.fingerprint ? { fingerprint: rawDetail.fingerprint } : {})
+      }
+    : undefined;
+
+  return {
+    ...output,
+    id: `sub_${output.id}`,
+    rawOutputId: output.id,
+    submissionKind: "submitted_output",
+    buyType,
+    ...(economyPosture ? { economyPosture } : {}),
+    ...(loadoutPackage ? { loadoutPackage } : {}),
+    outputBudget,
+    ...(submittedDetail ? { actionDetail: submittedDetail } : {}),
+    ...(output.action ? { action: gateActionText(output.action, budgetTier) } : {}),
+    omittedFields,
+    gateSummary,
+    rawFingerprint: `submitted_${output.rawFingerprint}`
+  };
+}
+
+function outputGateTierForEconomyPosture(posture: EconomyPosture): number {
+  switch (posture) {
+    case "pistol_round":
+      return 2;
+    case "awp_buy":
+    case "double_awp":
+    case "rifle_buy":
+      return 4;
+    case "bonus_round":
+    case "half_buy":
+      return 3;
+    case "broken_buy":
+    case "force_buy":
+    case "light_buy":
+    case "pistol_armor_force":
+      return 2;
+    case "eco":
+      return 1;
+    case "full_eco":
+    case "save_play":
+      return 0;
+  }
+}
+
+function buyTypeToEconomyPosture(buyType: BuyType): EconomyPosture {
+  switch (buyType) {
+    case "fullBuy":
+      return "rifle_buy";
+    case "halfBuy":
+      return "half_buy";
+    case "forceBuy":
+      return "force_buy";
+    case "eco":
+      return "eco";
+    case "save":
+      return "save_play";
+  }
+}
+
+function gateActionText(value: string, budgetTier: number): string {
+  const normalized = value.trim().replace(/\s+/g, " ");
+  const maxChars = budgetTier >= 4 ? 420 : budgetTier === 3 ? 300 : budgetTier === 2 ? 220 : budgetTier === 1 ? 160 : 120;
+  return normalized.length <= maxChars ? normalized : `${normalized.slice(0, maxChars - 1)}…`;
+}
+
+function recordOmittedField(field: string, omittedFields: string[], replacement: string): string {
+  omittedFields.push(field);
+  return replacement;
+}
+
+function sumEconomyNetDeltaByTeam(items: AgentEconomyDelta[], teamId: string): number {
   return items.filter((item) => item.teamId === teamId).reduce((sum, item) => sum + item.afterTokenBank - item.beforeTokenBank, 0);
+}
+
+function sumEconomyDeltaByTeam(items: AgentEconomyDelta[], teamId: string): number {
+  return items.filter((item) => item.teamId === teamId).reduce((sum, item) => sum + item.afterTokenBank, 0);
 }
 
 function sumEconomyByTeam(items: EconomyState[], teamId: string): number {
   return items.filter((item) => item.teamId === teamId).reduce((sum, item) => sum + item.tokenBank, 0);
+}
+
+function isPostPistolFollowupRound(roundNumber: number): boolean {
+  return roundNumber === 2 || roundNumber === mr6MapRules.roundsPerHalf + 2;
+}
+
+function isPistolRound(roundNumber: number): boolean {
+  return roundNumber === 1 || roundNumber === mr6MapRules.roundsPerHalf + 1;
+}
+
+function resolveRoundEconomyPhase(roundNumber: number): RoundEconomyPhase {
+  if (isPistolRound(roundNumber)) {
+    return "pistol_round";
+  }
+  if (isPostPistolFollowupRound(roundNumber)) {
+    return "post_pistol";
+  }
+  return "gun_round";
+}
+
+function roundsRemainingInCurrentHalf(roundNumber: number): number {
+  const offsetInHalf = ((roundNumber - 1) % mr6MapRules.roundsPerHalf) + 1;
+  return mr6MapRules.roundsPerHalf - offsetInHalf;
+}
+
+function suggestedPistolRoundSpend(role: Agent["role"], side: "attack" | "defense"): number {
+  if (role === "entry" || role === "star_rifler") {
+    return side === "attack" ? 800 : 750;
+  }
+  if (role === "igl" || role === "support") {
+    return 700;
+  }
+  if (role === "awper") {
+    return 600;
+  }
+  return 650;
+}
+
+function shouldPrioritizePistolArmorForce(role: Agent["role"]): boolean {
+  return role === "entry" || role === "star_rifler" || role === "igl";
 }
 
 function sourceOutputIds(outputs: AgentOutput[], agentId: string): string[] {
@@ -4743,6 +6370,18 @@ function validateTeamRoundPlan(input: {
       throw new Error(`Team plan missed directive for active agent: ${agentId}`);
     }
   }
+  if (input.plan.economyIntent?.buyIntentByAgent) {
+    const intentAgentIds = input.plan.economyIntent.buyIntentByAgent.map((entry) => entry.agentId);
+    const intentAgentSet = new Set(intentAgentIds);
+    if (intentAgentSet.size !== intentAgentIds.length) {
+      throw new Error(`Team plan returned duplicate economyIntent entries for ${input.teamId}`);
+    }
+    for (const agentId of intentAgentIds) {
+      if (!activeAgentIds.has(agentId)) {
+        throw new Error(`Team plan returned economyIntent for inactive agent: ${agentId}`);
+      }
+    }
+  }
 
   return input.plan;
 }
@@ -4797,6 +6436,7 @@ function ensureJudgeDiagnostic(input: {
   teamB: Team;
   teamPlans?: Record<string, TeamRoundPlanDecision>;
   agentOutputs?: AgentOutput[];
+  rubricProfile?: JudgeRubricProfile;
   mapSemanticContext?: Record<string, unknown> | undefined;
 }): JudgeResult {
   const proposition = readUnknownRecord(input.mapSemanticContext?.proposition);
@@ -4841,10 +6481,175 @@ function ensureJudgeDiagnostic(input: {
   validateJudgeConfidenceAndMargin({
     judgeResult: input.judgeResult
   });
+  validateJudgeScorecard({
+    judgeResult: input.judgeResult,
+    teamAId: input.teamA.id,
+    teamBId: input.teamB.id,
+    sideAssignment: input.sideAssignment,
+    ...(input.rubricProfile ? { rubricProfile: input.rubricProfile } : {})
+  });
 
   return {
     ...input.judgeResult,
     diagnostic
+  };
+}
+
+function ensureStagedJudgeDiagnostic(input: {
+  judgeResult: JudgeResult;
+  roundNumber: number;
+  sideAssignment: SideAssignment;
+  teamA: Team;
+  teamB: Team;
+  teamPlans?: Record<string, TeamRoundPlanDecision>;
+  agentOutputs?: AgentOutput[];
+  rubricProfile?: JudgeRubricProfile;
+  mapSemanticContext?: Record<string, unknown> | undefined;
+}): JudgeResult {
+  const normalizedJudgeResult = normalizeStagedJudgeResultForCommit(input.judgeResult, {
+    teamA: input.teamA,
+    teamB: input.teamB
+  });
+  return ensureJudgeDiagnostic({
+    ...input,
+    judgeResult: normalizedJudgeResult
+  });
+}
+
+function normalizeStagedJudgeResultForCommit(judgeResult: JudgeResult, input: { teamA: Team; teamB: Team }): JudgeResult {
+  const diagnostic = judgeResult.diagnostic;
+  const judgeInference = judgeResult.judgeInference;
+  if (!diagnostic || !judgeInference) {
+    return judgeResult;
+  }
+  const decisiveEvidence = diagnostic.decisiveEvidence;
+  return {
+    ...judgeResult,
+    reason: normalizeStagedJudgeNarrativeText(judgeResult.reason),
+    judgeInference: {
+      source: "judge_inference",
+      boundary: judgeInference.boundary,
+      csResolution: normalizeStagedJudgeNarrativeText(judgeInference.csResolution),
+      combatNarrative: normalizeStagedJudgeNarrativeText(judgeInference.combatNarrative),
+      evidenceBasis: judgeInference.evidenceBasis.map((item) => normalizeStagedJudgeNarrativeText(item))
+    },
+    ...(judgeResult.judgeScorecard
+      ? { judgeScorecard: normalizeJudgeScorecardNarrativeText(judgeResult.judgeScorecard) }
+      : {}),
+      diagnostic: {
+        ...diagnostic,
+      attackedOpportunityGap: expandThinJudgeDiagnosticField({
+        label: "机会缺口",
+        value: diagnostic.attackedOpportunityGap,
+        fallback: decisiveEvidence,
+        teamA: input.teamA,
+        teamB: input.teamB
+      }),
+      defendedCoreProposition: expandThinJudgeDiagnosticField({
+        label: "防守命题",
+        value: diagnostic.defendedCoreProposition,
+        fallback: decisiveEvidence,
+        teamA: input.teamA,
+        teamB: input.teamB
+      }),
+      decisiveEvidence: normalizeStagedJudgeNarrativeText(decisiveEvidence),
+      ...(diagnostic.zoneRelation
+        ? {
+            zoneRelation: {
+              ...diagnostic.zoneRelation,
+              relationSummary: normalizeStagedJudgeNarrativeText(diagnostic.zoneRelation.relationSummary),
+              outcomeImpact: normalizeStagedJudgeNarrativeText(diagnostic.zoneRelation.outcomeImpact)
+            }
+          }
+        : {})
+      }
+    };
+}
+
+function normalizeLegacyJudgeScorecardForReview(judgeResult: JudgeResult, input: {
+  rubricProfile?: JudgeRubricProfile;
+  sideAssignment: SideAssignment;
+  teamAId: string;
+  teamBId: string;
+}): JudgeResult {
+  if (judgeResult.judgeScorecard || !input.rubricProfile || !judgeResult.roundWinType) {
+    return judgeResult;
+  }
+  return {
+    ...judgeResult,
+    judgeScorecard: buildDeterministicJudgeScorecard({
+      rubricProfile: input.rubricProfile,
+      winnerTeamId: judgeResult.winnerTeamId,
+      loserTeamId: judgeResult.loserTeamId,
+      teamAId: input.teamAId,
+      teamBId: input.teamBId,
+      sideAssignment: input.sideAssignment,
+      margin: judgeResult.margin,
+      roundWinType: judgeResult.roundWinType,
+      reason: "judge_review 兼容旧结构时生成的确定性评分桥接。"
+    })
+  };
+}
+
+function expandThinJudgeDiagnosticField(input: {
+  label: string;
+  value: string;
+  fallback: string;
+  teamA: Team;
+  teamB: Team;
+}): string {
+  const normalized = normalizeStagedJudgeNarrativeText(input.value);
+  const hasActorCue = hasJudgeSideCue(normalized, input.teamA, input.teamB);
+  const hasReasonCue = /(因为|导致|暴露|说明|证明|未能|使得|通过|从而|意味着|形成|守住|失守|验证)/.test(normalized);
+  if (normalized.length >= 10 && hasActorCue && hasReasonCue) {
+    return normalized;
+  }
+  return `${input.label}：${normalized}。${normalizeStagedJudgeNarrativeText(input.fallback)}`;
+}
+
+function normalizeStagedJudgeNarrativeText(value: string): string {
+  return value
+    .replace(/未能完成下包/g, "未能完成包点控制")
+    .replace(/完成下包|成功下包|下包成功/g, "完成包点控制")
+    .replace(/至少两次关键击杀/g, "关键火力贡献")
+    .replace(/至少两名/g, "多名")
+    .trim();
+}
+
+function normalizeJudgeScorecardNarrativeText(scorecard: JudgeScorecard): JudgeScorecard {
+  return {
+    ...scorecard,
+    teamScores: Object.fromEntries(
+      Object.entries(scorecard.teamScores).map(([teamId, teamScore]) => [
+        teamId,
+        {
+          ...teamScore,
+          objectiveScore: normalizeJudgeScoreDimensionText(teamScore.objectiveScore),
+          mapControlScore: normalizeJudgeScoreDimensionText(teamScore.mapControlScore),
+          submissionQualityScore: normalizeJudgeScoreDimensionText(teamScore.submissionQualityScore),
+          coordinationScore: normalizeJudgeScoreDimensionText(teamScore.coordinationScore),
+          economyAdjustedScore: normalizeJudgeScoreDimensionText(teamScore.economyAdjustedScore),
+          riskControlScore: normalizeJudgeScoreDimensionText(teamScore.riskControlScore),
+          proofScore: normalizeJudgeScoreDimensionText(teamScore.proofScore)
+        }
+      ])
+    ),
+    roundWinTypeJustification: normalizeStagedJudgeNarrativeText(scorecard.roundWinTypeJustification),
+    ...(scorecard.scoreOverride
+      ? {
+          scoreOverride: {
+            ...scorecard.scoreOverride,
+            reason: normalizeStagedJudgeNarrativeText(scorecard.scoreOverride.reason)
+          }
+        }
+      : {})
+  };
+}
+
+function normalizeJudgeScoreDimensionText<T extends { evidence: string }>(dimension: T): T {
+  return {
+    ...dimension,
+    evidence: normalizeStagedJudgeNarrativeText(dimension.evidence)
   };
 }
 
@@ -4881,7 +6686,143 @@ function buildFallbackJudgeRoundWinType(winnerTeamId: string, sideAssignment: Si
 }
 
 function shouldAttemptJudgeRepair(errorMessage: string): boolean {
-  return /does not parse as JSON|invalid_enum_value|Expected array, received object|Expected string, received object/i.test(errorMessage);
+  return /does not parse as JSON|invalid_enum_value|Expected array, received object|Expected string, received object|required|missing|diagnostic|decisiveEvidence|zoneRelation|roundWinType|judgeScorecard|rubricProfile|winnerFromScore|marginFromScore|totalScore/i.test(errorMessage);
+}
+
+function validateJudgeVerdictDecision(input: {
+  verdict: JudgeVerdictDecision;
+  teamAId: string;
+  teamBId: string;
+  activeTeamAAgentIds: string[];
+  activeTeamBAgentIds: string[];
+  sideAssignment: SideAssignment;
+  rubricProfile?: JudgeRubricProfile;
+  mapSemanticContext?: Record<string, unknown> | undefined;
+}): JudgeVerdictDecision {
+  const activeA = input.activeTeamAAgentIds.map((id) => promptAgentForValidation(id, input.teamAId));
+  const activeB = input.activeTeamBAgentIds.map((id) => promptAgentForValidation(id, input.teamBId));
+  validateJudgeResult({
+    judgeResult: {
+      ...input.verdict,
+      reason: `${input.verdict.winnerTeamId} 成功执行 verdict；${input.verdict.loserTeamId} 失败在于 verdict 结构判定。`,
+      judgeInference: {
+        source: "judge_inference",
+        boundary: "裁判推断边界占位，仅用于 verdict 结构校验，不作为最终判词。",
+        csResolution: "verdict 结构校验。",
+        combatNarrative: "verdict 结构校验。",
+        evidenceBasis: ["verdict"]
+      }
+    },
+    teamA: promptTeamForValidation(input.teamAId),
+    teamB: promptTeamForValidation(input.teamBId),
+    activeA,
+    activeB,
+    sideAssignment: input.sideAssignment
+  });
+  if (!input.verdict.diagnostic.zoneRelation) {
+    throw new Error("Judge verdict diagnostic.zoneRelation is required.");
+  }
+  const validZoneIds = collectPhase18MapZoneIds(input.mapSemanticContext);
+  if (validZoneIds.size > 0) {
+    if (!validZoneIds.has(input.verdict.diagnostic.mainAttackZoneId)) {
+      throw new Error(`Judge diagnostic mainAttackZoneId is not a valid map zone: ${input.verdict.diagnostic.mainAttackZoneId}`);
+    }
+    if (!validZoneIds.has(input.verdict.diagnostic.mainDefenseZoneId)) {
+      throw new Error(`Judge diagnostic mainDefenseZoneId is not a valid map zone: ${input.verdict.diagnostic.mainDefenseZoneId}`);
+    }
+  }
+  if (input.verdict.diagnostic.zoneRelation.attackZoneId !== input.verdict.diagnostic.mainAttackZoneId) {
+    throw new Error("Judge verdict zoneRelation.attackZoneId must match mainAttackZoneId.");
+  }
+  if (input.verdict.diagnostic.zoneRelation.defenseZoneId !== input.verdict.diagnostic.mainDefenseZoneId) {
+    throw new Error("Judge verdict zoneRelation.defenseZoneId must match mainDefenseZoneId.");
+  }
+  validateJudgeScorecard({
+    judgeResult: input.verdict,
+    teamAId: input.teamAId,
+    teamBId: input.teamBId,
+    sideAssignment: input.sideAssignment,
+    ...(input.rubricProfile ? { rubricProfile: input.rubricProfile } : {})
+  });
+  return input.verdict;
+}
+
+function promptTeamForValidation(teamId: string): Team {
+  return {
+    id: teamId,
+    tournamentId: "prompt_validation",
+    displayName: teamId,
+    shortName: teamId,
+    seed: 1,
+    createdAt: timestamp()
+  };
+}
+
+function promptAgentForValidation(agentId: string, teamId: string): Agent {
+  return {
+    id: agentId,
+    teamId,
+    driverModelId: "prompt_validation_driver",
+    role: "rifler",
+    displayName: agentId,
+    baseProfile: {
+      personalitySummary: "prompt validation agent",
+      tacticalSummary: "prompt validation agent",
+      styleTags: []
+    },
+    currentState: "active",
+    createdAt: timestamp()
+  };
+}
+
+function validateJudgeNarrativeAgainstVerdict(narrative: JudgeNarrativeDecision, verdict: JudgeVerdictDecision): void {
+  const combined = `${narrative.reason}\n${narrative.judgeInference.csResolution}\n${narrative.judgeInference.combatNarrative}`;
+  if (!hasJudgeInferenceBoundaryMarker(narrative.judgeInference.boundary)) {
+    throw new Error("Judge narrative judgeInference.boundary must mark combat details as judge inference.");
+  }
+  if (
+    verdict.roundWinType !== "attack_bomb_explosion" &&
+    verdict.roundWinType !== "defense_defuse" &&
+    /(成功下包|完成下包|炸弹爆炸|引爆|拆包成功|完成拆包)/.test(combined)
+  ) {
+    throw new Error(`Judge narrative bomb wording conflicts with roundWinType ${verdict.roundWinType}.`);
+  }
+}
+
+function normalizeJudgeNarrativeDecisionForVerdict(
+  narrative: JudgeNarrativeDecision,
+  verdict: JudgeVerdictDecision
+): JudgeNarrativeDecision {
+  const sanitizeText = (value: string) => sanitizeNarrativeTextForRoundWinType(value, verdict.roundWinType);
+  return {
+    reason: sanitizeText(narrative.reason),
+    judgeInference: {
+      source: "judge_inference",
+      boundary: sanitizeText(normalizeJudgeInferenceBoundary(narrative.judgeInference.boundary)),
+      csResolution: sanitizeText(narrative.judgeInference.csResolution),
+      combatNarrative: sanitizeText(narrative.judgeInference.combatNarrative),
+      evidenceBasis: narrative.judgeInference.evidenceBasis.map((item) => sanitizeText(item)).filter((item) => item.length > 0)
+    }
+  };
+}
+
+function normalizeJudgeInferenceBoundary(boundary: string): string {
+  return boundary.trim();
+}
+
+function hasJudgeInferenceBoundaryMarker(value: string): boolean {
+  return /(裁判推断|judge inference|合理推断|逻辑推断|反向推导|推导|结算层|不是 agent_action|非 agent_action|不是原始事实|非原始事实|非原始行动事实|未在输入中直接提供|未直接提供)/i.test(value);
+}
+
+function sanitizeNarrativeTextForRoundWinType(value: string, roundWinType: JudgeRoundWinType): string {
+  if (roundWinType === "attack_bomb_explosion" || roundWinType === "defense_defuse") {
+    return value;
+  }
+  return value
+    .replace(/([AB])\s*点下包成功/g, "$1 点控制成功")
+    .replace(/下包成功|成功下包|完成下包/g, "包点控制")
+    .replace(/炸弹爆炸|成功引爆|引爆成功/g, "回合收束")
+    .replace(/拆包成功|完成拆包/g, "防守收束");
 }
 
 function sameSemanticLabel(left: string, right: string): boolean {
@@ -4980,6 +6921,339 @@ function validateJudgeZoneRelation(input: {
   }
 }
 
+const judgeScoreDimensionLabels: Record<JudgeScoreDimension, string> = {
+  objectiveScore: "CS 目标完成度",
+  mapControlScore: "地图区域控制",
+  submissionQualityScore: "有效提交质量",
+  coordinationScore: "团队协同",
+  economyAdjustedScore: "经济调整价值",
+  riskControlScore: "风险控制",
+  proofScore: "命题证明"
+};
+
+const baseJudgeRubricWeights: JudgeScoreDimensionWeights = {
+  objectiveScore: 1 / 7,
+  mapControlScore: 1 / 7,
+  submissionQualityScore: 1 / 7,
+  coordinationScore: 1 / 7,
+  economyAdjustedScore: 1 / 7,
+  riskControlScore: 1 / 7,
+  proofScore: 1 / 7
+};
+
+function buildJudgeRubricProfile(input: {
+  mapName: string;
+  roundNumber: number;
+  sideAssignment: SideAssignment;
+  teamEconomyPlans: Record<string, TeamEconomyPlan>;
+  mapSemanticContext?: Record<string, unknown> | undefined;
+  judgeRubricContext?: Record<string, unknown> | undefined;
+}): JudgeRubricProfile {
+  const proposition = readUnknownRecord(input.mapSemanticContext?.proposition);
+  const subTheme = proposition ? resolvePhase18SubTheme(proposition, input.roundNumber) : undefined;
+  const coreAxis = pickString(input.judgeRubricContext, "coreJudgmentAxis") ?? pickString(input.judgeRubricContext, "core_judgment_axis");
+  const axisText = `${coreAxis ?? ""} ${pickString(proposition, "mapTheme") ?? ""} ${pickString(proposition, "map_theme") ?? ""}`;
+  const mapEmphasis = axisText.includes("opportunity")
+    ? (["mapControlScore", "proofScore"] as JudgeScoreDimension[])
+    : (["objectiveScore", "submissionQualityScore"] as JudgeScoreDimension[]);
+  const roundEmphasis = resolveRoundRubricEmphasis({
+    roundNumber: input.roundNumber,
+    subTheme,
+    teamEconomyPlans: input.teamEconomyPlans
+  });
+  const weights = normalizeJudgeRubricWeights(applyJudgeRubricEmphasis(baseJudgeRubricWeights, [...mapEmphasis, ...roundEmphasis]));
+  const reasonMustCover = [
+    ...pickStringArray(input.judgeRubricContext, "reasonMustCover"),
+    ...pickStringArray(input.judgeRubricContext, "reason_must_cover")
+  ];
+  const forbiddenBiases = [
+    ...pickStringArray(input.judgeRubricContext, "biasGuardrails"),
+    ...pickStringArray(input.judgeRubricContext, "bias_guardrails"),
+    "历史连胜偏置",
+    "比分领先偏置",
+    "防守命题天然成立偏置",
+    "节目效果追分偏置"
+  ];
+  const roundPhase = resolveRoundEconomyPhase(input.roundNumber);
+  return judgeRubricProfileSchema.parse({
+    profileId: `rubric_${safeId(input.mapName)}_r${input.roundNumber}_${stableHex(JSON.stringify({ subTheme, coreAxis, roundPhase })).slice(0, 8)}`,
+    baseVersion: "baseJudgeRubric-v1",
+    dimensions: [...judgeScoreDimensions],
+    dimensionWeights: weights,
+    mapAdjustment: {
+      source: "judgeRubricContext",
+      applied: Boolean(coreAxis || input.judgeRubricContext),
+      summary: coreAxis
+        ? `地图裁判轴 ${coreAxis} 调整评分重点，强调 ${mapEmphasis.map((dimension) => judgeScoreDimensionLabels[dimension]).join("、")}。`
+        : "未发现地图专属裁判轴，使用全局基础评分根基。",
+      emphasizedDimensions: mapEmphasis
+    },
+    roundAdjustment: {
+      source: "currentSubTheme",
+      subTheme: subTheme ?? "默认回合子命题",
+      summary: buildRoundRubricAdjustmentSummary({
+        roundNumber: input.roundNumber,
+        subTheme,
+        roundPhase,
+        emphasizedDimensions: roundEmphasis
+      }),
+      emphasizedDimensions: roundEmphasis
+    },
+    evidenceRequirements: [
+      ...reasonMustCover,
+      "必须分别引用双方 team_plan 与 SubmittedOutput。",
+      "必须说明经济只如何影响 economyAdjustedScore，不能作为隐藏胜负补偿。",
+      "必须说明攻方目标推进与守方核心命题在同一评分根基下如何比较。"
+    ],
+    forbiddenBiases: [...new Set(forbiddenBiases)]
+  });
+}
+
+function resolveRoundRubricEmphasis(input: {
+  roundNumber: number;
+  subTheme?: string | undefined;
+  teamEconomyPlans: Record<string, TeamEconomyPlan>;
+}): JudgeScoreDimension[] {
+  const phase = resolveRoundEconomyPhase(input.roundNumber);
+  if (phase === "pistol_round") {
+    return ["objectiveScore", "coordinationScore"];
+  }
+  const postures = Object.values(input.teamEconomyPlans).map((plan) => plan.posture);
+  if (postures.every((posture) => posture === "rifle_buy" || posture === "awp_buy" || posture === "double_awp")) {
+    return ["submissionQualityScore", "proofScore"];
+  }
+  const subTheme = (input.subTheme ?? "").toLowerCase();
+  if (/risk|风险|reset|破产|force|强起/.test(subTheme)) {
+    return ["riskControlScore", "economyAdjustedScore"];
+  }
+  return ["objectiveScore", "proofScore"];
+}
+
+function applyJudgeRubricEmphasis(
+  baseWeights: JudgeScoreDimensionWeights,
+  emphasizedDimensions: JudgeScoreDimension[]
+): JudgeScoreDimensionWeights {
+  const emphasized = new Set(emphasizedDimensions);
+  const entries = Object.fromEntries(
+    judgeScoreDimensions.map((dimension) => [
+      dimension,
+      baseWeights[dimension] * (emphasized.has(dimension) ? 1.2 : 1)
+    ])
+  ) as JudgeScoreDimensionWeights;
+  return entries;
+}
+
+function normalizeJudgeRubricWeights(weights: JudgeScoreDimensionWeights): JudgeScoreDimensionWeights {
+  const total = judgeScoreDimensions.reduce((sum, dimension) => sum + weights[dimension], 0);
+  return Object.fromEntries(
+    judgeScoreDimensions.map((dimension) => [dimension, roundJudgeScore(weights[dimension] / total, 4)])
+  ) as JudgeScoreDimensionWeights;
+}
+
+function buildRoundRubricAdjustmentSummary(input: {
+  roundNumber: number;
+  subTheme?: string | undefined;
+  roundPhase: string;
+  emphasizedDimensions: JudgeScoreDimension[];
+}): string {
+  const emphasis = input.emphasizedDimensions.map((dimension) => judgeScoreDimensionLabels[dimension]).join("、");
+  return `R${input.roundNumber} ${input.subTheme ?? "默认子命题"} / ${input.roundPhase}：本回合重点检查 ${emphasis}。`;
+}
+
+function validateJudgeScorecard(input: {
+  judgeResult: Pick<JudgeResult, "winnerTeamId" | "margin" | "roundWinType" | "judgeScorecard">;
+  teamAId: string;
+  teamBId: string;
+  sideAssignment: SideAssignment;
+  rubricProfile?: JudgeRubricProfile;
+}): void {
+  const scorecard = input.judgeResult.judgeScorecard;
+  if (!scorecard) {
+    throw new Error("Judge scorecard is required for Phase 2.0-pre v6 verdicts.");
+  }
+  if (input.rubricProfile && JSON.stringify(scorecard.rubricProfile) !== JSON.stringify(input.rubricProfile)) {
+    throw new Error("Judge scorecard rubricProfile must match the code-generated rubricProfile.");
+  }
+  validateJudgeRubricProfile(scorecard.rubricProfile);
+
+  const expectedTeamIds = [input.teamAId, input.teamBId];
+  for (const teamId of expectedTeamIds) {
+    const teamScore = scorecard.teamScores[teamId];
+    if (!teamScore) {
+      throw new Error(`Judge scorecard missing team score for ${teamId}.`);
+    }
+    if (teamScore.teamId !== teamId) {
+      throw new Error(`Judge scorecard team score key ${teamId} conflicts with teamId ${teamScore.teamId}.`);
+    }
+    const expectedSide = teamId === input.sideAssignment.attackingTeamId ? "attack" : "defense";
+    if (teamScore.side !== expectedSide) {
+      throw new Error(`Judge scorecard side for ${teamId} must be ${expectedSide}.`);
+    }
+    const expectedTotal = calculateWeightedJudgeScore(teamScore, scorecard.rubricProfile.dimensionWeights);
+    if (Math.abs(teamScore.totalScore - expectedTotal) > 0.16) {
+      throw new Error(`Judge scorecard totalScore for ${teamId} must equal weighted dimension scores.`);
+    }
+    for (const dimension of judgeScoreDimensions) {
+      const evidence = teamScore[dimension].evidence.trim();
+      if (evidence.length < 8) {
+        throw new Error(`Judge scorecard ${dimension} evidence for ${teamId} is too thin.`);
+      }
+      if (teamScore[dimension].evidenceSource === "public_history") {
+        throw new Error(`Judge scorecard ${dimension} must not use public history as direct scoring evidence.`);
+      }
+    }
+  }
+
+  const teamAScore = scorecard.teamScores[input.teamAId];
+  const teamBScore = scorecard.teamScores[input.teamBId];
+  if (!teamAScore || !teamBScore) {
+    throw new Error("Judge scorecard must include both team scores.");
+  }
+  const teamATotal = teamAScore.totalScore;
+  const teamBTotal = teamBScore.totalScore;
+  const expectedWinner = teamATotal >= teamBTotal ? input.teamAId : input.teamBId;
+  const expectedDelta = roundJudgeScore(Math.abs(teamATotal - teamBTotal), 2);
+  const expectedMargin = deriveJudgeMarginFromScoreDelta(expectedDelta);
+  if (scorecard.winnerFromScore !== expectedWinner) {
+    throw new Error("Judge scorecard winnerFromScore must be the team with the higher totalScore.");
+  }
+  if (input.judgeResult.winnerTeamId !== scorecard.winnerFromScore && !scorecard.scoreOverride?.applied) {
+    throw new Error("Judge winnerTeamId must match judgeScorecard.winnerFromScore.");
+  }
+  if (Math.abs(scorecard.scoreDelta - expectedDelta) > 0.16) {
+    throw new Error("Judge scorecard scoreDelta must equal the totalScore difference.");
+  }
+  if (scorecard.marginFromScore !== expectedMargin) {
+    throw new Error("Judge scorecard marginFromScore must be derived from scoreDelta.");
+  }
+  if (input.judgeResult.margin !== scorecard.marginFromScore && !scorecard.scoreOverride?.applied) {
+    throw new Error("Judge margin must match judgeScorecard.marginFromScore.");
+  }
+  if (scorecard.decisiveDimensions.some((dimension) => !judgeScoreDimensions.includes(dimension))) {
+    throw new Error("Judge scorecard decisiveDimensions contains an unknown dimension.");
+  }
+  if (input.judgeResult.roundWinType) {
+    validateJudgeScorecardWinType({
+      scorecard,
+      roundWinType: input.judgeResult.roundWinType,
+      sideAssignment: input.sideAssignment
+    });
+  }
+}
+
+function validateJudgeRubricProfile(profile: JudgeRubricProfile): void {
+  const dimensions = new Set(profile.dimensions);
+  if (dimensions.size !== judgeScoreDimensions.length || judgeScoreDimensions.some((dimension) => !dimensions.has(dimension))) {
+    throw new Error("Judge rubricProfile dimensions must exactly match baseJudgeRubric-v1.");
+  }
+  const total = judgeScoreDimensions.reduce((sum, dimension) => sum + profile.dimensionWeights[dimension], 0);
+  if (Math.abs(total - 1) > 0.02) {
+    throw new Error("Judge rubricProfile dimensionWeights must sum to 1.");
+  }
+  const baseWeight = 1 / judgeScoreDimensions.length;
+  for (const dimension of judgeScoreDimensions) {
+    const weight = profile.dimensionWeights[dimension];
+    if (weight < baseWeight * 0.8 - 0.01 || weight > baseWeight * 1.2 + 0.03) {
+      throw new Error(`Judge rubricProfile weight for ${dimension} exceeds the ±20% adjustment boundary.`);
+    }
+  }
+}
+
+function calculateWeightedJudgeScore(
+  teamScore: JudgeScorecard["teamScores"][string],
+  weights: JudgeScoreDimensionWeights
+): number {
+  return roundJudgeScore(
+    judgeScoreDimensions.reduce((sum, dimension) => sum + teamScore[dimension].score * weights[dimension], 0),
+    2
+  );
+}
+
+function deriveJudgeMarginFromScoreDelta(delta: number): JudgeResult["margin"] {
+  if (delta < 0.75) {
+    return "narrow";
+  }
+  if (delta < 2) {
+    return "standard";
+  }
+  return "decisive";
+}
+
+function validateJudgeScorecardWinType(input: {
+  scorecard: JudgeScorecard;
+  roundWinType?: JudgeRoundWinType;
+  sideAssignment: SideAssignment;
+}): void {
+  if (!input.roundWinType) {
+    return;
+  }
+  const winnerSide = input.scorecard.winnerFromScore === input.sideAssignment.attackingTeamId ? "attack" : "defense";
+  if (!input.roundWinType.startsWith(`${winnerSide}_`)) {
+    throw new Error("Judge scorecard winnerFromScore conflicts with roundWinType side.");
+  }
+}
+
+function roundJudgeScore(value: number, decimals: number): number {
+  const scale = 10 ** decimals;
+  return Math.round(value * scale) / scale;
+}
+
+function buildDeterministicJudgeScorecard(input: {
+  rubricProfile: JudgeRubricProfile;
+  winnerTeamId: string;
+  loserTeamId: string;
+  teamAId: string;
+  teamBId: string;
+  sideAssignment: SideAssignment;
+  margin: JudgeResult["margin"];
+  roundWinType: JudgeRoundWinType;
+  reason: string;
+}): JudgeScorecard {
+  const delta = input.margin === "decisive" ? 2.1 : input.margin === "standard" ? 1.15 : 0.5;
+  const winnerScore = input.margin === "decisive" ? 7.8 : input.margin === "standard" ? 7.1 : 6.6;
+  const loserScore = roundJudgeScore(winnerScore - delta, 2);
+  const buildTeamScore = (teamId: string, totalScore: number) => {
+    const side = teamId === input.sideAssignment.attackingTeamId ? "attack" : "defense";
+    return {
+      teamId,
+      side,
+      objectiveScore: buildDeterministicJudgeDimension(totalScore, "round_context", input.reason),
+      mapControlScore: buildDeterministicJudgeDimension(totalScore, "zone_relation", input.reason),
+      submissionQualityScore: buildDeterministicJudgeDimension(totalScore, "submitted_output", input.reason),
+      coordinationScore: buildDeterministicJudgeDimension(totalScore, "team_plan", input.reason),
+      economyAdjustedScore: buildDeterministicJudgeDimension(totalScore, "economy", input.reason),
+      riskControlScore: buildDeterministicJudgeDimension(totalScore, "round_context", input.reason),
+      proofScore: buildDeterministicJudgeDimension(totalScore, "judge_rubric_context", input.reason),
+      totalScore
+    } satisfies JudgeScorecard["teamScores"][string];
+  };
+  const teamScores = {
+    [input.winnerTeamId]: buildTeamScore(input.winnerTeamId, winnerScore),
+    [input.loserTeamId]: buildTeamScore(input.loserTeamId, loserScore)
+  };
+  return {
+    rubricProfile: input.rubricProfile,
+    teamScores,
+    scoreDelta: delta,
+    winnerFromScore: input.winnerTeamId,
+    marginFromScore: input.margin,
+    decisiveDimensions: ["objectiveScore", "proofScore"],
+    roundWinTypeJustification: `${input.roundWinType} 由本地确定性评分与显式 fallback 胜法保持一致。`
+  };
+}
+
+function buildDeterministicJudgeDimension(
+  score: number,
+  evidenceSource: JudgeScorecard["teamScores"][string][JudgeScoreDimension]["evidenceSource"],
+  reason: string
+): JudgeScorecard["teamScores"][string][JudgeScoreDimension] {
+  return {
+    score,
+    evidence: `确定性 fallback 依据：${reason}`,
+    evidenceSource
+  };
+}
+
 function containsZoneDeterminismShortcut(value: string): boolean {
   const normalized = normalizeForJudgeReason(value);
   const negatedShortcutPattern = /(不是|并非|并不是|并不|不由|不能|不可|不得|禁止).{0,16}(必然|一定|天然|自动|肯定|必定|必胜|必败|只要.*就|所以|因此|从而|直接证明)/;
@@ -5062,7 +7336,7 @@ function validateJudgeUnsupportedMicroCombatDetails(input: {
     input.judgeInference.combatNarrative,
     ...input.judgeInference.evidenceBasis
   ].join("\n");
-  const hasInferenceBoundary = /(裁判推断|judge inference|结算层|不是 agent_action|不是原始事实|非原始事实)/i.test(inferenceText);
+  const hasInferenceBoundary = hasJudgeInferenceBoundaryMarker(inferenceText);
   for (const [label, text] of [
     ["reason", input.reason],
     ["diagnostic.decisiveEvidence", input.decisiveEvidence]
@@ -5218,10 +7492,12 @@ function buildJudgePromptContext(input: {
   activeB: Agent[];
   teamABuyType: BuyType;
   teamBBuyType: BuyType;
-  teamPlans?: Record<string, TeamRoundPlanDecision> | undefined;
-  agentOutputs: AgentOutput[];
-  recentPublicRoundSummaries: string[];
-}): Phase18JudgePromptContext {
+    teamEconomyPlans: Record<string, TeamEconomyPlan>;
+    teamPlans?: Record<string, TeamRoundPlanDecision> | undefined;
+    agentOutputs: AgentOutput[];
+    recentPublicRoundSummaries: string[];
+    rubricProfile?: JudgeRubricProfile;
+  }): Phase18JudgePromptContext {
   const promptTeamA = buildPromptTeam(input.teamA, "team_alpha", "Team Alpha", "ALPHA");
   const promptTeamB = buildPromptTeam(input.teamB, "team_bravo", "Team Bravo", "BRAVO");
   const promptActiveA = input.activeA.map((agent, index) => buildPromptAgent(agent, promptTeamA.id, `alpha_${index + 1}`));
@@ -5308,6 +7584,24 @@ function buildJudgePromptContext(input: {
         [promptTeamA.id]: input.teamABuyType,
         [promptTeamB.id]: input.teamBBuyType
       },
+      economyContextByTeam: {
+        [promptTeamA.id]: {
+          posture: input.teamEconomyPlans[input.teamA.id]?.posture ?? "eco",
+          lossCount: input.teamEconomyPlans[input.teamA.id]?.lossCount ?? 1,
+          totalCash: input.teamEconomyPlans[input.teamA.id]?.totalCash ?? 0,
+          postureReason: input.teamEconomyPlans[input.teamA.id]?.postureReason ?? "默认经济态势。"
+        },
+        [promptTeamB.id]: {
+          posture: input.teamEconomyPlans[input.teamB.id]?.posture ?? "eco",
+          lossCount: input.teamEconomyPlans[input.teamB.id]?.lossCount ?? 1,
+          totalCash: input.teamEconomyPlans[input.teamB.id]?.totalCash ?? 0,
+          postureReason: input.teamEconomyPlans[input.teamB.id]?.postureReason ?? "默认经济态势。"
+        }
+      },
+      competitiveParityNote: buildCompetitiveParityNote(input.teamEconomyPlans),
+      recentPublicRoundRecapPolicy:
+        "公开历史摘要只用于说明比分、胜法和经济阶段，不得把连胜、连败或旧回合叙事直接当作当前回合的强弱证明。",
+      ...(input.rubricProfile ? { rubricProfile: input.rubricProfile } : {}),
       evaluationOrder,
       teamAId: promptTeamA.id,
       teamBId: promptTeamB.id,
@@ -5345,6 +7639,9 @@ function buildJudgePromptContext(input: {
         reason: normalizeChineseFirstJudgeText(desanitizeJudgeText(promptValidated.reason, desanitizeReplacements)),
         ...(promptValidated.judgeInference
           ? { judgeInference: desanitizeJudgeInference(promptValidated.judgeInference, desanitizeReplacements) }
+          : {}),
+        ...(promptValidated.judgeScorecard
+          ? { judgeScorecard: desanitizeJudgeScorecard(promptValidated.judgeScorecard, actualTeamIdByPromptTeamId, desanitizeReplacements) }
           : {}),
         ...(promptValidated.diagnostic
           ? { diagnostic: desanitizeJudgeDiagnostic(promptValidated.diagnostic, desanitizeReplacements) }
@@ -5390,6 +7687,56 @@ function desanitizeJudgeInference(
     csResolution: normalizeChineseFirstJudgeText(desanitizeJudgeText(inference.csResolution, replacements)),
     combatNarrative: normalizeChineseFirstJudgeText(desanitizeJudgeText(inference.combatNarrative, replacements)),
     evidenceBasis: inference.evidenceBasis.map((item) => normalizeChineseFirstJudgeText(desanitizeJudgeText(item, replacements)))
+  };
+}
+
+function desanitizeJudgeScorecard(
+  scorecard: JudgeScorecard,
+  actualTeamIdByPromptTeamId: Map<string, string>,
+  replacements: Array<{ source: string; target: string }>
+): JudgeScorecard {
+  const teamScores = Object.fromEntries(
+    Object.entries(scorecard.teamScores).map(([promptTeamId, teamScore]) => {
+      const actualTeamId = actualTeamIdByPromptTeamId.get(promptTeamId) ?? teamScore.teamId;
+      return [
+        actualTeamId,
+        {
+          ...teamScore,
+          teamId: actualTeamId,
+          objectiveScore: desanitizeJudgeScoreDimension(teamScore.objectiveScore, replacements),
+          mapControlScore: desanitizeJudgeScoreDimension(teamScore.mapControlScore, replacements),
+          submissionQualityScore: desanitizeJudgeScoreDimension(teamScore.submissionQualityScore, replacements),
+          coordinationScore: desanitizeJudgeScoreDimension(teamScore.coordinationScore, replacements),
+          economyAdjustedScore: desanitizeJudgeScoreDimension(teamScore.economyAdjustedScore, replacements),
+          riskControlScore: desanitizeJudgeScoreDimension(teamScore.riskControlScore, replacements),
+          proofScore: desanitizeJudgeScoreDimension(teamScore.proofScore, replacements)
+        }
+      ];
+    })
+  );
+  return {
+    ...scorecard,
+    teamScores,
+    winnerFromScore: actualTeamIdByPromptTeamId.get(scorecard.winnerFromScore) ?? scorecard.winnerFromScore,
+    roundWinTypeJustification: normalizeChineseFirstJudgeText(desanitizeJudgeText(scorecard.roundWinTypeJustification, replacements)),
+    ...(scorecard.scoreOverride
+      ? {
+          scoreOverride: {
+            ...scorecard.scoreOverride,
+            reason: normalizeChineseFirstJudgeText(desanitizeJudgeText(scorecard.scoreOverride.reason, replacements))
+          }
+        }
+      : {})
+  };
+}
+
+function desanitizeJudgeScoreDimension<T extends { evidence: string }>(
+  dimension: T,
+  replacements: Array<{ source: string; target: string }>
+): T {
+  return {
+    ...dimension,
+    evidence: normalizeChineseFirstJudgeText(desanitizeJudgeText(dimension.evidence, replacements))
   };
 }
 
@@ -5511,7 +7858,59 @@ function normalizeJudgeResultPayload(data: unknown): unknown {
       : {}),
     ...(readUnknownRecord(record.diagnostic)
       ? { diagnostic: normalizeJudgeDiagnosticPayload(record.diagnostic, record.reason) }
+      : {}),
+    ...(readUnknownRecord(record.judgeScorecard)
+      ? { judgeScorecard: normalizeJudgeScorecardPayload(record.judgeScorecard) }
       : {})
+  };
+}
+
+function normalizeJudgeVerdictPayload(data: unknown): unknown {
+  const record = readUnknownRecord(data);
+  if (!record) {
+    return data;
+  }
+
+  const margin = normalizeJudgeMargin(record.margin);
+  const roundWinType = normalizeJudgeRoundWinType(record.roundWinType);
+  return {
+    ...record,
+    ...(margin ? { margin } : {}),
+    ...(roundWinType ? { roundWinType } : {}),
+    ...(record.attackWinConditionMet !== undefined
+      ? { attackWinConditionMet: normalizeJudgeBoolean(record.attackWinConditionMet) }
+      : {}),
+    ...(record.defenseWinConditionMet !== undefined
+      ? { defenseWinConditionMet: normalizeJudgeBoolean(record.defenseWinConditionMet) }
+      : {}),
+    ...(readUnknownRecord(record.diagnostic)
+      ? { diagnostic: normalizeJudgeDiagnosticPayload(record.diagnostic, undefined) }
+      : {}),
+    ...(readUnknownRecord(record.judgeScorecard)
+      ? { judgeScorecard: normalizeJudgeScorecardPayload(record.judgeScorecard) }
+      : {})
+  };
+}
+
+function normalizeJudgeScorecardPayload(scorecard: unknown): unknown {
+  const record = readUnknownRecord(scorecard);
+  if (!record) {
+    return scorecard;
+  }
+  const rawTeamScores = record.teamScores;
+  const teamScores = Array.isArray(rawTeamScores)
+    ? Object.fromEntries(
+        rawTeamScores
+          .map((entry) => readUnknownRecord(entry))
+          .filter((entry): entry is Record<string, unknown> => Boolean(entry?.teamId))
+          .map((entry) => [String(entry.teamId), entry])
+      )
+    : rawTeamScores;
+  const marginFromScore = normalizeJudgeMargin(record.marginFromScore);
+  return {
+    ...record,
+    ...(teamScores ? { teamScores } : {}),
+    ...(marginFromScore ? { marginFromScore } : {})
   };
 }
 
@@ -5527,81 +7926,278 @@ function normalizeJudgeInferencePayload(inference: unknown): unknown {
     csResolution: normalizeCoachTimeoutText(record.csResolution),
     combatNarrative: normalizeCoachTimeoutText(record.combatNarrative),
     evidenceBasis: Array.isArray(record.evidenceBasis)
-      ? record.evidenceBasis.map((item) => normalizeCoachTimeoutText(item))
-      : []
+      ? record.evidenceBasis.map((item) => normalizeCoachTimeoutText(item)).filter((item): item is string => Boolean(item))
+      : typeof record.evidenceBasis === "string"
+        ? [normalizeCoachTimeoutText(record.evidenceBasis)].filter((item): item is string => Boolean(item))
+        : []
   };
 }
 
-function normalizeJudgeDiagnosticPayload(diagnostic: unknown, _reason: unknown): unknown {
+function normalizeJudgeNarrativePayload(data: unknown): unknown {
+  const record = readUnknownRecord(data);
+  if (!record) {
+    return data;
+  }
+
+  return {
+    ...record,
+    reason: normalizeCoachTimeoutText(record.reason),
+    ...(readUnknownRecord(record.judgeInference)
+      ? { judgeInference: normalizeJudgeInferencePayload(record.judgeInference) }
+      : {})
+  };
+}
+
+function normalizeJudgeDiagnosticPayload(diagnostic: unknown, reason: unknown): unknown {
   const record = readUnknownRecord(diagnostic);
   if (!record) {
     return diagnostic;
   }
 
+  const zoneRelationRecord = readUnknownRecord(record.zoneRelation);
+  const decisiveEvidence =
+    normalizeCoachTimeoutText(record.decisiveEvidence) ??
+    normalizeCoachTimeoutText(zoneRelationRecord?.decisiveEvidence) ??
+    normalizeCoachTimeoutText(zoneRelationRecord?.evidence) ??
+    normalizeCoachTimeoutText(zoneRelationRecord?.outcomeImpact);
+  const mainAttackZoneId = normalizeCoachTimeoutText(record.mainAttackZoneId) ?? "unknown_attack_zone";
+  const mainDefenseZoneId = normalizeCoachTimeoutText(record.mainDefenseZoneId) ?? mainAttackZoneId;
+  const normalizedZoneRelation = zoneRelationRecord
+    ? normalizeJudgeZoneRelationPayload(record.zoneRelation, decisiveEvidence, {
+        attackZoneId: mainAttackZoneId,
+        defenseZoneId: mainDefenseZoneId
+      })
+    : {
+        attackZoneId: mainAttackZoneId,
+        defenseZoneId: mainDefenseZoneId,
+        relationType: "same_focus",
+        relationSummary: decisiveEvidence ?? normalizeCoachTimeoutText(reason) ?? "攻守焦点存在结构关系。",
+        outcomeImpact: decisiveEvidence ?? normalizeCoachTimeoutText(reason) ?? "攻守焦点影响本回合胜负。"
+      };
+
   return {
     currentSubTheme: normalizeCoachTimeoutText(record.currentSubTheme),
     attackedOpportunityGap: normalizeCoachTimeoutText(record.attackedOpportunityGap),
     defendedCoreProposition: normalizeCoachTimeoutText(record.defendedCoreProposition),
-    mainAttackZoneId: normalizeCoachTimeoutText(record.mainAttackZoneId),
-    mainDefenseZoneId: normalizeCoachTimeoutText(record.mainDefenseZoneId),
-    ...(readUnknownRecord(record.zoneRelation)
-      ? { zoneRelation: normalizeJudgeZoneRelationPayload(record.zoneRelation) }
-      : {}),
-    decisiveEvidence: normalizeCoachTimeoutText(record.decisiveEvidence)
+    mainAttackZoneId,
+    mainDefenseZoneId,
+    zoneRelation: normalizedZoneRelation,
+    decisiveEvidence
   };
 }
 
-function normalizeJudgeZoneRelationPayload(zoneRelation: unknown): unknown {
+function normalizeJudgeZoneRelationPayload(
+  zoneRelation: unknown,
+  fallbackEvidence?: string,
+  fallbackZones?: { attackZoneId: string; defenseZoneId: string }
+): unknown {
   const record = readUnknownRecord(zoneRelation);
   if (!record) {
     return zoneRelation;
   }
 
+  const evidence =
+    normalizeCoachTimeoutText(record.decisiveEvidence) ??
+    normalizeCoachTimeoutText(record.evidence) ??
+    normalizeCoachTimeoutText(record.relationSummary) ??
+    normalizeCoachTimeoutText(record.outcomeImpact) ??
+    fallbackEvidence ??
+    "攻守焦点存在结构关系，并影响本回合胜负。";
+  const rawRelationType = normalizeCoachTimeoutText(record.relationType);
+  const relationType = normalizeJudgeZoneRelationType(rawRelationType);
+  const relationTypeNote =
+    rawRelationType && rawRelationType.trim().toLowerCase() !== relationType
+      ? `原始关系类型“${rawRelationType}”已归一为 ${relationType}。`
+      : "";
+
   return {
-    attackZoneId: normalizeCoachTimeoutText(record.attackZoneId),
-    defenseZoneId: normalizeCoachTimeoutText(record.defenseZoneId),
-    relationType: normalizeCoachTimeoutText(record.relationType),
-    relationSummary: normalizeCoachTimeoutText(record.relationSummary),
-    outcomeImpact: normalizeCoachTimeoutText(record.outcomeImpact)
+    attackZoneId: normalizeCoachTimeoutText(record.attackZoneId) ?? fallbackZones?.attackZoneId,
+    defenseZoneId: normalizeCoachTimeoutText(record.defenseZoneId) ?? fallbackZones?.defenseZoneId,
+    relationType,
+    relationSummary: [normalizeCoachTimeoutText(record.relationSummary) ?? evidence, relationTypeNote].filter(Boolean).join(" "),
+    outcomeImpact: normalizeCoachTimeoutText(record.outcomeImpact) ?? evidence
+  };
+}
+
+function normalizeJudgeZoneRelationType(value: unknown): string {
+  const normalized = (normalizeCoachTimeoutText(value) ?? "").trim().toLowerCase();
+  switch (normalized) {
+    case "":
+      return "same_focus";
+    case "same":
+    case "same_zone":
+    case "same_focus":
+    case "direct":
+    case "direct_collision":
+    case "direct_contest":
+    case "head_to_head":
+    case "primary_defense_anchor":
+      return "same_focus";
+    case "cross":
+    case "crossfire":
+    case "cross_hit":
+    case "cross_axis":
+    case "cross_axis_pressure":
+    case "adjacent_entry_pressure":
+    case "adjacent_pressure":
+    case "entry_pressure":
+    case "indirect_pressure":
+    case "indirect_control":
+    case "pressure_transfer":
+    case "offensive_focus_vs_defensive_hub":
+    case "offensive_focus_defensive_hub":
+    case "attack_focus_vs_defense_hub":
+    case "attack_focus_defense_hub":
+      return "cross_hit";
+    case "split":
+    case "split_pressure":
+    case "multi_axis":
+    case "non_overlapping_focus_mismatch":
+    case "non_overlapping_focus":
+    case "focus_mismatch":
+      return "split_pressure";
+    case "probe_failed":
+    case "failed_probe":
+    case "failed_test":
+      return "failed_probe";
+    case "rotation":
+    case "rotation_test":
+    case "rotate_test":
+      return "rotation_test";
+    case "weak_side":
+    case "weak_side_hit":
+    case "weakside_hit":
+      return "weak_side_hit";
+    default:
+      return "cross_hit";
+  }
+}
+
+function normalizeChineseFirstTacticalText(value: string): string {
+  let output = value.trim();
+  const replacements: Array<{ source: string; target: string }> = [
+    { source: "with controlled aggression", target: "以可控侵略性" },
+    { source: "controlled aggression", target: "可控侵略性" },
+    { source: "primary task", target: "首要任务" },
+    { source: "do not overcommit", target: "不要过度投入" },
+    { source: "overcommit", target: "过度投入" },
+    { source: "immediately", target: "立即" },
+    { source: "toward", target: "朝向" },
+    { source: "probe", target: "试探" },
+    { source: "rotation", target: "轮转" },
+    { source: "rotations", target: "轮转" },
+    { source: "window control", target: "窗口控制" },
+    { source: "window", target: "窗口" },
+    { source: "spawn", target: "出生点" },
+    { source: "crossfire", target: "交叉火力" },
+    { source: "sightlines", target: "枪线" },
+    { source: "sightline", target: "枪线" },
+    { source: "flank", target: "侧翼" },
+    { source: "closeout", target: "收束" }
+  ];
+  for (const replacement of replacements) {
+    output = output.replace(buildJudgeLiteralPattern(replacement.source), replacement.target);
+  }
+  return output.replace(/\s{2,}/g, " ").trim();
+}
+
+function normalizeAgentActionDecision(decision: AgentActionDecision): AgentActionDecision {
+  return {
+    ...decision,
+    roundObjective: normalizeChineseFirstTacticalText(decision.roundObjective),
+    executionPlan: normalizeChineseFirstTacticalText(decision.executionPlan),
+    coordinationPlan: normalizeChineseFirstTacticalText(decision.coordinationPlan),
+    roleResponsibilityUsage: normalizeChineseFirstTacticalText(decision.roleResponsibilityUsage),
+    riskRead: normalizeChineseFirstTacticalText(decision.riskRead),
+    contingencyPlan: normalizeChineseFirstTacticalText(decision.contingencyPlan),
+    expectedContribution: normalizeChineseFirstTacticalText(decision.expectedContribution)
   };
 }
 
 function normalizeTeamRoundPlanPayload(data: unknown): unknown {
   const record = readUnknownRecord(data);
-  if (!record || Array.isArray(record.playerDirectives)) {
+  if (!record) {
     return data;
   }
 
-  const directivesRecord = readUnknownRecord(record.playerDirectives);
-  if (!directivesRecord) {
-    return data;
+  let playerDirectives = record.playerDirectives;
+  if (!Array.isArray(record.playerDirectives)) {
+    const directivesRecord = readUnknownRecord(record.playerDirectives);
+    if (directivesRecord) {
+      playerDirectives = Object.entries(directivesRecord).map(([agentId, directiveValue]) => {
+        if (typeof directiveValue === "string") {
+          return {
+            agentId,
+            directive: directiveValue
+          };
+        }
+
+        const directiveRecord = readUnknownRecord(directiveValue);
+        if (directiveRecord && typeof directiveRecord.directive === "string") {
+          return {
+            agentId,
+            directive: directiveRecord.directive
+          };
+        }
+
+        return {
+          agentId,
+          directive: directiveValue
+        };
+      });
+    }
   }
 
-  const playerDirectives = Object.entries(directivesRecord).map(([agentId, directiveValue]) => {
-    if (typeof directiveValue === "string") {
-      return {
-        agentId,
-        directive: directiveValue
+  let economyIntent = record.economyIntent;
+  const economyIntentRecord = readUnknownRecord(record.economyIntent);
+  if (economyIntentRecord && !Array.isArray(economyIntentRecord.buyIntentByAgent)) {
+    const buyIntentRecord = readUnknownRecord(economyIntentRecord.buyIntentByAgent);
+    if (buyIntentRecord) {
+      economyIntent = {
+        ...economyIntentRecord,
+        ...(typeof economyIntentRecord.summary === "string"
+          ? { summary: normalizeChineseFirstTacticalText(economyIntentRecord.summary) }
+          : {}),
+        buyIntentByAgent: Object.entries(buyIntentRecord).map(([agentId, entryValue]) => {
+          const entryRecord = readUnknownRecord(entryValue);
+          if (entryRecord) {
+            return {
+              agentId,
+              ...entryRecord,
+              ...(typeof entryRecord.note === "string" ? { note: normalizeChineseFirstTacticalText(entryRecord.note) } : {})
+            };
+          }
+          return {
+            agentId,
+            targetPosture: "eco",
+            note: typeof entryValue === "string" ? normalizeChineseFirstTacticalText(entryValue) : entryValue
+          };
+        })
       };
     }
-
-    const directiveRecord = readUnknownRecord(directiveValue);
-    if (directiveRecord && typeof directiveRecord.directive === "string") {
-      return {
-        agentId,
-        directive: directiveRecord.directive
-      };
-    }
-
-    return {
-      agentId,
-      directive: directiveValue
-    };
-  });
+  }
 
   return {
     ...record,
-    playerDirectives
+    ...(typeof record.primaryIntent === "string" ? { primaryIntent: normalizeChineseFirstTacticalText(record.primaryIntent) } : {}),
+    ...(typeof record.coordinationSummary === "string"
+      ? { coordinationSummary: normalizeChineseFirstTacticalText(record.coordinationSummary) }
+      : {}),
+    playerDirectives: Array.isArray(playerDirectives)
+      ? playerDirectives.map((entry) => {
+          const directiveRecord = readUnknownRecord(entry);
+          if (!directiveRecord || typeof directiveRecord.directive !== "string") {
+            return entry;
+          }
+          return {
+            ...directiveRecord,
+            directive: normalizeChineseFirstTacticalText(directiveRecord.directive)
+          };
+        })
+      : playerDirectives,
+    ...(typeof record.winCondition === "string" ? { winCondition: normalizeChineseFirstTacticalText(record.winCondition) } : {}),
+    ...(typeof record.risk === "string" ? { risk: normalizeChineseFirstTacticalText(record.risk) } : {}),
+    economyIntent
   };
 }
 
@@ -6251,6 +8847,7 @@ function buildPromptAgentOutputsByTeam(input: {
 }): Record<string, AgentOutput[]> {
   const outputsByTeam = new Map<string, AgentOutput[]>();
   for (const output of input.agentOutputs) {
+    const submittedOutput = output as AgentOutput & Partial<SubmittedAgentOutput>;
     const promptTeamId = input.promptTeamIdByActualTeamId.get(output.teamId);
     const promptAgentId = input.promptAgentIdByActualAgentId.get(output.agentId);
     if (!promptTeamId || !promptAgentId) {
@@ -6259,9 +8856,11 @@ function buildPromptAgentOutputsByTeam(input: {
 
     const sanitizedOutput: AgentOutput = {
       ...output,
-      id: `prompt_${promptAgentId}`,
+      id: submittedOutput.submissionKind === "submitted_output" ? `sub_prompt_${promptAgentId}` : `prompt_${promptAgentId}`,
       agentId: promptAgentId,
       teamId: promptTeamId,
+      ...(submittedOutput.rawOutputId ? { rawOutputId: `prompt_${promptAgentId}` } : {}),
+      ...(submittedOutput.gateSummary ? { gateSummary: sanitizeJudgeText(submittedOutput.gateSummary, input.replacements) } : {}),
       ...(output.action ? { action: sanitizeJudgeText(output.action, input.replacements) } : {}),
       ...(output.actionDetail ? { actionDetail: sanitizeJudgeValue(output.actionDetail, input.replacements) as AgentActionDecision } : {}),
       rawFingerprint: `prompt_fp_${promptAgentId}`

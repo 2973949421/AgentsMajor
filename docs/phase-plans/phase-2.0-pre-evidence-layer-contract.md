@@ -51,3 +51,32 @@
 - 非法：`judge 写某选手三秒清点并锁死回防，但当前事实层没有 combat ledger。`
 
 后续如果经济系统与击杀判断正式接入，需要单独定义 judge 可引用的 combat fact 字段白名单。
+
+## v4 补充：裁判推断与战斗事实边界
+
+- `judge_verdict` 只锁定结构裁决，不生成最终 combat facts。
+- `judge_narrative` 可以写击杀、下包、拆包、全歼等结果叙事，但必须放在 `judgeInference` 边界内，并标明它是裁判推断。
+- `combat_resolution` 只生成受限草案；最终事实必须通过代码 validator 后才能进入 `roundCombatResolution`。
+- 前端和 summary 只能优先消费最终 `roundCombatResolution`；不能把 judge 判词里的自由叙事当作 kill feed 真相。
+- 如果 `judgeInference`、`roundWinType`、`roundCombatResolution` 或 summary 互相矛盾，本回合不应被视为通过验收。
+
+## v6 补充：Scorecard 证据层
+
+- 新回合必须展示 `judgeScorecard`；旧回合没有该字段时只能显示“旧裁判，无评分表”，不能从判词反推伪造分数。
+- `judgeScorecard.rubricProfile` 是裁判评分标准来源，前端必须能展示基础根基、地图修正、回合修正和权重。
+- 评分维度固定为 7 项：目标完成、地图控制、有效提交、团队协同、经济价值、风险控制、命题证明。
+- 前端应展示双方每个维度的分数和证据句，便于人工审查 judge 是否偏向防守、历史连胜或文本风格。
+- `winnerTeamId / margin / roundWinType` 的解释应优先指向 `winnerFromScore / marginFromScore / roundWinTypeJustification`，`reason` 只作为可读判词。
+- `public_history` 只能作为背景，不得在前端或复盘中解释为直接得分证据。
+
+## 2026-05-30 Output Gate Evidence Boundary
+
+Phase 2.0-pre 从本修订起采用最小可观测 Output Gate：
+
+- `RawOutput` 仍完整保存在 `RoundReport.agentOutputs`，只用于审计、调试和人工质量判断。
+- `SubmittedOutput` 保存在 `RoundReport.tokenSubmission.submittedOutputs`，是 Judge 默认消费的选手证据边界。
+- Judge 不得引用 `SubmittedOutput.omittedFields` 对应的 RawOutput 细节。
+- 经济不裁剪双方赛前公开输入，只裁剪 `RawOutput -> SubmittedOutput` 后的有效提交。
+- 前端可以展示 RawOutput 和 SubmittedOutput 的差异，但这属于观赛/调试层，不代表参赛 agent 在 prompt 中可见。
+
+该版本先保证边界存在和可审计，不同时承诺经济已经深度影响胜负权重。

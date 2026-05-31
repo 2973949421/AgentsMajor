@@ -28,7 +28,7 @@ describe("Phase 1.7 web runner policy", () => {
         projectRoot,
         { AGENT_MAJOR_WEB_RUNNER_ENABLED: "true" }
       )
-    ).toEqual({ ok: true, mode: "phase17_showcase_match" });
+    ).toEqual({ ok: true, action: "run", mode: "phase17_showcase_match" });
     expect(
       validateWebRunnerRequest(
         localRequest(),
@@ -36,7 +36,7 @@ describe("Phase 1.7 web runner policy", () => {
         projectRoot,
         { AGENT_MAJOR_WEB_RUNNER_ENABLED: "true" }
       )
-    ).toEqual({ ok: true, mode: "phase18_next_round" });
+    ).toEqual({ ok: true, action: "run", mode: "phase18_next_round" });
     expect(
       validateWebRunnerRequest(
         localRequest(),
@@ -44,7 +44,7 @@ describe("Phase 1.7 web runner policy", () => {
         projectRoot,
         { AGENT_MAJOR_WEB_RUNNER_ENABLED: "true" }
       )
-    ).toEqual({ ok: true, mode: "phase18_current_map" });
+    ).toEqual({ ok: true, action: "run", mode: "phase18_current_map" });
     expect(
       validateWebRunnerRequest(
         localRequest(),
@@ -52,7 +52,7 @@ describe("Phase 1.7 web runner policy", () => {
         projectRoot,
         { AGENT_MAJOR_WEB_RUNNER_ENABLED: "true" }
       )
-    ).toEqual({ ok: true, mode: "phase18_full_bo3" });
+    ).toEqual({ ok: true, action: "run", mode: "phase18_full_bo3" });
   });
 
   it("rejects the frozen legacy web mode", () => {
@@ -98,7 +98,7 @@ describe("Phase 1.7 web runner policy", () => {
           AGENT_MAJOR_WEB_RUNNER_TOKEN: "local-token"
         }
       )
-    ).toEqual({ ok: true, mode: "phase17_showcase_match" });
+    ).toEqual({ ok: true, action: "run", mode: "phase17_showcase_match" });
   });
 });
 

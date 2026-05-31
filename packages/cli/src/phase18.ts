@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { createPhase18SimulationEngine, readMatchReplay, type MatchReplay } from "@agent-major/core";
+import { createPhase18SimulationEngine, PHASE20_PRE_PROMPT_CONTRACT_ID, readMatchReplay, type MatchReplay } from "@agent-major/core";
 import { createSqliteRepositories, defaultSqlitePath } from "@agent-major/db";
 import { DashScopeOpenAiProvider, defaultDriverModels, loadAgentMajorLlmConfig } from "@agent-major/llm";
 import {
@@ -34,7 +34,7 @@ export interface Phase18CommandResult {
 }
 
 const estimatedMaxRoundsPerMap = 18;
-const phase18CallsPerRound = 13;
+const phase18CallsPerRound = 14;
 
 export async function runPhase18Command(
   command: Phase18Command,
@@ -154,6 +154,11 @@ export async function ensureRunnablePhase18Fixture(input: {
   const now = new Date().toISOString();
   const requestedMode = input.mode;
   const existingRun = await resolvePhase18CliRun(input.repositories, input.runId);
+  if (existingRun && isCliRunContractBlocked(input.repositories, existingRun)) {
+    throw new Error(
+      `Phase 1.8 run ${existingRun.id} uses an old or mixed prompt contract and cannot be continued. Create a fresh ${PHASE20_PRE_PROMPT_CONTRACT_ID} run.`
+    );
+  }
   const existingRunFacts = existingRun ? await readPhase18CliFacts(input.repositories, existingRun.runtimeMatchId) : null;
   const existingRunHasRemainingMap = existingRun ? hasRemainingPhase18Map(input.repositories, existingRun.runtimeMatchId) : false;
   const reusableRun =
@@ -203,6 +208,7 @@ export async function ensureRunnablePhase18Fixture(input: {
     fixtureId: phase18CanonIds.fixtureId,
     status: "running",
     requestedMode: mapCommandToSimulationRunMode(requestedMode),
+    promptContractId: reusableRun?.promptContractId ?? PHASE20_PRE_PROMPT_CONTRACT_ID,
     runtimeMatchId,
     ...(facts.mapGameId ? { runtimeMapGameId: facts.mapGameId } : reusableRun?.runtimeMapGameId ? { runtimeMapGameId: reusableRun.runtimeMapGameId } : {}),
     baselineCompletedRounds: facts.completedRounds,
@@ -470,6 +476,21 @@ function mapCommandToSimulationRunMode(command: "round" | "map" | "match"): "pha
 
 function createPhase18RunId(now = Date.now()): string {
   return `phase18_run_${now.toString(36)}`;
+}
+
+function isCliRunContractBlocked(repositories: ReturnType<typeof createSqliteRepositories>, run: SimulationRun): boolean {
+  const rows = repositories.sqlite
+    .prepare(
+      `SELECT DISTINCT prompt_contract_id AS promptContractId
+       FROM llm_calls
+       WHERE match_id = ? AND prompt_contract_id IS NOT NULL`
+    )
+    .all(run.runtimeMatchId) as Array<{ promptContractId?: unknown }>;
+  const contracts = new Set([
+    ...(run.promptContractId ? [run.promptContractId] : []),
+    ...rows.map((row) => row.promptContractId).filter((value): value is string => typeof value === "string" && value.length > 0)
+  ]);
+  return contracts.size !== 1 || !contracts.has(PHASE20_PRE_PROMPT_CONTRACT_ID);
 }
 
 async function main(): Promise<void> {

@@ -48,6 +48,39 @@ export type AgentState = (typeof agentStates)[number];
 export const buyTypes = ["fullBuy", "halfBuy", "eco", "forceBuy", "save"] as const;
 export type BuyType = (typeof buyTypes)[number];
 
+export const economyPostures = [
+  "pistol_round",
+  "full_eco",
+  "eco",
+  "pistol_armor_force",
+  "light_buy",
+  "force_buy",
+  "half_buy",
+  "bonus_round",
+  "rifle_buy",
+  "awp_buy",
+  "double_awp",
+  "broken_buy",
+  "save_play"
+] as const;
+export type EconomyPosture = (typeof economyPostures)[number];
+
+export const loadoutPackages = [
+  "pistol_round_pack",
+  "pistol_eco_pack",
+  "pistol_armor_force_pack",
+  "smg_force_pack",
+  "rifle_low_t_pack",
+  "rifle_low_ct_pack",
+  "rifle_full_t_pack",
+  "rifle_full_ct_pack",
+  "awp_pack",
+  "bonus_carry_pack",
+  "save_support_pack",
+  "broken_buy_pack"
+] as const;
+export type LoadoutPackage = (typeof loadoutPackages)[number];
+
 export const sideAssignmentHalves = ["first_half", "second_half", "overtime"] as const;
 export type SideAssignmentHalf = (typeof sideAssignmentHalves)[number];
 

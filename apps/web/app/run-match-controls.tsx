@@ -52,6 +52,9 @@ export interface RunMatchHistoryEntry {
   createdAt: string;
   scoreLabel: string;
   latestError?: string;
+  promptContractId?: string;
+  contractStatus?: "current" | "legacy" | "mixed" | "blocked";
+  benchmarkLabel?: string;
 }
 
 export interface WebRunProgress {
@@ -82,6 +85,8 @@ export interface WebRunProgress {
     runningCalls: number;
   };
   llmCalls: WebRunLlmCallProgress[];
+  promptContractId?: string;
+  contractStatus?: "current" | "legacy" | "mixed" | "blocked";
   recentRuns: RunMatchHistoryEntry[];
   error?: string;
   result?: {
@@ -246,32 +251,44 @@ export function RunMatchControls({
     onReplayGuardChange({ hidden: false, message: "" });
   }, [onReplayGuardChange, progress?.error, progress?.hasFreshReplay, progress?.status, state]);
 
-  const helperText =
-    message ||
-    "默认从“生成下一局”开始做单局验收。需要连续验证时，再扩展到当前地图或整场 BO3。";
-
   const activeRunStatusLabel = progress
     ? state === "paused" || state === "stopped"
       ? formatLocalStateLabel(state)
       : formatRunStatusLabel(progress.status)
     : formatLocalStateLabel(state);
   const failedAttemptNotice = progress ? buildFailedAttemptNotice(progress) : null;
+  const canRetryCurrentRound =
+    progress !== null && Boolean(progress.runId) && progress.status === "failed" && progress.contractStatus !== "blocked" && progress.contractStatus !== "mixed";
+  const nextRoundButtonLabel = canRetryCurrentRound
+    ? state === "running"
+      ? "正在重试当前回合..."
+      : "继续重试当前回合"
+    : state === "running" && progress?.mode === "phase18_next_round"
+      ? "正在生成下一局..."
+      : "生成下一局";
+  const helperText =
+    message ||
+    (canRetryCurrentRound
+      ? "当前 run 失败但该回合尚未提交；继续重试会复用当前 run 和当前回合，不会推进到下一局。"
+      : "默认从“生成下一局”开始做单局验收。需要连续验证时，再扩展到当前地图或整场 BO3。");
 
   const runSummaryItems = progress
     ? [
         { label: "运行状态", value: activeRunStatusLabel },
         { label: "已提交局数", value: String(progress.completedRounds) },
+        { label: "契约状态", value: formatContractStatus(progress.contractStatus) },
         { label: "当前地图", value: progress.currentMapOrder ? `M${progress.currentMapOrder}` : "--" },
         { label: "当前回合", value: progress.currentRoundNumber ? `R${progress.currentRoundNumber}` : "--" },
-        { label: "预期调用", value: String(progress.llmSummary.expectedTotalCalls) },
+        { label: "调用预估", value: formatExpectedCalls(progress) },
         { label: "已完成调用", value: String(progress.llmSummary.completedCalls) }
       ]
     : [
         { label: "运行状态", value: formatLocalStateLabel(state) },
         { label: "已提交局数", value: "0" },
+        { label: "契约状态", value: "契约未知" },
         { label: "当前地图", value: "--" },
         { label: "当前回合", value: "--" },
-        { label: "预期调用", value: "0" },
+        { label: "调用预估", value: "当前回合约 14 次" },
         { label: "已完成调用", value: "0" }
       ];
 
@@ -300,8 +317,14 @@ export function RunMatchControls({
       ) : null}
 
       <div className={styles.opsActionGrid}>
-        <button type="button" className={styles.opsActionPrimary} onClick={() => handleRun("phase18_next_round")} disabled={state === "running"}>
-          {state === "running" && progress?.mode === "phase18_next_round" ? "正在生成下一局..." : "生成下一局"}
+        <button
+          type="button"
+          className={styles.opsActionPrimary}
+          onClick={() => handleRun("phase18_next_round")}
+          disabled={state === "running" || (progress?.status === "failed" && !canRetryCurrentRound)}
+          title={canRetryCurrentRound ? "重试当前 run 的未提交回合，不创建新 run。" : undefined}
+        >
+          {nextRoundButtonLabel}
         </button>
         <button type="button" className={styles.opsActionSecondary} onClick={() => handleRun("phase18_current_map")} disabled={state === "running"}>
           {state === "running" && progress?.mode === "phase18_current_map" ? "正在生成当前地图..." : "生成当前地图"}
@@ -453,10 +476,10 @@ export function RunMatchControls({
             <div className={styles.opsHistoryList}>
               {history.map((item) => (
                 <button key={item.runId} type="button" className={styles.opsHistoryButton} onClick={() => window.location.assign(buildReplayUrl(item.runId))}>
-                  <strong>{shortRunId(item.runId)}</strong>
+                  <strong>{item.benchmarkLabel ? `${shortRunId(item.runId)} · ${item.benchmarkLabel}` : shortRunId(item.runId)}</strong>
                   <span>{item.mapLabel}</span>
                   <span className={styles.opsHistoryMeta}>
-                    {formatRunStatusLabel(item.status)} · 已提交 {item.completedRounds} 局 · 比分 {item.scoreLabel}
+                    {formatRunStatusLabel(item.status)} · {formatContractStatus(item.contractStatus)} · 已提交 {item.completedRounds} 局 · 比分 {item.scoreLabel}
                   </span>
                   {item.latestError ? <span className={styles.opsErrorText}>{item.latestError}</span> : null}
                 </button>
@@ -651,10 +674,10 @@ export function RunMatchControls({
         error?: string;
         summary?: string;
         review?: CoachPostMatchReviewEntry;
-      };
-      if (!response.ok) {
-        throw new Error(payload.error ?? `Coach review failed with HTTP ${response.status}`);
-      }
+        };
+        if (!response.ok) {
+          throw new Error(payload.error ?? `教练复盘请求失败，HTTP ${response.status}`);
+        }
 
       if (payload.review) {
         setReviewEntries((current) =>
@@ -730,9 +753,20 @@ function buildFixtureUrl(matchId: string): string {
 }
 
 function buildCompletedMessage(progress: WebRunProgress): string {
-  return `运行完成。比分 ${progress.result?.score ?? "待定"}，LLM 调用 ${progress.llmSummary.completedCalls}/${
-    progress.llmSummary.expectedTotalCalls || progress.llmSummary.startedCalls
-  }。`;
+  return `运行完成。比分 ${progress.result?.score ?? "待定"}，LLM 调用已完成 ${progress.llmSummary.completedCalls} 次，${formatExpectedCalls(progress)}。`;
+}
+
+function formatExpectedCalls(progress: WebRunProgress): string {
+  if (progress.mode === "phase18_next_round") {
+    return "当前回合约 14 次";
+  }
+  if (progress.mode === "phase18_current_map") {
+    return "当前地图约每回合 14 次";
+  }
+  if (progress.mode === "phase18_full_bo3") {
+    return "BO3 约每回合 14 次";
+  }
+  return progress.llmSummary.expectedTotalCalls > 0 ? `约 ${progress.llmSummary.expectedTotalCalls} 次` : "按需调用";
 }
 
 function isPhase18Mode(mode: AnyRunMode): mode is RunMode {
@@ -763,8 +797,14 @@ function formatTaskType(taskType: string): string {
       return "赛后复盘";
     case "judge":
       return "裁判";
+    case "judge_verdict":
+      return "裁判结构判定";
+    case "judge_narrative":
+      return "裁判判词";
     case "judge_review":
       return "复审裁判";
+    case "combat_resolution":
+      return "战斗映射";
     default:
       return taskType;
   }
@@ -785,6 +825,9 @@ function formatLlmActor(call: WebRunLlmCallProgress): string {
   }
   if (call.taskType === "judge_review") {
     return "复审裁判";
+  }
+  if (call.taskType === "combat_resolution") {
+    return "战斗映射";
   }
   return "裁判";
 }
@@ -814,6 +857,21 @@ function formatRunStatusLabel(status: RunStatus): string {
     case "completed":
     default:
       return "完成";
+  }
+}
+
+function formatContractStatus(status: RunMatchHistoryEntry["contractStatus"] | WebRunProgress["contractStatus"]): string {
+  switch (status) {
+    case "current":
+      return "当前契约";
+    case "mixed":
+      return "混合契约已锁定";
+    case "blocked":
+      return "旧契约已锁定";
+    case "legacy":
+      return "历史契约";
+    default:
+      return "契约未知";
   }
 }
 

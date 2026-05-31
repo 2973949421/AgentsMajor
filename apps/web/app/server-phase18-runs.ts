@@ -1,14 +1,16 @@
 import type { SqliteRepositoryBundle } from "@agent-major/db";
+import { PHASE20_PRE_PROMPT_CONTRACT_ID } from "@agent-major/core";
 import { phase18CanonIds, phase20PrePilotMapIds } from "@agent-major/materials";
 
 type SimulationRunStatus = "scheduled" | "running" | "completed" | "failed" | "discarded";
 type SimulationRunMode = "phase18_next_round" | "phase18_current_map" | "phase18_full_bo3";
 
-interface SimulationRunRecord {
+export interface SimulationRunRecord {
   id: string;
   fixtureId: string;
   status: SimulationRunStatus;
   requestedMode: SimulationRunMode;
+  promptContractId?: string;
   runtimeMatchId: string;
   runtimeMapGameId?: string;
   baselineCompletedRounds: number;
@@ -23,6 +25,7 @@ interface SimulationRunRecord {
 }
 
 export const phase18FixtureId = phase18CanonIds.fixtureId;
+const phase20PreBenchmarkRunId = "phase18_run_mpqtbys9";
 
 export interface Phase18RunFacts {
   runtimeMatchId: string;
@@ -52,6 +55,9 @@ export interface Phase18RunHistoryEntry {
   createdAt: string;
   scoreLabel: string;
   latestError?: string;
+  promptContractId?: string;
+  contractStatus: "current" | "legacy" | "mixed" | "blocked";
+  benchmarkLabel?: string;
 }
 
 export function createPhase18RunId(now = Date.now()): string {
@@ -170,9 +176,16 @@ export async function resolvePhase18SelectedRun(
 export async function listPhase18RunHistoryEntries(
   repositories: SqliteRepositoryBundle,
   fixtureId: string = phase18FixtureId,
-  limit = 8
+  limit?: number
 ): Promise<Phase18RunHistoryEntry[]> {
-  const runs = (await repositories.simulationRuns.listByFixtureId(fixtureId)).map(normalizeSimulationRunRecord).slice(0, limit);
+  const allRuns = (await repositories.simulationRuns.listByFixtureId(fixtureId)).map(normalizeSimulationRunRecord);
+  const visibleRuns =
+    typeof limit === "number" && Number.isFinite(limit) ? allRuns.slice(0, Math.max(0, limit)) : allRuns;
+  const benchmarkRun =
+    fixtureId === phase18FixtureId && !visibleRuns.some((run) => run.id === phase20PreBenchmarkRunId)
+      ? normalizeNullableSimulationRunRecord(await repositories.simulationRuns.getById(phase20PreBenchmarkRunId))
+      : null;
+  const runs = benchmarkRun ? [...visibleRuns, benchmarkRun] : visibleRuns;
   const entries: Phase18RunHistoryEntry[] = [];
   for (const run of runs) {
     const { run: syncedRun, facts } = await syncPhase18SimulationRun(repositories, run);
@@ -188,11 +201,20 @@ export async function listPhase18RunHistoryEntries(
       hasFreshReplay: syncedRun.hasFreshReplay,
       createdAt: syncedRun.createdAt,
       scoreLabel: `${facts.teamAMapsWon}-${facts.teamBMapsWon}`,
-      ...(syncedRun.latestError ? { latestError: syncedRun.latestError } : {})
+      ...(syncedRun.promptContractId ? { promptContractId: syncedRun.promptContractId } : {}),
+      contractStatus: readRunPromptContractStatus(repositories, syncedRun),
+      ...(syncedRun.latestError ? { latestError: syncedRun.latestError } : {}),
+      ...(syncedRun.id === phase20PreBenchmarkRunId ? { benchmarkLabel: "Phase 2.0-pre 基准样本" } : {})
     });
   }
 
   return entries;
+}
+
+function normalizeNullableSimulationRunRecord(
+  run: Awaited<ReturnType<SqliteRepositoryBundle["simulationRuns"]["getById"]>>
+): SimulationRunRecord | null {
+  return run ? normalizeSimulationRunRecord(run) : null;
 }
 
 function normalizeSimulationRunRecord(
@@ -207,6 +229,7 @@ function normalizeSimulationRunRecord(
     fixtureId: run.fixtureId,
     status: run.status,
     requestedMode: run.requestedMode,
+    ...(run.promptContractId ? { promptContractId: run.promptContractId } : {}),
     runtimeMatchId: run.runtimeMatchId,
     ...(run.runtimeMapGameId ? { runtimeMapGameId: run.runtimeMapGameId } : {}),
     baselineCompletedRounds: run.baselineCompletedRounds,
@@ -219,4 +242,30 @@ function normalizeSimulationRunRecord(
     ...(run.startedAt ? { startedAt: run.startedAt } : {}),
     ...(run.completedAt ? { completedAt: run.completedAt } : {})
   };
+}
+
+export function isPhase18RunContractBlocked(repositories: SqliteRepositoryBundle, run: SimulationRunRecord): boolean {
+  return readRunPromptContractStatus(repositories, run) !== "current";
+}
+
+function readRunPromptContractStatus(
+  repositories: SqliteRepositoryBundle,
+  run: SimulationRunRecord
+): "current" | "legacy" | "mixed" | "blocked" {
+  const rows = repositories.sqlite
+    .prepare(
+      `SELECT DISTINCT prompt_contract_id AS promptContractId
+       FROM llm_calls
+       WHERE match_id = ? AND prompt_contract_id IS NOT NULL`
+    )
+    .all(run.runtimeMatchId) as Array<{ promptContractId?: unknown }>;
+  const observed = rows.map((row) => row.promptContractId).filter((value): value is string => typeof value === "string" && value.length > 0);
+  const contracts = new Set([...(run.promptContractId ? [run.promptContractId] : []), ...observed]);
+  if (contracts.size === 0) {
+    return "legacy";
+  }
+  if (contracts.size > 1) {
+    return "mixed";
+  }
+  return contracts.has(PHASE20_PRE_PROMPT_CONTRACT_ID) ? "current" : "blocked";
 }

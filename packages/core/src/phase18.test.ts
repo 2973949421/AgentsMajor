@@ -22,8 +22,10 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     const schemaNameByTask: Record<(typeof PHASE20_PRE_PROMPT_TASKS)[number], string> = {
       team_plan: "TeamRoundPlanDecision",
       agent_action: "AgentActionDecision",
-      judge: "JudgeResult",
+      judge_verdict: "JudgeVerdictDecision",
+      judge_narrative: "JudgeNarrativeDecision",
       judge_review: "JudgeResult",
+      combat_resolution: "CombatResolutionDraft",
       coach_timeout: "CoachTimeoutCorrection",
       coach_post_match_review: "CoachPostMatchReview"
     };
@@ -44,19 +46,19 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     }
 
     const currentHashSource = buildPhase20PrePromptHashSource({
-      task: "judge",
-      schemaName: "JudgeResult",
+      task: "judge_verdict",
+      schemaName: "JudgeVerdictDecision",
       requestInput: { roundNumber: 1 }
     });
     const nextHashSource = buildPhase20PrePromptHashSource({
-      task: "judge",
-      schemaName: "JudgeResult",
+      task: "judge_verdict",
+      schemaName: "JudgeVerdictDecision",
       requestInput: { roundNumber: 1 },
-      promptContractId: "phase20pre-prompt-contract-v4"
+      promptContractId: "phase20pre-prompt-contract-v7"
     });
 
     expect(currentHashSource).toContain(PHASE20_PRE_PROMPT_CONTRACT_ID);
-    expect(nextHashSource).toContain("phase20pre-prompt-contract-v4");
+    expect(nextHashSource).toContain("phase20pre-prompt-contract-v7");
     expect(nextHashSource).not.toBe(currentHashSource);
   });
 
@@ -101,10 +103,25 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
       mainDefenseZoneId: "conversion_site_a"
     });
     expect(firstRound?.roundReport.judgeDiagnostic).toEqual(firstRound?.roundReport.judgeResult.diagnostic);
-    expect(firstRound?.roundReport.summary).toContain("全甲全弹");
+    expect(firstRound?.roundReport.tokenSubmission.outputGate.applied).toBe(true);
+    expect(firstRound?.roundReport.tokenSubmission.submittedOutputs).toHaveLength(10);
+    expect(firstRound?.roundReport.tokenSubmission.submittedOutputs?.every((output) => output.submissionKind === "submitted_output")).toBe(true);
+    expect(firstRound?.roundReport.tokenSubmission.submittedOutputIds.every((id) => id.startsWith("sub_out_"))).toBe(true);
+    expect(firstRound?.roundReport.agentOutputs.every((output) => !output.id.startsWith("sub_"))).toBe(true);
+    expect(firstRound?.roundReport.economyDelta.teamEconomyPostures).toEqual({
+      teamA: "pistol_round",
+      teamB: "pistol_round"
+    });
+    expect(firstRound?.roundReport.summary).toContain("手枪局");
     expect(firstRound?.roundReport.summary).not.toMatch(/\uFFFD/u);
     expect(firstRound?.roundReport.summary).not.toContain("Tactical:");
-    expect(gateway.tasks).toEqual(["team_plan", "team_plan", ...Array<string>(10).fill("agent_action"), "judge"]);
+    expect(gateway.tasks).toEqual([
+      "team_plan",
+      "team_plan",
+      ...Array<string>(10).fill("agent_action"),
+      "judge_verdict",
+      "judge_narrative"
+    ]);
 
     const teamPlanRequest = gateway.requests.find((request) => request.task === "team_plan");
     const teamPlanInput = teamPlanRequest?.input as
@@ -146,7 +163,7 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     expect(firstAgentRequest?.messages?.[1]?.content).toContain("核心问题：");
     expect(firstAgentRequest?.messages?.[1]?.content).toContain("选手指令：");
 
-    const judgeRequest = gateway.requests.find((request) => request.task === "judge");
+    const judgeRequest = gateway.requests.find((request) => request.task === "judge_verdict");
     const judgeInput = judgeRequest?.input as
       | {
           mapSemanticContext?: { proposition?: { mapTheme?: string } };
@@ -155,7 +172,7 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
           teamAName?: string;
           teamBName?: string;
           evaluationOrder?: Array<{ teamId: string; teamPlan?: unknown; initialProposalSummary?: unknown; coachContext?: unknown }>;
-          agentOutputsByTeam?: Record<string, unknown[]>;
+          agentOutputsByTeam?: Record<string, Array<{ id?: string; rawOutputId?: string; submissionKind?: string; actionDetail?: Record<string, string> }>>;
         }
       | undefined;
     expect(judgeInput?.mapSemanticContext?.proposition?.mapTheme).toBe("opportunity_positioning");
@@ -169,6 +186,8 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     expect(judgeInput?.evaluationOrder?.every((entry) => entry.coachContext)).toBe(true);
     expect(judgeInput?.evaluationOrder?.[0]?.teamId).toBe("team_alpha");
     expect(Object.keys(judgeInput?.agentOutputsByTeam ?? {}).sort()).toEqual(["team_alpha", "team_bravo"]);
+    expect(Object.values(judgeInput?.agentOutputsByTeam ?? {}).flat().every((output) => output.submissionKind === "submitted_output")).toBe(true);
+    expect(Object.values(judgeInput?.agentOutputsByTeam ?? {}).flat().every((output) => String(output.id ?? "").startsWith("sub_prompt_"))).toBe(true);
     expect(JSON.stringify(judgeInput)).not.toContain("Ghost NAV");
     expect(JSON.stringify(judgeInput)).not.toContain("Ghost FUR");
     expect(JSON.stringify(judgeInput)).not.toContain("team_ghost_nav");
@@ -176,18 +195,19 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     expect(judgeRequest?.messages?.[1]?.content).toContain("裁判轴：opportunity_truth");
     expect(judgeRequest?.messages?.[1]?.content).toContain("反偏置约束：");
     expect(gateway.requests.every((request) => request.messages?.[0]?.content.includes(PHASE20_PRE_PROMPT_CONTRACT_ID))).toBe(true);
+    expect(gateway.tasks).not.toContain("combat_resolution");
     const killFeedEvents = await repositories.events.listByRound(firstRound?.round.id ?? "");
     expect(killFeedEvents.filter((event) => event.type === "kill_feed_created")).toHaveLength(firstRound?.roundReport.killLedger?.length ?? 0);
 
     const llmCalls = repositories.sqlite.prepare("SELECT COUNT(*) AS count FROM llm_calls").get() as { count: number };
-    expect(llmCalls.count).toBe(13);
+    expect(llmCalls.count).toBe(14);
     const contractCalls = repositories.sqlite
       .prepare("SELECT COUNT(*) AS count FROM llm_calls WHERE prompt_contract_id = ?")
       .get(PHASE20_PRE_PROMPT_CONTRACT_ID) as { count: number };
-    expect(contractCalls.count).toBe(13);
+    expect(contractCalls.count).toBe(14);
     const events = await repositories.events.listByMatch(phase11DemoIds.matchId);
-    expect(events.filter((event) => event.type === "llm_call_started")).toHaveLength(13);
-    expect(events.filter((event) => event.type === "llm_call_completed")).toHaveLength(13);
+    expect(events.filter((event) => event.type === "llm_call_started")).toHaveLength(14);
+    expect(events.filter((event) => event.type === "llm_call_completed")).toHaveLength(14);
     expect(
       events
         .filter((event) => event.type === "llm_call_started")
@@ -203,10 +223,33 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
 
     const judgeInputs = gateway.requests
-      .filter((request) => request.task === "judge")
+      .filter((request) => request.task === "judge_verdict")
       .map((request) => request.input as { evaluationOrder?: Array<{ teamId: string }> });
     expect(judgeInputs[0]?.evaluationOrder?.[0]?.teamId).toBe("team_alpha");
     expect(judgeInputs[1]?.evaluationOrder?.[0]?.teamId).toBe("team_bravo");
+  });
+
+  it("keeps post-pistol economy away from save-versus-all-force defaults", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(new SuccessfulPhase18Gateway());
+
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+
+    const replay = await readMapReplay(repositories, phase11DemoIds.mapGameId);
+    const secondRoundReport = replay?.rounds[1]?.roundReport;
+    const teamPostures = secondRoundReport?.economyDelta.teamEconomyPostures;
+    const agentsByTeam = new Map<string, NonNullable<typeof secondRoundReport>["economyDelta"]["agents"]>();
+
+    for (const row of secondRoundReport?.economyDelta.agents ?? []) {
+      const existing = agentsByTeam.get(row.teamId) ?? [];
+      existing.push(row);
+      agentsByTeam.set(row.teamId, existing);
+    }
+
+    expect(secondRoundReport?.economyDelta.teamNetDelta).toBeDefined();
+    expect(Object.values(teamPostures ?? {})).not.toContain("save_play");
+    expect(Object.values(teamPostures ?? {})).toContain("bonus_round");
+    expect([...agentsByTeam.values()].some((rows) => rows.every((row) => row.buyType === "forceBuy"))).toBe(false);
   });
 
   it("normalizes common judge margin synonyms without weakening winner validation", async () => {
@@ -217,6 +260,30 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
 
     expect(replay?.rounds[0]?.roundReport.judgeResult.margin).toBe("standard");
     expect(replay?.rounds[0]?.roundReport.judgeResult.winnerTeamId).toBe("team_ghost_nav");
+  });
+
+  it("normalizes observed judge zone relation aliases before schema validation", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(
+      new CustomRelationTypeJudgeGateway("direct_collision")
+    );
+
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    const replay = await readMapReplay(repositories, phase11DemoIds.mapGameId);
+
+    expect(replay?.rounds[0]?.roundReport.judgeResult.diagnostic?.zoneRelation?.relationType).toBe("same_focus");
+  });
+
+  it("downgrades unknown judge zone relation aliases instead of blocking the round", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(
+      new CustomRelationTypeJudgeGateway("offensive_focus_creates_pressure")
+    );
+
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    const replay = await readMapReplay(repositories, phase11DemoIds.mapGameId);
+    const zoneRelation = replay?.rounds[0]?.roundReport.judgeResult.diagnostic?.zoneRelation;
+
+    expect(zoneRelation?.relationType).toBe("cross_hit");
+    expect(zoneRelation?.relationSummary).toContain("offensive_focus_creates_pressure");
   });
 
   it("rejects missing judge diagnostics without committing the round", async () => {
@@ -348,7 +415,7 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     const replay = await readMapReplay(repositories, phase11DemoIds.mapGameId);
 
     expect(replay?.rounds).toHaveLength(1);
-    expect(gateway.tasks).toContain("judge");
+    expect(gateway.tasks).toContain("judge_verdict");
     expect(gateway.tasks).not.toContain("judge_review");
   });
 
@@ -396,7 +463,7 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     const { repositories, engine } = await createPhase18DemoEngine(new UnlabeledMicroCombatJudgeGateway());
 
     await expect(engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId })).rejects.toThrow(
-      "unsupported micro-combat detail"
+      "judgeInference.boundary must mark combat details as judge inference"
     );
     expect(await repositories.rounds.listByMapGame(phase11DemoIds.mapGameId)).toHaveLength(0);
   });
@@ -435,7 +502,7 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     const { repositories, engine } = await createPhase18DemoEngine(new CorruptedJudgeRawTextGateway());
 
     await expect(engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId })).rejects.toThrow(
-      "LLM context encoding is corrupted in judge raw response"
+      "LLM context encoding is corrupted in judge_verdict raw response"
     );
     expect(await repositories.rounds.listByMapGame(phase11DemoIds.mapGameId)).toHaveLength(0);
   });
@@ -444,7 +511,7 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     const { repositories, engine } = await createPhase18DemoEngine(new CorruptedJudgeDataGateway());
 
     await expect(engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId })).rejects.toThrow(
-      "LLM context encoding is corrupted in judge structured response"
+      "LLM context encoding is corrupted in judge_verdict structured response"
     );
     expect(await repositories.rounds.listByMapGame(phase11DemoIds.mapGameId)).toHaveLength(0);
   });
@@ -567,7 +634,7 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     expect((await repositories.events.listByRound(`round_${phase11DemoIds.mapGameId}_1`)).filter((event) => !event.type.startsWith("llm_call_"))).toHaveLength(0);
 
     const llmCalls = repositories.sqlite.prepare("SELECT COUNT(*) AS count FROM llm_calls").get() as { count: number };
-    expect(llmCalls.count).toBe(13);
+    expect(llmCalls.count).toBe(14);
   });
 
   it("rejects a first-pass judge reason that does not explain both teams' win conditions", async () => {
@@ -579,8 +646,8 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     expect(await repositories.rounds.listByMapGame(phase11DemoIds.mapGameId)).toHaveLength(0);
 
     const events = await repositories.events.listByMatch(phase11DemoIds.matchId);
-    expect(events.filter((event) => event.type === "llm_call_completed")).toHaveLength(12);
-    expect(events.filter((event) => event.type === "llm_call_failed")).toHaveLength(1);
+    expect(events.filter((event) => event.type === "llm_call_completed")).toHaveLength(14);
+    expect(events.filter((event) => event.type === "llm_call_failed")).toHaveLength(0);
   });
 
   it("rejects invalid team plans before player actions without committing the round", async () => {
@@ -908,6 +975,10 @@ function agentOutputText(output: {
 class SuccessfulPhase18Gateway implements LlmGateway {
   readonly requests: Array<LlmRequest<unknown>> = [];
   readonly tasks: string[] = [];
+  private readonly judgeNarrativesByRoundId = new Map<
+    string,
+    { reason: string; judgeInference: ReturnType<typeof buildJudgeInference> }
+  >();
 
   async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
     this.requests.push(request as LlmRequest<unknown>);
@@ -1024,6 +1095,56 @@ class SuccessfulPhase18Gateway implements LlmGateway {
       ) as LlmResponse<TData>;
     }
 
+    if (request.task === "judge_narrative") {
+      const input = request.input as {
+        originalJudgeInput: JudgeRequestInput;
+        verdict: {
+          roundWinType?: "attack_elimination" | "attack_bomb_explosion" | "defense_elimination" | "defense_timeout_no_plant" | "defense_defuse";
+          reason?: string;
+          judgeInference?: ReturnType<typeof buildJudgeInference>;
+        };
+      };
+      const stored = this.judgeNarrativesByRoundId.get(input.originalJudgeInput.roundId);
+      const reason = input.verdict.reason ?? stored?.reason ?? buildPromptJudgeReason(input.originalJudgeInput);
+      return {
+        data: {
+          reason,
+          judgeInference:
+            input.verdict.judgeInference ??
+            stored?.judgeInference ??
+            buildJudgeInference(input.originalJudgeInput, reason, input.verdict.roundWinType ?? "attack_elimination")
+        } as TData,
+        usage: {
+          promptTokens: 24,
+          completionTokens: 18,
+          totalTokens: 42
+        }
+      };
+    }
+
+    if (request.task === "combat_resolution") {
+      const input = request.input as {
+        roundId: string;
+        verdict: { roundWinType: "attack_elimination" | "attack_bomb_explosion" | "defense_elimination" | "defense_timeout_no_plant" | "defense_defuse"; mvpAgentId: string };
+        activeRosters: {
+          teamA: Array<{ id: string; teamId: string }>;
+          teamB: Array<{ id: string; teamId: string }>;
+        };
+        attackerTeamId: string;
+        defenderTeamId: string;
+        teamAId: string;
+        teamBId: string;
+      };
+      return {
+        data: buildCombatResolutionDraftFixture(input) as TData,
+        usage: {
+          promptTokens: 26,
+          completionTokens: 20,
+          totalTokens: 46
+        }
+      };
+    }
+
     return this.buildJudgeResponse(request.input as JudgeRequestInput, buildPromptJudgeReason(request.input as JudgeRequestInput)) as LlmResponse<TData>;
   }
 
@@ -1037,6 +1158,10 @@ class SuccessfulPhase18Gateway implements LlmGateway {
   ): LlmResponse<TData> {
     const outcome = resolveFixtureJudgeOutcome(input, winnerTeamId);
     const normalizedReason = ensureZoneBridge(reason, outcome.roundWinType, input);
+    this.judgeNarrativesByRoundId.set(input.roundId, {
+      reason: normalizedReason,
+      judgeInference: buildJudgeInference(input, normalizedReason, outcome.roundWinType)
+    });
     return {
       data: {
         winnerTeamId,
@@ -1048,6 +1173,7 @@ class SuccessfulPhase18Gateway implements LlmGateway {
         reason: normalizedReason,
         mvpAgentId: outcome.mvpAgentId,
         confidence,
+        judgeScorecard: buildJudgeScorecardFixture(input, winnerTeamId, loserTeamId, margin, outcome.roundWinType),
         judgeInference: buildJudgeInference(input, normalizedReason, outcome.roundWinType),
         diagnostic: buildJudgeDiagnostic(input, normalizedReason, winnerTeamId, loserTeamId)
       } as TData,
@@ -1062,7 +1188,7 @@ class SuccessfulPhase18Gateway implements LlmGateway {
 
 class MissingDiagnosticJudgeGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1090,9 +1216,37 @@ class MissingDiagnosticJudgeGateway extends SuccessfulPhase18Gateway {
   }
 }
 
+class CustomRelationTypeJudgeGateway extends SuccessfulPhase18Gateway {
+  constructor(private readonly relationType: string) {
+    super();
+  }
+
+  override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
+    if (request.task !== "judge_verdict") {
+      return super.generateStructured(request);
+    }
+
+    const response = await super.generateStructured<Record<string, unknown>, TInput>(request);
+    const diagnostic = response.data.diagnostic as { zoneRelation?: Record<string, unknown> } | undefined;
+    return {
+      ...response,
+      data: {
+        ...response.data,
+        diagnostic: {
+          ...diagnostic,
+          zoneRelation: {
+            ...(diagnostic?.zoneRelation ?? {}),
+            relationType: this.relationType
+          }
+        }
+      } as TData
+    };
+  }
+}
+
 class ClearMarginJudgeGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1109,7 +1263,7 @@ class ClearMarginJudgeGateway extends SuccessfulPhase18Gateway {
 
 class PartialDiagnosticJudgeGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1146,7 +1300,7 @@ class PartialDiagnosticJudgeGateway extends SuccessfulPhase18Gateway {
 
 class InvalidDiagnosticZoneJudgeGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1164,6 +1318,7 @@ class InvalidDiagnosticZoneJudgeGateway extends SuccessfulPhase18Gateway {
         reason: buildPromptJudgeReason(input),
         mvpAgentId: input.activeTeamAAgentIds[0],
         confidence: 0.88,
+        judgeScorecard: buildJudgeScorecardFixture(input, input.teamAId, input.teamBId, "standard", "attack_elimination"),
         judgeInference: buildJudgeInference(input, buildPromptJudgeReason(input), "attack_elimination"),
         diagnostic: {
           ...buildJudgeDiagnostic(input, buildPromptJudgeReason(input)),
@@ -1181,7 +1336,7 @@ class InvalidDiagnosticZoneJudgeGateway extends SuccessfulPhase18Gateway {
 
 class ConflictingDiagnosticJudgeGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1199,6 +1354,7 @@ class ConflictingDiagnosticJudgeGateway extends SuccessfulPhase18Gateway {
         reason: `${input.teamAName ?? input.teamAId} 围绕 A Site 成功推进；${input.teamBName ?? input.teamBId} 未能守住核心成立点。`,
         mvpAgentId: input.activeTeamAAgentIds[0],
         confidence: 0.88,
+        judgeScorecard: buildJudgeScorecardFixture(input, input.teamAId, input.teamBId, "standard", "attack_elimination"),
         judgeInference: buildJudgeInference(
           input,
           `${input.teamAName ?? input.teamAId} 围绕 A Site 成功推进；${input.teamBName ?? input.teamBId} 未能守住核心成立点。`,
@@ -1228,7 +1384,7 @@ class ConflictingDiagnosticJudgeGateway extends SuccessfulPhase18Gateway {
 
 class AuxiliaryZoneJudgeGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1250,6 +1406,7 @@ class AuxiliaryZoneJudgeGateway extends SuccessfulPhase18Gateway {
         reason,
         mvpAgentId: input.activeTeamAAgentIds[0],
         confidence: 0.88,
+        judgeScorecard: buildJudgeScorecardFixture(input, input.teamAId, input.teamBId, "standard", "attack_elimination"),
         judgeInference: buildJudgeInference(input, reason, "attack_elimination"),
         diagnostic: {
           ...buildJudgeDiagnostic(input, reason),
@@ -1278,7 +1435,7 @@ class AuxiliaryZoneJudgeGateway extends SuccessfulPhase18Gateway {
 
 class SemanticZoneBridgeJudgeGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1300,6 +1457,7 @@ class SemanticZoneBridgeJudgeGateway extends SuccessfulPhase18Gateway {
         reason,
         mvpAgentId: input.activeTeamAAgentIds[0],
         confidence: 0.88,
+        judgeScorecard: buildJudgeScorecardFixture(input, input.teamAId, input.teamBId, "standard", "attack_elimination"),
         judgeInference: buildJudgeInference(input, reason, "attack_elimination"),
         diagnostic: buildJudgeDiagnostic(input, reason)
       } as TData,
@@ -1314,7 +1472,7 @@ class SemanticZoneBridgeJudgeGateway extends SuccessfulPhase18Gateway {
 
 class ZoneDeterminismShortcutJudgeGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1336,6 +1494,7 @@ class ZoneDeterminismShortcutJudgeGateway extends SuccessfulPhase18Gateway {
         reason,
         mvpAgentId: input.activeTeamAAgentIds[0],
         confidence: 0.88,
+        judgeScorecard: buildJudgeScorecardFixture(input, input.teamAId, input.teamBId, "standard", "attack_elimination"),
         judgeInference: buildJudgeInference(input, reason, "attack_elimination"),
         diagnostic: buildJudgeDiagnostic(input, reason)
       } as TData,
@@ -1350,7 +1509,7 @@ class ZoneDeterminismShortcutJudgeGateway extends SuccessfulPhase18Gateway {
 
 class ZoneMismatchProofFailureJudgeGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1371,6 +1530,7 @@ class ZoneMismatchProofFailureJudgeGateway extends SuccessfulPhase18Gateway {
         reason,
         mvpAgentId: input.activeTeamAAgentIds[0],
         confidence: 0.83,
+        judgeScorecard: buildJudgeScorecardFixture(input, input.teamAId, input.teamBId, "standard", "attack_bomb_explosion"),
         judgeInference: buildJudgeInference(input, reason, "attack_bomb_explosion"),
         diagnostic: {
           ...buildJudgeDiagnostic(input, reason),
@@ -1399,7 +1559,7 @@ class ZoneMismatchProofFailureJudgeGateway extends SuccessfulPhase18Gateway {
 
 class DefenseZoneMismatchProofFailureJudgeGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1422,6 +1582,7 @@ class DefenseZoneMismatchProofFailureJudgeGateway extends SuccessfulPhase18Gatew
         reason,
         mvpAgentId: input.activeTeamBAgentIds[0],
         confidence: 0.86,
+        judgeScorecard: buildJudgeScorecardFixture(input, input.teamBId, input.teamAId, "standard", "defense_elimination"),
         judgeInference: buildJudgeInference(input, reason, "defense_elimination"),
         diagnostic: {
           currentSubTheme: "ICP",
@@ -1455,7 +1616,7 @@ class DefenseZoneMismatchProofFailureJudgeGateway extends SuccessfulPhase18Gatew
 
 class SanitizedTeamLabelDiagnosticJudgeGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1477,6 +1638,7 @@ class SanitizedTeamLabelDiagnosticJudgeGateway extends SuccessfulPhase18Gateway 
         reason,
         mvpAgentId: input.activeTeamAAgentIds[0],
         confidence: 0.82,
+        judgeScorecard: buildJudgeScorecardFixture(input, input.teamAId, input.teamBId, "standard", "attack_elimination"),
         judgeInference: buildJudgeInference(input, reason, "attack_elimination"),
         diagnostic: {
           currentSubTheme: "ICP",
@@ -1508,7 +1670,7 @@ class SanitizedTeamLabelDiagnosticJudgeGateway extends SuccessfulPhase18Gateway 
 
 class DirectNoCoverageShortcutJudgeGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1530,6 +1692,7 @@ class DirectNoCoverageShortcutJudgeGateway extends SuccessfulPhase18Gateway {
         reason,
         mvpAgentId: input.activeTeamAAgentIds[0],
         confidence: 0.82,
+        judgeScorecard: buildJudgeScorecardFixture(input, input.teamAId, input.teamBId, "standard", "attack_elimination"),
         judgeInference: buildJudgeInference(input, reason, "attack_elimination"),
         diagnostic: {
           ...buildJudgeDiagnostic(input, reason),
@@ -1550,7 +1713,7 @@ class DirectNoCoverageShortcutJudgeGateway extends SuccessfulPhase18Gateway {
 
 class UnsupportedMicroCombatJudgeGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge" && request.task !== "judge_review") {
+    if (request.task !== "judge_verdict" && request.task !== "judge_review") {
       return super.generateStructured(request);
     }
 
@@ -1569,7 +1732,7 @@ class UnsupportedMicroCombatJudgeGateway extends SuccessfulPhase18Gateway {
 
 class UnlabeledMicroCombatJudgeGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1599,7 +1762,7 @@ class UnlabeledMicroCombatJudgeGateway extends SuccessfulPhase18Gateway {
 
 class RepairableInvalidJudgeGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task === "judge") {
+    if (request.task === "judge_verdict") {
       this.requests.push(request as LlmRequest<unknown>);
       this.tasks.push(request.task);
       const input = request.input as JudgeRequestInput;
@@ -1625,7 +1788,7 @@ class RepairableInvalidJudgeGateway extends SuccessfulPhase18Gateway {
 
 class GuardedMicroCombatEvidenceJudgeGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1647,6 +1810,7 @@ class GuardedMicroCombatEvidenceJudgeGateway extends SuccessfulPhase18Gateway {
         reason,
         mvpAgentId: input.activeTeamBAgentIds[0],
         confidence: 0.84,
+        judgeScorecard: buildJudgeScorecardFixture(input, input.teamBId, input.teamAId, "standard", "defense_elimination"),
         judgeInference: buildJudgeInference(input, reason, "defense_elimination"),
         diagnostic: {
           ...buildJudgeDiagnostic(input, reason, input.teamBId, input.teamAId),
@@ -1667,7 +1831,7 @@ class GuardedMicroCombatEvidenceJudgeGateway extends SuccessfulPhase18Gateway {
 
 class CompactDisplayZoneEvidenceJudgeGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1688,6 +1852,7 @@ class CompactDisplayZoneEvidenceJudgeGateway extends SuccessfulPhase18Gateway {
         reason,
         mvpAgentId: input.activeTeamBAgentIds[0],
         confidence: 0.84,
+        judgeScorecard: buildJudgeScorecardFixture(input, input.teamBId, input.teamAId, "standard", "defense_elimination"),
         judgeInference: buildJudgeInference(input, reason, "defense_elimination"),
         diagnostic: {
           currentSubTheme: "ICP",
@@ -1739,7 +1904,7 @@ class AgentActionSupportedMicroCombatJudgeGateway extends SuccessfulPhase18Gatew
         }
       };
     }
-    if (request.task !== "judge" && request.task !== "judge_review") {
+    if (request.task !== "judge_verdict" && request.task !== "judge_review") {
       return super.generateStructured(request);
     }
 
@@ -1803,7 +1968,7 @@ class IntentOnlyAgentActionGateway extends SuccessfulPhase18Gateway {
         }
       };
     }
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1844,7 +2009,7 @@ class TimingIntentAgentActionGateway extends SuccessfulPhase18Gateway {
 
 class StrongDecisiveJudgeGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1860,7 +2025,7 @@ class StrongDecisiveJudgeGateway extends SuccessfulPhase18Gateway {
 
 class CorruptedJudgeRawTextGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1874,7 +2039,7 @@ class CorruptedJudgeRawTextGateway extends SuccessfulPhase18Gateway {
 
 class CorruptedJudgeDataGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1903,7 +2068,7 @@ const MOJIBAKE_SAMPLE =
 
 class ChineseJudgeReasonGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1919,7 +2084,7 @@ class ChineseJudgeReasonGateway extends SuccessfulPhase18Gateway {
 
 class MixedLanguageJudgeReasonGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -1975,6 +2140,7 @@ class ObjectDirectiveTeamPlanGateway extends SuccessfulPhase18Gateway {
 }
 
 interface JudgeRequestInput {
+  roundId: string;
   teamAId: string;
   teamBId: string;
   teamAName?: string;
@@ -1987,6 +2153,26 @@ interface JudgeRequestInput {
   sideAssignment?: {
     attackingTeamId: string;
     defendingTeamId: string;
+  };
+  rubricProfile?: {
+    profileId: string;
+    baseVersion: "baseJudgeRubric-v1";
+    dimensions: string[];
+    dimensionWeights: Record<string, number>;
+    mapAdjustment: {
+      source: "judgeRubricContext";
+      applied: boolean;
+      summary: string;
+      emphasizedDimensions: string[];
+    };
+    roundAdjustment: {
+      source: "currentSubTheme";
+      subTheme: string;
+      summary: string;
+      emphasizedDimensions: string[];
+    };
+    evidenceRequirements: string[];
+    forbiddenBiases: string[];
   };
 }
 
@@ -2028,7 +2214,7 @@ class SuspiciousJudgeGateway extends SuccessfulPhase18Gateway {
   }
 
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task === "judge") {
+    if (request.task === "judge_verdict") {
       this.requests.push(request as LlmRequest<unknown>);
       this.tasks.push(request.task);
       return this.buildJudgeResponse(
@@ -2057,7 +2243,7 @@ class ConsecutiveLossTimeoutGateway extends SuccessfulPhase18Gateway {
   private judgeCalls = 0;
 
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -2238,7 +2424,7 @@ class MojibakeRepairAgentGateway extends SuccessfulPhase18Gateway {
 
 class InvalidJudgeGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -2253,7 +2439,16 @@ class InvalidJudgeGateway extends SuccessfulPhase18Gateway {
         defenseWinConditionMet: false,
         reason: "Invalid judge payload",
         mvpAgentId: "agent_missing",
-        confidence: 0.5
+        confidence: 0.5,
+        judgeScorecard: buildJudgeScorecardFixture(
+          request.input as JudgeRequestInput,
+          input.teamAId,
+          input.teamBId,
+          "standard",
+          "attack_elimination"
+        ),
+        judgeInference: buildJudgeInference(request.input as JudgeRequestInput, "Invalid judge payload", "attack_elimination"),
+        diagnostic: buildJudgeDiagnostic(request.input as JudgeRequestInput, buildPromptJudgeReason(request.input as JudgeRequestInput))
       } as TData,
       usage: {
         promptTokens: 30,
@@ -2266,7 +2461,7 @@ class InvalidJudgeGateway extends SuccessfulPhase18Gateway {
 
 class IncompleteJudgeReasonGateway extends SuccessfulPhase18Gateway {
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -2278,7 +2473,7 @@ class RetryableJudgeGateway extends SuccessfulPhase18Gateway {
   private judgeCalls = 0;
 
   override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    if (request.task !== "judge") {
+    if (request.task !== "judge_verdict") {
       return super.generateStructured(request);
     }
 
@@ -2354,6 +2549,90 @@ function buildJudgeDiagnostic(
   };
 }
 
+function buildJudgeScorecardFixture(
+  input: JudgeRequestInput,
+  winnerTeamId = input.teamAId,
+  loserTeamId = input.teamBId,
+  margin: string = "standard",
+  roundWinType:
+    | "attack_elimination"
+    | "attack_bomb_explosion"
+    | "defense_elimination"
+    | "defense_timeout_no_plant"
+    | "defense_defuse" = "attack_elimination"
+) {
+  const rubricProfile = input.rubricProfile ?? buildFallbackRubricProfileFixture(input);
+  const scoreDelta = margin === "decisive" ? 2.1 : margin === "narrow" ? 0.5 : 1.15;
+  const winnerTotal = margin === "decisive" ? 7.8 : margin === "narrow" ? 6.6 : 7.1;
+  const loserTotal = Number((winnerTotal - scoreDelta).toFixed(2));
+  const teamScores = {
+    [winnerTeamId]: buildJudgeTeamScoreFixture(input, winnerTeamId, winnerTotal),
+    [loserTeamId]: buildJudgeTeamScoreFixture(input, loserTeamId, loserTotal)
+  };
+  return {
+    rubricProfile,
+    teamScores,
+    scoreDelta,
+    winnerFromScore: winnerTeamId,
+    marginFromScore: margin,
+    decisiveDimensions: ["objectiveScore", "proofScore"],
+    roundWinTypeJustification: `${roundWinType} 与评分胜方一致。`
+  };
+}
+
+function buildFallbackRubricProfileFixture(input: JudgeRequestInput) {
+  const dimensions = [
+    "objectiveScore",
+    "mapControlScore",
+    "submissionQualityScore",
+    "coordinationScore",
+    "economyAdjustedScore",
+    "riskControlScore",
+    "proofScore"
+  ];
+  return {
+    profileId: `rubric_fixture_${input.roundId}`,
+    baseVersion: "baseJudgeRubric-v1" as const,
+    dimensions,
+    dimensionWeights: Object.fromEntries(dimensions.map((dimension) => [dimension, Number((1 / 7).toFixed(4))])),
+    mapAdjustment: {
+      source: "judgeRubricContext" as const,
+      applied: true,
+      summary: "测试地图修正：强调地图控制和命题证明。",
+      emphasizedDimensions: ["mapControlScore", "proofScore"]
+    },
+    roundAdjustment: {
+      source: "currentSubTheme" as const,
+      subTheme: "ICP",
+      summary: "测试回合修正：检查目标完成与命题证明。",
+      emphasizedDimensions: ["objectiveScore", "proofScore"]
+    },
+    evidenceRequirements: ["必须引用双方 team_plan 和 SubmittedOutput。"],
+    forbiddenBiases: ["历史连胜偏置", "防守命题天然成立偏置"]
+  };
+}
+
+function buildJudgeTeamScoreFixture(input: JudgeRequestInput, teamId: string, totalScore: number) {
+  const side = teamId === input.sideAssignment?.attackingTeamId ? "attack" : "defense";
+  const dimension = (source: string) => ({
+    score: totalScore,
+    evidence: `${formatFixtureTeamName(input, teamId)} 在测试夹具中基于 team_plan、SubmittedOutput 和当前回合证据得到 ${totalScore} 分。`,
+    evidenceSource: source
+  });
+  return {
+    teamId,
+    side,
+    objectiveScore: dimension("round_context"),
+    mapControlScore: dimension("zone_relation"),
+    submissionQualityScore: dimension("submitted_output"),
+    coordinationScore: dimension("team_plan"),
+    economyAdjustedScore: dimension("economy"),
+    riskControlScore: dimension("round_context"),
+    proofScore: dimension("judge_rubric_context"),
+    totalScore
+  };
+}
+
 function buildJudgeInference(
   input: JudgeRequestInput,
   reason: string,
@@ -2375,6 +2654,113 @@ function buildJudgeInference(
       "10 名选手的 agent_action v2",
       "diagnostic.zoneRelation"
     ]
+  };
+}
+
+function buildCombatResolutionDraftFixture(input: {
+  roundId: string;
+  verdict: {
+    roundWinType: "attack_elimination" | "attack_bomb_explosion" | "defense_elimination" | "defense_timeout_no_plant" | "defense_defuse";
+    mvpAgentId: string;
+  };
+  activeRosters: {
+    teamA: Array<{ id: string; teamId: string }>;
+    teamB: Array<{ id: string; teamId: string }>;
+  };
+  attackerTeamId: string;
+  defenderTeamId: string;
+  teamAId: string;
+  teamBId: string;
+}) {
+  const teamA = input.activeRosters.teamA;
+  const teamB = input.activeRosters.teamB;
+  const attackers = input.attackerTeamId === input.teamAId ? teamA : teamB;
+  const defenders = input.defenderTeamId === input.teamAId ? teamA : teamB;
+  const attackerDeaths = input.verdict.roundWinType === "defense_elimination" ? 5 : input.verdict.roundWinType === "defense_defuse" ? 3 : 1;
+  const defenderDeaths = input.verdict.roundWinType === "attack_elimination" ? 5 : input.verdict.roundWinType === "attack_bomb_explosion" ? 3 : 1;
+  const deathTargets = [
+    ...defenders.slice(0, defenderDeaths),
+    ...attackers.slice(0, attackerDeaths)
+  ];
+  const killEvents = deathTargets.map((target, index) => {
+    const actorPool = target.teamId === input.teamAId ? teamB : teamA;
+    const actor = actorPool[index % actorPool.length] ?? actorPool[0];
+    if (!actor) {
+      throw new Error("Combat fixture requires an actor.");
+    }
+    return {
+      id: `kl_${input.roundId}_${index + 1}`,
+      actorAgentId: actor.id,
+      actorTeamId: actor.teamId,
+      targetAgentId: target.id,
+      targetTeamId: target.teamId,
+      zoneId: index === 0 ? "buyer_mid" : "conversion_site_a",
+      atMs: 8000 + index * 3500,
+      impact: `${actor.id} 在测试战斗草案中击败 ${target.id}。`,
+      tradeType: index === 0 ? "opening" as const : "trade" as const,
+      sourceAgentOutputIds: []
+    };
+  });
+  const deadIds = new Set(killEvents.map((kill) => kill.targetAgentId));
+  const plantEvent =
+    input.verdict.roundWinType === "attack_bomb_explosion" || input.verdict.roundWinType === "defense_defuse"
+      ? {
+          type: "plant" as const,
+          siteZoneId: "conversion_site_a",
+          actorAgentId: attackers[0]?.id,
+          actorTeamId: input.attackerTeamId,
+          atMs: 42000,
+          text: "测试草案：攻方完成下包。"
+        }
+      : undefined;
+  const defuseEvent =
+    input.verdict.roundWinType === "defense_defuse"
+      ? {
+          type: "defuse" as const,
+          siteZoneId: "conversion_site_a",
+          actorAgentId: defenders[0]?.id,
+          actorTeamId: input.defenderTeamId,
+          atMs: 58000,
+          text: "测试草案：防守方完成拆包。"
+        }
+      : undefined;
+  const explosionEvent =
+    input.verdict.roundWinType === "attack_bomb_explosion"
+      ? {
+          type: "explosion" as const,
+          siteZoneId: "conversion_site_a",
+          actorTeamId: input.attackerTeamId,
+          atMs: 61000,
+          text: "测试草案：炸弹爆炸。"
+        }
+      : undefined;
+  return {
+    roundWinType: input.verdict.roundWinType,
+    killEvents,
+    ...(plantEvent ? { plantEvent } : {}),
+    ...(defuseEvent ? { defuseEvent } : {}),
+    ...(explosionEvent ? { explosionEvent } : {}),
+    survivors: {
+      teamAAgentIds: teamA.map((agent) => agent.id).filter((id) => !deadIds.has(id)),
+      teamBAgentIds: teamB.map((agent) => agent.id).filter((id) => !deadIds.has(id))
+    },
+    ...(killEvents[0]
+      ? {
+          openingDuel: {
+            killEventId: killEvents[0].id,
+            actorAgentId: killEvents[0].actorAgentId,
+            targetAgentId: killEvents[0].targetAgentId,
+            zoneId: killEvents[0].zoneId
+          }
+        }
+      : {}),
+    tradeSequence: killEvents.map((kill) => ({
+      killEventId: kill.id,
+      tradeType: kill.tradeType,
+      summary: kill.impact
+    })),
+    clutchTag: input.verdict.roundWinType === "defense_defuse" ? "retake" : input.verdict.roundWinType === "attack_bomb_explosion" ? "post_plant_hold" : "none",
+    mvpEvidence: `测试草案：MVP ${input.verdict.mvpAgentId} 的证据来自 verdict。`
   };
 }
 

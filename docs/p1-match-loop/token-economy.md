@@ -76,9 +76,11 @@ Agent 本回合能提交给 Judge 的有效输出预算。
 | 名称 | 代码名 | 默认值 | 说明 |
 |---|---|---:|---|
 | Agent 经济上限 | `agentTokenCap` | `16000` | 单个 Agent 最大 tokenBank。 |
-| 地图初始经济 | `initialTokenBank` | `8000` | 每张地图开始时每个 Agent 的初始经济。 |
-| Full Buy 阈值 | `fullBuyThreshold` | `10000` | 大于等于该值可全起。 |
-| Half Buy 下限 | `halfBuyMin` | `5000` | 半起区间下限。 |
+| 地图初始经济 | `initialTokenBank` | `800` | 每个半场手枪局前每个 Agent 的初始经济。 |
+| T 舒服 AK 线 | `tComfortRifleMin` | `4800` | T 方标准长枪舒适线。 |
+| CT 舒服 M4 线 | `ctComfortRifleMin` | `5500` | CT 方标准长枪舒适线。 |
+| T AWP 线 | `tAwpMin` | `6500` | T 方不难受 AWP 线。 |
+| CT AWP 线 | `ctAwpMin` | `7000` | CT 方不难受 AWP 线。 |
 | Coach 暂停成本 | `coachTimeoutCost` | `2500` | 触发 Coach 暂停时的比赛内经济成本。 |
 | 输出偏差 | `outputBudgetDeviation` | `10%` | SubmittedOutput 与预算的允许偏差。 |
 
@@ -103,7 +105,8 @@ Agent 本回合能提交给 Judge 的有效输出预算。
 | 回合 ID | `roundId` | `string` | 否 | 可表示某回合前后状态。 |
 | token 银行 | `tokenBank` | `number` | 是 | Agent 当前比赛内经济。 |
 | 购买类型 | `buyType` | `BuyType` | 是 | fullBuy、halfBuy、eco、forceBuy、save。 |
-| 连败次数 | `lossStreak` | `number` | 是 | 连败补偿输入。 |
+| 连败次数 | `lossStreak` | `number` | 否 | 历史兼容字段。 |
+| CS2 loss count | `lossCount` | `number` | 是 | 当前半场从 `1` 开始；输 `+1`、赢 `-1`，范围 `0-4`。 |
 | 可用暂停数 | `timeoutsRemaining` | `number` | 是 | Coach 相关资源。 |
 | 兼容上下文字段 | `visibleContextBudget` | `number` | 否 | Phase 2.0-pre 兼容保留，不参与当前经济闭环，不裁剪公开输入。 |
 | 输出预算 | `outputBudget` | `number` | 否 | 本回合 SubmittedOutput 预算。 |
@@ -123,7 +126,7 @@ Agent 本回合能提交给 Judge 的有效输出预算。
 触发条件：
 
 ```text
-tokenBank >= 10000
+达到本侧舒服长枪线，且不是 bonus / broken buy / save 等上下文态势
 ```
 
 行为：
@@ -138,7 +141,7 @@ tokenBank >= 10000
 触发条件：
 
 ```text
-5000 <= tokenBank <= 9999
+当前回合可形成战斗力，但仍需为下一回合留钱；通常落在 T 2500-4000、CT 2800-4000 一带
 ```
 
 行为：
@@ -152,7 +155,7 @@ tokenBank >= 10000
 触发条件：
 
 ```text
-tokenBank < 5000
+现金不足以形成完整长枪，或策略上主动放弃完整输出
 ```
 
 行为：
@@ -167,8 +170,7 @@ tokenBank < 5000
 触发条件：
 
 ```text
-tokenBank < 10000
-且 Agent 主动投入大部分或全部当前经济
+未达到本侧舒服长枪线，且 Agent 主动投入大部分或全部当前经济去抢当前回合
 ```
 
 行为：
@@ -193,6 +195,14 @@ Agent 主动低消耗，保留经济到后续回合
 - 只花极少预算。
 - 回合结束后保留经济优势。
 
+补充硬约束：
+
+```text
+save_play 只能由明确保枪、明确省钱、上回合已存在 save 上下文或明确战术意图触发。
+save_play 不能作为经济态势判定的默认兜底。
+light_buy 不等于全员强起；在个人买型层必须允许 light_buy 落到 halfBuy / eco / 局部 force 的有限分化。
+```
+
 ## 6. 购买阶段流程
 
 每个回合开始后、Agent 行动前，进入购买阶段：
@@ -209,6 +219,20 @@ Agent 主动低消耗，保留经济到后续回合
 ```
 
 Coach 默认不常驻整理输出。只有触发战术暂停或 Coach 行为时，Coach Agent 才工作，并写入对应事件。第一版默认从 Coach Agent 的 `tokenBank` 扣除 `coachTimeoutCost`。
+
+### 6.2 回合经济汇总字段
+
+`RoundReport.economyDelta` 里的汇总字段语义固定为：
+
+```text
+teamTotals:
+回合结束后双方真实队伍总经济，用于前端金额展示、经济优势判断和转播消费。
+
+teamNetDelta:
+本回合双方净变化，用于 economy swing、经济波动标签和回合级解说。
+```
+
+禁止继续把 `teamTotals` 当作“本回合净变化”使用。
 
 ### 6.1 区域资源分配（Phase 1.6 预留）
 

@@ -7,10 +7,10 @@ import {
   hasActiveWebRun,
   readLatestWebRunProgressForMatch,
   readWebRunProgress,
-  sanitizeRunError,
   resetPhase18CurrentMapWebRun,
   resetPhase18FullBo3WebRun,
   resetPhase18RoundWebRun,
+  sanitizeRunError,
   startPhase17ShowcaseWebRun,
   startPhase18CurrentMapWebRun,
   startPhase18FullBo3WebRun,
@@ -107,11 +107,11 @@ export async function POST(request: Request, context: RouteContext) {
       {
         summary:
           validation.mode === "phase18_next_round"
-            ? "Phase 1.8 单局真实 LLM run 已启动。"
+            ? "Phase 2.0-pre 单局真实 LLM run 已启动。"
             : validation.mode === "phase18_current_map"
-              ? "Phase 1.8 当前地图真实 LLM run 已启动。"
+              ? "Phase 2.0-pre 当前地图真实 LLM run 已启动。"
               : validation.mode === "phase18_full_bo3"
-                ? "Phase 1.8 整场 BO3 真实 LLM run 已启动。"
+                ? "Phase 2.0-pre 整场 BO3 真实 LLM run 已启动。"
                 : "Phase 1.7 Falcon-7B vs VitaLLMty BO3 fake-only generation started.",
         progress,
         replayUrl: validation.mode === "phase17_showcase_match" ? `/?matchId=${encodeURIComponent(matchId)}` : `/?runId=${encodeURIComponent(progress.runId)}`,

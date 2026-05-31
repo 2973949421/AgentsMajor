@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 
+import { PHASE20_PRE_PROMPT_CONTRACT_ID } from "@agent-major/core";
 import { createSqliteRepositories, defaultSqlitePath } from "@agent-major/db";
 import { buildPhase18RuntimeMatchId, phase17CanonIds, phase18CanonIds, phase20PrePilotMapIds } from "@agent-major/materials";
 
@@ -9,6 +10,7 @@ import {
   phase18FixtureId,
   readPhase18RunFacts,
   recoverAbandonedPhase18Runs,
+  isPhase18RunContractBlocked,
   resolvePhase18SelectedRun,
   shouldContinuePhase18Run,
   syncPhase18SimulationRun,
@@ -33,6 +35,7 @@ interface SimulationRunRecord {
   fixtureId: string;
   status: SimulationRunStatus;
   requestedMode: SimulationRunMode;
+  promptContractId?: string;
   runtimeMatchId: string;
   runtimeMapGameId?: string;
   baselineCompletedRounds: number;
@@ -104,6 +107,8 @@ export interface WebRunProgress {
   casterModes: Array<{ mode: string | null; count: number }>;
   llmSummary: WebRunLlmSummary;
   llmCalls: WebRunLlmCallProgress[];
+  promptContractId?: string;
+  contractStatus?: "current" | "legacy" | "mixed" | "blocked";
   progressPercent: number;
   result?: WebRunSingleMapResult;
   error?: string;
@@ -122,7 +127,7 @@ interface LegacyPhase17RunState extends WebRunProgress {
 }
 
 const estimatedMaxRoundsPerMap = 18;
-const phase18CallsPerRound = 13;
+const phase18CallsPerRound = 14;
 
 let activeExecution: ActiveWebExecution | null = null;
 let latestPhase17Run: LegacyPhase17RunState | null = null;
@@ -470,6 +475,11 @@ async function startPhase18WebRun(input: {
     const existingRun = input.runId
       ? normalizeSimulationRunRecord(await repositories.simulationRuns.getById(input.runId))
       : await resolvePhase18SelectedRun(repositories, { runId: undefined, fixtureId: phase18FixtureId });
+    if (existingRun && isPhase18RunContractBlocked(repositories, existingRun)) {
+      throw new Error(
+        `该 run 使用旧版或混合 prompt contract，已禁止继续生成。请重置整场 BO3 后创建新的 ${PHASE20_PRE_PROMPT_CONTRACT_ID} run。`
+      );
+    }
     const existingRunFacts = existingRun ? await readPhase18RunFacts(repositories, existingRun.runtimeMatchId) : null;
     const existingRunHasRemainingMap = existingRun ? hasRemainingPhase18Map(repositories, existingRun.runtimeMatchId) : false;
     const continuedRun =
@@ -491,6 +501,7 @@ async function startPhase18WebRun(input: {
         fixtureId: phase18FixtureId,
         status: "scheduled",
         requestedMode: mapWebRunModeToSimulationRunMode(input.mode),
+        promptContractId: PHASE20_PRE_PROMPT_CONTRACT_ID,
         runtimeMatchId,
         baselineCompletedRounds: 0,
         estimatedTotalRounds: 0,
@@ -503,6 +514,7 @@ async function startPhase18WebRun(input: {
         fixtureId: phase18FixtureId,
         status: "running",
         requestedMode: mapWebRunModeToSimulationRunMode(input.mode),
+        promptContractId: continuedRun?.promptContractId ?? PHASE20_PRE_PROMPT_CONTRACT_ID,
         runtimeMatchId,
         runtimeMapGameId: facts.mapGameId ?? continuedRun?.runtimeMapGameId ?? null,
         baselineCompletedRounds: facts.completedRounds,
@@ -700,6 +712,8 @@ function buildPhase18Progress(input: {
     casterModes: input.casterModes,
     llmSummary: input.llmSummary,
     llmCalls: input.llmCalls,
+    ...(input.run.promptContractId ? { promptContractId: input.run.promptContractId } : {}),
+    contractStatus: deriveProgressContractStatus(input.run, input.llmCalls),
     progressPercent,
     ...(input.facts.runtimeMatchStatus
       ? {
@@ -746,7 +760,64 @@ function readCasterModes(
     });
 }
 
+function deriveProgressContractStatus(
+  run: SimulationRunRecord,
+  llmCalls: WebRunLlmCallProgress[]
+): NonNullable<WebRunProgress["contractStatus"]> {
+  const contracts = new Set([
+    ...(run.promptContractId ? [run.promptContractId] : []),
+    ...llmCalls.map((call) => call.promptContractId).filter((value): value is string => Boolean(value))
+  ]);
+  if (contracts.size === 0) {
+    return "legacy";
+  }
+  if (contracts.size > 1) {
+    return "mixed";
+  }
+  return contracts.has(PHASE20_PRE_PROMPT_CONTRACT_ID) ? "current" : "blocked";
+}
+
 function readLlmCalls(repositories: ReturnType<typeof createSqliteRepositories>, runtimeMatchId: string): WebRunLlmCallProgress[] {
+  const persistedRows = repositories.sqlite
+    .prepare(
+      `SELECT id, task_type, round_id, agent_id, driver_model_id, prompt_contract_id, status, error,
+              completed_at, latency_ms, input_tokens, output_tokens, response_artifact_id, repaired, created_at
+       FROM llm_calls
+       WHERE match_id = ?
+       ORDER BY created_at ASC, id ASC`
+    )
+    .all(runtimeMatchId) as Array<Record<string, unknown>>;
+  const hasPersistedStatus = persistedRows.some((row) => row.status === "completed" || row.status === "failed" || row.status === "started");
+  if (persistedRows.length > 0 && hasPersistedStatus) {
+    const roundNumberByRoundId = readRoundNumberByRoundId(repositories, persistedRows.map((row) => row.round_id).filter((value): value is string => typeof value === "string"));
+    return persistedRows
+      .map((row): WebRunLlmCallProgress => {
+        const status: WebRunLlmCallStatus =
+          row.status === "completed" || row.status === "failed" || row.status === "started" ? row.status : "started";
+        const callId = typeof row.id === "string" ? row.id : "";
+        const roundNumber =
+          typeof row.round_id === "string" ? roundNumberByRoundId.get(row.round_id) ?? inferRoundNumberFromLlmCallId(callId) : inferRoundNumberFromLlmCallId(callId);
+        return {
+          callId,
+          taskType: typeof row.task_type === "string" ? row.task_type : "unknown",
+          roundNumber,
+          ...(typeof row.agent_id === "string" ? { agentId: row.agent_id } : {}),
+          driverModelId: typeof row.driver_model_id === "string" ? row.driver_model_id : "unknown",
+          ...(typeof row.prompt_contract_id === "string" ? { promptContractId: row.prompt_contract_id } : {}),
+          status,
+          startedAt: typeof row.created_at === "string" ? row.created_at : "",
+          ...(typeof row.latency_ms === "number" ? { latencyMs: row.latency_ms } : {}),
+          ...(typeof row.input_tokens === "number" ? { inputTokens: row.input_tokens } : {}),
+          ...(typeof row.output_tokens === "number" ? { outputTokens: row.output_tokens } : {}),
+          ...(typeof row.error === "string" ? { error: row.error } : {}),
+          ...(typeof row.response_artifact_id === "string" ? { responseArtifactId: row.response_artifact_id } : {}),
+          ...(typeof row.repaired === "number" ? { repaired: row.repaired !== 0 } : {})
+        };
+      })
+      .filter((call) => call.callId.length > 0)
+      .sort(sortLlmCallsForDisplay);
+  }
+
   const rows = repositories.sqlite
     .prepare(
       `SELECT type, payload_json
@@ -802,13 +873,41 @@ function readLlmCalls(repositories: ReturnType<typeof createSqliteRepositories>,
     });
   }
 
-  return [...callsById.values()].sort((left, right) => {
-    if (right.roundNumber !== left.roundNumber) {
-      return right.roundNumber - left.roundNumber;
-    }
+  return [...callsById.values()].sort(sortLlmCallsForDisplay);
+}
 
-    return left.callId.localeCompare(right.callId);
-  });
+function sortLlmCallsForDisplay(left: WebRunLlmCallProgress, right: WebRunLlmCallProgress): number {
+  if (right.roundNumber !== left.roundNumber) {
+    return right.roundNumber - left.roundNumber;
+  }
+  return left.callId.localeCompare(right.callId);
+}
+
+function readRoundNumberByRoundId(
+  repositories: ReturnType<typeof createSqliteRepositories>,
+  roundIds: string[]
+): Map<string, number> {
+  const uniqueRoundIds = [...new Set(roundIds)];
+  if (uniqueRoundIds.length === 0) {
+    return new Map();
+  }
+  const rows = repositories.sqlite
+    .prepare(`SELECT id, round_number AS roundNumber FROM rounds WHERE id IN (${placeholders(uniqueRoundIds)})`)
+    .all(...uniqueRoundIds) as Array<{ id?: unknown; roundNumber?: unknown }>;
+  return new Map(
+    rows
+      .filter((row): row is { id: string; roundNumber: number } => typeof row.id === "string" && typeof row.roundNumber === "number")
+      .map((row) => [row.id, row.roundNumber])
+  );
+}
+
+function inferRoundNumberFromLlmCallId(callId: string): number {
+  const match = /_(\d+)_attempt_\d+_/.exec(callId);
+  if (!match) {
+    return 0;
+  }
+  const parsed = Number(match[1]);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
 function parseLlmCallPayload(value: unknown): Partial<WebRunLlmCallProgress> & { callId?: string } | null {
@@ -857,6 +956,7 @@ function normalizeSimulationRunRecord(
     fixtureId: run.fixtureId,
     status: run.status,
     requestedMode: run.requestedMode,
+    ...(run.promptContractId ? { promptContractId: run.promptContractId } : {}),
     runtimeMatchId: run.runtimeMatchId,
     ...(run.runtimeMapGameId ? { runtimeMapGameId: run.runtimeMapGameId } : {}),
     baselineCompletedRounds: run.baselineCompletedRounds,
@@ -877,6 +977,7 @@ function patchSimulationRunRecord(
     fixtureId?: string;
     status?: SimulationRunStatus;
     requestedMode?: SimulationRunMode;
+    promptContractId?: string;
     runtimeMatchId?: string;
     runtimeMapGameId?: string | null;
     baselineCompletedRounds?: number;
@@ -895,6 +996,7 @@ function patchSimulationRunRecord(
     fixtureId: patch.fixtureId ?? run.fixtureId,
     status: patch.status ?? run.status,
     requestedMode: patch.requestedMode ?? run.requestedMode,
+    ...(patch.promptContractId ?? run.promptContractId ? { promptContractId: patch.promptContractId ?? run.promptContractId } : {}),
     runtimeMatchId: patch.runtimeMatchId ?? run.runtimeMatchId,
     ...(patch.runtimeMapGameId !== null
       ? patch.runtimeMapGameId

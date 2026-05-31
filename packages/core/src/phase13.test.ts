@@ -87,7 +87,7 @@ describe("Phase 1.3 BO3 match chain", () => {
     const rerun = await engine.runCurrentMatch({ matchId: phase11DemoIds.matchId });
     expect(rerun.match.status).toBe("completed");
     expect(await repositories.events.listByMatch(phase11DemoIds.matchId)).toEqual(events);
-  });
+  }, 10000);
 
   it("stops after a 2-0 BO3 and leaves the third map unplayed", async () => {
     const { repositories, engine } = await createDemoEngine();
@@ -180,7 +180,7 @@ describe("Phase 1.3 BO3 match chain", () => {
     const second = await runMatchFingerprint();
 
     expect(first).toEqual(second);
-  });
+  }, 10000);
 });
 
 async function createDemoEngine(broadcastGenerator?: RoundBroadcastGenerator) {

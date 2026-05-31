@@ -6,9 +6,11 @@ import {
   attackApproaches,
   buyTypes,
   defenseSetups,
+  economyPostures,
   eventCategories,
   eventScopeTypes,
   eventTypes,
+  loadoutPackages,
   mapGameStatuses,
   matchRoundNames,
   matchStatuses,
@@ -197,6 +199,7 @@ export const simulationRunSchema = z.object({
   fixtureId: z.string().min(1),
   status: z.enum(simulationRunStatuses),
   requestedMode: z.enum(simulationRunModes),
+  promptContractId: z.string().min(1).optional(),
   runtimeMatchId: z.string().min(1),
   runtimeMapGameId: z.string().optional(),
   baselineCompletedRounds: z.number().int().nonnegative(),
@@ -296,6 +299,23 @@ export const teamRoundPlanDecisionSchema = z.object({
       directive: z.string().min(1)
     })
   ),
+  economyIntent: z.object({
+    defaultPosture: z.enum(economyPostures),
+    summary: z.string().min(1),
+    acceptBonus: z.boolean().optional(),
+    preserveAwp: z.boolean().optional(),
+    forceBuyAllowed: z.boolean().optional(),
+    savePriorityAgentIds: stringArray.optional(),
+    preferredDropTargets: stringArray.optional(),
+    buyIntentByAgent: z.array(
+      z.object({
+        agentId: z.string().min(1),
+        targetPosture: z.enum(economyPostures).optional(),
+        preferredLoadout: z.enum(loadoutPackages).optional(),
+        note: z.string().min(1).optional()
+      })
+    ).optional()
+  }).optional(),
   winCondition: z.string().min(1),
   risk: z.string().min(1),
   confidence: z.number().min(0).max(1),
@@ -315,6 +335,18 @@ export const agentOutputSchema = z.object({
   rawFingerprint: z.string().min(1)
 });
 export type AgentOutput = z.infer<typeof agentOutputSchema>;
+
+export const submittedAgentOutputSchema = agentOutputSchema.extend({
+  rawOutputId: z.string().min(1),
+  submissionKind: z.literal("submitted_output"),
+  buyType: z.enum(buyTypes),
+  economyPosture: z.enum(economyPostures).optional(),
+  loadoutPackage: z.enum(loadoutPackages).optional(),
+  outputBudget: z.number().int().nonnegative(),
+  omittedFields: stringArray,
+  gateSummary: z.string().min(1)
+});
+export type SubmittedAgentOutput = z.infer<typeof submittedAgentOutputSchema>;
 
 export const coachTimeoutCorrectionSchema = z.object({
   teamId: z.string().min(1),
@@ -403,6 +435,123 @@ export const judgeInferenceSchema = z.object({
 });
 export type JudgeInference = z.infer<typeof judgeInferenceSchema>;
 
+export const judgeScoreDimensions = [
+  "objectiveScore",
+  "mapControlScore",
+  "submissionQualityScore",
+  "coordinationScore",
+  "economyAdjustedScore",
+  "riskControlScore",
+  "proofScore"
+] as const;
+export type JudgeScoreDimension = (typeof judgeScoreDimensions)[number];
+
+export const judgeScoreEvidenceSources = [
+  "team_plan",
+  "submitted_output",
+  "economy",
+  "zone_relation",
+  "map_semantic_context",
+  "judge_rubric_context",
+  "round_context",
+  "combat_resolution",
+  "public_history"
+] as const;
+export type JudgeScoreEvidenceSource = (typeof judgeScoreEvidenceSources)[number];
+
+export const judgeScoreDimensionSchema = z.object({
+  score: z.number().min(0).max(10),
+  evidence: z.string().min(1),
+  evidenceSource: z.enum(judgeScoreEvidenceSources)
+});
+export type JudgeScoreDimensionResult = z.infer<typeof judgeScoreDimensionSchema>;
+
+export const judgeScoreDimensionWeightsSchema = z.object({
+  objectiveScore: z.number().min(0).max(1),
+  mapControlScore: z.number().min(0).max(1),
+  submissionQualityScore: z.number().min(0).max(1),
+  coordinationScore: z.number().min(0).max(1),
+  economyAdjustedScore: z.number().min(0).max(1),
+  riskControlScore: z.number().min(0).max(1),
+  proofScore: z.number().min(0).max(1)
+});
+export type JudgeScoreDimensionWeights = z.infer<typeof judgeScoreDimensionWeightsSchema>;
+
+export const judgeRubricProfileSchema = z.object({
+  profileId: z.string().min(1),
+  baseVersion: z.literal("baseJudgeRubric-v1"),
+  dimensions: z.array(z.enum(judgeScoreDimensions)).length(judgeScoreDimensions.length),
+  dimensionWeights: judgeScoreDimensionWeightsSchema,
+  mapAdjustment: z.object({
+    source: z.literal("judgeRubricContext"),
+    applied: z.boolean(),
+    summary: z.string().min(1),
+    emphasizedDimensions: z.array(z.enum(judgeScoreDimensions))
+  }),
+  roundAdjustment: z.object({
+    source: z.literal("currentSubTheme"),
+    subTheme: z.string().min(1),
+    summary: z.string().min(1),
+    emphasizedDimensions: z.array(z.enum(judgeScoreDimensions))
+  }),
+  evidenceRequirements: stringArray,
+  forbiddenBiases: stringArray
+});
+export type JudgeRubricProfile = z.infer<typeof judgeRubricProfileSchema>;
+
+export const judgeTeamScoreSchema = z.object({
+  teamId: z.string().min(1),
+  side: z.enum(["attack", "defense"]),
+  objectiveScore: judgeScoreDimensionSchema,
+  mapControlScore: judgeScoreDimensionSchema,
+  submissionQualityScore: judgeScoreDimensionSchema,
+  coordinationScore: judgeScoreDimensionSchema,
+  economyAdjustedScore: judgeScoreDimensionSchema,
+  riskControlScore: judgeScoreDimensionSchema,
+  proofScore: judgeScoreDimensionSchema,
+  totalScore: z.number().min(0).max(10)
+});
+export type JudgeTeamScore = z.infer<typeof judgeTeamScoreSchema>;
+
+export const judgeScoreOverrideSchema = z.object({
+  applied: z.boolean(),
+  reason: z.string().min(1),
+  approvedByRule: z.string().min(1)
+});
+export type JudgeScoreOverride = z.infer<typeof judgeScoreOverrideSchema>;
+
+export const judgeScorecardSchema = z.object({
+  rubricProfile: judgeRubricProfileSchema,
+  teamScores: z.record(judgeTeamScoreSchema),
+  scoreDelta: z.number().nonnegative(),
+  winnerFromScore: z.string().min(1),
+  marginFromScore: z.enum(["narrow", "standard", "decisive"]),
+  decisiveDimensions: z.array(z.enum(judgeScoreDimensions)).min(1),
+  roundWinTypeJustification: z.string().min(1),
+  scoreOverride: judgeScoreOverrideSchema.optional()
+});
+export type JudgeScorecard = z.infer<typeof judgeScorecardSchema>;
+
+export const judgeVerdictDecisionSchema = z.object({
+  winnerTeamId: z.string().min(1),
+  loserTeamId: z.string().min(1),
+  margin: z.enum(["narrow", "standard", "decisive"]),
+  roundWinType: z.enum(judgeRoundWinTypes),
+  attackWinConditionMet: z.boolean(),
+  defenseWinConditionMet: z.boolean(),
+  mvpAgentId: z.string().min(1),
+  confidence: z.number().min(0).max(1),
+  judgeScorecard: judgeScorecardSchema,
+  diagnostic: judgeDiagnosticSchema
+}).passthrough();
+export type JudgeVerdictDecision = z.infer<typeof judgeVerdictDecisionSchema>;
+
+export const judgeNarrativeDecisionSchema = z.object({
+  reason: z.string().min(1),
+  judgeInference: judgeInferenceSchema
+});
+export type JudgeNarrativeDecision = z.infer<typeof judgeNarrativeDecisionSchema>;
+
 export const judgeResultSchema = z.object({
   winnerTeamId: z.string().min(1),
   loserTeamId: z.string().min(1),
@@ -414,6 +563,7 @@ export const judgeResultSchema = z.object({
   mvpAgentId: z.string().min(1),
   confidence: z.number().min(0).max(1),
   judgeInference: judgeInferenceSchema.optional(),
+  judgeScorecard: judgeScorecardSchema.optional(),
   diagnostic: judgeDiagnosticSchema.optional()
 });
 export type JudgeResult = z.infer<typeof judgeResultSchema>;
@@ -598,8 +748,35 @@ export const roundBombEventSchema = z.object({
 });
 export type RoundBombEvent = z.infer<typeof roundBombEventSchema>;
 
+export const combatResolutionDraftSchema = z.object({
+  roundWinType: z.enum(judgeRoundWinTypes),
+  killEvents: z.array(roundKillLedgerEntrySchema),
+  plantEvent: roundBombEventSchema.optional(),
+  defuseEvent: roundBombEventSchema.optional(),
+  explosionEvent: roundBombEventSchema.optional(),
+  survivors: z.object({
+    teamAAgentIds: stringArray,
+    teamBAgentIds: stringArray
+  }),
+  openingDuel: z.object({
+    killEventId: z.string().min(1),
+    actorAgentId: z.string().min(1),
+    targetAgentId: z.string().min(1),
+    zoneId: z.string().min(1)
+  }).optional(),
+  tradeSequence: z.array(z.object({
+    killEventId: z.string().min(1),
+    tradeType: z.enum(["opening", "trade", "multi_kill", "clutch", "exit"]),
+    summary: z.string().min(1)
+  })),
+  clutchTag: z.enum(["none", "one_v_x", "retake", "save_denial", "post_plant_hold"]).optional(),
+  mvpEvidence: z.string().min(1),
+  consistencyNotes: stringArray.optional()
+});
+export type CombatResolutionDraft = z.infer<typeof combatResolutionDraftSchema>;
+
 export const roundCombatResolutionSchema = z.object({
-  source: z.enum(["judge_inference", "deterministic_resolution"]),
+  source: z.enum(["judge_inference", "combat_llm_validated", "deterministic_resolution", "deterministic_fallback"]),
   roundWinType: z.enum(judgeRoundWinTypes),
   killEvents: z.array(roundKillLedgerEntrySchema),
   plantEvent: roundBombEventSchema.optional(),
@@ -633,7 +810,14 @@ export const agentEconomyDeltaSchema = z.object({
   reward: z.number().int().nonnegative(),
   afterTokenBank: z.number().int().nonnegative(),
   buyType: z.enum(buyTypes),
-  lossStreak: z.number().int().nonnegative()
+  lossStreak: z.number().int().nonnegative().optional(),
+  lossCount: z.number().int().nonnegative(),
+  economyPosture: z.enum(economyPostures).optional(),
+  loadoutPackage: z.enum(loadoutPackages).optional(),
+  survived: z.boolean().optional(),
+  dropSent: z.number().int().nonnegative().optional(),
+  dropReceived: z.number().int().nonnegative().optional(),
+  notes: stringArray.optional()
 });
 export type AgentEconomyDelta = z.infer<typeof agentEconomyDeltaSchema>;
 
@@ -642,17 +826,31 @@ export const economyDeltaSchema = z.object({
   teamTotals: z.object({
     teamA: z.number().int(),
     teamB: z.number().int()
-  })
+  }),
+  teamNetDelta: z.object({
+    teamA: z.number().int(),
+    teamB: z.number().int()
+  }).optional(),
+  teamLossCounts: z.object({
+    teamA: z.number().int().nonnegative(),
+    teamB: z.number().int().nonnegative()
+  }).optional(),
+  teamEconomyPostures: z.object({
+    teamA: z.enum(economyPostures),
+    teamB: z.enum(economyPostures)
+  }).optional()
 });
 export type EconomyDelta = z.infer<typeof economyDeltaSchema>;
 
 export const tokenSubmissionSchema = z.object({
   activeAgentIds: stringArray,
   submittedOutputIds: stringArray,
+  submittedOutputs: z.array(submittedAgentOutputSchema).optional(),
   totalOutputBudget: z.number().int().nonnegative(),
   outputGate: z.object({
     applied: z.boolean(),
-    reason: z.string().min(1)
+    reason: z.string().min(1),
+    teamPostures: z.record(z.enum(economyPostures)).optional()
   })
 });
 export type TokenSubmission = z.infer<typeof tokenSubmissionSchema>;
@@ -703,6 +901,7 @@ export const teamMapCoachStateSchema = z.object({
   mapGameId: z.string().min(1),
   teamId: z.string().min(1),
   timeoutsRemaining: z.number().int().nonnegative(),
+  tokenBank: z.number().int().nonnegative().optional(),
   activeCorrectionArtifactId: z.string().min(1).optional(),
   activeCorrectionExpiresAfterRound: z.number().int().positive().optional(),
   lastTimeoutRoundNumber: z.number().int().positive().optional(),
@@ -719,7 +918,10 @@ export const economyStateSchema = z.object({
   phase: z.enum(["before_buy", "after_buy", "after_round"]).optional(),
   tokenBank: z.number().int().nonnegative(),
   buyType: z.enum(buyTypes),
-  lossStreak: z.number().int().nonnegative(),
+  lossStreak: z.number().int().nonnegative().optional(),
+  lossCount: z.number().int().nonnegative().optional(),
+  economyPosture: z.enum(economyPostures).optional(),
+  loadoutPackage: z.enum(loadoutPackages).optional(),
   timeoutsRemaining: z.number().int().nonnegative(),
   visibleContextBudget: z.number().int().nonnegative().optional(),
   outputBudget: z.number().int().nonnegative().optional(),
@@ -800,6 +1002,11 @@ export const llmCallSchema = z.object({
   inputTokens: z.number().int().nonnegative().optional(),
   outputTokens: z.number().int().nonnegative().optional(),
   estimatedCost: z.number().nonnegative().optional(),
+  status: z.enum(["started", "completed", "failed"]).optional(),
+  error: z.string().optional(),
+  completedAt: optionalIsoDateString,
+  latencyMs: z.number().int().nonnegative().optional(),
+  repaired: z.boolean().optional(),
   createdAt: isoDateString
 });
 export type LlmCall = z.infer<typeof llmCallSchema>;

@@ -280,6 +280,7 @@ CREATE TABLE IF NOT EXISTS simulation_runs (
   fixture_id text NOT NULL,
   status text NOT NULL,
   requested_mode text NOT NULL,
+  prompt_contract_id text,
   runtime_match_id text NOT NULL REFERENCES matches(id),
   runtime_map_game_id text,
   baseline_completed_rounds integer DEFAULT 0 NOT NULL,
@@ -353,6 +354,7 @@ CREATE TABLE IF NOT EXISTS team_map_coach_states (
   map_game_id text NOT NULL REFERENCES map_games(id),
   team_id text NOT NULL REFERENCES teams(id),
   timeouts_remaining integer DEFAULT 2 NOT NULL,
+  token_bank integer DEFAULT 5000 NOT NULL,
   active_correction_artifact_id text,
   active_correction_expires_after_round integer,
   last_timeout_round_number integer,
@@ -369,6 +371,9 @@ CREATE TABLE IF NOT EXISTS economy_states (
   token_bank integer NOT NULL,
   buy_type text NOT NULL,
   loss_streak integer NOT NULL,
+  loss_count integer DEFAULT 1 NOT NULL,
+  economy_posture text,
+  loadout_package text,
   timeouts_remaining integer NOT NULL,
   visible_context_budget integer,
   output_budget integer,
@@ -457,6 +462,11 @@ CREATE TABLE IF NOT EXISTS llm_calls (
   input_tokens integer,
   output_tokens integer,
   estimated_cost real,
+  status text,
+  error text,
+  completed_at text,
+  latency_ms integer,
+  repaired integer,
   created_at text NOT NULL
 );
 CREATE TABLE IF NOT EXISTS jobs (
@@ -502,10 +512,20 @@ CREATE INDEX IF NOT EXISTS summaries_scope_idx ON summaries(scope_type, scope_id
   ensureSqliteColumn(sqlite, "round_reports", "kill_ledger_json", "text");
   ensureSqliteColumn(sqlite, "round_reports", "round_combat_resolution_json", "text");
   ensureSqliteColumn(sqlite, "round_reports", "judge_diagnostic_json", "text");
+  ensureSqliteColumn(sqlite, "team_map_coach_states", "token_bank", "integer NOT NULL DEFAULT 5000");
+  ensureSqliteColumn(sqlite, "economy_states", "loss_count", "integer NOT NULL DEFAULT 1");
+  ensureSqliteColumn(sqlite, "economy_states", "economy_posture", "text");
+  ensureSqliteColumn(sqlite, "economy_states", "loadout_package", "text");
   ensureSqliteColumn(sqlite, "agents", "secondary_roles_json", "text");
   ensureSqliteColumn(sqlite, "agents", "role_profile_json", "text");
   ensureSqliteColumn(sqlite, "agents", "material_ref_json", "text");
   ensureSqliteColumn(sqlite, "llm_calls", "prompt_contract_id", "text");
+  ensureSqliteColumn(sqlite, "simulation_runs", "prompt_contract_id", "text");
+  ensureSqliteColumn(sqlite, "llm_calls", "status", "text");
+  ensureSqliteColumn(sqlite, "llm_calls", "error", "text");
+  ensureSqliteColumn(sqlite, "llm_calls", "completed_at", "text");
+  ensureSqliteColumn(sqlite, "llm_calls", "latency_ms", "integer");
+  ensureSqliteColumn(sqlite, "llm_calls", "repaired", "integer");
 }
 
 function ensureSqliteColumn(sqlite: SqliteDatabase, tableName: string, columnName: string, definition: string): void {
@@ -697,11 +717,11 @@ class SimulationRunSqliteRepository implements SimulationRunRepository {
       this.sqlite
         .prepare(
         `INSERT INTO simulation_runs (
-          id, fixture_id, status, requested_mode, runtime_match_id, runtime_map_game_id, baseline_completed_rounds,
+          id, fixture_id, status, requested_mode, prompt_contract_id, runtime_match_id, runtime_map_game_id, baseline_completed_rounds,
           estimated_total_rounds, expected_total_calls, latest_committed_round_number, has_fresh_replay, latest_error,
           created_at, started_at, completed_at
         ) VALUES (
-          @id, @fixtureId, @status, @requestedMode, @runtimeMatchId, @runtimeMapGameId, @baselineCompletedRounds,
+          @id, @fixtureId, @status, @requestedMode, @promptContractId, @runtimeMatchId, @runtimeMapGameId, @baselineCompletedRounds,
           @estimatedTotalRounds, @expectedTotalCalls, @latestCommittedRoundNumber, @hasFreshReplay, @latestError,
           @createdAt, @startedAt, @completedAt
         )
@@ -709,6 +729,7 @@ class SimulationRunSqliteRepository implements SimulationRunRepository {
          fixture_id = excluded.fixture_id,
          status = excluded.status,
          requested_mode = excluded.requested_mode,
+         prompt_contract_id = excluded.prompt_contract_id,
          runtime_match_id = excluded.runtime_match_id,
          runtime_map_game_id = excluded.runtime_map_game_id,
          baseline_completed_rounds = excluded.baseline_completed_rounds,
@@ -887,14 +908,15 @@ class TeamMapCoachStateSqliteRepository implements TeamMapCoachStateRepository {
     this.sqlite
       .prepare(
         `INSERT INTO team_map_coach_states (
-          map_game_id, team_id, timeouts_remaining, active_correction_artifact_id,
+          map_game_id, team_id, timeouts_remaining, token_bank, active_correction_artifact_id,
           active_correction_expires_after_round, last_timeout_round_number, updated_at
         ) VALUES (
-          @mapGameId, @teamId, @timeoutsRemaining, @activeCorrectionArtifactId,
+          @mapGameId, @teamId, @timeoutsRemaining, @tokenBank, @activeCorrectionArtifactId,
           @activeCorrectionExpiresAfterRound, @lastTimeoutRoundNumber, @updatedAt
         )
          ON CONFLICT(map_game_id, team_id) DO UPDATE SET
          timeouts_remaining = excluded.timeouts_remaining,
+         token_bank = excluded.token_bank,
          active_correction_artifact_id = excluded.active_correction_artifact_id,
          active_correction_expires_after_round = excluded.active_correction_expires_after_round,
          last_timeout_round_number = excluded.last_timeout_round_number,
@@ -934,12 +956,14 @@ class EconomyStateSqliteRepository implements EconomyStateRepository {
     const item = economyStateSchema.parse(entity);
     this.sqlite
       .prepare(
-        `INSERT INTO economy_states (id, agent_id, team_id, map_game_id, round_id, phase, token_bank, buy_type, loss_streak, timeouts_remaining, visible_context_budget, output_budget, created_at)
-         VALUES (@id, @agentId, @teamId, @mapGameId, @roundId, @phase, @tokenBank, @buyType, @lossStreak, @timeoutsRemaining, @visibleContextBudget, @outputBudget, @createdAt)
+        `INSERT INTO economy_states (id, agent_id, team_id, map_game_id, round_id, phase, token_bank, buy_type, loss_streak, loss_count, economy_posture, loadout_package, timeouts_remaining, visible_context_budget, output_budget, created_at)
+         VALUES (@id, @agentId, @teamId, @mapGameId, @roundId, @phase, @tokenBank, @buyType, @lossStreak, @lossCount, @economyPosture, @loadoutPackage, @timeoutsRemaining, @visibleContextBudget, @outputBudget, @createdAt)
          ON CONFLICT(id) DO UPDATE SET
          agent_id = excluded.agent_id, team_id = excluded.team_id, map_game_id = excluded.map_game_id,
          round_id = excluded.round_id, phase = excluded.phase, token_bank = excluded.token_bank,
-         buy_type = excluded.buy_type, loss_streak = excluded.loss_streak, timeouts_remaining = excluded.timeouts_remaining,
+         buy_type = excluded.buy_type, loss_streak = excluded.loss_streak, loss_count = excluded.loss_count,
+         economy_posture = excluded.economy_posture, loadout_package = excluded.loadout_package,
+         timeouts_remaining = excluded.timeouts_remaining,
          visible_context_budget = excluded.visible_context_budget, output_budget = excluded.output_budget,
          created_at = excluded.created_at`
       )
@@ -1138,16 +1162,18 @@ class LlmCallSqliteRepository implements LlmCallRepository {
     const item = llmCallSchema.parse(entity);
     this.sqlite
       .prepare(
-        `INSERT INTO llm_calls (id, tournament_id, match_id, round_id, agent_id, driver_model_id, task_type, prompt_hash, prompt_contract_id, request_artifact_id, response_artifact_id, input_tokens, output_tokens, estimated_cost, created_at)
-         VALUES (@id, @tournamentId, @matchId, @roundId, @agentId, @driverModelId, @taskType, @promptHash, @promptContractId, @requestArtifactId, @responseArtifactId, @inputTokens, @outputTokens, @estimatedCost, @createdAt)
+        `INSERT INTO llm_calls (id, tournament_id, match_id, round_id, agent_id, driver_model_id, task_type, prompt_hash, prompt_contract_id, request_artifact_id, response_artifact_id, input_tokens, output_tokens, estimated_cost, status, error, completed_at, latency_ms, repaired, created_at)
+         VALUES (@id, @tournamentId, @matchId, @roundId, @agentId, @driverModelId, @taskType, @promptHash, @promptContractId, @requestArtifactId, @responseArtifactId, @inputTokens, @outputTokens, @estimatedCost, @status, @error, @completedAt, @latencyMs, @repaired, @createdAt)
          ON CONFLICT(id) DO UPDATE SET
          tournament_id = excluded.tournament_id, match_id = excluded.match_id, round_id = excluded.round_id,
          agent_id = excluded.agent_id, driver_model_id = excluded.driver_model_id, task_type = excluded.task_type,
          prompt_hash = excluded.prompt_hash, prompt_contract_id = excluded.prompt_contract_id, request_artifact_id = excluded.request_artifact_id,
          response_artifact_id = excluded.response_artifact_id, input_tokens = excluded.input_tokens,
-         output_tokens = excluded.output_tokens, estimated_cost = excluded.estimated_cost, created_at = excluded.created_at`
+         output_tokens = excluded.output_tokens, estimated_cost = excluded.estimated_cost, status = excluded.status,
+         error = excluded.error, completed_at = excluded.completed_at, latency_ms = excluded.latency_ms,
+         repaired = excluded.repaired, created_at = excluded.created_at`
       )
-      .run(toNullable(item));
+      .run(toNullable({ ...item, repaired: item.repaired === undefined ? undefined : item.repaired ? 1 : 0 }));
   }
 }
 
@@ -1293,6 +1319,7 @@ function mapSimulationRun(row: Row) {
     fixtureId: asString(row.fixture_id),
     status: asString(row.status),
     requestedMode: asString(row.requested_mode),
+    promptContractId: nullableString(row.prompt_contract_id),
     runtimeMatchId: asString(row.runtime_match_id),
     runtimeMapGameId: nullableString(row.runtime_map_game_id),
     baselineCompletedRounds: asNumber(row.baseline_completed_rounds),
@@ -1345,6 +1372,8 @@ function mapRound(row: Row) {
 }
 
 function mapRoundReport(row: Row) {
+  const economyDelta = normalizeRoundReportEconomyDelta(parseJson(row.economy_delta_json));
+  const tokenSubmission = normalizeRoundReportTokenSubmission(parseJson(row.token_submission_json), economyDelta);
   return {
     id: asString(row.id),
     tournamentId: asString(row.tournament_id),
@@ -1363,8 +1392,8 @@ function mapRoundReport(row: Row) {
     keyEvents: parseJson(row.key_events_json),
     ...optionalObject("killLedger", parseOptionalJson(row.kill_ledger_json)),
     ...optionalObject("roundCombatResolution", parseOptionalJson(row.round_combat_resolution_json)),
-    economyDelta: parseJson(row.economy_delta_json),
-    tokenSubmission: parseJson(row.token_submission_json),
+    economyDelta,
+    tokenSubmission,
     ...optionalObject("highlightTags", parseOptionalJson(row.highlight_tags_json)),
     ...optionalObject("judgeDiagnostic", parseOptionalJson(row.judge_diagnostic_json)),
     ...optionalObject("tacticalContext", parseOptionalJson(row.tactical_context_json)),
@@ -1374,11 +1403,80 @@ function mapRoundReport(row: Row) {
   };
 }
 
+function normalizeRoundReportEconomyDelta(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return value;
+  }
+
+  const record = value as Record<string, unknown>;
+  const agents = Array.isArray(record.agents)
+    ? record.agents.map((entry) => {
+        if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+          return entry;
+        }
+        const row = entry as Record<string, unknown>;
+        const lossCount =
+          typeof row.lossCount === "number" ? row.lossCount : typeof row.lossStreak === "number" ? row.lossStreak : 1;
+        return {
+          ...row,
+          lossCount,
+          lossStreak: typeof row.lossStreak === "number" ? row.lossStreak : lossCount
+        };
+      })
+    : record.agents;
+  const legacyTeamTotals =
+    record.teamTotals && typeof record.teamTotals === "object" && !Array.isArray(record.teamTotals)
+      ? (record.teamTotals as Record<string, unknown>)
+      : undefined;
+  const teamNetDelta =
+    record.teamNetDelta && typeof record.teamNetDelta === "object" && !Array.isArray(record.teamNetDelta)
+      ? record.teamNetDelta
+      : legacyTeamTotals;
+
+  return {
+    ...record,
+    agents,
+    ...(teamNetDelta ? { teamNetDelta } : {})
+  };
+}
+
+function normalizeRoundReportTokenSubmission(value: unknown, economyDelta: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return value;
+  }
+
+  const record = value as Record<string, unknown>;
+  const outputGate =
+    record.outputGate && typeof record.outputGate === "object" && !Array.isArray(record.outputGate)
+      ? { ...(record.outputGate as Record<string, unknown>) }
+      : record.outputGate;
+
+  const economyRecord =
+    economyDelta && typeof economyDelta === "object" && !Array.isArray(economyDelta) ? (economyDelta as Record<string, unknown>) : undefined;
+  const teamPostures =
+    outputGate && typeof outputGate === "object" && !Array.isArray(outputGate) && typeof (outputGate as Record<string, unknown>).teamPostures === "undefined"
+      ? economyRecord?.teamEconomyPostures
+      : undefined;
+
+  return {
+    ...record,
+    ...(outputGate && typeof outputGate === "object" && !Array.isArray(outputGate)
+      ? {
+          outputGate: removeUndefined({
+            ...(outputGate as Record<string, unknown>),
+            teamPostures
+          })
+        }
+      : {})
+  };
+}
+
 function mapTeamMapCoachState(row: Row) {
   return removeUndefined({
     mapGameId: asString(row.map_game_id),
     teamId: asString(row.team_id),
     timeoutsRemaining: asNumber(row.timeouts_remaining),
+    tokenBank: nullableNumber(row.token_bank),
     activeCorrectionArtifactId: nullableString(row.active_correction_artifact_id),
     activeCorrectionExpiresAfterRound: nullableNumber(row.active_correction_expires_after_round),
     lastTimeoutRoundNumber: nullableNumber(row.last_timeout_round_number),
@@ -1397,6 +1495,9 @@ function mapEconomyState(row: Row) {
     tokenBank: asNumber(row.token_bank),
     buyType: asString(row.buy_type),
     lossStreak: asNumber(row.loss_streak),
+    lossCount: nullableNumber(row.loss_count),
+    economyPosture: nullableString(row.economy_posture),
+    loadoutPackage: nullableString(row.loadout_package),
     timeoutsRemaining: asNumber(row.timeouts_remaining),
     visibleContextBudget: nullableNumber(row.visible_context_budget),
     outputBudget: nullableNumber(row.output_budget),
@@ -1513,6 +1614,11 @@ function mapLlmCall(row: Row) {
     inputTokens: nullableNumber(row.input_tokens),
     outputTokens: nullableNumber(row.output_tokens),
     estimatedCost: nullableNumber(row.estimated_cost),
+    status: nullableString(row.status),
+    error: nullableString(row.error),
+    completedAt: nullableString(row.completed_at),
+    latencyMs: nullableNumber(row.latency_ms),
+    repaired: row.repaired === null || row.repaired === undefined ? undefined : asBoolean(row.repaired),
     createdAt: asString(row.created_at)
   });
 }

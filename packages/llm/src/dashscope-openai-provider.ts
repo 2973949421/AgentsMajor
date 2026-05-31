@@ -385,6 +385,40 @@ function outputContractForSchema(schemaName: string): string {
     ].join("\n");
   }
 
+  if (schemaName === "JudgeVerdictDecision") {
+    return [
+      "Output contract:",
+      "Return exactly one short top-level JSON object with these fields:",
+      '{"winnerTeamId":"<teamAId or teamBId>","loserTeamId":"<the other team id>","margin":"narrow|standard|decisive","roundWinType":"attack_elimination|attack_bomb_explosion|defense_elimination|defense_timeout_no_plant|defense_defuse","attackWinConditionMet":true,"defenseWinConditionMet":false,"mvpAgentId":"<agent id from winning active roster>","confidence":0.0,"diagnostic":{"currentSubTheme":"<round subtheme>","attackedOpportunityGap":"<attack gap>","defendedCoreProposition":"<defense core>","mainAttackZoneId":"<zone id>","mainDefenseZoneId":"<zone id>","zoneRelation":{"attackZoneId":"<same as mainAttackZoneId>","defenseZoneId":"<same as mainDefenseZoneId>","relationType":"same_focus|cross_hit|split_pressure|failed_probe|rotation_test|weak_side_hit","relationSummary":"<why zones relate>","outcomeImpact":"<how relation affected ruling>"},"decisiveEvidence":"<decisive evidence>"}}',
+      "Do not include reason or judgeInference in this schema.",
+      "margin must be exactly narrow, standard, or decisive.",
+      "roundWinType must match winnerTeamId and sideAssignment.",
+      "diagnostic.zoneRelation.attackZoneId must equal diagnostic.mainAttackZoneId; diagnostic.zoneRelation.defenseZoneId must equal diagnostic.mainDefenseZoneId."
+    ].join("\n");
+  }
+
+  if (schemaName === "JudgeNarrativeDecision") {
+    return [
+      "Output contract:",
+      "Return exactly one top-level JSON object with these fields:",
+      '{"reason":"<Chinese readable ruling that explains winner success and loser failure without changing verdict>","judgeInference":{"source":"judge_inference","boundary":"<combat/result details are judge inference, not agent_action raw facts>","csResolution":"<CS win method resolution>","combatNarrative":"<inferred combat/result narration consistent with verdict>","evidenceBasis":["<team_plan/agent_action/zone/economy basis>"]}}',
+      "Do not include winnerTeamId, loserTeamId, mvpAgentId, roundWinType, margin, or diagnostic in this schema.",
+      "reason must obey the locked verdict in the input and must not change winner, win type, MVP, attack zone, or defense zone.",
+      "judgeInference.source must be exactly judge_inference."
+    ].join("\n");
+  }
+
+  if (schemaName === "CombatResolutionDraft") {
+    return [
+      "Output contract:",
+      "Return exactly one top-level JSON object with these fields:",
+      '{"roundWinType":"<same as verdict>","killEvents":[{"id":"<stable id>","actorAgentId":"<active agent id>","actorTeamId":"<team id>","targetAgentId":"<active opponent id>","targetTeamId":"<opponent team id>","zoneId":"<zone id>","atMs":8000,"impact":"<Chinese inferred combat impact>","tradeType":"opening|trade|multi_kill|clutch|exit","sourceAgentOutputIds":[]}],"plantEvent":{"type":"plant","siteZoneId":"<site zone id>","actorAgentId":"<attacker id>","actorTeamId":"<attacker team id>","atMs":42000,"text":"<Chinese text>"},"defuseEvent":{"type":"defuse","siteZoneId":"<site zone id>","actorAgentId":"<defender id>","actorTeamId":"<defender team id>","atMs":58000,"text":"<Chinese text>"},"explosionEvent":{"type":"explosion","siteZoneId":"<site zone id>","actorTeamId":"<attacker team id>","atMs":61000,"text":"<Chinese text>"},"survivors":{"teamAAgentIds":["<alive team A ids>"],"teamBAgentIds":["<alive team B ids>"]},"openingDuel":{"killEventId":"<first kill id>","actorAgentId":"<actor id>","targetAgentId":"<target id>","zoneId":"<zone id>"},"tradeSequence":[{"killEventId":"<kill id>","tradeType":"opening|trade|multi_kill|clutch|exit","summary":"<Chinese summary>"}],"clutchTag":"none|one_v_x|retake|save_denial|post_plant_hold","mvpEvidence":"<Chinese MVP evidence>","consistencyNotes":["<optional note>"]}',
+      "Omit bomb event fields that are not allowed by roundWinType.",
+      "No targetAgentId may appear twice. actor and target must be active opposing agents.",
+      "clutchTag one_v_x is only allowed for a real one-player clutch state; otherwise use none."
+    ].join("\n");
+  }
+
   if (schemaName === "CoachTimeoutCorrection") {
     return [
       "Output contract:",

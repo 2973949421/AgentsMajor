@@ -49,6 +49,9 @@ export interface OverlayRosterPlayerViewModel {
   hpLabel: string;
   totalEconomyLabel: string;
   roundSpendLabel: string;
+  lossCountLabel: string;
+  postureLabel: string;
+  dropLabel: string;
   highlight: "default" | "impact" | "target" | "mvp";
 }
 
@@ -182,10 +185,32 @@ export interface JudgeEvidenceViewModel {
   mvpLabel: string;
   confidenceLabel: string;
   inference: JudgeInferenceEvidenceViewModel | null;
+  scorecard: JudgeScorecardEvidenceViewModel | null;
+  scorecardMissingLabel?: string;
   diagnostic: JudgeDiagnosticEvidenceViewModel | null;
   diagnosticMissingLabel?: string;
   reason: string;
   reasonRaw: string;
+}
+
+export interface JudgeScorecardEvidenceViewModel {
+  profileLabel: string;
+  mapAdjustmentLabel: string;
+  roundAdjustmentLabel: string;
+  scoreDeltaLabel: string;
+  marginFromScoreLabel: string;
+  winnerFromScoreLabel: string;
+  decisiveDimensionsLabel: string;
+  roundWinTypeJustification: string;
+  dimensions: Array<{
+    key: string;
+    label: string;
+    weightLabel: string;
+    teamAScoreLabel: string;
+    teamAEvidence: string;
+    teamBScoreLabel: string;
+    teamBEvidence: string;
+  }>;
 }
 
 export interface JudgeInferenceEvidenceViewModel {
@@ -499,7 +524,7 @@ export function buildOpsDockViewModel(runUiState: RunMatchUiState | null): OpsDo
     { label: "已提交局数", value: progress ? String(progress.completedRounds) : "0" },
     { label: "当前地图", value: progress?.currentMapOrder ? `M${progress.currentMapOrder}` : "--" },
     { label: "当前回合", value: progress?.currentRoundNumber ? `R${progress.currentRoundNumber}` : "--" },
-    { label: "LLM 调用", value: progress ? `${progress.llmSummary.completedCalls}/${progress.llmSummary.expectedTotalCalls}` : "0/0" }
+    { label: "LLM 调用", value: progress ? `${progress.llmSummary.completedCalls} 已完成，当前回合约 14 次` : "0 已完成" }
   ];
 
   return {
@@ -745,6 +770,7 @@ function buildJudgeEvidence(
   const mvpAgent = replay.agentsById[judge.mvpAgentId];
   const diagnostic = buildJudgeDiagnosticEvidence(roundReport);
   const inference = buildJudgeInferenceEvidence(judge.judgeInference);
+  const scorecard = buildJudgeScorecardEvidence(replay, roundReport);
   const winMethod = toRoundWinMethod(judge.roundWinType);
   const winMethodMeta = WIN_METHOD_META[winMethod];
   return {
@@ -762,6 +788,8 @@ function buildJudgeEvidence(
     mvpLabel: mvpAgent?.displayName ?? judge.mvpAgentId,
     confidenceLabel: formatConfidence(judge.confidence),
     inference,
+    scorecard,
+    ...(scorecard ? {} : { scorecardMissingLabel: "旧裁判，无评分表；本回合只能查看判词和诊断。" }),
     diagnostic,
     ...(diagnostic ? {} : { diagnosticMissingLabel: "旧回合未归档裁判诊断；不会根据判词伪造补齐。" }),
     reason: translateEvidenceText(judge.reason),
@@ -783,6 +811,61 @@ function buildJudgeInferenceEvidence(
     combatNarrative: translateEvidenceText(inference.combatNarrative),
     evidenceBasis: inference.evidenceBasis.map(translateEvidenceText)
   };
+}
+
+const JUDGE_SCORE_DIMENSIONS = [
+  ["objectiveScore", "目标完成"],
+  ["mapControlScore", "地图控制"],
+  ["submissionQualityScore", "有效提交"],
+  ["coordinationScore", "团队协同"],
+  ["economyAdjustedScore", "经济价值"],
+  ["riskControlScore", "风险控制"],
+  ["proofScore", "命题证明"]
+] as const;
+
+function buildJudgeScorecardEvidence(
+  replay: LiveReplayData,
+  roundReport: LiveReplayRound["roundReport"]
+): JudgeScorecardEvidenceViewModel | null {
+  const scorecard = roundReport.judgeResult.judgeScorecard;
+  if (!scorecard) {
+    return null;
+  }
+  const teamAId = replay.teams.teamA.id;
+  const teamBId = replay.teams.teamB.id;
+  if (!teamAId || !teamBId) {
+    return null;
+  }
+  const teamAScore = scorecard.teamScores[teamAId];
+  const teamBScore = scorecard.teamScores[teamBId];
+  if (!teamAScore || !teamBScore) {
+    return null;
+  }
+
+  return {
+    profileLabel: `${scorecard.rubricProfile.profileId} / ${scorecard.rubricProfile.baseVersion}`,
+    mapAdjustmentLabel: scorecard.rubricProfile.mapAdjustment.summary,
+    roundAdjustmentLabel: scorecard.rubricProfile.roundAdjustment.summary,
+    scoreDeltaLabel: `${scorecard.scoreDelta.toFixed(2)} 分`,
+    marginFromScoreLabel: translateMargin(scorecard.marginFromScore),
+    winnerFromScoreLabel: teamNameById(replay, scorecard.winnerFromScore),
+    decisiveDimensionsLabel: scorecard.decisiveDimensions.map(formatJudgeScoreDimension).join(" / "),
+    roundWinTypeJustification: translateEvidenceText(scorecard.roundWinTypeJustification),
+    dimensions: JUDGE_SCORE_DIMENSIONS.map(([key, label]) => ({
+      key,
+      label,
+      weightLabel: `${Math.round(scorecard.rubricProfile.dimensionWeights[key] * 100)}%`,
+      teamAScoreLabel: `${teamNameById(replay, teamAId)} ${teamAScore[key].score.toFixed(1)}`,
+      teamAEvidence: translateEvidenceText(teamAScore[key].evidence),
+      teamBScoreLabel: `${teamNameById(replay, teamBId)} ${teamBScore[key].score.toFixed(1)}`,
+      teamBEvidence: translateEvidenceText(teamBScore[key].evidence)
+    }))
+  };
+}
+
+function formatJudgeScoreDimension(dimension: string): string {
+  const match = JUDGE_SCORE_DIMENSIONS.find(([key]) => key === dimension);
+  return match?.[1] ?? dimension;
 }
 
 function buildJudgeDiagnosticEvidence(roundReport: LiveReplayRound["roundReport"]): JudgeDiagnosticEvidenceViewModel | null {
@@ -904,6 +987,10 @@ function toOverlayPlayer(
   roundKills: number
 ): OverlayRosterPlayerViewModel {
   const highlight = resolvePlayerHighlight(row.agentId, frame);
+  const postureLabel = row.economyPosture ? formatEconomyPostureLabelForRow(row) : translateToken(row.buyType);
+  const lossCountLabel = typeof row.lossCount === "number" ? `败奖档 ${row.lossCount}` : `连败 ${row.lossStreak}`;
+  const dropLabel =
+    (row.dropReceived ?? 0) > 0 ? `吃枪 +$${row.dropReceived}` : (row.dropSent ?? 0) > 0 ? `发枪 -$${row.dropSent}` : "--";
   return {
     id: row.agentId,
     displayName: row.displayName,
@@ -913,6 +1000,9 @@ function toOverlayPlayer(
     hpLabel: "--",
     totalEconomyLabel: `$${row.afterTokenBank}`,
     roundSpendLabel: `$${row.spent}`,
+    lossCountLabel,
+    postureLabel,
+    dropLabel,
     highlight
   };
 }
@@ -931,6 +1021,9 @@ function toFallbackPlayer(
     hpLabel: "--",
     totalEconomyLabel: "--",
     roundSpendLabel: "--",
+    lossCountLabel: "--",
+    postureLabel: "--",
+    dropLabel: "--",
     highlight: "default"
   };
 }
@@ -998,9 +1091,9 @@ function buildCoachLabel(team: LiveReplayData["teams"]["teamA"] | LiveReplayData
   }
 
   if (team.coachDisplayName && team.coachDutySummary) {
-    return `Coach ${team.coachDisplayName} | ${translateEvidenceText(team.coachDutySummary)}`;
+    return `教练 ${team.coachDisplayName} | ${translateEvidenceText(team.coachDutySummary)}`;
   }
-  return team.coachDisplayName ? `Coach ${team.coachDisplayName}` : translateEvidenceText(team.coachDutySummary ?? "");
+  return team.coachDisplayName ? `教练 ${team.coachDisplayName}` : translateEvidenceText(team.coachDutySummary ?? "");
 }
 
 function buildProposalLabel(team: LiveReplayData["teams"]["teamA"] | LiveReplayData["teams"]["teamB"]): string | undefined {
@@ -1011,6 +1104,32 @@ function buildProposalLabel(team: LiveReplayData["teams"]["teamA"] | LiveReplayD
     return translateEvidenceText(team.proposalThesis);
   }
   return undefined;
+}
+
+function formatEconomyPostureLabel(posture: string): string {
+  const labels: Record<string, string> = {
+    pistol_round: "手枪局",
+    full_eco: "全E",
+    eco: "小E",
+    pistol_armor_force: "手枪甲强起",
+    light_buy: "轻买",
+    force_buy: "强起",
+    half_buy: "半起",
+    bonus_round: "奖励局",
+    rifle_buy: "长枪局",
+    awp_buy: "狙击局",
+    double_awp: "双狙局",
+    broken_buy: "破产混起",
+    save_play: "保枪局"
+  };
+  return labels[posture] ?? translateToken(posture);
+}
+
+function formatEconomyPostureLabelForRow(row: EconomyRow): string {
+  if (row.economyPosture === "full_eco" && row.beforeTokenBank === 800 && row.spent <= 300) {
+    return "手枪局";
+  }
+  return formatEconomyPostureLabel(row.economyPosture ?? row.buyType);
 }
 
 function deriveWinMethod(input: {
@@ -1186,6 +1305,20 @@ function translateEvidenceText(value: string): string {
   }
 
   const replacements: Array<[RegExp, string]> = [
+    [/\bwith controlled aggression\b/gi, "以可控侵略性"],
+    [/\bcontrolled aggression\b/gi, "可控侵略性"],
+    [/\bprimary task\b/gi, "首要任务"],
+    [/\bdo not overcommit\b/gi, "不要过度投入"],
+    [/\bovercommit\b/gi, "过度投入"],
+    [/\bimmediately\b/gi, "立即"],
+    [/\btoward\b/gi, "朝向"],
+    [/\brotation(s)?\b/gi, "轮转"],
+    [/\bsightlines?\b/gi, "枪线"],
+    [/\bcrossfire\b/gi, "交叉火力"],
+    [/\bflank\b/gi, "侧翼"],
+    [/\bcloseout\b/gi, "收束"],
+    [/\bspawn\b/gi, "出生点"],
+    [/\bwindow\b/gi, "窗口"],
     [/\bopens space\b/gi, "打开空间"],
     [/\bopen space\b/gi, "打开空间"],
     [/\bthe first[- ]user claim\b/gi, "首位用户主张"],

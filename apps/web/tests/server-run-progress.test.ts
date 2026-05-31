@@ -6,7 +6,7 @@ import { createSqliteRepositories } from "@agent-major/db";
 import { describe, expect, it } from "vitest";
 
 import { readMapProgressSnapshot, summarizeLlmCalls, type WebRunLlmCallProgress } from "../app/server-run-progress";
-import { syncPhase18SimulationRun } from "../app/server-phase18-runs";
+import { listPhase18RunHistoryEntries, syncPhase18SimulationRun } from "../app/server-phase18-runs";
 
 describe("Phase 1.8 web run progress", () => {
   it("tracks the current running map instead of the max round across all maps", () => {
@@ -25,14 +25,14 @@ describe("Phase 1.8 web run progress", () => {
     }
   });
 
-  it("expands expected Phase 1.8 LLM calls when judge review adds a fourteenth call", () => {
-    const calls = Array.from({ length: 14 }, (_, index) => phase18Call(index));
+  it("expands expected Phase 1.8 LLM calls when repair/review adds extra calls", () => {
+    const calls = Array.from({ length: 15 }, (_, index) => phase18Call(index));
 
-    const summary = summarizeLlmCalls(13, calls);
+    const summary = summarizeLlmCalls(14, calls);
 
-    expect(summary.expectedTotalCalls).toBe(14);
-    expect(summary.startedCalls).toBe(14);
-    expect(summary.completedCalls).toBe(12);
+    expect(summary.expectedTotalCalls).toBe(15);
+    expect(summary.startedCalls).toBe(15);
+    expect(summary.completedCalls).toBe(13);
     expect(summary.failedCalls).toBe(1);
     expect(summary.runningCalls).toBe(1);
   });
@@ -51,7 +51,7 @@ describe("Phase 1.8 web run progress", () => {
         runtimeMapGameId: "map-2",
         baselineCompletedRounds: 12,
         estimatedTotalRounds: 13,
-        expectedTotalCalls: 13,
+        expectedTotalCalls: 15,
         latestCommittedRoundNumber: 0,
         hasFreshReplay: false,
         createdAt,
@@ -68,7 +68,7 @@ describe("Phase 1.8 web run progress", () => {
         runtimeMapGameId: "map-2",
         baselineCompletedRounds: 12,
         estimatedTotalRounds: 13,
-        expectedTotalCalls: 13,
+        expectedTotalCalls: 15,
         latestCommittedRoundNumber: 0,
         hasFreshReplay: false,
         createdAt,
@@ -79,6 +79,67 @@ describe("Phase 1.8 web run progress", () => {
       expect(run.status).toBe("completed");
       expect(run.latestCommittedRoundNumber).toBe(1);
       expect(run.hasFreshReplay).toBe(true);
+    } finally {
+      repositories.close();
+    }
+  });
+
+  it("keeps the Phase 2.0-pre benchmark run visible even outside the recent limit", async () => {
+    const repositories = createSqliteRepositories(resolve(mkdtempSync(resolve(tmpdir(), "agent-major-web-progress-")), "agent-major.sqlite"));
+    try {
+      seedPhase18ProgressFixture(repositories);
+      const createdAt = "2026-05-04T00:00:00.000Z";
+      await repositories.simulationRuns.save({
+        id: "phase18_run_mpqtbys9",
+        fixtureId: "phase18_match_falcon_7b_vs_vitallmty",
+        status: "completed",
+        requestedMode: "phase18_full_bo3",
+        runtimeMatchId: "match-1",
+        runtimeMapGameId: "map-1",
+        baselineCompletedRounds: 0,
+        estimatedTotalRounds: 17,
+        expectedTotalCalls: 238,
+        latestCommittedRoundNumber: 12,
+        hasFreshReplay: true,
+        createdAt,
+        startedAt: createdAt,
+        completedAt: "2026-05-04T00:30:00.000Z"
+      });
+
+      for (let index = 0; index < 3; index += 1) {
+        repositories.sqlite
+          .prepare(
+            `INSERT INTO matches (
+               id, tournament_id, round_name, team_a_id, team_b_id, status, best_of, team_a_maps_won, team_b_maps_won, scheduled_order, created_at, started_at
+             ) VALUES (?, 'tournament-1', 'round_of_16', 'team-a', 'team-b', 'running', 3, 0, 0, ?, ?, ?)`
+          )
+          .run(
+            `match-new-${index}`,
+            index + 2,
+            `2026-05-04T00:0${index + 1}:00.000Z`,
+            `2026-05-04T00:0${index + 1}:00.000Z`
+          );
+        await repositories.simulationRuns.save({
+          id: `phase18_run_new_${index}`,
+          fixtureId: "phase18_match_falcon_7b_vs_vitallmty",
+          status: "failed",
+          requestedMode: "phase18_next_round",
+          runtimeMatchId: `match-new-${index}`,
+          baselineCompletedRounds: 0,
+          estimatedTotalRounds: 1,
+          expectedTotalCalls: 14,
+          latestCommittedRoundNumber: 0,
+          hasFreshReplay: false,
+          createdAt: `2026-05-04T00:0${index + 1}:00.000Z`,
+          startedAt: `2026-05-04T00:0${index + 1}:00.000Z`,
+          completedAt: `2026-05-04T00:0${index + 1}:30.000Z`
+        });
+      }
+
+      const history = await listPhase18RunHistoryEntries(repositories, "phase18_match_falcon_7b_vs_vitallmty", 1);
+
+      expect(history.map((entry) => entry.runId)).toContain("phase18_run_mpqtbys9");
+      expect(history.find((entry) => entry.runId === "phase18_run_mpqtbys9")?.benchmarkLabel).toBe("Phase 2.0-pre 基准样本");
     } finally {
       repositories.close();
     }
@@ -147,7 +208,7 @@ function insertRoundReport(
 }
 
 function phase18Call(index: number): WebRunLlmCallProgress {
-  if (index === 12) {
+  if (index === 13) {
     return {
       callId: "call-running",
       taskType: "judge",
@@ -157,7 +218,7 @@ function phase18Call(index: number): WebRunLlmCallProgress {
       startedAt: "2026-05-04T00:00:00.000Z"
     };
   }
-  if (index === 13) {
+  if (index === 14) {
     return {
       callId: "call-failed",
       taskType: "judge_review",

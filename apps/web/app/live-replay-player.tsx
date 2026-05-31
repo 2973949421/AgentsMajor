@@ -796,6 +796,52 @@ function RoundEvidencePanel({ evidence }: { evidence: RoundEvidenceViewModel }) 
                 </div>
               ) : null}
               <p>{evidence.judge.reason}</p>
+              {evidence.judge.scorecard ? (
+                <div className={styles.judgeDiagnosticGrid}>
+                  <div>
+                    <span>评分根基</span>
+                    <strong>{evidence.judge.scorecard.profileLabel}</strong>
+                  </div>
+                  <div>
+                    <span>地图修正</span>
+                    <strong>{evidence.judge.scorecard.mapAdjustmentLabel}</strong>
+                  </div>
+                  <div>
+                    <span>回合修正</span>
+                    <strong>{evidence.judge.scorecard.roundAdjustmentLabel}</strong>
+                  </div>
+                  <div>
+                    <span>分差 / 幅度</span>
+                    <strong>{evidence.judge.scorecard.scoreDeltaLabel} / {evidence.judge.scorecard.marginFromScoreLabel}</strong>
+                  </div>
+                  <div>
+                    <span>评分胜方</span>
+                    <strong>{evidence.judge.scorecard.winnerFromScoreLabel}</strong>
+                  </div>
+                  <div>
+                    <span>决定性维度</span>
+                    <strong>{evidence.judge.scorecard.decisiveDimensionsLabel}</strong>
+                  </div>
+                  <div>
+                    <span>胜法推导</span>
+                    <strong>{evidence.judge.scorecard.roundWinTypeJustification}</strong>
+                  </div>
+                </div>
+              ) : (
+                <small className={styles.muted}>{evidence.judge.scorecardMissingLabel}</small>
+              )}
+              {evidence.judge.scorecard ? (
+                <div className={styles.judgeDiagnosticGrid}>
+                  {evidence.judge.scorecard.dimensions.map((dimension) => (
+                    <div key={dimension.key}>
+                      <span>{dimension.label} / 权重 {dimension.weightLabel}</span>
+                      <strong>{dimension.teamAScoreLabel} | {dimension.teamBScoreLabel}</strong>
+                      <small>{dimension.teamAEvidence}</small>
+                      <small>{dimension.teamBEvidence}</small>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               {evidence.judge.diagnostic ? (
                 <div className={styles.judgeDiagnosticGrid}>
                   <div>
@@ -948,6 +994,18 @@ function RosterRail({ roster, side }: { roster: OverlayRosterViewModel; side: "l
                 <span>
                   <b>本回合消费</b>
                   <strong>{player.roundSpendLabel}</strong>
+                </span>
+                <span>
+                  <b>败奖档</b>
+                  <strong>{player.lossCountLabel}</strong>
+                </span>
+                <span>
+                  <b>经济态势</b>
+                  <strong>{player.postureLabel}</strong>
+                </span>
+                <span>
+                  <b>发枪 / 吃枪</b>
+                  <strong>{player.dropLabel}</strong>
                 </span>
               </div>
             </article>
