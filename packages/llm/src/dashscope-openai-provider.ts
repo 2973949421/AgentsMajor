@@ -144,7 +144,7 @@ export class DashScopeOpenAiProvider implements LlmGateway {
 
       try {
         return {
-          data: parseJsonContent(rawText, input.request, input.modelName) as TData,
+          data: parseJsonContent(rawText, input.request, input.modelName, usage) as TData,
           usage,
           rawText
         };
@@ -199,20 +199,32 @@ export class DashScopeOpenAiProvider implements LlmGateway {
     parseError: string;
   }): Promise<LlmResponse<TData>> {
     const outputContract = outputContractForSchema(input.request.schemaName);
+    const repairSystemContent =
+      input.request.schemaName === "JudgeVerdictDecision"
+        ? "You repair structured judge verdict outputs. Return only one compact valid json object. Preserve required verdict facts and diagnostic fields. Omit judgeScorecard unless it can be represented as tiny teamScores only. Never copy rubricProfile, defenderThesisContext, original input, markdown, prose, comments, or null optional fields."
+        : "You repair structured outputs. Return only one valid json object. Preserve every field required by the named schema. Do not summarize, compress, or downgrade the response. Omit optional fields instead of returning null. Do not include markdown, code fences, prose, comments, or copied input.";
+    const repairShapeRule =
+      input.request.schemaName === "JudgeVerdictDecision"
+        ? "Repair rule: keep a compact v6 verdict shape. Do not output full judgeScorecard, rubricProfile, totalScore, scoreDelta, winnerFromScore, marginFromScore, or copied context."
+        : "Repair rule: keep the same schema shape. If the source contains long structured fields, fix syntax and escaping only. Do not replace it with a shorter legacy object.";
+    const maxRepairTokens = Math.max(
+      input.request.maxOutputTokens ?? resolveDriverModelConfig(input.request.driverModelId).defaultMaxOutputTokens ?? 0,
+      1200
+    );
     const body = compactObject({
       model: input.modelName,
       messages: [
         {
           role: "system",
-          content:
-            "You repair structured outputs. Return only one valid json object. Preserve every field required by the named schema. Do not summarize, compress, or downgrade the response. Do not include markdown, code fences, prose, comments, or copied input."
+          content: repairSystemContent
         },
         {
           role: "user",
           content: [
             `Repair this response into valid JSON for schema ${input.request.schemaName}.`,
             outputContract,
-            "Repair rule: keep the same schema shape. If the source contains long structured fields, fix syntax and escaping only. Do not replace it with a shorter legacy object.",
+            repairShapeRule,
+            "Repair rule: optional fields must be omitted when unknown; never fill optional fields with null, empty strings, or empty objects.",
             "Original non-JSON response:",
             input.originalRawText
           ].join("\n")
@@ -220,10 +232,7 @@ export class DashScopeOpenAiProvider implements LlmGateway {
       ],
       stream: false,
       temperature: 0,
-      max_tokens: Math.max(
-        input.request.maxOutputTokens ?? resolveDriverModelConfig(input.request.driverModelId).defaultMaxOutputTokens ?? 0,
-        1200
-      ),
+      max_tokens: maxRepairTokens,
       response_format: { type: "json_object" }
     });
 
@@ -248,7 +257,7 @@ export class DashScopeOpenAiProvider implements LlmGateway {
     const repairUsage = extractUsage(json);
     try {
       return {
-        data: parseJsonContent(repairRawText, input.request, input.modelName) as TData,
+        data: parseJsonContent(repairRawText, input.request, input.modelName, repairUsage, maxRepairTokens) as TData,
         usage: combineUsage(input.originalUsage, repairUsage),
         rawText: repairRawText,
         structuredRepair: {
@@ -360,6 +369,9 @@ function outputContractForSchema(schemaName: string): string {
       "Required fields: teamId, side, primaryIntent, primaryZoneId, coordinationSummary, playerDirectives, winCondition, risk, confidence.",
       "playerDirectives must include exactly one directive for every active player in the input activeAgents list.",
       "side must match the input side. confidence must be a number between 0 and 1.",
+      "Do not include economyIntent.buyIntentByAgent, targetPosture, or preferredLoadout. The engine derives economy fields from the current economy state.",
+      "If economyIntent is included, keep only defaultPosture and summary under 30 Chinese characters.",
+      "Keep primaryIntent, coordinationSummary, each directive, winCondition, and risk to one concise Chinese sentence each.",
       "Do not copy the input object. Do not include opponent restricted plans."
     ].join("\n");
   }
@@ -388,9 +400,19 @@ function outputContractForSchema(schemaName: string): string {
   if (schemaName === "JudgeVerdictDecision") {
     return [
       "Output contract:",
-      "Return exactly one short top-level JSON object with these fields:",
+      "Return exactly one compact top-level JSON object with these fields:",
       '{"winnerTeamId":"<teamAId or teamBId>","loserTeamId":"<the other team id>","margin":"narrow|standard|decisive","roundWinType":"attack_elimination|attack_bomb_explosion|defense_elimination|defense_timeout_no_plant|defense_defuse","attackWinConditionMet":true,"defenseWinConditionMet":false,"mvpAgentId":"<agent id from winning active roster>","confidence":0.0,"diagnostic":{"currentSubTheme":"<round subtheme>","attackedOpportunityGap":"<attack gap>","defendedCoreProposition":"<defense core>","mainAttackZoneId":"<zone id>","mainDefenseZoneId":"<zone id>","zoneRelation":{"attackZoneId":"<same as mainAttackZoneId>","defenseZoneId":"<same as mainDefenseZoneId>","relationType":"same_focus|cross_hit|split_pressure|failed_probe|rotation_test|weak_side_hit","relationSummary":"<why zones relate>","outcomeImpact":"<how relation affected ruling>"},"decisiveEvidence":"<decisive evidence>"}}',
       "Do not include reason or judgeInference in this schema.",
+      "Defender-thesis rule: the current half is judged against defenderThesisContext.defenderTeamThesis. The attacking side challenges the defender's business plan; the defending side defends or refines its own business plan. Do not treat the attacker's own thesis as the round's primary thesis.",
+      "Judge scorecard v6: prefer omitting judgeScorecard entirely. Core owns the final scorecard and will materialize it from rubricProfile plus verdict facts.",
+      "If you include judgeScorecard, include only a tiny judgeScorecard.teamScores hint. Never include rubricProfile, defenderThesisContext, totalScore, scoreDelta, winnerFromScore, marginFromScore, or copied input.",
+      "Use the seven fixed dimensions only: objectiveScore, mapControlScore, submissionQualityScore, coordinationScore, economyAdjustedScore, riskControlScore, proofScore.",
+      "If score hints are included, each score must be 0-10 and each evidence string must be at most 18 Chinese characters.",
+      "Every scoring hint must explain either attack challenge quality or defense hold quality against defenderThesisContext, not generic writing quality.",
+      "Evidence source values are submitted_output, team_plan, economy, zone_relation, map_semantic_context, judge_rubric_context, round_context, or combat_resolution; never use public_history as direct scoring evidence.",
+      "diagnostic.attackedOpportunityGap must describe the attacker's challenge against the defender thesis. diagnostic.defendedCoreProposition must describe the defender's must-hold business claim.",
+      "Use only canonical zone ids from allowedCanonicalZoneIds/defenderThesisContext; do not output zone_a, zone_a_main, zone_b, or zone_mid.",
+      "Optional fields must be omitted when unknown; never return null for optional fields.",
       "margin must be exactly narrow, standard, or decisive.",
       "roundWinType must match winnerTeamId and sideAssignment.",
       "diagnostic.zoneRelation.attackZoneId must equal diagnostic.mainAttackZoneId; diagnostic.zoneRelation.defenseZoneId must equal diagnostic.mainDefenseZoneId."
@@ -478,21 +500,40 @@ function extractMessageContent(value: unknown, request: LlmRequest, modelName: s
   return firstChoice.message.content.trim();
 }
 
-function parseJsonContent(rawText: string, request: LlmRequest, modelName: string): unknown {
+function parseJsonContent(
+  rawText: string,
+  request: LlmRequest,
+  modelName: string,
+  usage?: LlmUsage,
+  maxOutputTokens = request.maxOutputTokens
+): unknown {
   const candidate = extractJsonObjectCandidate(rawText);
   try {
     return JSON.parse(candidate);
   } catch {
+    const likelyTruncated = isLikelyJsonTruncation(candidate, rawText, usage, maxOutputTokens);
     throw new LlmProviderError({
-      message: "LLM provider returned text that does not parse as JSON.",
+      message: likelyTruncated
+        ? "json_truncated: LLM provider returned truncated JSON."
+        : "LLM provider returned text that does not parse as JSON.",
       errorType: "invalid_response",
       retryable: false,
       driverModelId: request.driverModelId,
       modelName,
       rawText,
+      ...(usage ? { usage } : {}),
       parseCandidate: candidate
     });
   }
+}
+
+function isLikelyJsonTruncation(candidate: string, rawText: string, usage: LlmUsage | undefined, maxOutputTokens: number | undefined): boolean {
+  const trimmed = candidate.trim();
+  if (!trimmed.startsWith("{")) {
+    return false;
+  }
+  const hitOutputLimit = Boolean(maxOutputTokens && usage && usage.completionTokens >= maxOutputTokens);
+  return hitOutputLimit && (!trimmed.endsWith("}") || extractFirstBalancedJsonObject(stripJsonFence(rawText)) === undefined);
 }
 
 function extractUsage(value: unknown): LlmUsage {

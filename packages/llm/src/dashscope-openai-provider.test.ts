@@ -131,6 +131,49 @@ describe("Phase 1.5 DashScope OpenAI provider", () => {
     expect(seenBodies).toHaveLength(2);
   });
 
+  it("classifies output-limit JSON parse failures as json_truncated", async () => {
+    const seenBodies: unknown[] = [];
+    const truncated = "{\"teamId\":\"team-a\",\"side\":\"attack\",\"primaryIntent\":\"hit B\"";
+    const provider = new DashScopeOpenAiProvider({
+      baseUrl: "https://example.test/v1",
+      apiKey: "secret-key",
+      maxRetries: 0,
+      fetchFn: async (_url, init) => {
+        seenBodies.push(JSON.parse(String(init?.body)));
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content: truncated } }],
+            usage:
+              seenBodies.length === 1
+                ? { prompt_tokens: 40, completion_tokens: 20, total_tokens: 60 }
+                : { prompt_tokens: 40, completion_tokens: 1200, total_tokens: 1240 }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+    });
+
+    let thrown: unknown;
+    try {
+      await provider.generateStructured({
+        task: "team_plan",
+        driverModelId: "driver_kimi_k2_5",
+        input: { teamId: "team-a", side: "attack", activeAgents: [] },
+        schemaName: "TeamRoundPlanDecision",
+        responseFormat: "json_object",
+        maxOutputTokens: 20
+      });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(LlmProviderError);
+    expect((thrown as LlmProviderError).message).toContain("json_truncated");
+    expect((thrown as LlmProviderError).rawText).toBe(truncated);
+    expect((thrown as LlmProviderError).usage?.completionTokens).toBe(20);
+    expect(seenBodies).toHaveLength(2);
+  });
+
   it("retries transient provider failures before returning a structured response", async () => {
     let calls = 0;
     const provider = new DashScopeOpenAiProvider({
@@ -210,6 +253,54 @@ describe("Phase 1.5 DashScope OpenAI provider", () => {
     expect(promptText).toContain('"confidence"');
     expect(promptText).toContain("Do not return the legacy action field");
     expect(promptText).not.toContain('{"action"');
+  });
+
+  it("includes the v6 JudgeVerdictDecision scorecard contract for JSON requests", async () => {
+    const seenBodies: unknown[] = [];
+    const provider = new DashScopeOpenAiProvider({
+      baseUrl: "https://example.test/v1",
+      apiKey: "secret-key",
+      maxRetries: 0,
+      fetchFn: async (_url, init) => {
+        seenBodies.push(JSON.parse(String(init?.body)));
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content:
+                    "{\"winnerTeamId\":\"team-a\",\"loserTeamId\":\"team-b\",\"margin\":\"standard\",\"roundWinType\":\"attack_elimination\",\"attackWinConditionMet\":true,\"defenseWinConditionMet\":false,\"mvpAgentId\":\"agent-a\",\"confidence\":0.8,\"diagnostic\":{\"currentSubTheme\":\"ICP\",\"attackedOpportunityGap\":\"gap\",\"defendedCoreProposition\":\"core\",\"mainAttackZoneId\":\"site_a\",\"mainDefenseZoneId\":\"site_a\",\"zoneRelation\":{\"attackZoneId\":\"site_a\",\"defenseZoneId\":\"site_a\",\"relationType\":\"same_focus\",\"relationSummary\":\"same\",\"outcomeImpact\":\"impact\"},\"decisiveEvidence\":\"evidence\"}}"
+                }
+              }
+            ],
+            usage: { prompt_tokens: 20, completion_tokens: 8, total_tokens: 28 }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+    });
+
+    await provider.generateStructured({
+      task: "judge_verdict",
+      driverModelId: "driver_kimi_k2_5",
+      input: { teamAId: "team-a", teamBId: "team-b" },
+      schemaName: "JudgeVerdictDecision",
+      responseFormat: "json_object"
+    });
+
+    const promptText = ((seenBodies[0] as { messages?: Array<{ content?: string }> }).messages ?? [])
+      .map((message) => message.content ?? "")
+      .join("\n");
+    expect(promptText).toContain("judgeScorecard");
+    expect(promptText).toContain("objectiveScore");
+    expect(promptText).toContain("Defender-thesis rule");
+    expect(promptText).toContain("defenderThesisContext.defenderTeamThesis");
+    expect(promptText).toContain("attacking side challenges the defender's business plan");
+    expect(promptText).toContain("Use only canonical zone ids");
+    expect(promptText).toContain("prefer omitting judgeScorecard entirely");
+    expect(promptText).toContain("Never include rubricProfile");
+    expect(promptText).toContain("never return null for optional fields");
+    expect(promptText).not.toMatch(/"winnerTeamId".*"judgeScorecard"/s);
   });
 
   it("repairs truncated AgentActionDecision JSON without downgrading to legacy action", async () => {
@@ -299,6 +390,10 @@ describe("Phase 1.5 DashScope OpenAI provider", () => {
     expect(teamPlanPrompt).toContain("TeamRoundPlanDecision");
     expect(teamPlanPrompt).toContain("playerDirectives");
     expect(teamPlanPrompt).toContain("winCondition");
+    expect(teamPlanPrompt).toContain("Do not include economyIntent.buyIntentByAgent, targetPosture, or preferredLoadout");
+    expect(teamPlanPrompt).toContain("The engine derives economy fields from the current economy state");
+    expect(teamPlanPrompt).not.toContain('"targetPosture"');
+    expect(teamPlanPrompt).not.toContain('"preferredLoadout"');
 
     const judgePrompt = ((seenBodies[1] as { messages?: Array<{ content?: string }> }).messages ?? [])
       .map((message) => message.content ?? "")

@@ -33,7 +33,7 @@ export type RunControlState = (typeof runControlStates)[number];
 export const simulationRunStatuses = ["scheduled", "running", "completed", "failed", "discarded"] as const;
 export type SimulationRunStatus = (typeof simulationRunStatuses)[number];
 
-export const simulationRunModes = ["phase18_next_round", "phase18_current_map", "phase18_full_bo3"] as const;
+export const simulationRunModes = ["phase18_next_round", "phase18_current_map", "phase18_keep_generating_map", "phase18_full_bo3"] as const;
 export type SimulationRunMode = (typeof simulationRunModes)[number];
 
 export const agentRoles = ["coach", "igl", "awper", "entry", "star_rifler", "lurker", "support", "rifler", "stand_in"] as const;
@@ -181,6 +181,13 @@ export const eventTypes = [
   "operator_pause_resolved",
   "technical_pause_started",
   "technical_pause_resolved",
+  "web_run_execution_started",
+  "web_run_execution_finished",
+  "round_generation_attempt_started",
+  "round_generation_attempt_finished",
+  "round_generation_attempt_retrying",
+  "round_generation_attempt_terminal_failed",
+  "score_tension_diagnostic",
   "map_review_window_started",
   "map_review_window_confirmed"
 ] as const;

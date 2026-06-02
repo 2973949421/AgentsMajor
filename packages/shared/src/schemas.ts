@@ -499,6 +499,39 @@ export const judgeRubricProfileSchema = z.object({
 });
 export type JudgeRubricProfile = z.infer<typeof judgeRubricProfileSchema>;
 
+export const judgeDimensionRequirementSchema = z.object({
+  challengeRequirement: z.string().min(1),
+  defenseRequirement: z.string().min(1)
+});
+export type JudgeDimensionRequirement = z.infer<typeof judgeDimensionRequirementSchema>;
+
+export const judgeDimensionRequirementsSchema = z.object({
+  objectiveScore: judgeDimensionRequirementSchema,
+  mapControlScore: judgeDimensionRequirementSchema,
+  submissionQualityScore: judgeDimensionRequirementSchema,
+  coordinationScore: judgeDimensionRequirementSchema,
+  economyAdjustedScore: judgeDimensionRequirementSchema,
+  riskControlScore: judgeDimensionRequirementSchema,
+  proofScore: judgeDimensionRequirementSchema
+});
+export type JudgeDimensionRequirements = z.infer<typeof judgeDimensionRequirementsSchema>;
+
+export const defenderThesisContextSchema = z.object({
+  attackingTeamId: z.string().min(1),
+  defendingTeamId: z.string().min(1),
+  half: z.enum(["first_half", "second_half", "overtime"]),
+  defenderTeamThesis: z.string().min(1),
+  defenderMustHoldClaims: stringArray,
+  defenderPrimaryZoneId: z.string().min(1),
+  attackerChallengeBrief: z.string().min(1),
+  attackerPrimaryZoneId: z.string().min(1),
+  roundSubTheme: z.string().min(1),
+  allowedCanonicalZoneIds: stringArray,
+  thesisEvidenceSources: stringArray,
+  dimensionRequirements: judgeDimensionRequirementsSchema
+});
+export type DefenderThesisContext = z.infer<typeof defenderThesisContextSchema>;
+
 export const judgeTeamScoreSchema = z.object({
   teamId: z.string().min(1),
   side: z.enum(["attack", "defense"]),
@@ -520,7 +553,12 @@ export const judgeScoreOverrideSchema = z.object({
 });
 export type JudgeScoreOverride = z.infer<typeof judgeScoreOverrideSchema>;
 
+export const judgeScorecardSources = ["llm_full", "code_completed_from_verdict", "deterministic_fallback"] as const;
+export type JudgeScorecardSource = (typeof judgeScorecardSources)[number];
+
 export const judgeScorecardSchema = z.object({
+  scorecardSource: z.enum(judgeScorecardSources).optional(),
+  defenderThesisContext: defenderThesisContextSchema.optional(),
   rubricProfile: judgeRubricProfileSchema,
   teamScores: z.record(judgeTeamScoreSchema),
   scoreDelta: z.number().nonnegative(),
@@ -528,9 +566,26 @@ export const judgeScorecardSchema = z.object({
   marginFromScore: z.enum(["narrow", "standard", "decisive"]),
   decisiveDimensions: z.array(z.enum(judgeScoreDimensions)).min(1),
   roundWinTypeJustification: z.string().min(1),
+  llmProposedMargin: z.enum(["narrow", "standard", "decisive"]).optional(),
+  normalizedFieldNotes: stringArray.optional(),
   scoreOverride: judgeScoreOverrideSchema.optional()
 });
 export type JudgeScorecard = z.infer<typeof judgeScorecardSchema>;
+
+export const judgeVerdictDraftSchema = z.object({
+  winnerPromptTeamId: z.string().min(1).optional(),
+  roundWinType: z.enum(judgeRoundWinTypes).optional(),
+  confidence: z.number().min(0).max(1).optional(),
+  attackWinConditionMet: z.boolean().optional(),
+  defenseWinConditionMet: z.boolean().optional(),
+  winnerReason: z.string().min(1).optional(),
+  loserFailureReason: z.string().min(1).optional(),
+  attackedOpportunityGapText: z.string().min(1).optional(),
+  defendedCorePropositionText: z.string().min(1).optional(),
+  decisiveEvidenceText: z.string().min(1).optional(),
+  zoneFocusCandidates: stringArray.optional()
+}).passthrough();
+export type JudgeVerdictDraft = z.infer<typeof judgeVerdictDraftSchema>;
 
 export const judgeVerdictDecisionSchema = z.object({
   winnerTeamId: z.string().min(1),

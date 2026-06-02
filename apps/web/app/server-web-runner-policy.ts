@@ -138,6 +138,7 @@ function parseMode(value: unknown): WebRunMode | null {
     value === "phase17_showcase_match" ||
     value === "phase18_next_round" ||
     value === "phase18_current_map" ||
+    value === "phase18_keep_generating_map" ||
     value === "phase18_full_bo3"
   ) {
     return value;

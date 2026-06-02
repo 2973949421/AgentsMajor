@@ -14,6 +14,7 @@ import {
   startPhase17ShowcaseWebRun,
   startPhase18CurrentMapWebRun,
   startPhase18FullBo3WebRun,
+  startPhase18KeepGeneratingMapWebRun,
   startPhase18NextRoundWebRun
 } from "../../../../server-run-progress";
 import { validateWebRunnerRequest, type WebRunnerRequestBody } from "../../../../server-web-runner-policy";
@@ -90,14 +91,16 @@ export async function POST(request: Request, context: RouteContext) {
           ? await startPhase18NextRoundWebRun(matchId, requestedRunId)
           : validation.mode === "phase18_current_map" && (matchId === phase18CanonIds.fixtureId || matchId === phase18CanonIds.matchId)
             ? await startPhase18CurrentMapWebRun(matchId, requestedRunId)
-            : validation.mode === "phase18_full_bo3" && (matchId === phase18CanonIds.fixtureId || matchId === phase18CanonIds.matchId)
-              ? await startPhase18FullBo3WebRun(matchId, requestedRunId)
-              : null;
+            : validation.mode === "phase18_keep_generating_map" && (matchId === phase18CanonIds.fixtureId || matchId === phase18CanonIds.matchId)
+              ? await startPhase18KeepGeneratingMapWebRun(matchId, requestedRunId)
+              : validation.mode === "phase18_full_bo3" && (matchId === phase18CanonIds.fixtureId || matchId === phase18CanonIds.matchId)
+                ? await startPhase18FullBo3WebRun(matchId, requestedRunId)
+                : null;
 
     if (!progress) {
       return NextResponse.json(
         {
-          error: `Web runner mode/match mismatch. Supported pairs: ${phase17CanonIds.matchId} -> phase17_showcase_match, ${phase18CanonIds.fixtureId} -> phase18_next_round|phase18_current_map|phase18_full_bo3.`
+          error: `Web runner mode/match mismatch. Supported pairs: ${phase17CanonIds.matchId} -> phase17_showcase_match, ${phase18CanonIds.fixtureId} -> phase18_next_round|phase18_current_map|phase18_keep_generating_map|phase18_full_bo3.`
         },
         { status: 400 }
       );
@@ -110,9 +113,11 @@ export async function POST(request: Request, context: RouteContext) {
             ? "Phase 2.0-pre 单局真实 LLM run 已启动。"
             : validation.mode === "phase18_current_map"
               ? "Phase 2.0-pre 当前地图真实 LLM run 已启动。"
-              : validation.mode === "phase18_full_bo3"
-                ? "Phase 2.0-pre 整场 BO3 真实 LLM run 已启动。"
-                : "Phase 1.7 Falcon-7B vs VitaLLMty BO3 fake-only generation started.",
+              : validation.mode === "phase18_keep_generating_map"
+                ? "Phase 2.0-pre 一直生成当前地图已启动，生成类失败会自动重试同一回合。"
+                : validation.mode === "phase18_full_bo3"
+                  ? "Phase 2.0-pre 整场 BO3 真实 LLM run 已启动。"
+                  : "Phase 1.7 Falcon-7B vs VitaLLMty BO3 fake-only generation started.",
         progress,
         replayUrl: validation.mode === "phase17_showcase_match" ? `/?matchId=${encodeURIComponent(matchId)}` : `/?runId=${encodeURIComponent(progress.runId)}`,
         progressUrl: `/api/matches/${encodeURIComponent(matchId)}/run?runId=${encodeURIComponent(progress.runId)}`

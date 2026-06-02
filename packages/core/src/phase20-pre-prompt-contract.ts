@@ -89,10 +89,10 @@ export function buildPhase20PreSchemaContract(schemaName: string): string {
   if (schemaName === "TeamRoundPlanDecision") {
     return [
       "JSON 输出契约：只返回一个顶层对象，字段包括 teamId、side、primaryIntent、primaryZoneId、可选 secondaryZoneId、coordinationSummary、playerDirectives、可选 economyIntent、winCondition、risk、confidence、可选 fingerprint。",
-      "目标长度：总输出约 650-950 output tokens。primaryIntent、coordinationSummary、winCondition、risk 要写成完整中文段落。",
+      "目标长度：总输出约 500-750 output tokens。primaryIntent、coordinationSummary、winCondition、risk 各写一句完整中文。",
       "playerDirectives 必须是数组，每名 active player 恰好出现一次，每项形如 {\"agentId\":\"agent_x\",\"directive\":\"...\"}。",
-      "economyIntent 如提供，必须服务于己方经济决策，只能基于己方真实经济、己方 loss count、已保下装备和公开历史给出 posture / drop / save / force 倾向，不能把对手真实经济当事实写入。",
-      "economyIntent.buyIntentByAgent 如提供，必须是数组；每项形如 {\"agentId\":\"agent_x\",\"targetPosture\":\"rifle_buy\",\"preferredLoadout\":\"rifle_full_t_pack\",\"note\":\"...\"}，且只能引用 active player。",
+      "不要输出 economyIntent.buyIntentByAgent、targetPosture 或 preferredLoadout；引擎会按当前经济状态派生这些硬枚举字段。",
+      "economyIntent 如提供，只能包含 defaultPosture 和 summary，summary 不超过 30 个中文字符。",
       "team_plan 只能使用己方真实经济和公开历史；对手经济最多只能作为基于公开历史的估计，且不得当作事实。",
       "side 必须与输入 side 一致，confidence 必须是 0 到 1 之间的数字。"
     ].join("\n");
@@ -118,20 +118,18 @@ export function buildPhase20PreSchemaContract(schemaName: string): string {
 
   if (schemaName === "JudgeVerdictDecision") {
     return [
-      "JSON 输出契约：只返回一个短结构对象，字段包括 winnerTeamId、loserTeamId、margin、roundWinType、attackWinConditionMet、defenseWinConditionMet、mvpAgentId、confidence、judgeScorecard、diagnostic。",
-      "目标长度：总输出约 750-1100 output tokens。不要写长判词，不要写自由叙事；reason 和 judgeInference 由 judge_narrative 生成。",
-      "必须先按输入 rubricProfile 给双方分别打 7 维分，再由分数推导 winnerTeamId、margin 和 roundWinType。禁止先写结论再补分。",
-      "judgeScorecard.rubricProfile 必须与输入 rubricProfile 一致；全局维度固定为 objectiveScore、mapControlScore、submissionQualityScore、coordinationScore、economyAdjustedScore、riskControlScore、proofScore。",
-      "teamScores 必须包含 teamAId 和 teamBId 两个 key；每队每个维度必须包含 score、evidence、evidenceSource。evidenceSource 只能是 team_plan、submitted_output、economy、zone_relation、map_semantic_context、judge_rubric_context、round_context、combat_resolution、public_history。",
-      "winnerTeamId 必须等于 judgeScorecard.winnerFromScore；margin 必须等于 judgeScorecard.marginFromScore。scoreOverride 默认不要使用，只有结构化分数与硬性 CS 胜法冲突时才允许。",
+      "JSON 输出契约：只返回一个短语义草稿对象，字段建议包括 winnerPromptTeamId、roundWinType、attackWinConditionMet、defenseWinConditionMet、confidence、winnerReason、loserFailureReason、attackedOpportunityGapText、defendedCorePropositionText、decisiveEvidenceText、zoneFocusCandidates。",
+      "目标长度：总输出约 350-650 output tokens。不要写长判词，不要写自由叙事；reason 和 judgeInference 由 judge_narrative 生成。",
+      "不要输出 currentSubTheme、winnerFromScore、marginFromScore、完整 judgeScorecard、rubricProfile、scoreBeforeRound、经济 posture 或 loadout；这些系统事实由代码派生。",
+      "winnerPromptTeamId 用 team_alpha 或 team_bravo；如果你输出 winnerTeamId/loserTeamId，也只会被系统映射校验后使用。",
+      "judgeScorecard 可以完全省略；如果输出 teamScores，只会被系统当作轻量评分提示，最终完整 scorecard、winnerFromScore、marginFromScore 和 margin 由代码生成。",
       "防守方不能只因为 defendedCoreProposition 听起来成立而获胜；攻方目标推进、下包/全歼、区域突破、SubmittedOutput 质量必须在同一评分根基下被量化。",
       "双方经济恢复或 rubricProfile.forbiddenBiases 包含连胜/领先约束时，禁止把历史连胜、比分领先或节目效果写成评分证据。",
       "agentOutputsByTeam 是经济闸门后的 SubmittedOutput，不是完整 RawOutput；不得引用 omittedFields 对应的被裁剪细节。",
       "roundWinType 必须严格是 attack_elimination、attack_bomb_explosion、defense_elimination、defense_timeout_no_plant、defense_defuse 五者之一。",
       "attackWinConditionMet 和 defenseWinConditionMet 必须与 roundWinType、攻守方、winnerTeamId 一致，且只能一方为 true。",
-      "diagnostic 必须包含 currentSubTheme、attackedOpportunityGap、defendedCoreProposition、mainAttackZoneId、mainDefenseZoneId、zoneRelation、decisiveEvidence。",
-      "zoneRelation.attackZoneId 必须等于 mainAttackZoneId；zoneRelation.defenseZoneId 必须等于 mainDefenseZoneId。",
-      "margin 必须严格是 narrow、standard、decisive 三者之一。"
+      "zoneFocusCandidates 只写候选区域文本或 canonical zone id；最终 canonical zone id 由代码 normalizer 选择。",
+      "不要输出 margin；代码会从物化后的 scorecard 派生 narrow、standard 或 decisive。"
     ].join("\n");
   }
 
@@ -197,11 +195,11 @@ export function buildPhase20PreTaskInstruction(task: Phase20PrePromptTask): stri
       ].join("\n");
     case "judge_verdict":
       return [
-        "任务说明：先按 rubricProfile 生成 judgeScorecard，再生成短结构裁决 verdict，不写长判词。",
-        "先判断双方计划分别想证明什么，再按 7 个基础维度评分，再判断 CS 胜利方式，最后用 scoreDelta 推导商业攻防命题更支持哪一方。",
-        "区域关系只能作为证据，不能作为自动胜负规则；必须用 diagnostic.zoneRelation 结构化说明，不要依赖 reason 里的固定桥接句。",
+        "任务说明：生成短语义裁判草稿，不直接写系统事实对象。",
+        "先判断双方计划分别想证明什么，再依据 rubricProfile 做内部判断，输出胜方、胜法、攻守条件、关键证据文本和候选区域。",
+        "区域关系只能作为证据，不能作为自动胜负规则；区域只作为 zoneFocusCandidates 或短文本候选输出，最终 canonical zone 由代码物化。",
         "rubricProfile 是代码生成的只读评分标准；地图/回合修正只能来自该 profile，禁止临场发明评分标准。",
-        "不要输出 reason 或 judgeInference；它们由 judge_narrative 在 verdict 锁定后生成。"
+        "不要输出 currentSubTheme、完整 judgeScorecard、reason 或 judgeInference；它们由代码和 judge_narrative 在 verdict 锁定后生成。"
       ].join("\n");
     case "judge_narrative":
       return [

@@ -9,7 +9,7 @@ import styles from "./live-replay-player.module.css";
 const phase18FixtureId = "phase18_match_falcon_7b_vs_vitallmty";
 
 export type RunState = "idle" | "running" | "paused" | "stopped" | "success" | "failed";
-export type RunMode = "phase18_next_round" | "phase18_current_map" | "phase18_full_bo3";
+export type RunMode = "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3";
 type AnyRunMode = RunMode | "phase17_showcase_match";
 type ResetScope = "round" | "map" | "match";
 export type RunStatus = "scheduled" | "running" | "completed" | "failed" | "discarded";
@@ -60,6 +60,8 @@ export interface RunMatchHistoryEntry {
 export interface WebRunProgress {
   runId: string;
   mode: AnyRunMode;
+  currentExecutionMode?: AnyRunMode;
+  currentExecutionStatus?: "running" | "completed" | "failed";
   matchId: string;
   fixtureId: string;
   runtimeMatchId: string;
@@ -85,6 +87,15 @@ export interface WebRunProgress {
     runningCalls: number;
   };
   llmCalls: WebRunLlmCallProgress[];
+  currentExecutionId?: string;
+  currentOuterAttemptNumber?: number;
+  latestRetryReason?: string;
+  recoveredFailureCount: number;
+  latestRecoveredError?: string;
+  currentExecutionStartedCalls: number;
+  currentExecutionCompletedCalls: number;
+  currentExecutionFailedCalls: number;
+  currentExecutionRunningCalls: number;
   promptContractId?: string;
   contractStatus?: "current" | "legacy" | "mixed" | "blocked";
   recentRuns: RunMatchHistoryEntry[];
@@ -280,7 +291,10 @@ export function RunMatchControls({
         { label: "当前地图", value: progress.currentMapOrder ? `M${progress.currentMapOrder}` : "--" },
         { label: "当前回合", value: progress.currentRoundNumber ? `R${progress.currentRoundNumber}` : "--" },
         { label: "调用预估", value: formatExpectedCalls(progress) },
-        { label: "已完成调用", value: String(progress.llmSummary.completedCalls) }
+        { label: "历史完成调用", value: String(progress.llmSummary.completedCalls) },
+        { label: "本次完成调用", value: String(progress.currentExecutionCompletedCalls ?? 0) },
+        { label: "当前尝试", value: progress.currentOuterAttemptNumber ? `#${progress.currentOuterAttemptNumber}` : "--" },
+        { label: "已恢复失败", value: String(progress.recoveredFailureCount ?? 0) }
       ]
     : [
         { label: "运行状态", value: formatLocalStateLabel(state) },
@@ -289,7 +303,10 @@ export function RunMatchControls({
         { label: "当前地图", value: "--" },
         { label: "当前回合", value: "--" },
         { label: "调用预估", value: "当前回合约 14 次" },
-        { label: "已完成调用", value: "0" }
+        { label: "历史完成调用", value: "0" },
+        { label: "本次完成调用", value: "0" },
+        { label: "当前尝试", value: "--" },
+        { label: "已恢复失败", value: "0" }
       ];
 
   if (!runnerPolicy.enabled) {
@@ -329,10 +346,14 @@ export function RunMatchControls({
         <button type="button" className={styles.opsActionSecondary} onClick={() => handleRun("phase18_current_map")} disabled={state === "running"}>
           {state === "running" && progress?.mode === "phase18_current_map" ? "正在生成当前地图..." : "生成当前地图"}
         </button>
+        <button type="button" className={styles.opsActionSecondary} onClick={() => handleRun("phase18_keep_generating_map")} disabled={state === "running"}>
+          {state === "running" && progress?.mode === "phase18_keep_generating_map" ? "一直生成中..." : "一直生成"}
+        </button>
         <button type="button" className={styles.opsActionSecondary} onClick={() => handleRun("phase18_full_bo3")} disabled={state === "running"}>
           {state === "running" && progress?.mode === "phase18_full_bo3" ? "正在生成整场 BO3..." : "生成整场 BO3"}
         </button>
       </div>
+      <span className={styles.opsMetaLine}>一直生成会在生成类失败后自动重试同一回合，直到当前地图结束。</span>
 
       <div className={styles.opsUtilityGrid}>
         <button
@@ -763,6 +784,9 @@ function formatExpectedCalls(progress: WebRunProgress): string {
   if (progress.mode === "phase18_current_map") {
     return "当前地图约每回合 14 次";
   }
+  if (progress.mode === "phase18_keep_generating_map") {
+    return "一直生成当前地图，约每回合 14 次";
+  }
   if (progress.mode === "phase18_full_bo3") {
     return "BO3 约每回合 14 次";
   }
@@ -770,7 +794,7 @@ function formatExpectedCalls(progress: WebRunProgress): string {
 }
 
 function isPhase18Mode(mode: AnyRunMode): mode is RunMode {
-  return mode === "phase18_next_round" || mode === "phase18_current_map" || mode === "phase18_full_bo3";
+  return mode === "phase18_next_round" || mode === "phase18_current_map" || mode === "phase18_keep_generating_map" || mode === "phase18_full_bo3";
 }
 
 function runStartMessage(mode: RunMode): string {
@@ -779,6 +803,8 @@ function runStartMessage(mode: RunMode): string {
       return "开始执行 Phase 1.8 单局真实 LLM 生成...";
     case "phase18_current_map":
       return "开始执行 Phase 1.8 当前地图真实 LLM 生成...";
+    case "phase18_keep_generating_map":
+      return "开始执行 Phase 1.8 一直生成；生成类失败会自动重试同一回合...";
     case "phase18_full_bo3":
     default:
       return "开始执行 Phase 1.8 整场 BO3 真实 LLM 生成...";
@@ -881,11 +907,12 @@ function buildFailedAttemptNotice(progress: WebRunProgress): string | null {
   }
 
   const committedLabel = progress.latestCommittedRoundNumber > 0 ? `R${progress.latestCommittedRoundNumber}` : "尚无已提交回合";
+  const retryReason = progress.latestRetryReason ? ` 最近重试原因：${progress.latestRetryReason}` : "";
   if (progress.currentRoundNumber > progress.latestCommittedRoundNumber) {
-    return `当前播放仍停留在 ${committedLabel}；最新失败尝试发生在 R${progress.currentRoundNumber}。`;
+    return `当前播放仍停留在 ${committedLabel}；最新失败尝试发生在 R${progress.currentRoundNumber}。${retryReason}`;
   }
 
-  return `最新失败尝试发生在 R${progress.currentRoundNumber}。`;
+  return `最新失败尝试发生在 R${progress.currentRoundNumber}。${retryReason}`;
 }
 
 function formatLocalStateLabel(state: RunState): string {

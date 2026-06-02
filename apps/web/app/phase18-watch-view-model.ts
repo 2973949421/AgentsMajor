@@ -194,6 +194,10 @@ export interface JudgeEvidenceViewModel {
 }
 
 export interface JudgeScorecardEvidenceViewModel {
+  sourceLabel: string;
+  defenderThesisLabel?: string;
+  attackerChallengeLabel?: string;
+  defenderHoldClaimsLabel?: string;
   profileLabel: string;
   mapAdjustmentLabel: string;
   roundAdjustmentLabel: string;
@@ -206,6 +210,8 @@ export interface JudgeScorecardEvidenceViewModel {
     key: string;
     label: string;
     weightLabel: string;
+    attackRequirement: string;
+    defenseRequirement: string;
     teamAScoreLabel: string;
     teamAEvidence: string;
     teamBScoreLabel: string;
@@ -524,7 +530,14 @@ export function buildOpsDockViewModel(runUiState: RunMatchUiState | null): OpsDo
     { label: "已提交局数", value: progress ? String(progress.completedRounds) : "0" },
     { label: "当前地图", value: progress?.currentMapOrder ? `M${progress.currentMapOrder}` : "--" },
     { label: "当前回合", value: progress?.currentRoundNumber ? `R${progress.currentRoundNumber}` : "--" },
-    { label: "LLM 调用", value: progress ? `${progress.llmSummary.completedCalls} 已完成，当前回合约 14 次` : "0 已完成" }
+    {
+      label: "LLM 调用",
+      value: progress
+        ? `${progress.currentExecutionCompletedCalls ?? 0} 本次完成，${progress.llmSummary.completedCalls} 历史完成`
+        : "0 已完成"
+    },
+    { label: "当前尝试", value: progress?.currentOuterAttemptNumber ? `#${progress.currentOuterAttemptNumber}` : "--" },
+    { label: "已恢复失败", value: progress ? String(progress.recoveredFailureCount ?? 0) : "0" }
   ];
 
   return {
@@ -843,6 +856,14 @@ function buildJudgeScorecardEvidence(
   }
 
   return {
+    sourceLabel: formatJudgeScorecardSource(scorecard.scorecardSource),
+    ...(scorecard.defenderThesisContext
+      ? {
+          defenderThesisLabel: translateEvidenceText(scorecard.defenderThesisContext.defenderTeamThesis),
+          attackerChallengeLabel: translateEvidenceText(scorecard.defenderThesisContext.attackerChallengeBrief),
+          defenderHoldClaimsLabel: scorecard.defenderThesisContext.defenderMustHoldClaims.map(translateEvidenceText).join(" / ")
+        }
+      : {}),
     profileLabel: `${scorecard.rubricProfile.profileId} / ${scorecard.rubricProfile.baseVersion}`,
     mapAdjustmentLabel: scorecard.rubricProfile.mapAdjustment.summary,
     roundAdjustmentLabel: scorecard.rubricProfile.roundAdjustment.summary,
@@ -855,12 +876,31 @@ function buildJudgeScorecardEvidence(
       key,
       label,
       weightLabel: `${Math.round(scorecard.rubricProfile.dimensionWeights[key] * 100)}%`,
+      attackRequirement:
+        scorecard.defenderThesisContext?.dimensionRequirements?.[key]?.challengeRequirement ??
+        "旧评分表未记录攻方 challenge 要求。",
+      defenseRequirement:
+        scorecard.defenderThesisContext?.dimensionRequirements?.[key]?.defenseRequirement ??
+        "旧评分表未记录守方 defend 要求。",
       teamAScoreLabel: `${teamNameById(replay, teamAId)} ${teamAScore[key].score.toFixed(1)}`,
       teamAEvidence: translateEvidenceText(teamAScore[key].evidence),
       teamBScoreLabel: `${teamNameById(replay, teamBId)} ${teamBScore[key].score.toFixed(1)}`,
       teamBEvidence: translateEvidenceText(teamBScore[key].evidence)
     }))
   };
+}
+
+function formatJudgeScorecardSource(source: string | undefined): string {
+  switch (source) {
+    case "llm_full":
+      return "LLM 完整评分";
+    case "code_completed_from_verdict":
+      return "代码补齐评分";
+    case "deterministic_fallback":
+      return "确定性兜底评分";
+    default:
+      return "评分来源未标记";
+  }
 }
 
 function formatJudgeScoreDimension(dimension: string): string {
@@ -1268,6 +1308,8 @@ function formatRunModeLabel(mode: WebRunProgress["mode"] | null | undefined): st
       return "下一局";
     case "phase18_current_map":
       return "当前地图";
+    case "phase18_keep_generating_map":
+      return "一直生成";
     case "phase18_full_bo3":
       return "整场 BO3";
     case "phase17_showcase_match":

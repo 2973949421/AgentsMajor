@@ -22,13 +22,14 @@ import {
   resetPhase18CurrentMapFromWeb,
   resetPhase18RoundFromWeb,
   runPhase17ShowcaseFromWeb,
+  runPhase18KeepGeneratingMapFromWeb,
   runPhase18ScopeFromWeb,
   type WebResetResult,
   type WebRunSingleMapResult
 } from "./server-runner";
 
 type SimulationRunStatus = "scheduled" | "running" | "completed" | "failed" | "discarded";
-type SimulationRunMode = "phase18_next_round" | "phase18_current_map" | "phase18_full_bo3";
+type SimulationRunMode = "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3";
 
 interface SimulationRunRecord {
   id: string;
@@ -50,7 +51,7 @@ interface SimulationRunRecord {
 }
 
 export type WebRunStatus = "scheduled" | "running" | "completed" | "failed" | "discarded";
-export type WebRunMode = "phase17_showcase_match" | "phase18_next_round" | "phase18_current_map" | "phase18_full_bo3";
+export type WebRunMode = "phase17_showcase_match" | "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3";
 export type WebRunLlmCallStatus = "started" | "completed" | "failed";
 export type WebRunHistory = Phase18RunHistoryEntry;
 
@@ -85,6 +86,8 @@ export interface WebRunLlmSummary {
 export interface WebRunProgress {
   runId: string;
   mode: WebRunMode;
+  currentExecutionMode?: WebRunMode;
+  currentExecutionStatus?: "running" | "completed" | "failed";
   matchId: string;
   fixtureId: string;
   runtimeMatchId: string;
@@ -107,6 +110,15 @@ export interface WebRunProgress {
   casterModes: Array<{ mode: string | null; count: number }>;
   llmSummary: WebRunLlmSummary;
   llmCalls: WebRunLlmCallProgress[];
+  currentExecutionId?: string;
+  currentOuterAttemptNumber?: number;
+  latestRetryReason?: string;
+  recoveredFailureCount: number;
+  latestRecoveredError?: string;
+  currentExecutionStartedCalls: number;
+  currentExecutionCompletedCalls: number;
+  currentExecutionFailedCalls: number;
+  currentExecutionRunningCalls: number;
   promptContractId?: string;
   contractStatus?: "current" | "legacy" | "mixed" | "blocked";
   progressPercent: number;
@@ -119,8 +131,11 @@ interface ActiveWebExecution {
   runId: string;
   fixtureId: string;
   mode: WebRunMode;
+  executionId: string;
   promise: Promise<WebRunSingleMapResult>;
 }
+
+type RepositoryEvent = Parameters<ReturnType<typeof createSqliteRepositories>["events"]["append"]>[0];
 
 interface LegacyPhase17RunState extends WebRunProgress {
   promise: Promise<WebRunSingleMapResult>;
@@ -131,6 +146,10 @@ const phase18CallsPerRound = 14;
 
 let activeExecution: ActiveWebExecution | null = null;
 let latestPhase17Run: LegacyPhase17RunState | null = null;
+
+function createWebExecutionId(now = Date.now()): string {
+  return `exec_${now.toString(36)}`;
+}
 
 export function hasActiveWebRun(): boolean {
   return activeExecution !== null;
@@ -226,6 +245,7 @@ export function startPhase17ShowcaseWebRun(matchId: string): WebRunProgress {
   const mapGameIds = phase17CanonIds.selectedMapIds.map((_, index) => `map_${phase17CanonIds.matchId}_${index + 1}`);
   const now = new Date().toISOString();
   const runId = `phase17_run_${Date.now().toString(36)}`;
+  const executionId = createWebExecutionId();
   const promise = runPhase17ShowcaseFromWeb(matchId);
   const state: LegacyPhase17RunState = {
     runId,
@@ -251,12 +271,18 @@ export function startPhase17ShowcaseWebRun(matchId: string): WebRunProgress {
     casterModes: [],
     llmSummary: summarizeLlmCalls(0, []),
     llmCalls: [],
+    currentExecutionId: executionId,
+    recoveredFailureCount: 0,
+    currentExecutionStartedCalls: 0,
+    currentExecutionCompletedCalls: 0,
+    currentExecutionFailedCalls: 0,
+    currentExecutionRunningCalls: 0,
     progressPercent: 0,
     recentRuns: [],
     promise
   };
 
-  activeExecution = { runId, fixtureId: matchId, mode: "phase17_showcase_match", promise };
+  activeExecution = { runId, fixtureId: matchId, mode: "phase17_showcase_match", executionId, promise };
   latestPhase17Run = state;
 
   promise
@@ -307,6 +333,10 @@ export async function startPhase18CurrentMapWebRun(fixtureId: string, runId?: st
   return startPhase18WebRun({ fixtureId, runId, mode: "phase18_current_map" });
 }
 
+export async function startPhase18KeepGeneratingMapWebRun(fixtureId: string, runId?: string | null): Promise<WebRunProgress> {
+  return startPhase18WebRun({ fixtureId, runId, mode: "phase18_keep_generating_map" });
+}
+
 export async function startPhase18FullBo3WebRun(fixtureId: string, runId?: string | null): Promise<WebRunProgress> {
   return startPhase18WebRun({ fixtureId, runId, mode: "phase18_full_bo3" });
 }
@@ -328,6 +358,8 @@ export async function readWebRunProgress(runId?: string, fixtureId: string = pha
     const { run, facts } = await syncPhase18SimulationRun(repositories, selectedRun);
     const llmCalls = readLlmCalls(repositories, run.runtimeMatchId);
     const llmSummary = summarizeLlmCalls(run.expectedTotalCalls, llmCalls);
+    const attemptEvents = readRoundGenerationAttemptEvents(repositories, run.id, facts.mapGameIds);
+    const executionEvents = readWebRunExecutionEvents(repositories, run.id, run.runtimeMatchId);
     const casterModes = readCasterModes(repositories, facts.mapGameIds);
     const completedAt = run.completedAt ?? undefined;
     const progress = buildPhase18Progress({
@@ -335,6 +367,8 @@ export async function readWebRunProgress(runId?: string, fixtureId: string = pha
       facts,
       llmCalls,
       llmSummary,
+      attemptEvents,
+      executionEvents,
       casterModes,
       recentRuns: await listPhase18RunHistoryEntries(repositories, fixtureId)
     });
@@ -455,10 +489,210 @@ export function summarizeLlmCalls(expectedTotalCalls: number, llmCalls: WebRunLl
   };
 }
 
+interface RoundGenerationAttemptEvent {
+  type:
+    | "round_generation_attempt_started"
+    | "round_generation_attempt_finished"
+    | "round_generation_attempt_retrying"
+    | "round_generation_attempt_terminal_failed";
+  runId: string;
+  executionId: string;
+  roundNumber: number;
+  outerAttemptNumber: number;
+  result: string;
+  errorKind?: string;
+  error?: string;
+  createdAt: string;
+}
+
+interface WebRunExecutionEvent {
+  type: "web_run_execution_started" | "web_run_execution_finished";
+  runId: string;
+  executionId: string;
+  mode: WebRunMode;
+  status: "running" | "completed" | "failed";
+  baselineCompletedRounds: number;
+  estimatedTotalRounds: number;
+  expectedTotalCalls: number;
+  latestError?: string;
+  createdAt: string;
+}
+
+function readRoundGenerationAttemptEvents(
+  repositories: ReturnType<typeof createSqliteRepositories>,
+  runId: string,
+  mapGameIds: string[]
+): RoundGenerationAttemptEvent[] {
+  if (mapGameIds.length === 0) {
+    return [];
+  }
+  const rows = repositories.sqlite
+    .prepare(
+      `SELECT type, payload_json AS payloadJson, created_at AS createdAt
+       FROM events
+       WHERE map_game_id IN (${placeholders(mapGameIds)})
+         AND type IN (
+           'round_generation_attempt_started',
+           'round_generation_attempt_finished',
+           'round_generation_attempt_retrying',
+           'round_generation_attempt_terminal_failed'
+         )
+       ORDER BY global_sequence ASC`
+    )
+    .all(...mapGameIds) as Array<{ type?: unknown; payloadJson?: unknown; createdAt?: unknown }>;
+
+  return rows
+    .map((row) => {
+      const payload = parseUnknownRecord(row.payloadJson);
+      if (!payload || payload.runId !== runId || typeof payload.executionId !== "string") {
+        return null;
+      }
+      if (
+        row.type !== "round_generation_attempt_started" &&
+        row.type !== "round_generation_attempt_finished" &&
+        row.type !== "round_generation_attempt_retrying" &&
+        row.type !== "round_generation_attempt_terminal_failed"
+      ) {
+        return null;
+      }
+      return {
+        type: row.type,
+        runId,
+        executionId: payload.executionId,
+        roundNumber: typeof payload.roundNumber === "number" ? payload.roundNumber : 0,
+        outerAttemptNumber: typeof payload.outerAttemptNumber === "number" ? payload.outerAttemptNumber : 0,
+        result: typeof payload.result === "string" ? payload.result : "",
+        ...(typeof payload.errorKind === "string" ? { errorKind: payload.errorKind } : {}),
+        ...(typeof payload.error === "string" ? { error: payload.error } : {}),
+        createdAt: typeof row.createdAt === "string" ? row.createdAt : ""
+      };
+    })
+    .filter((event): event is RoundGenerationAttemptEvent => event !== null);
+}
+
+function readWebRunExecutionEvents(
+  repositories: ReturnType<typeof createSqliteRepositories>,
+  runId: string,
+  runtimeMatchId: string
+): WebRunExecutionEvent[] {
+  const rows = repositories.sqlite
+    .prepare(
+      `SELECT type, payload_json AS payloadJson, created_at AS createdAt
+       FROM events
+       WHERE match_id = ?
+         AND type IN ('web_run_execution_started', 'web_run_execution_finished')
+       ORDER BY global_sequence ASC`
+    )
+    .all(runtimeMatchId) as Array<{ type?: unknown; payloadJson?: unknown; createdAt?: unknown }>;
+
+  const events: WebRunExecutionEvent[] = [];
+  for (const row of rows) {
+    const payload = parseUnknownRecord(row.payloadJson);
+    if (!payload || payload.runId !== runId || typeof payload.executionId !== "string") {
+      continue;
+    }
+    if (row.type !== "web_run_execution_started" && row.type !== "web_run_execution_finished") {
+      continue;
+    }
+    const mode = typeof payload.mode === "string" ? mapSimulationRunModeToWebRunMode(payload.mode as SimulationRunMode) : null;
+    if (!mode) {
+      continue;
+    }
+    const eventType: WebRunExecutionEvent["type"] = row.type;
+    const status: WebRunExecutionEvent["status"] =
+      eventType === "web_run_execution_started" ? "running" : typeof payload.status === "string" && payload.status === "failed" ? "failed" : "completed";
+    events.push({
+      type: eventType,
+      runId,
+      executionId: payload.executionId,
+      mode,
+      status,
+      baselineCompletedRounds: typeof payload.baselineCompletedRounds === "number" ? payload.baselineCompletedRounds : 0,
+      estimatedTotalRounds: typeof payload.estimatedTotalRounds === "number" ? payload.estimatedTotalRounds : 0,
+      expectedTotalCalls: typeof payload.expectedTotalCalls === "number" ? payload.expectedTotalCalls : 0,
+      ...(typeof payload.latestError === "string" ? { latestError: payload.latestError } : {}),
+      createdAt: typeof row.createdAt === "string" ? row.createdAt : ""
+    });
+  }
+  return events;
+}
+
+function readLatestExecutionId(events: RoundGenerationAttemptEvent[]): string | undefined {
+  return events.at(-1)?.executionId;
+}
+
+async function appendWebRunExecutionEvent(
+  repositories: ReturnType<typeof createSqliteRepositories>,
+  input: {
+    type: "web_run_execution_started" | "web_run_execution_finished";
+    run: SimulationRunRecord;
+    executionId: string;
+    mode: Extract<WebRunMode, "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3">;
+    status: "running" | "completed" | "failed";
+    facts: Awaited<ReturnType<typeof readPhase18RunFacts>>;
+    latestError?: string;
+    now?: string;
+  }
+): Promise<void> {
+  const match = await repositories.matches.getById(input.run.runtimeMatchId);
+  if (!match) {
+    return;
+  }
+  const createdAt = input.now ?? new Date().toISOString();
+  const [globalSequence, sequenceInScope] = await Promise.all([
+    repositories.events.getMaxGlobalSequence(),
+    repositories.events.getMaxSequenceInScope("match", match.id)
+  ]);
+  const event: RepositoryEvent = {
+    id: `evt_${safeEventPart(input.run.id)}_${safeEventPart(input.executionId)}_${input.type}`,
+    type: input.type,
+    category: "runtime_control",
+    tournamentId: match.tournamentId,
+    matchId: match.id,
+    mapGameId: input.facts.mapGameId ?? input.run.runtimeMapGameId,
+    payload: {
+      schemaVersion: 1,
+      runId: input.run.id,
+      executionId: input.executionId,
+      mode: mapWebRunModeToSimulationRunMode(input.mode),
+      status: input.status,
+      runtimeMatchId: input.run.runtimeMatchId,
+      mapGameId: input.facts.mapGameId ?? input.run.runtimeMapGameId ?? null,
+      baselineCompletedRounds: input.run.baselineCompletedRounds,
+      estimatedTotalRounds: input.run.estimatedTotalRounds,
+      expectedTotalCalls: input.run.expectedTotalCalls,
+      latestCommittedRoundNumber: input.facts.latestCommittedRoundNumber,
+      hasFreshReplay: input.facts.hasFreshReplay,
+      ...(input.type === "web_run_execution_started" ? { startedAtReal: createdAt } : { finishedAtReal: createdAt }),
+      ...(input.latestError ? { latestError: input.latestError } : {})
+    },
+    globalSequence: globalSequence + 1,
+    scopeType: "match",
+    scopeId: match.id,
+    sequenceInScope: sequenceInScope + 1,
+    sourceModule: "web.phase20.execution",
+    createdAt
+  };
+  await repositories.events.append(event);
+}
+
+function safeEventPart(value: string): string {
+  return value.replace(/[^A-Za-z0-9_]+/g, "_");
+}
+
+function parseUnknownRecord(value: unknown): Record<string, unknown> | null {
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
 async function startPhase18WebRun(input: {
   fixtureId: string;
   runId: string | null | undefined;
-  mode: Extract<WebRunMode, "phase18_next_round" | "phase18_current_map" | "phase18_full_bo3">;
+  mode: Extract<WebRunMode, "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3">;
 }): Promise<WebRunProgress> {
   if (input.fixtureId !== phase18CanonIds.fixtureId && input.fixtureId !== phase18CanonIds.matchId) {
     throw new Error(`Web runner only supports the Phase 1.8 pilot fixture: ${phase18CanonIds.fixtureId}`);
@@ -513,7 +747,7 @@ async function startPhase18WebRun(input: {
       {
         fixtureId: phase18FixtureId,
         status: "running",
-        requestedMode: mapWebRunModeToSimulationRunMode(input.mode),
+        requestedMode: continuedRun?.requestedMode ?? mapWebRunModeToSimulationRunMode(input.mode),
         promptContractId: continuedRun?.promptContractId ?? PHASE20_PRE_PROMPT_CONTRACT_ID,
         runtimeMatchId,
         runtimeMapGameId: facts.mapGameId ?? continuedRun?.runtimeMapGameId ?? null,
@@ -530,19 +764,37 @@ async function startPhase18WebRun(input: {
     );
     await repositories.simulationRuns.save(persistedRun);
     startedRunId = persistedRun.id;
-
-    const promise = runPhase18ScopeFromWeb({
-      runtimeMatchId: persistedRun.runtimeMatchId,
-      scope: mapWebRunModeToScope(input.mode)
+    const executionId = createWebExecutionId();
+    await appendWebRunExecutionEvent(repositories, {
+      type: "web_run_execution_started",
+      run: persistedRun,
+      executionId,
+      mode: input.mode,
+      status: "running",
+      facts,
+      now
     });
+
+    const promise =
+      input.mode === "phase18_keep_generating_map"
+        ? runPhase18KeepGeneratingMapFromWeb({
+            runtimeMatchId: persistedRun.runtimeMatchId,
+            runId: persistedRun.id,
+            executionId
+          })
+        : runPhase18ScopeFromWeb({
+            runtimeMatchId: persistedRun.runtimeMatchId,
+            scope: mapWebRunModeToScope(input.mode)
+          });
     activeExecution = {
       runId: persistedRun.id,
       fixtureId: phase18FixtureId,
       mode: input.mode,
+      executionId,
       promise
     };
 
-    void finalizePhase18RunPromise(persistedRun.id, promise);
+    void finalizePhase18RunPromise(persistedRun.id, executionId, input.mode, promise);
   } finally {
     repositories.close();
   }
@@ -555,12 +807,17 @@ async function startPhase18WebRun(input: {
   return progress;
 }
 
-async function finalizePhase18RunPromise(runId: string, promise: Promise<WebRunSingleMapResult>): Promise<void> {
+async function finalizePhase18RunPromise(
+  runId: string,
+  executionId: string,
+  mode: Extract<WebRunMode, "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3">,
+  promise: Promise<WebRunSingleMapResult>
+): Promise<void> {
   try {
     await promise;
-    await finalizePhase18Run(runId);
+    await finalizePhase18Run(runId, executionId, mode);
   } catch (error) {
-    await finalizePhase18Run(runId, sanitizeRunError(error));
+    await finalizePhase18Run(runId, executionId, mode, sanitizeRunError(error));
   } finally {
     if (activeExecution?.runId === runId) {
       activeExecution = null;
@@ -568,7 +825,12 @@ async function finalizePhase18RunPromise(runId: string, promise: Promise<WebRunS
   }
 }
 
-async function finalizePhase18Run(runId: string, latestError?: string): Promise<void> {
+async function finalizePhase18Run(
+  runId: string,
+  executionId: string,
+  mode: Extract<WebRunMode, "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3">,
+  latestError?: string
+): Promise<void> {
   const projectRoot = findProjectRoot(process.cwd());
   const repositories = createSqliteRepositories(resolve(projectRoot, defaultSqlitePath));
   try {
@@ -579,17 +841,25 @@ async function finalizePhase18Run(runId: string, latestError?: string): Promise<
     }
 
     const { run, facts } = await syncPhase18SimulationRun(repositories, storedRun);
-    const status: SimulationRunStatus = latestError ? "failed" : "completed";
-    await repositories.simulationRuns.save(
-      patchSimulationRunRecord(run, {
+    const status: "completed" | "failed" = latestError ? "failed" : "completed";
+    const savedRun = patchSimulationRunRecord(run, {
         status,
         runtimeMapGameId: facts.mapGameId ?? run.runtimeMapGameId ?? null,
         latestCommittedRoundNumber: facts.latestCommittedRoundNumber,
         hasFreshReplay: facts.hasFreshReplay,
         latestError: latestError ?? null,
         completedAt: new Date().toISOString()
-      })
-    );
+      });
+    await repositories.simulationRuns.save(savedRun);
+    await appendWebRunExecutionEvent(repositories, {
+      type: "web_run_execution_finished",
+      run: savedRun,
+      executionId,
+      mode,
+      status,
+      facts,
+      ...(latestError ? { latestError } : {})
+    });
   } finally {
     repositories.close();
   }
@@ -630,7 +900,7 @@ async function mutatePhase18Run(
 async function estimatePhase18RemainingRounds(
   repositories: ReturnType<typeof createSqliteRepositories>,
   runtimeMatchId: string,
-  mode: Extract<WebRunMode, "phase18_next_round" | "phase18_current_map" | "phase18_full_bo3">
+  mode: Extract<WebRunMode, "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3">
 ): Promise<number> {
   if (mode === "phase18_next_round") {
     return 1;
@@ -656,7 +926,7 @@ async function estimatePhase18RemainingRounds(
   const currentMap = maps.find((mapGame) => mapGame.status !== "completed") ?? maps.at(-1);
   const currentMapRemaining = currentMap ? Math.max(1, estimatedMaxRoundsPerMap - currentMap.currentRoundNumber) : estimatedMaxRoundsPerMap;
 
-  if (mode === "phase18_current_map") {
+  if (mode === "phase18_current_map" || mode === "phase18_keep_generating_map") {
     return currentMapRemaining;
   }
 
@@ -676,10 +946,29 @@ function buildPhase18Progress(input: {
   facts: Awaited<ReturnType<typeof readPhase18RunFacts>>;
   llmCalls: WebRunLlmCallProgress[];
   llmSummary: WebRunLlmSummary;
+  attemptEvents: RoundGenerationAttemptEvent[];
+  executionEvents: WebRunExecutionEvent[];
   casterModes: Array<{ mode: string | null; count: number }>;
   recentRuns: WebRunHistory[];
 }): WebRunProgress {
   const now = new Date().toISOString();
+  const latestExecutionEvent = input.executionEvents.at(-1);
+  const currentExecutionId =
+    activeExecution?.runId === input.run.id ? activeExecution.executionId : latestExecutionEvent?.executionId ?? readLatestExecutionId(input.attemptEvents);
+  const currentExecutionMode =
+    activeExecution?.runId === input.run.id
+      ? activeExecution.mode
+      : latestExecutionEvent?.mode ?? mapSimulationRunModeToWebRunMode(input.run.requestedMode);
+  const currentExecutionStatus =
+    activeExecution?.runId === input.run.id ? "running" : latestExecutionEvent?.status ?? (input.run.status === "failed" ? "failed" : input.run.status === "completed" ? "completed" : undefined);
+  const currentAttemptEvents = currentExecutionId ? input.attemptEvents.filter((event) => event.executionId === currentExecutionId) : [];
+  const currentOuterAttemptNumber = currentAttemptEvents.reduce((max, event) => Math.max(max, event.outerAttemptNumber), 0) || undefined;
+  const latestRetryEvent = [...currentAttemptEvents]
+    .reverse()
+    .find((event) => event.type === "round_generation_attempt_retrying" || event.type === "round_generation_attempt_terminal_failed");
+  const currentExecutionCalls = input.llmCalls.filter((call) => call.roundNumber > input.run.baselineCompletedRounds);
+  const recoveredFailureCalls = currentExecutionCalls.filter((call) => call.status === "failed" && call.roundNumber <= input.facts.latestCommittedRoundNumber);
+  const latestRecoveredFailure = recoveredFailureCalls.at(-1);
   const progressPercent =
     input.run.status === "completed"
       ? 100
@@ -689,7 +978,9 @@ function buildPhase18Progress(input: {
 
   return {
     runId: input.run.id,
-    mode: mapSimulationRunModeToWebRunMode(input.run.requestedMode),
+    mode: currentExecutionMode,
+    currentExecutionMode,
+    ...(currentExecutionStatus ? { currentExecutionStatus } : {}),
     matchId: input.run.fixtureId,
     fixtureId: input.run.fixtureId,
     runtimeMatchId: input.run.runtimeMatchId,
@@ -712,6 +1003,15 @@ function buildPhase18Progress(input: {
     casterModes: input.casterModes,
     llmSummary: input.llmSummary,
     llmCalls: input.llmCalls,
+    ...(currentExecutionId ? { currentExecutionId } : {}),
+    ...(currentOuterAttemptNumber ? { currentOuterAttemptNumber } : {}),
+    ...(latestRetryEvent ? { latestRetryReason: latestRetryEvent.error ?? latestRetryEvent.errorKind ?? latestRetryEvent.result } : {}),
+    recoveredFailureCount: recoveredFailureCalls.length,
+    ...(latestRecoveredFailure?.error ? { latestRecoveredError: latestRecoveredFailure.error } : {}),
+    currentExecutionStartedCalls: currentExecutionCalls.length,
+    currentExecutionCompletedCalls: currentExecutionCalls.filter((call) => call.status === "completed").length,
+    currentExecutionFailedCalls: currentExecutionCalls.filter((call) => call.status === "failed").length,
+    currentExecutionRunningCalls: currentExecutionCalls.filter((call) => call.status === "started").length,
     ...(input.run.promptContractId ? { promptContractId: input.run.promptContractId } : {}),
     contractStatus: deriveProgressContractStatus(input.run, input.llmCalls),
     progressPercent,
@@ -1052,10 +1352,14 @@ function mapWebRunModeToScope(mode: Extract<WebRunMode, "phase18_next_round" | "
   }
 }
 
-function mapWebRunModeToSimulationRunMode(mode: Extract<WebRunMode, "phase18_next_round" | "phase18_current_map" | "phase18_full_bo3">): SimulationRunMode {
+function mapWebRunModeToSimulationRunMode(
+  mode: Extract<WebRunMode, "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3">
+): SimulationRunMode {
   return mode;
 }
 
-function mapSimulationRunModeToWebRunMode(mode: SimulationRunMode): Extract<WebRunMode, "phase18_next_round" | "phase18_current_map" | "phase18_full_bo3"> {
+function mapSimulationRunModeToWebRunMode(
+  mode: SimulationRunMode
+): Extract<WebRunMode, "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3"> {
   return mode;
 }

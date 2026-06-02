@@ -799,6 +799,28 @@ function RoundEvidencePanel({ evidence }: { evidence: RoundEvidenceViewModel }) 
               {evidence.judge.scorecard ? (
                 <div className={styles.judgeDiagnosticGrid}>
                   <div>
+                    <span>评分来源</span>
+                    <strong>{evidence.judge.scorecard.sourceLabel}</strong>
+                  </div>
+                  {evidence.judge.scorecard.defenderThesisLabel ? (
+                    <div>
+                      <span>守方半场主命题</span>
+                      <strong>{evidence.judge.scorecard.defenderThesisLabel}</strong>
+                    </div>
+                  ) : null}
+                  {evidence.judge.scorecard.attackerChallengeLabel ? (
+                    <div>
+                      <span>攻方 Challenge</span>
+                      <strong>{evidence.judge.scorecard.attackerChallengeLabel}</strong>
+                    </div>
+                  ) : null}
+                  {evidence.judge.scorecard.defenderHoldClaimsLabel ? (
+                    <div>
+                      <span>守方 Must-Hold</span>
+                      <strong>{evidence.judge.scorecard.defenderHoldClaimsLabel}</strong>
+                    </div>
+                  ) : null}
+                  <div>
                     <span>评分根基</span>
                     <strong>{evidence.judge.scorecard.profileLabel}</strong>
                   </div>
@@ -836,6 +858,8 @@ function RoundEvidencePanel({ evidence }: { evidence: RoundEvidenceViewModel }) 
                     <div key={dimension.key}>
                       <span>{dimension.label} / 权重 {dimension.weightLabel}</span>
                       <strong>{dimension.teamAScoreLabel} | {dimension.teamBScoreLabel}</strong>
+                      <small>攻方要求：{dimension.attackRequirement}</small>
+                      <small>守方要求：{dimension.defenseRequirement}</small>
                       <small>{dimension.teamAEvidence}</small>
                       <small>{dimension.teamBEvidence}</small>
                     </div>

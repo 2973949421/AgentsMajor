@@ -199,6 +199,248 @@ export async function runPhase18ScopeFromWeb(input: {
   }
 }
 
+export async function runPhase18KeepGeneratingMapFromWeb(input: {
+  runtimeMatchId: string;
+  runId: string;
+  executionId: string;
+}): Promise<WebRunSingleMapResult> {
+  const projectRoot = findProjectRoot(process.cwd());
+  const materials = loadProcessedMaterials(projectRoot);
+  const env = loadRootLocalEnv(projectRoot, process.env);
+  const llmConfig = loadAgentMajorLlmConfig(env);
+  if (!llmConfig.enabled) {
+    throw new Error(`Phase 1.8 real player/judge LLM is disabled: ${llmConfig.disabledReason ?? "not_configured"}`);
+  }
+
+  const driverModel = requireDriverModel(llmConfig.phase18DriverModelId);
+  const repositories = createSqliteRepositories(resolve(projectRoot, defaultSqlitePath));
+  try {
+    const engine = createPhase18SimulationEngine({
+      repositories,
+      llmGateway: new DashScopeOpenAiProvider({
+        baseUrl: llmConfig.baseUrl ?? "",
+        apiKey: llmConfig.apiKey ?? "",
+        timeoutMs: llmConfig.timeoutMs,
+        maxRetries: llmConfig.maxRetries
+      }),
+      jobQueue: new UnconfiguredJobQueue(),
+      artifactStore: new ServerLocalArtifactStore(projectRoot, repositories.artifacts),
+      phase18MapSemanticsByMapName: buildPhase18MapSemantics(materials)
+    });
+
+    const seeded = await ensurePhase18RuntimeFixture({
+      repositories,
+      projectRoot,
+      driverModel,
+      engine,
+      runtimeMatchId: input.runtimeMatchId
+    });
+
+    const mapGameId = await selectCurrentPhase18MapGameId(repositories, seeded.matchId);
+    let outerAttemptNumber = 0;
+    const maxOuterAttempts = 200;
+
+    while (outerAttemptNumber < maxOuterAttempts) {
+      const mapGame = await repositories.mapGames.getById(mapGameId);
+      const match = await repositories.matches.getById(seeded.matchId);
+      if (!mapGame || !match) {
+        throw new Error(`Unable to read current map state for ${mapGameId}.`);
+      }
+      if (mapGame.status === "completed" || match.status === "completed") {
+        await appendRoundGenerationAttemptEvent(repositories, {
+          type: "round_generation_attempt_finished",
+          runId: input.runId,
+          executionId: input.executionId,
+          matchId: match.id,
+          tournamentId: match.tournamentId,
+          mapGameId,
+          roundNumber: mapGame.currentRoundNumber,
+          outerAttemptNumber,
+          committedBefore: readMapFactCounts(repositories, mapGameId).reports,
+          committedAfter: readMapFactCounts(repositories, mapGameId).reports,
+          result: "map_completed",
+          stage: "keep_generating_map",
+          startedAtReal: new Date().toISOString(),
+          finishedAtReal: new Date().toISOString()
+        });
+        return await toWebRunResultFromMatch(repositories, seeded.matchId);
+      }
+
+      outerAttemptNumber += 1;
+      const roundNumber = mapGame.currentRoundNumber + 1;
+      const committedBefore = readMapFactCounts(repositories, mapGameId).reports;
+      const startedAtReal = new Date().toISOString();
+      await appendRoundGenerationAttemptEvent(repositories, {
+        type: "round_generation_attempt_started",
+        runId: input.runId,
+        executionId: input.executionId,
+        matchId: match.id,
+        tournamentId: match.tournamentId,
+        mapGameId,
+        roundNumber,
+        outerAttemptNumber,
+        committedBefore,
+        result: "started",
+        stage: "runCurrentMap.debug_one_round",
+        startedAtReal,
+        scoreBeforeRound: {
+          teamA: mapGame.teamAScore,
+          teamB: mapGame.teamBScore
+        }
+      });
+
+      try {
+        await engine.runCurrentMap({ mapGameId, mode: "debug", maxRounds: 1 });
+        const committedAfter = readMapFactCounts(repositories, mapGameId).reports;
+        const afterMap = await repositories.mapGames.getById(mapGameId);
+        const result = afterMap?.status === "completed" ? "map_completed" : committedAfter > committedBefore ? "committed" : "no_commit_after_generation";
+        await appendRoundGenerationAttemptEvent(repositories, {
+          type: "round_generation_attempt_finished",
+          runId: input.runId,
+          executionId: input.executionId,
+          matchId: match.id,
+          tournamentId: match.tournamentId,
+          mapGameId,
+          roundNumber,
+          outerAttemptNumber,
+          committedBefore,
+          committedAfter,
+          result,
+          stage: "runCurrentMap.debug_one_round",
+          startedAtReal,
+          finishedAtReal: new Date().toISOString()
+        });
+        if (afterMap) {
+          await appendScoreTensionDiagnosticIfNeeded(repositories, {
+            match,
+            mapGame: afterMap,
+            runId: input.runId,
+            executionId: input.executionId,
+            roundNumber
+          });
+        }
+        if (result === "map_completed") {
+          return await toWebRunResultFromMatch(repositories, seeded.matchId);
+        }
+        if (result === "no_commit_after_generation") {
+          await appendRoundGenerationAttemptEvent(repositories, {
+            type: "round_generation_attempt_retrying",
+            runId: input.runId,
+            executionId: input.executionId,
+            matchId: match.id,
+            tournamentId: match.tournamentId,
+            mapGameId,
+            roundNumber,
+            outerAttemptNumber,
+            committedBefore,
+            committedAfter,
+            result,
+            stage: "runCurrentMap.debug_one_round",
+            errorKind: "no_commit_after_generation",
+            error: "LLM generation returned without a committed round fact.",
+            startedAtReal,
+            finishedAtReal: new Date().toISOString()
+          });
+        }
+      } catch (error) {
+        const committedAfter = readMapFactCounts(repositories, mapGameId).reports;
+        const errorText = sanitizeLocalRunError(error);
+        if (committedAfter > committedBefore) {
+          await appendRoundGenerationAttemptEvent(repositories, {
+            type: "round_generation_attempt_finished",
+            runId: input.runId,
+            executionId: input.executionId,
+            matchId: match.id,
+            tournamentId: match.tournamentId,
+            mapGameId,
+            roundNumber,
+            outerAttemptNumber,
+            committedBefore,
+            committedAfter,
+            result: "committed_after_error",
+            stage: "runCurrentMap.debug_one_round",
+            errorKind: classifyKeepGeneratingError(errorText),
+            error: errorText,
+            startedAtReal,
+            finishedAtReal: new Date().toISOString()
+          });
+          continue;
+        }
+
+        const errorKind = classifyKeepGeneratingError(errorText);
+        const terminal = isTerminalKeepGeneratingError(errorKind);
+        await appendRoundGenerationAttemptEvent(repositories, {
+          type: "round_generation_attempt_finished",
+          runId: input.runId,
+          executionId: input.executionId,
+          matchId: match.id,
+          tournamentId: match.tournamentId,
+          mapGameId,
+          roundNumber,
+          outerAttemptNumber,
+          committedBefore,
+          committedAfter,
+          result: terminal ? "terminal_failed" : "retrying",
+          stage: "runCurrentMap.debug_one_round",
+          errorKind,
+          error: errorText,
+          startedAtReal,
+          finishedAtReal: new Date().toISOString()
+        });
+        await appendRoundGenerationAttemptEvent(repositories, {
+          type: terminal ? "round_generation_attempt_terminal_failed" : "round_generation_attempt_retrying",
+          runId: input.runId,
+          executionId: input.executionId,
+          matchId: match.id,
+          tournamentId: match.tournamentId,
+          mapGameId,
+          roundNumber,
+          outerAttemptNumber,
+          committedBefore,
+          committedAfter,
+          result: terminal ? "terminal_failed" : "retrying",
+          stage: "runCurrentMap.debug_one_round",
+          errorKind,
+          error: errorText,
+          startedAtReal,
+          finishedAtReal: new Date().toISOString()
+        });
+        if (terminal) {
+          throw error;
+        }
+      }
+    }
+
+    const finalMapGame = await repositories.mapGames.getById(mapGameId);
+    const finalMatch = await repositories.matches.getById(seeded.matchId);
+    if (finalMapGame && finalMatch) {
+      const committedAfter = readMapFactCounts(repositories, mapGameId).reports;
+      const now = new Date().toISOString();
+      await appendRoundGenerationAttemptEvent(repositories, {
+        type: "round_generation_attempt_terminal_failed",
+        runId: input.runId,
+        executionId: input.executionId,
+        matchId: finalMatch.id,
+        tournamentId: finalMatch.tournamentId,
+        mapGameId,
+        roundNumber: finalMapGame.currentRoundNumber + 1,
+        outerAttemptNumber,
+        committedBefore: committedAfter,
+        committedAfter,
+        result: "terminal_failed",
+        stage: "runCurrentMap.debug_one_round",
+        errorKind: "outer_attempt_limit",
+        error: `phase18_keep_generating_map reached ${maxOuterAttempts} outer attempts without completing the current map.`,
+        startedAtReal: now,
+        finishedAtReal: now
+      });
+    }
+    throw new Error(`phase18_keep_generating_map reached ${maxOuterAttempts} outer attempts without completing the current map.`);
+  } finally {
+    repositories.close();
+  }
+}
+
 export async function resetPhase18CurrentMapFromWeb(runtimeMatchId: string): Promise<WebResetResult> {
   const projectRoot = findProjectRoot(process.cwd());
   const repositories = createSqliteRepositories(resolve(projectRoot, defaultSqlitePath));
@@ -220,6 +462,12 @@ export async function resetPhase18RoundFromWeb(runtimeMatchId: string): Promise<
 }
 
 type ResetMapGame = Awaited<ReturnType<SqliteRepositoryBundle["mapGames"]["listByMatch"]>>[number];
+type RepositoryEvent = Parameters<SqliteRepositoryBundle["events"]["append"]>[0];
+type RoundGenerationAttemptEventType =
+  | "round_generation_attempt_started"
+  | "round_generation_attempt_finished"
+  | "round_generation_attempt_retrying"
+  | "round_generation_attempt_terminal_failed";
 
 async function resetPhase18CurrentMapFixture(repositories: SqliteRepositoryBundle, runtimeMatchId: string): Promise<WebResetResult> {
   const match = await repositories.matches.getById(runtimeMatchId);
@@ -413,6 +661,171 @@ function readMapFactCounts(repositories: SqliteRepositoryBundle, mapGameId: stri
     rounds: typeof rounds.count === "number" ? rounds.count : 0,
     reports: typeof reports.count === "number" ? reports.count : 0
   };
+}
+
+async function appendRoundGenerationAttemptEvent(
+  repositories: SqliteRepositoryBundle,
+  input: {
+    type: RoundGenerationAttemptEventType;
+    runId: string;
+    executionId: string;
+    tournamentId: string;
+    matchId: string;
+    mapGameId: string;
+    roundNumber: number;
+    outerAttemptNumber: number;
+    committedBefore: number;
+    committedAfter?: number;
+    result: string;
+    stage: string;
+    errorKind?: string;
+    error?: string;
+    startedAtReal: string;
+    finishedAtReal?: string;
+    scoreBeforeRound?: { teamA: number; teamB: number };
+  }
+): Promise<RepositoryEvent> {
+  const [globalSequence, sequenceInScope] = await Promise.all([
+    repositories.events.getMaxGlobalSequence(),
+    repositories.events.getMaxSequenceInScope("map", input.mapGameId)
+  ]);
+  const event: RepositoryEvent = {
+    id: `evt_${safeEventPart(input.mapGameId)}_${safeEventPart(input.executionId)}_${input.outerAttemptNumber}_${input.type}`,
+    type: input.type,
+    category: "runtime_control",
+    tournamentId: input.tournamentId,
+    matchId: input.matchId,
+    mapGameId: input.mapGameId,
+    payload: {
+      schemaVersion: 1,
+      runId: input.runId,
+      executionId: input.executionId,
+      mapGameId: input.mapGameId,
+      roundNumber: input.roundNumber,
+      outerAttemptNumber: input.outerAttemptNumber,
+      committedBefore: input.committedBefore,
+      ...(typeof input.committedAfter === "number" ? { committedAfter: input.committedAfter } : {}),
+      result: input.result,
+      stage: input.stage,
+      ...(input.errorKind ? { errorKind: input.errorKind } : {}),
+      ...(input.error ? { error: input.error } : {}),
+      startedAtReal: input.startedAtReal,
+      ...(input.finishedAtReal ? { finishedAtReal: input.finishedAtReal } : {}),
+      ...(input.scoreBeforeRound ? { scoreBeforeRound: input.scoreBeforeRound } : {})
+    },
+    globalSequence: globalSequence + 1,
+    scopeType: "map",
+    scopeId: input.mapGameId,
+    sequenceInScope: sequenceInScope + 1,
+    sourceModule: "web.phase20.keep_generating",
+    createdAt: input.finishedAtReal ?? input.startedAtReal
+  };
+  return repositories.events.append(event);
+}
+
+async function appendScoreTensionDiagnosticIfNeeded(
+  repositories: SqliteRepositoryBundle,
+  input: {
+    match: { id: string; tournamentId: string };
+    mapGame: { id: string; teamAScore: number; teamBScore: number; status: string };
+    runId: string;
+    executionId: string;
+    roundNumber: number;
+  }
+): Promise<void> {
+  const reports = (await repositories.roundReports.listByMapGame(input.mapGame.id)).sort((left, right) => left.roundNumber - right.roundNumber);
+  const latestWinnerTeamId = reports.at(-1)?.winnerTeamId;
+  let winningStreak = 0;
+  for (let index = reports.length - 1; index >= 0; index -= 1) {
+    if (!latestWinnerTeamId || reports[index]?.winnerTeamId !== latestWinnerTeamId) {
+      break;
+    }
+    winningStreak += 1;
+  }
+  const scoreDiff = Math.abs(input.mapGame.teamAScore - input.mapGame.teamBScore);
+  const level =
+    input.mapGame.status === "completed" && scoreDiff >= 5
+      ? "map_final_gap"
+      : winningStreak >= 4 || scoreDiff >= 4
+        ? "strong"
+        : winningStreak >= 3
+          ? "warning"
+          : null;
+  if (!level) {
+    return;
+  }
+
+  const [globalSequence, sequenceInScope] = await Promise.all([
+    repositories.events.getMaxGlobalSequence(),
+    repositories.events.getMaxSequenceInScope("map", input.mapGame.id)
+  ]);
+  await repositories.events.append({
+    id: `evt_${safeEventPart(input.mapGame.id)}_score_tension_${input.roundNumber}`,
+    type: "score_tension_diagnostic",
+    category: "judge",
+    tournamentId: input.match.tournamentId,
+    matchId: input.match.id,
+    mapGameId: input.mapGame.id,
+    payload: {
+      schemaVersion: 1,
+      runId: input.runId,
+      executionId: input.executionId,
+      mapGameId: input.mapGame.id,
+      roundNumber: input.roundNumber,
+      level,
+      latestWinnerTeamId,
+      winningStreak,
+      score: {
+        teamA: input.mapGame.teamAScore,
+        teamB: input.mapGame.teamBScore
+      },
+      scoreDiff,
+      note: "诊断事件只暴露一边倒风险，不直接改写胜负。"
+    },
+    globalSequence: globalSequence + 1,
+    scopeType: "map",
+    scopeId: input.mapGame.id,
+    sequenceInScope: sequenceInScope + 1,
+    sourceModule: "web.phase20.score_tension",
+    createdAt: new Date().toISOString()
+  });
+}
+
+function classifyKeepGeneratingError(error: string): string {
+  const lower = error.toLowerCase();
+  if (lower.includes("map must be running") || lower.includes("current status: scheduled") || lower.includes("map_state_precondition")) {
+    return "map_state_precondition";
+  }
+  if (lower.includes("json_truncated")) {
+    return "json_truncated";
+  }
+  if (lower.includes("schema") || lower.includes("invalid enum") || lower.includes("unrecognized")) {
+    return "schema_or_alias";
+  }
+  if (lower.includes("disabled") || lower.includes("not_configured") || lower.includes("api key") || lower.includes("stale map selection")) {
+    return "terminal_configuration";
+  }
+  if (lower.includes("match not found") || lower.includes("map not found") || lower.includes("no remaining map")) {
+    return "fixture_state";
+  }
+  return "generation_error";
+}
+
+function isTerminalKeepGeneratingError(errorKind: string): boolean {
+  return errorKind === "terminal_configuration" || errorKind === "fixture_state" || errorKind === "map_state_precondition";
+}
+
+function sanitizeLocalRunError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message
+    .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]")
+    .replace(/sk-[A-Za-z0-9_-]{8,}/gi, "sk-[redacted]")
+    .replace(/(api[_ -]?key["'\s:=]+)([^"',}\s]+)/gi, "$1[redacted]")
+    .replace(/(authorization["'\s:=]+)(Bearer\s+)?([^"',}\s]+)/gi, "$1[redacted]");
+}
+
+function safeEventPart(value: string): string {
+  return value.replace(/[^A-Za-z0-9_]+/g, "_");
 }
 
 export async function selectCurrentPhase18MapGameId(repositories: SqliteRepositoryBundle, matchId: string): Promise<string> {
