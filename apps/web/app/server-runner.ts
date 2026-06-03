@@ -3,10 +3,13 @@ import { resolve } from "node:path";
 import {
   createPhase16SimulationEngine,
   createPhase18SimulationEngine,
+  createEnvOpenAiCompatibleDriverModel,
   DashScopeOpenAiProvider,
   defaultDriverModels,
   FakeProvider,
+  type AgentMajorLlmConfig,
   loadAgentMajorLlmConfig,
+  type RoundRetryMode,
   UnconfiguredJobQueue
 } from "@agent-major/core";
 import { createSqliteRepositories, defaultSqlitePath, type SqliteRepositoryBundle } from "@agent-major/db";
@@ -118,7 +121,7 @@ export async function preparePhase18RuntimeFixtureFromWeb(input: {
     throw new Error(`Phase 1.8 real player/judge LLM is disabled: ${llmConfig.disabledReason ?? "not_configured"}`);
   }
 
-  const driverModel = requireDriverModel(llmConfig.phase18DriverModelId);
+  const driverModel = requireDriverModel(llmConfig);
   const repositories = createSqliteRepositories(resolve(projectRoot, defaultSqlitePath));
   try {
     const engine = createPhase18SimulationEngine({
@@ -126,6 +129,10 @@ export async function preparePhase18RuntimeFixtureFromWeb(input: {
       llmGateway: new DashScopeOpenAiProvider({
         baseUrl: llmConfig.baseUrl ?? "",
         apiKey: llmConfig.apiKey ?? "",
+        providerId: llmConfig.providerId,
+        ...(llmConfig.modelName ? { modelName: llmConfig.modelName } : {}),
+        reasoningMode: llmConfig.reasoningMode,
+        reasoningEffort: llmConfig.reasoningEffort,
         timeoutMs: llmConfig.timeoutMs,
         maxRetries: llmConfig.maxRetries
       }),
@@ -150,6 +157,7 @@ export async function preparePhase18RuntimeFixtureFromWeb(input: {
 export async function runPhase18ScopeFromWeb(input: {
   runtimeMatchId: string;
   scope: "round" | "map" | "match";
+  retryMode?: RoundRetryMode | undefined;
 }): Promise<WebRunSingleMapResult> {
   const projectRoot = findProjectRoot(process.cwd());
   const materials = loadProcessedMaterials(projectRoot);
@@ -159,7 +167,7 @@ export async function runPhase18ScopeFromWeb(input: {
     throw new Error(`Phase 1.8 real player/judge LLM is disabled: ${llmConfig.disabledReason ?? "not_configured"}`);
   }
 
-  const driverModel = requireDriverModel(llmConfig.phase18DriverModelId);
+  const driverModel = requireDriverModel(llmConfig);
   const repositories = createSqliteRepositories(resolve(projectRoot, defaultSqlitePath));
   try {
     const engine = createPhase18SimulationEngine({
@@ -167,6 +175,10 @@ export async function runPhase18ScopeFromWeb(input: {
       llmGateway: new DashScopeOpenAiProvider({
         baseUrl: llmConfig.baseUrl ?? "",
         apiKey: llmConfig.apiKey ?? "",
+        providerId: llmConfig.providerId,
+        ...(llmConfig.modelName ? { modelName: llmConfig.modelName } : {}),
+        reasoningMode: llmConfig.reasoningMode,
+        reasoningEffort: llmConfig.reasoningEffort,
         timeoutMs: llmConfig.timeoutMs,
         maxRetries: llmConfig.maxRetries
       }),
@@ -191,6 +203,7 @@ export async function runPhase18ScopeFromWeb(input: {
     const mapGameId = await selectCurrentPhase18MapGameId(repositories, seeded.matchId);
     await engine.runCurrentMap({
       mapGameId,
+      retryMode: input.retryMode,
       ...(input.scope === "round" ? { mode: "debug", maxRounds: 1 } : {})
     });
     return await toWebRunResultFromMatch(repositories, seeded.matchId);
@@ -212,7 +225,7 @@ export async function runPhase18KeepGeneratingMapFromWeb(input: {
     throw new Error(`Phase 1.8 real player/judge LLM is disabled: ${llmConfig.disabledReason ?? "not_configured"}`);
   }
 
-  const driverModel = requireDriverModel(llmConfig.phase18DriverModelId);
+  const driverModel = requireDriverModel(llmConfig);
   const repositories = createSqliteRepositories(resolve(projectRoot, defaultSqlitePath));
   try {
     const engine = createPhase18SimulationEngine({
@@ -220,6 +233,10 @@ export async function runPhase18KeepGeneratingMapFromWeb(input: {
       llmGateway: new DashScopeOpenAiProvider({
         baseUrl: llmConfig.baseUrl ?? "",
         apiKey: llmConfig.apiKey ?? "",
+        providerId: llmConfig.providerId,
+        ...(llmConfig.modelName ? { modelName: llmConfig.modelName } : {}),
+        reasoningMode: llmConfig.reasoningMode,
+        reasoningEffort: llmConfig.reasoningEffort,
         timeoutMs: llmConfig.timeoutMs,
         maxRetries: llmConfig.maxRetries
       }),
@@ -238,7 +255,14 @@ export async function runPhase18KeepGeneratingMapFromWeb(input: {
 
     const mapGameId = await selectCurrentPhase18MapGameId(repositories, seeded.matchId);
     let outerAttemptNumber = 0;
-    const maxOuterAttempts = 200;
+    const maxOuterAttempts = 72;
+    const maxAttemptsPerRound = 3;
+    const maxConsecutiveProviderFailures = 3;
+    const maxConsecutiveSchemaFailures = 3;
+    let currentRoundNumber = 0;
+    let attemptsForCurrentRound = 0;
+    let consecutiveProviderFailures = 0;
+    let consecutiveSchemaFailures = 0;
 
     while (outerAttemptNumber < maxOuterAttempts) {
       const mapGame = await repositories.mapGames.getById(mapGameId);
@@ -268,6 +292,11 @@ export async function runPhase18KeepGeneratingMapFromWeb(input: {
 
       outerAttemptNumber += 1;
       const roundNumber = mapGame.currentRoundNumber + 1;
+      if (roundNumber !== currentRoundNumber) {
+        currentRoundNumber = roundNumber;
+        attemptsForCurrentRound = 0;
+      }
+      attemptsForCurrentRound += 1;
       const committedBefore = readMapFactCounts(repositories, mapGameId).reports;
       const startedAtReal = new Date().toISOString();
       await appendRoundGenerationAttemptEvent(repositories, {
@@ -290,7 +319,7 @@ export async function runPhase18KeepGeneratingMapFromWeb(input: {
       });
 
       try {
-        await engine.runCurrentMap({ mapGameId, mode: "debug", maxRounds: 1 });
+        await engine.runCurrentMap({ mapGameId, mode: "debug", maxRounds: 1, retryMode: "resume_from_stage" });
         const committedAfter = readMapFactCounts(repositories, mapGameId).reports;
         const afterMap = await repositories.mapGames.getById(mapGameId);
         const result = afterMap?.status === "completed" ? "map_completed" : committedAfter > committedBefore ? "committed" : "no_commit_after_generation";
@@ -322,9 +351,14 @@ export async function runPhase18KeepGeneratingMapFromWeb(input: {
         if (result === "map_completed") {
           return await toWebRunResultFromMatch(repositories, seeded.matchId);
         }
+        if (result === "committed") {
+          consecutiveProviderFailures = 0;
+          consecutiveSchemaFailures = 0;
+        }
         if (result === "no_commit_after_generation") {
+          const noCommitTerminal = attemptsForCurrentRound >= maxAttemptsPerRound;
           await appendRoundGenerationAttemptEvent(repositories, {
-            type: "round_generation_attempt_retrying",
+            type: noCommitTerminal ? "round_generation_attempt_terminal_failed" : "round_generation_attempt_retrying",
             runId: input.runId,
             executionId: input.executionId,
             matchId: match.id,
@@ -334,17 +368,25 @@ export async function runPhase18KeepGeneratingMapFromWeb(input: {
             outerAttemptNumber,
             committedBefore,
             committedAfter,
-            result,
+            result: noCommitTerminal ? "terminal_failed" : result,
             stage: "runCurrentMap.debug_one_round",
             errorKind: "no_commit_after_generation",
-            error: "LLM generation returned without a committed round fact.",
+            error: noCommitTerminal
+              ? `LLM generation returned without a committed round fact for ${attemptsForCurrentRound} attempts in round ${roundNumber}.`
+              : "LLM generation returned without a committed round fact.",
             startedAtReal,
             finishedAtReal: new Date().toISOString()
           });
+          if (noCommitTerminal) {
+            throw new Error(`phase18_keep_generating_map stopped after ${attemptsForCurrentRound} no-commit attempts in round ${roundNumber}.`);
+          }
         }
       } catch (error) {
         const committedAfter = readMapFactCounts(repositories, mapGameId).reports;
         const errorText = sanitizeLocalRunError(error);
+        if (errorText.includes("no-commit attempts")) {
+          throw error;
+        }
         if (committedAfter > committedBefore) {
           await appendRoundGenerationAttemptEvent(repositories, {
             type: "round_generation_attempt_finished",
@@ -364,11 +406,41 @@ export async function runPhase18KeepGeneratingMapFromWeb(input: {
             startedAtReal,
             finishedAtReal: new Date().toISOString()
           });
+          consecutiveProviderFailures = 0;
+          consecutiveSchemaFailures = 0;
           continue;
         }
 
         const errorKind = classifyKeepGeneratingError(errorText);
-        const terminal = isTerminalKeepGeneratingError(errorKind);
+        if (errorKind === "provider_error") {
+          consecutiveProviderFailures += 1;
+        } else {
+          consecutiveProviderFailures = 0;
+        }
+        if (errorKind === "schema_or_alias" || errorKind === "json_truncated") {
+          consecutiveSchemaFailures += 1;
+        } else {
+          consecutiveSchemaFailures = 0;
+        }
+        const terminal =
+          isTerminalKeepGeneratingError(errorKind) ||
+          attemptsForCurrentRound >= maxAttemptsPerRound ||
+          consecutiveProviderFailures >= maxConsecutiveProviderFailures ||
+          consecutiveSchemaFailures >= maxConsecutiveSchemaFailures;
+        const terminalError =
+          terminal && !isTerminalKeepGeneratingError(errorKind)
+            ? buildKeepGeneratingCircuitBreakerError({
+                errorKind,
+                roundNumber,
+                attemptsForCurrentRound,
+                consecutiveProviderFailures,
+                consecutiveSchemaFailures,
+                maxAttemptsPerRound,
+                maxConsecutiveProviderFailures,
+                maxConsecutiveSchemaFailures,
+                errorText
+              })
+            : errorText;
         await appendRoundGenerationAttemptEvent(repositories, {
           type: "round_generation_attempt_finished",
           runId: input.runId,
@@ -383,7 +455,7 @@ export async function runPhase18KeepGeneratingMapFromWeb(input: {
           result: terminal ? "terminal_failed" : "retrying",
           stage: "runCurrentMap.debug_one_round",
           errorKind,
-          error: errorText,
+          error: terminalError,
           startedAtReal,
           finishedAtReal: new Date().toISOString()
         });
@@ -401,12 +473,12 @@ export async function runPhase18KeepGeneratingMapFromWeb(input: {
           result: terminal ? "terminal_failed" : "retrying",
           stage: "runCurrentMap.debug_one_round",
           errorKind,
-          error: errorText,
+          error: terminalError,
           startedAtReal,
           finishedAtReal: new Date().toISOString()
         });
         if (terminal) {
-          throw error;
+          throw new Error(terminalError);
         }
       }
     }
@@ -796,6 +868,9 @@ function classifyKeepGeneratingError(error: string): string {
   if (lower.includes("map must be running") || lower.includes("current status: scheduled") || lower.includes("map_state_precondition")) {
     return "map_state_precondition";
   }
+  if (lower.includes("provider request failed") || lower.includes("llm provider")) {
+    return "provider_error";
+  }
   if (lower.includes("json_truncated")) {
     return "json_truncated";
   }
@@ -813,6 +888,32 @@ function classifyKeepGeneratingError(error: string): string {
 
 function isTerminalKeepGeneratingError(errorKind: string): boolean {
   return errorKind === "terminal_configuration" || errorKind === "fixture_state" || errorKind === "map_state_precondition";
+}
+
+function buildKeepGeneratingCircuitBreakerError(input: {
+  errorKind: string;
+  roundNumber: number;
+  attemptsForCurrentRound: number;
+  consecutiveProviderFailures: number;
+  consecutiveSchemaFailures: number;
+  maxAttemptsPerRound: number;
+  maxConsecutiveProviderFailures: number;
+  maxConsecutiveSchemaFailures: number;
+  errorText: string;
+}): string {
+  if (input.attemptsForCurrentRound >= input.maxAttemptsPerRound) {
+    return `phase18_keep_generating_map stopped after ${input.attemptsForCurrentRound} attempts in round ${input.roundNumber}: ${input.errorText}`;
+  }
+  if (input.errorKind === "provider_error" && input.consecutiveProviderFailures >= input.maxConsecutiveProviderFailures) {
+    return `phase18_keep_generating_map stopped after ${input.consecutiveProviderFailures} consecutive provider failures: ${input.errorText}`;
+  }
+  if (
+    (input.errorKind === "schema_or_alias" || input.errorKind === "json_truncated") &&
+    input.consecutiveSchemaFailures >= input.maxConsecutiveSchemaFailures
+  ) {
+    return `phase18_keep_generating_map stopped after ${input.consecutiveSchemaFailures} consecutive schema/JSON failures: ${input.errorText}`;
+  }
+  return input.errorText;
 }
 
 function sanitizeLocalRunError(error: unknown): string {
@@ -925,7 +1026,12 @@ async function resetPhase17Fixture(repositories: SqliteRepositoryBundle): Promis
   });
 }
 
-function requireDriverModel(driverModelId: string) {
+function requireDriverModel(llmConfig: AgentMajorLlmConfig) {
+  if (llmConfig.modelName) {
+    return createEnvOpenAiCompatibleDriverModel(llmConfig.modelName);
+  }
+
+  const driverModelId = llmConfig.phase18DriverModelId;
   const driverModel = defaultDriverModels.find((item) => item.id === driverModelId);
   if (!driverModel) {
     throw new Error(`Phase 1.8 web runner requires a known driver model id. Received: ${driverModelId}`);

@@ -3,7 +3,6 @@ import type {
   AttackPlan,
   BuyType,
   DefenseDeployment,
-  JudgeResult,
   MapGame,
   PublicAttackPlanSummary,
   PublicDefenseDeploymentSummary,
@@ -41,7 +40,6 @@ export interface TacticalCollisionInput extends RuleBasedTacticalPlans {
   sideAssignment: SideAssignment;
   buyTypeByTeam: Record<string, BuyType>;
   scoreBeforeRound: ScorePair;
-  judgeResult: JudgeResult;
   teamAId: string;
   activeAgentsById: Record<string, Agent>;
 }
@@ -121,7 +119,7 @@ export function resolveTacticalCollision(input: TacticalCollisionInput): Tactica
     attackApproachModifier(input.attackPlan.approach) +
     weakZoneBonus +
     attackRoleModifier(input.attackPlan.activeAgentIds, input.activeAgentsById) +
-    tempoModifier(input.sideAssignment.attackingTeamId, input.teamAId, input.scoreBeforeRound, input.judgeResult.winnerTeamId) +
+    tempoModifier(input.sideAssignment.attackingTeamId, input.teamAId, input.scoreBeforeRound) +
     midAttackBonus +
     ecoStealBonus;
   const baseDefenseScore =
@@ -130,19 +128,16 @@ export function resolveTacticalCollision(input: TacticalCollisionInput): Tactica
     defenseSetupModifier(input.defenseDeployment.setup) +
     rotateModifier(input.defenseDeployment.rotatePolicy) +
     defenseRoleModifier(input.defenseDeployment.anchorAgentIds, input.activeAgentsById) +
-    tempoModifier(input.sideAssignment.defendingTeamId, input.teamAId, input.scoreBeforeRound, input.judgeResult.winnerTeamId) +
+    tempoModifier(input.sideAssignment.defendingTeamId, input.teamAId, input.scoreBeforeRound) +
     heavyZoneBonus +
     midDefenseBonus +
     retakeBonus;
-  const result = chooseJudgeAlignedCollisionResult({
+  const result = chooseIndependentCollisionResult({
     baseAttackScore,
     baseDefenseScore,
     attackingBuyType,
     rotatePolicy: input.defenseDeployment.rotatePolicy,
-    fakeCondition,
-    judgeWinnerTeamId: input.judgeResult.winnerTeamId,
-    attackingTeamId: input.sideAssignment.attackingTeamId,
-    defendingTeamId: input.sideAssignment.defendingTeamId
+    fakeCondition
   });
   const alignedScores = alignScoresWithCollisionResult({ baseAttackScore, baseDefenseScore, result });
 
@@ -160,9 +155,8 @@ export function resolveTacticalCollision(input: TacticalCollisionInput): Tactica
       defenseScore: alignedScores.defenseScore,
       baseAttackScore,
       baseDefenseScore,
-      judgeAligned: alignedScores.judgeAligned,
+      scoreAdjusted: alignedScores.scoreAdjusted,
       fakeCondition,
-      judgeWinnerTeamId: input.judgeResult.winnerTeamId
     })
   };
 }
@@ -554,34 +548,15 @@ function rotateModifier(policy: DefenseDeployment["rotatePolicy"]): number {
   }
 }
 
-function chooseJudgeAlignedCollisionResult(input: {
+function chooseIndependentCollisionResult(input: {
   baseAttackScore: number;
   baseDefenseScore: number;
   attackingBuyType: BuyType;
   rotatePolicy: DefenseDeployment["rotatePolicy"];
   fakeCondition: boolean;
-  judgeWinnerTeamId: string;
-  attackingTeamId: string;
-  defendingTeamId: string;
 }): TacticalCollision["result"] {
   const delta = input.baseAttackScore - input.baseDefenseScore;
   const close = Math.abs(delta) < 12;
-  if (input.judgeWinnerTeamId === input.attackingTeamId) {
-    if (input.fakeCondition && input.baseAttackScore >= input.baseDefenseScore - 5) {
-      return "fake_success";
-    }
-    if ((input.attackingBuyType === "eco" || input.attackingBuyType === "forceBuy") && close) {
-      return "economy_steal";
-    }
-    return close ? "trade_even" : "attack_breakthrough";
-  }
-
-  if (input.judgeWinnerTeamId === input.defendingTeamId) {
-    if (input.rotatePolicy === "fast_rotate" && close) {
-      return "rotate_success";
-    }
-    return close ? "trade_even" : "defense_hold";
-  }
 
   if (input.fakeCondition && input.baseAttackScore >= input.baseDefenseScore - 5) {
     return "fake_success";
@@ -605,7 +580,7 @@ function alignScoresWithCollisionResult(input: {
   baseAttackScore: number;
   baseDefenseScore: number;
   result: TacticalCollision["result"];
-}): { attackScore: number; defenseScore: number; judgeAligned: boolean } {
+}): { attackScore: number; defenseScore: number; scoreAdjusted: boolean } {
   let attackScore = input.baseAttackScore;
   let defenseScore = input.baseDefenseScore;
 
@@ -625,7 +600,7 @@ function alignScoresWithCollisionResult(input: {
   return {
     attackScore,
     defenseScore,
-    judgeAligned: attackScore !== input.baseAttackScore || defenseScore !== input.baseDefenseScore
+    scoreAdjusted: attackScore !== input.baseAttackScore || defenseScore !== input.baseDefenseScore
   };
 }
 
@@ -646,11 +621,10 @@ function agentHasAnyRole(agent: Agent | undefined, roles: string[]): boolean {
   return roles.some((role) => roleSet.has(role));
 }
 
-function tempoModifier(teamId: string, teamAId: string, scoreBeforeRound: ScorePair, judgeWinnerTeamId: string): number {
+function tempoModifier(teamId: string, teamAId: string, scoreBeforeRound: ScorePair): number {
   const teamScore = teamId === teamAId ? scoreBeforeRound.teamA : scoreBeforeRound.teamB;
   const opponentScore = teamId === teamAId ? scoreBeforeRound.teamB : scoreBeforeRound.teamA;
-  const pressureBonus = teamScore < opponentScore ? 2 : 0;
-  return pressureBonus + (teamId === judgeWinnerTeamId ? 2 : 0);
+  return teamScore < opponentScore ? 2 : 0;
 }
 
 function buildCollisionReason(input: {
@@ -660,13 +634,12 @@ function buildCollisionReason(input: {
   defenseScore: number;
   baseAttackScore: number;
   baseDefenseScore: number;
-  judgeAligned: boolean;
+  scoreAdjusted: boolean;
   fakeCondition: boolean;
-  judgeWinnerTeamId: string;
 }): string {
   const fakeLine = input.fakeCondition ? " fake condition matched;" : "";
-  const alignmentLine = input.judgeAligned ? ` judge-aligned from baseAttackScore=${input.baseAttackScore}; baseDefenseScore=${input.baseDefenseScore};` : "";
-  return `zone=${input.realTargetZoneId}; result=${input.result}; attackScore=${input.attackScore}; defenseScore=${input.defenseScore};${fakeLine}${alignmentLine} judgeWinner=${input.judgeWinnerTeamId}; tactical collision explains the round without overriding score.`;
+  const adjustmentLine = input.scoreAdjusted ? ` score-adjusted from baseAttackScore=${input.baseAttackScore}; baseDefenseScore=${input.baseDefenseScore};` : "";
+  return `zone=${input.realTargetZoneId}; result=${input.result}; attackScore=${input.attackScore}; defenseScore=${input.defenseScore};${fakeLine}${adjustmentLine} independent tactical collision; does not override judge score.`;
 }
 
 function tacticalSeed(input: RuleBasedTacticalInput, teamId: string): string {

@@ -10,6 +10,7 @@ const phase18FixtureId = "phase18_match_falcon_7b_vs_vitallmty";
 
 export type RunState = "idle" | "running" | "paused" | "stopped" | "success" | "failed";
 export type RunMode = "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3";
+type RunRetryMode = "full_round" | "resume_from_stage";
 type AnyRunMode = RunMode | "phase17_showcase_match";
 type ResetScope = "round" | "map" | "match";
 export type RunStatus = "scheduled" | "running" | "completed" | "failed" | "discarded";
@@ -273,14 +274,14 @@ export function RunMatchControls({
   const nextRoundButtonLabel = canRetryCurrentRound
     ? state === "running"
       ? "正在重试当前回合..."
-      : "继续重试当前回合"
+      : "重试该回合"
     : state === "running" && progress?.mode === "phase18_next_round"
       ? "正在生成下一局..."
       : "生成下一局";
   const helperText =
     message ||
     (canRetryCurrentRound
-      ? "当前 run 失败但该回合尚未提交；继续重试会复用当前 run 和当前回合，不会推进到下一局。"
+      ? "当前 run 失败但该回合尚未提交；可完整重试该回合，也可从已校验阶段断点继续。"
       : "默认从“生成下一局”开始做单局验收。需要连续验证时，再扩展到当前地图或整场 BO3。");
 
   const runSummaryItems = progress
@@ -337,12 +338,23 @@ export function RunMatchControls({
         <button
           type="button"
           className={styles.opsActionPrimary}
-          onClick={() => handleRun("phase18_next_round")}
+          onClick={() => handleRun("phase18_next_round", "full_round")}
           disabled={state === "running" || (progress?.status === "failed" && !canRetryCurrentRound)}
           title={canRetryCurrentRound ? "重试当前 run 的未提交回合，不创建新 run。" : undefined}
         >
           {nextRoundButtonLabel}
         </button>
+        {canRetryCurrentRound ? (
+          <button
+            type="button"
+            className={styles.opsActionSecondary}
+            onClick={() => handleRun("phase18_next_round", "resume_from_stage")}
+            disabled={state === "running"}
+            title="复用同一回合内已经通过校验的 team_plan、agent_action、judge 等阶段，只从失败点继续。"
+          >
+            {state === "running" ? "断点继续中..." : "断点继续"}
+          </button>
+        ) : null}
         <button type="button" className={styles.opsActionSecondary} onClick={() => handleRun("phase18_current_map")} disabled={state === "running"}>
           {state === "running" && progress?.mode === "phase18_current_map" ? "正在生成当前地图..." : "生成当前地图"}
         </button>
@@ -353,7 +365,7 @@ export function RunMatchControls({
           {state === "running" && progress?.mode === "phase18_full_bo3" ? "正在生成整场 BO3..." : "生成整场 BO3"}
         </button>
       </div>
-      <span className={styles.opsMetaLine}>一直生成会在生成类失败后自动重试同一回合，直到当前地图结束。</span>
+      <span className={styles.opsMetaLine}>一直生成会在生成类失败后自动断点继续同一回合，直到当前地图结束或触发明确熔断。</span>
 
       <div className={styles.opsUtilityGrid}>
         <button
@@ -559,7 +571,7 @@ export function RunMatchControls({
     </section>
   );
 
-  async function handleRun(mode: RunMode) {
+  async function handleRun(mode: RunMode, retryMode: RunRetryMode = "full_round") {
     setTrackingPaused(false);
     setTrackingStopped(false);
     setState("running");
@@ -571,6 +583,7 @@ export function RunMatchControls({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           mode,
+          retryMode,
           runId: progress?.runId ?? initialProgress?.runId ?? null,
           confirmReset: true,
           ...(adminToken.trim() ? { adminToken: adminToken.trim() } : {})

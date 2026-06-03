@@ -8,6 +8,14 @@ export * from "./broadcast.js";
 export * from "./broadcast-llm.js";
 export * from "./phase20-pre-prompt-contract.js";
 export * from "./ports.js";
-export { DashScopeOpenAiProvider, FakeProvider, defaultDriverModels, loadAgentMajorLlmConfig } from "@agent-major/llm";
+export {
+  DashScopeOpenAiProvider,
+  FakeProvider,
+  createEnvOpenAiCompatibleDriverModel,
+  defaultDriverModels,
+  envOpenAiCompatibleDriverModelId,
+  loadAgentMajorLlmConfig,
+  type AgentMajorLlmConfig
+} from "@agent-major/llm";
 export { UnconfiguredJobQueue } from "@agent-major/queue";
 export type { Artifact } from "@agent-major/shared";

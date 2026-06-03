@@ -81,18 +81,7 @@ describe("Phase 1.6 tactical protocol", () => {
       buyTypeByTeam: input.buyTypeByTeam,
       scoreBeforeRound: { teamA: 3, teamB: 3 },
       teamAId: "team_a",
-      activeAgentsById: agentsById(input),
-      judgeResult: {
-        winnerTeamId: "team_a",
-        loserTeamId: "team_b",
-        margin: "standard",
-        roundWinType: "attack_elimination",
-        attackWinConditionMet: true,
-        defenseWinConditionMet: false,
-        reason: "test judge",
-        mvpAgentId: "agent_a_star",
-        confidence: 0.75
-      }
+      activeAgentsById: agentsById(input)
     });
     const context = buildPublicTacticalContext({ ...forcedPlans, sideAssignment: input.sideAssignment, collision });
 
@@ -108,21 +97,10 @@ describe("Phase 1.6 tactical protocol", () => {
       buyTypeByTeam: input.buyTypeByTeam,
       scoreBeforeRound: { teamA: 3, teamB: 3 },
       teamAId: "team_a",
-      activeAgentsById: agentsById(input),
-      judgeResult: {
-        winnerTeamId: "team_b",
-        loserTeamId: "team_a",
-        margin: "standard",
-        roundWinType: "defense_elimination",
-        attackWinConditionMet: false,
-        defenseWinConditionMet: true,
-        reason: "judge says defense converted the hold",
-        mvpAgentId: "agent_b_support",
-        confidence: 0.75
-      }
+      activeAgentsById: agentsById(input)
     });
-    expect(["defense_hold", "rotate_success", "trade_even"]).toContain(defenseWinnerCollision.result);
-    expect(["attack_breakthrough", "fake_success", "economy_steal"]).not.toContain(defenseWinnerCollision.result);
+    expect(defenseWinnerCollision.result).toBe(collision.result);
+    expect(defenseWinnerCollision.decisiveReason).not.toContain("judgeWinner");
   });
 });
 

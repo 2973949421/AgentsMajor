@@ -553,7 +553,7 @@ export const judgeScoreOverrideSchema = z.object({
 });
 export type JudgeScoreOverride = z.infer<typeof judgeScoreOverrideSchema>;
 
-export const judgeScorecardSources = ["llm_full", "code_completed_from_verdict", "deterministic_fallback"] as const;
+export const judgeScorecardSources = ["llm_full", "code_completed_from_verdict", "evidence_materialized_from_draft", "deterministic_fallback"] as const;
 export type JudgeScorecardSource = (typeof judgeScorecardSources)[number];
 
 export const judgeScorecardSchema = z.object({

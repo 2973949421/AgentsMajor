@@ -4,7 +4,13 @@ import { fileURLToPath } from "node:url";
 
 import { createPhase18SimulationEngine, PHASE20_PRE_PROMPT_CONTRACT_ID, readMatchReplay, type MatchReplay } from "@agent-major/core";
 import { createSqliteRepositories, defaultSqlitePath } from "@agent-major/db";
-import { DashScopeOpenAiProvider, defaultDriverModels, loadAgentMajorLlmConfig } from "@agent-major/llm";
+import {
+  createEnvOpenAiCompatibleDriverModel,
+  DashScopeOpenAiProvider,
+  defaultDriverModels,
+  loadAgentMajorLlmConfig,
+  type AgentMajorLlmConfig
+} from "@agent-major/llm";
 import {
   buildPhase18RuntimeMatchId,
   loadProcessedMaterials,
@@ -53,7 +59,7 @@ export async function runPhase18Command(
     };
   }
 
-  const driverModel = requireDriverModel(llmConfig.phase18DriverModelId);
+  const driverModel = requireDriverModel(llmConfig);
   const repositories = createSqliteRepositories(resolve(projectRoot, defaultSqlitePath));
   try {
     const engine = createPhase18SimulationEngine({
@@ -61,6 +67,10 @@ export async function runPhase18Command(
       llmGateway: new DashScopeOpenAiProvider({
         baseUrl: llmConfig.baseUrl ?? "",
         apiKey: llmConfig.apiKey ?? "",
+        providerId: llmConfig.providerId,
+        ...(llmConfig.modelName ? { modelName: llmConfig.modelName } : {}),
+        reasoningMode: llmConfig.reasoningMode,
+        reasoningEffort: llmConfig.reasoningEffort,
         timeoutMs: llmConfig.timeoutMs,
         maxRetries: llmConfig.maxRetries
       }),
@@ -295,7 +305,12 @@ function buildPhase18MapSemantics(materials: ProcessedMaterials): Record<string,
   return output;
 }
 
-function requireDriverModel(driverModelId: string) {
+function requireDriverModel(llmConfig: AgentMajorLlmConfig) {
+  if (llmConfig.modelName) {
+    return createEnvOpenAiCompatibleDriverModel(llmConfig.modelName);
+  }
+
+  const driverModelId = llmConfig.phase18DriverModelId;
   const driverModel = defaultDriverModels.find((item) => item.id === driverModelId);
   if (!driverModel) {
     throw new Error(`Phase 1.8 requires a known driver model id. Received: ${driverModelId}`);

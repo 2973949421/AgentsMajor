@@ -25,6 +25,7 @@ interface PrivateWebRunnerPolicy extends PublicWebRunnerPolicy {
 export interface WebRunnerRequestBody {
   action?: unknown;
   mode?: unknown;
+  retryMode?: unknown;
   resetScope?: unknown;
   confirmReset?: unknown;
   adminToken?: unknown;
@@ -32,7 +33,7 @@ export interface WebRunnerRequestBody {
 }
 
 export type WebRunnerRequestValidation =
-  | { ok: true; action: "run"; mode: WebRunMode }
+  | { ok: true; action: "run"; mode: WebRunMode; retryMode: WebRunRetryMode }
   | { ok: true; action: "reset"; resetScope: WebRunResetScope }
   | {
       ok: false;
@@ -41,6 +42,7 @@ export type WebRunnerRequestValidation =
     };
 
 export type WebRunResetScope = "round" | "map" | "match";
+export type WebRunRetryMode = "full_round" | "resume_from_stage";
 
 export type WebRunnerAccessValidation =
   | { ok: true }
@@ -96,7 +98,7 @@ export function validateWebRunnerRequest(
     return { ok: false, status: 400, error: "Unsupported run mode." };
   }
 
-  return { ok: true, action: "run", mode };
+  return { ok: true, action: "run", mode, retryMode: parseRetryMode(body.retryMode) };
 }
 
 export function validateWebRunnerAccess(
@@ -145,6 +147,10 @@ function parseMode(value: unknown): WebRunMode | null {
   }
 
   return null;
+}
+
+function parseRetryMode(value: unknown): WebRunRetryMode {
+  return value === "resume_from_stage" ? "resume_from_stage" : "full_round";
 }
 
 function parseResetScope(value: unknown): WebRunResetScope | null {

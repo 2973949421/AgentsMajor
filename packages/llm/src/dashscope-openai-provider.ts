@@ -1,5 +1,10 @@
-import type { LlmGateway, LlmMessage, LlmRequest, LlmResponse, LlmUsage } from "./gateway.js";
-import { dashscopeOpenAiProviderId, resolveDriverModelConfig } from "./model-registry.js";
+import type { LlmGateway, LlmMessage, LlmProviderDiagnostics, LlmRequest, LlmResponse, LlmUsage } from "./gateway.js";
+import {
+  openAiCompatibleProviderId,
+  resolveDriverModelConfig,
+  type ReasoningEffort,
+  type ReasoningMode
+} from "./model-registry.js";
 
 export type LlmProviderErrorType = "timeout" | "rate_limited" | "provider_error" | "invalid_response" | "unknown";
 
@@ -10,6 +15,10 @@ export interface DashScopeOpenAiProviderOptions {
   maxRetries?: number;
   retryBackoffMs?: number[];
   fetchFn?: typeof fetch;
+  providerId?: string;
+  modelName?: string;
+  reasoningMode?: ReasoningMode;
+  reasoningEffort?: ReasoningEffort;
 }
 
 export class LlmProviderError extends Error {
@@ -22,6 +31,7 @@ export class LlmProviderError extends Error {
   readonly rawText: string | undefined;
   readonly usage: LlmUsage | undefined;
   readonly parseCandidate: string | undefined;
+  readonly providerDiagnostics: LlmProviderDiagnostics | undefined;
 
   constructor(input: {
     message: string;
@@ -33,18 +43,20 @@ export class LlmProviderError extends Error {
     rawText?: string;
     usage?: LlmUsage;
     parseCandidate?: string;
+    providerDiagnostics?: LlmProviderDiagnostics;
   }) {
     super(input.message);
     this.name = "LlmProviderError";
     this.errorType = input.errorType;
     this.retryable = input.retryable;
-    this.providerId = dashscopeOpenAiProviderId;
+    this.providerId = openAiCompatibleProviderId;
     this.driverModelId = input.driverModelId;
     this.modelName = input.modelName;
     this.statusCode = input.statusCode;
     this.rawText = input.rawText;
     this.usage = input.usage;
     this.parseCandidate = input.parseCandidate;
+    this.providerDiagnostics = input.providerDiagnostics;
   }
 }
 
@@ -55,6 +67,12 @@ export class DashScopeOpenAiProvider implements LlmGateway {
   private readonly maxRetries: number;
   private readonly retryBackoffMs: number[];
   private readonly fetchFn: typeof fetch;
+  private readonly providerId: string;
+  private readonly modelName: string | undefined;
+  private readonly reasoningMode: ReasoningMode;
+  private readonly reasoningEffort: ReasoningEffort;
+  private readonly reasoningModeOverride: ReasoningMode | undefined;
+  private readonly reasoningEffortOverride: ReasoningEffort | undefined;
 
   constructor(options: DashScopeOpenAiProviderOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
@@ -63,37 +81,62 @@ export class DashScopeOpenAiProvider implements LlmGateway {
     this.maxRetries = options.maxRetries ?? 4;
     this.retryBackoffMs = options.retryBackoffMs ?? [1_000, 3_000, 8_000, 15_000];
     this.fetchFn = options.fetchFn ?? fetch;
+    this.providerId = options.providerId ?? openAiCompatibleProviderId;
+    this.modelName = options.modelName?.trim();
+    this.reasoningModeOverride = options.reasoningMode;
+    this.reasoningEffortOverride = options.reasoningEffort;
+    this.reasoningMode = options.reasoningMode ?? (this.modelName?.toLowerCase().includes("deepseek") ? "enabled" : "auto");
+    this.reasoningEffort = options.reasoningEffort ?? "high";
   }
 
   async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
-    const modelConfig = resolveDriverModelConfig(request.driverModelId);
+    const modelConfig = resolveDriverModelConfig(request.driverModelId, this.modelName);
     const messages = request.messages ?? buildDefaultMessages(request);
     const url = `${this.baseUrl}/chat/completions`;
-    const body = compactObject({
+    const modelName = modelConfig.modelName;
+    let body = normalizeThinkingBody(compactObject({
+      ...buildModelExtraParams({
+        modelName,
+        reasoningMode: this.reasoningModeOverride ?? modelConfig.reasoningMode ?? this.reasoningMode,
+        reasoningEffort: this.reasoningEffortOverride ?? modelConfig.reasoningEffort ?? this.reasoningEffort,
+        repair: false
+      }),
       ...(request.extraParams ?? {}),
-      model: modelConfig.modelName,
+      model: modelName,
       messages,
       stream: false,
       temperature: request.temperature ?? modelConfig.defaultTemperature,
       max_tokens: request.maxOutputTokens ?? modelConfig.defaultMaxOutputTokens,
       response_format: request.responseFormat === "json_object" ? { type: "json_object" } : undefined
-    });
+    }));
 
     let latestError: unknown;
-    for (let attempt = 0; attempt <= this.maxRetries; attempt += 1) {
+    let providerRetryAttempt = 0;
+    let expandedBudgetRetryUsed = false;
+    while (true) {
       try {
         return await this.sendRequest<TData>({
           url,
           body,
           request,
-          modelName: modelConfig.modelName
+          modelName
         });
       } catch (error) {
         latestError = error;
-        if (!isRetryableProviderError(error) || attempt >= this.maxRetries) {
+        if (!expandedBudgetRetryUsed && shouldRetryWithExpandedJsonBudget(error, request, modelName, body)) {
+          expandedBudgetRetryUsed = true;
+          body = {
+            ...body,
+            max_tokens: expandedJsonBudgetForTask(request.task, numberFromUnknown(body.max_tokens))
+          };
+          continue;
+        }
+
+        if (!isRetryableProviderError(error) || providerRetryAttempt >= this.maxRetries) {
           throw error;
         }
-        await delay(this.retryBackoffMs[Math.min(attempt, this.retryBackoffMs.length - 1)] ?? 0);
+        await delay(this.retryBackoffMs[Math.min(providerRetryAttempt, this.retryBackoffMs.length - 1)] ?? 0);
+        providerRetryAttempt += 1;
       }
     }
 
@@ -104,7 +147,7 @@ export class DashScopeOpenAiProvider implements LlmGateway {
           errorType: "unknown",
           retryable: false,
           driverModelId: request.driverModelId,
-          modelName: modelConfig.modelName
+          modelName
         });
   }
 
@@ -132,24 +175,32 @@ export class DashScopeOpenAiProvider implements LlmGateway {
       }
 
       const json = await safeReadJson(response, input.request, input.modelName);
-      const rawText = extractMessageContent(json, input.request, input.modelName);
       const usage = extractUsage(json);
+      const maxOutputTokens = numberFromUnknown(input.body.max_tokens) || input.request.maxOutputTokens;
+      const extracted = extractMessageContent(json, input.request, input.modelName, usage, maxOutputTokens);
+      const rawText = extracted.rawText;
+      const providerDiagnostics = extracted.providerDiagnostics;
       if (input.request.responseFormat !== "json_object") {
         return {
           data: rawText as TData,
           usage,
-          rawText
+          rawText,
+          providerDiagnostics
         };
       }
 
       try {
         return {
-          data: parseJsonContent(rawText, input.request, input.modelName, usage) as TData,
+          data: parseJsonContent(rawText, input.request, input.modelName, usage, maxOutputTokens, providerDiagnostics) as TData,
           usage,
-          rawText
+          rawText,
+          providerDiagnostics
         };
       } catch (error) {
         if (!(error instanceof LlmProviderError)) {
+          throw error;
+        }
+        if (!shouldAttemptStructuredRepair(error, rawText)) {
           throw error;
         }
 
@@ -159,6 +210,7 @@ export class DashScopeOpenAiProvider implements LlmGateway {
           modelName: input.modelName,
           originalRawText: rawText,
           originalUsage: usage,
+          originalProviderDiagnostics: providerDiagnostics,
           parseError: error.message
         });
         return repaired;
@@ -179,7 +231,7 @@ export class DashScopeOpenAiProvider implements LlmGateway {
       }
 
       throw new LlmProviderError({
-        message: "LLM provider request failed.",
+        message: `LLM provider request failed${describeProviderRequestFailure(error)}.`,
         errorType: "provider_error",
         retryable: true,
         driverModelId: input.request.driverModelId,
@@ -196,22 +248,27 @@ export class DashScopeOpenAiProvider implements LlmGateway {
     modelName: string;
     originalRawText: string;
     originalUsage: LlmUsage;
+    originalProviderDiagnostics?: LlmProviderDiagnostics;
     parseError: string;
   }): Promise<LlmResponse<TData>> {
     const outputContract = outputContractForSchema(input.request.schemaName);
+    const repairHardConstraints = repairHardConstraintsForRequest(input.request);
     const repairSystemContent =
       input.request.schemaName === "JudgeVerdictDecision"
         ? "You repair structured judge verdict outputs. Return only one compact valid json object. Preserve required verdict facts and diagnostic fields. Omit judgeScorecard unless it can be represented as tiny teamScores only. Never copy rubricProfile, defenderThesisContext, original input, markdown, prose, comments, or null optional fields."
-        : "You repair structured outputs. Return only one valid json object. Preserve every field required by the named schema. Do not summarize, compress, or downgrade the response. Omit optional fields instead of returning null. Do not include markdown, code fences, prose, comments, or copied input.";
+        : "You repair structured outputs. Return only one valid json object. Preserve every field required by the named schema. Do not summarize, compress, or downgrade the response. Omit optional fields instead of returning null. Do not include markdown, code fences, prose, comments, or copied input. This is format repair only; do not invent ids or facts.";
     const repairShapeRule =
       input.request.schemaName === "JudgeVerdictDecision"
         ? "Repair rule: keep a compact v6 verdict shape. Do not output full judgeScorecard, rubricProfile, totalScore, scoreDelta, winnerFromScore, marginFromScore, or copied context."
         : "Repair rule: keep the same schema shape. If the source contains long structured fields, fix syntax and escaping only. Do not replace it with a shorter legacy object.";
-    const maxRepairTokens = Math.max(
-      input.request.maxOutputTokens ?? resolveDriverModelConfig(input.request.driverModelId).defaultMaxOutputTokens ?? 0,
-      1200
-    );
-    const body = compactObject({
+    const maxRepairTokens = repairBudgetForTask(input.request.task, input.request.maxOutputTokens ?? 0);
+    let body = compactObject({
+      ...buildModelExtraParams({
+        modelName: input.modelName,
+        reasoningMode: "disabled",
+        reasoningEffort: "low",
+        repair: true
+      }),
       model: input.modelName,
       messages: [
         {
@@ -225,6 +282,7 @@ export class DashScopeOpenAiProvider implements LlmGateway {
             outputContract,
             repairShapeRule,
             "Repair rule: optional fields must be omitted when unknown; never fill optional fields with null, empty strings, or empty objects.",
+            repairHardConstraints,
             "Original non-JSON response:",
             input.originalRawText
           ].join("\n")
@@ -236,51 +294,88 @@ export class DashScopeOpenAiProvider implements LlmGateway {
       response_format: { type: "json_object" }
     });
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
-    const response = await this.fetchFn(input.url, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${this.apiKey}`
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal
-    }).finally(() => clearTimeout(timeout));
+    let expandedRepairRetryUsed = false;
+    while (true) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+      const response = await this.fetchFn(input.url, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${this.apiKey}`
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal
+      }).finally(() => clearTimeout(timeout));
 
-    if (!response.ok) {
-      throw await this.providerHttpError(response, input.request, input.modelName);
-    }
-
-    const json = await safeReadJson(response, input.request, input.modelName);
-    const repairRawText = extractMessageContent(json, input.request, input.modelName);
-    const repairUsage = extractUsage(json);
-    try {
-      return {
-        data: parseJsonContent(repairRawText, input.request, input.modelName, repairUsage, maxRepairTokens) as TData,
-        usage: combineUsage(input.originalUsage, repairUsage),
-        rawText: repairRawText,
-        structuredRepair: {
-          originalRawText: input.originalRawText,
-          repairRawText,
-          repairUsage,
-          parseError: input.parseError
-        }
-      };
-    } catch (error) {
-      if (error instanceof LlmProviderError) {
-        throw new LlmProviderError({
-          message: error.message,
-          errorType: error.errorType,
-          retryable: false,
-          driverModelId: input.request.driverModelId,
-          modelName: input.modelName,
-          rawText: input.originalRawText,
-          usage: input.originalUsage,
-          ...(error.parseCandidate ? { parseCandidate: error.parseCandidate } : {})
-        });
+      if (!response.ok) {
+        throw await this.providerHttpError(response, input.request, input.modelName);
       }
-      throw error;
+
+      const json = await safeReadJson(response, input.request, input.modelName);
+      const repairUsage = extractUsage(json);
+      const repairMaxOutputTokens = numberFromUnknown(body.max_tokens) || maxRepairTokens;
+      let repairExtracted: { rawText: string; providerDiagnostics: LlmProviderDiagnostics };
+      try {
+        repairExtracted = extractMessageContent(json, input.request, input.modelName, repairUsage, repairMaxOutputTokens);
+      } catch (error) {
+        if (!expandedRepairRetryUsed && shouldRetryWithExpandedJsonBudget(error, input.request, input.modelName, body)) {
+          expandedRepairRetryUsed = true;
+          body = {
+            ...body,
+            max_tokens: expandedJsonBudgetForTask(input.request.task, repairMaxOutputTokens)
+          };
+          continue;
+        }
+        throw error;
+      }
+
+      const repairRawText = repairExtracted.rawText;
+      try {
+        return {
+          data: parseJsonContent(
+            repairRawText,
+            input.request,
+            input.modelName,
+            repairUsage,
+            repairMaxOutputTokens,
+            repairExtracted.providerDiagnostics
+          ) as TData,
+          usage: combineUsage(input.originalUsage, repairUsage),
+          rawText: repairRawText,
+          ...(input.originalProviderDiagnostics ? { providerDiagnostics: input.originalProviderDiagnostics } : {}),
+          structuredRepair: {
+            originalRawText: input.originalRawText,
+            repairRawText,
+            repairUsage,
+            repairProviderDiagnostics: repairExtracted.providerDiagnostics,
+            parseError: input.parseError
+          }
+        };
+      } catch (error) {
+        if (!expandedRepairRetryUsed && shouldRetryWithExpandedJsonBudget(error, input.request, input.modelName, body)) {
+          expandedRepairRetryUsed = true;
+          body = {
+            ...body,
+            max_tokens: expandedJsonBudgetForTask(input.request.task, repairMaxOutputTokens)
+          };
+          continue;
+        }
+        if (error instanceof LlmProviderError) {
+          throw new LlmProviderError({
+            message: error.message,
+            errorType: error.errorType,
+            retryable: false,
+            driverModelId: input.request.driverModelId,
+            modelName: input.modelName,
+            rawText: input.originalRawText,
+            usage: input.originalUsage,
+            ...(input.originalProviderDiagnostics ? { providerDiagnostics: input.originalProviderDiagnostics } : {}),
+            ...(error.parseCandidate ? { parseCandidate: error.parseCandidate } : {})
+          });
+        }
+        throw error;
+      }
     }
   }
 
@@ -307,6 +402,29 @@ function sanitizeProviderText(value: string): string {
     .replace(/(authorization["'\s:=]+)(Bearer\s+)?([^"',}\s]+)/gi, "$1[redacted]");
 }
 
+function describeProviderRequestFailure(error: unknown): string {
+  const parts: string[] = [];
+  if (error instanceof Error) {
+    parts.push(error.name);
+    if (error.message) {
+      parts.push(error.message);
+    }
+    const cause = isRecord(error.cause) ? error.cause : undefined;
+    const causeCode = cause ? stringField(cause, "code") : undefined;
+    const causeMessage = cause ? stringField(cause, "message") : undefined;
+    if (causeCode) {
+      parts.push(`cause=${causeCode}`);
+    }
+    if (causeMessage) {
+      parts.push(causeMessage);
+    }
+  } else if (typeof error === "string") {
+    parts.push(error);
+  }
+  const detail = sanitizeProviderText(parts.filter(Boolean).join(" / ")).trim();
+  return detail ? `: ${detail.slice(0, 220)}` : "";
+}
+
 function buildDefaultMessages(request: LlmRequest): LlmMessage[] {
   if (request.responseFormat === "json_object") {
     const outputContract = outputContractForSchema(request.schemaName);
@@ -314,7 +432,7 @@ function buildDefaultMessages(request: LlmRequest): LlmMessage[] {
       {
         role: "system",
         content:
-          "You are a structured generation engine. Return only valid json that matches the requested schema. Do not include markdown, code fences, or extra commentary. Do not copy the input object unless the output contract asks for the same field."
+          "You are a structured generation engine. You may reason internally when the provider supports it, but final message.content must contain only one complete valid json object that matches the requested schema. Do not include markdown, code fences, analysis, or extra commentary. Do not copy the input object unless the output contract asks for the same field. Keep final JSON concise enough to fit the output budget."
       },
       {
         role: "user",
@@ -368,6 +486,7 @@ function outputContractForSchema(schemaName: string): string {
       '{"teamId":"<input teamId>","side":"attack|defense","primaryIntent":"<team tactical intent>","primaryZoneId":"<main zone id>","secondaryZoneId":"<optional zone id>","coordinationSummary":"<how the five players coordinate>","playerDirectives":[{"agentId":"<active player id>","directive":"<individual directive aligned to the team plan>"}],"winCondition":"<how this team wins the round>","risk":"<main tactical risk>","confidence":0.0,"fingerprint":"<optional short stable string>"}',
       "Required fields: teamId, side, primaryIntent, primaryZoneId, coordinationSummary, playerDirectives, winCondition, risk, confidence.",
       "playerDirectives must include exactly one directive for every active player in the input activeAgents list.",
+      "Every playerDirectives[].agentId must copy an input activeAgents[].id exactly. Never output player1, player2, agent1, role names, display names, or invented ids.",
       "side must match the input side. confidence must be a number between 0 and 1.",
       "Do not include economyIntent.buyIntentByAgent, targetPosture, or preferredLoadout. The engine derives economy fields from the current economy state.",
       "If economyIntent is included, keep only defaultPosture and summary under 30 Chinese characters.",
@@ -482,7 +601,13 @@ async function safeReadJson(response: Response, request: LlmRequest, modelName: 
   }
 }
 
-function extractMessageContent(value: unknown, request: LlmRequest, modelName: string): string {
+function extractMessageContent(
+  value: unknown,
+  request: LlmRequest,
+  modelName: string,
+  usage?: LlmUsage,
+  maxOutputTokens = request.maxOutputTokens
+): { rawText: string; providerDiagnostics: LlmProviderDiagnostics } {
   if (!isRecord(value)) {
     throw invalidShapeError(request, modelName);
   }
@@ -493,11 +618,58 @@ function extractMessageContent(value: unknown, request: LlmRequest, modelName: s
   }
 
   const firstChoice = choices[0];
-  if (!isRecord(firstChoice) || !isRecord(firstChoice.message) || typeof firstChoice.message.content !== "string") {
+  if (!isRecord(firstChoice) || !isRecord(firstChoice.message)) {
     throw invalidShapeError(request, modelName);
   }
 
-  return firstChoice.message.content.trim();
+  const contentValue = firstChoice.message.content;
+  if (typeof contentValue !== "string" && contentValue !== null && typeof contentValue !== "undefined") {
+    throw invalidShapeError(request, modelName);
+  }
+
+  const rawContent = typeof contentValue === "string" ? contentValue : "";
+  const rawText = rawContent.trim();
+  const reasoningContent = stringField(firstChoice.message, "reasoning_content") ?? stringField(firstChoice.message, "reasoningContent");
+  const finishReason = stringField(firstChoice, "finish_reason") ?? stringField(firstChoice, "finishReason");
+  const hitOutputLimit = Boolean(maxOutputTokens && usage && usage.completionTokens >= maxOutputTokens - 1);
+  const reasoningContentLength = reasoningContent?.trim().length ?? 0;
+  const emptyContentWithReasoning = rawText.length === 0 && reasoningContentLength > 0;
+  const providerDiagnostics = compactDiagnostics({
+    finishReason,
+    contentLength: rawText.length,
+    reasoningContentLength,
+    reasoningContentPreview: previewProviderText(reasoningContent),
+    emptyContentWithReasoning,
+    providerResponseShape: "openai_chat_completion"
+  });
+
+  if (request.responseFormat === "json_object" && rawText.length === 0) {
+    if (emptyContentWithReasoning && (hitOutputLimit || finishReason === "length")) {
+      throw new LlmProviderError({
+        message: "reasoning_exhausted_empty_content: LLM provider consumed output budget in reasoning_content and returned empty message content.",
+        errorType: "invalid_response",
+        retryable: false,
+        driverModelId: request.driverModelId,
+        modelName,
+        rawText,
+        ...(usage ? { usage } : {}),
+        providerDiagnostics
+      });
+    }
+
+    throw new LlmProviderError({
+      message: "provider_empty_content: LLM provider returned empty message content.",
+      errorType: "invalid_response",
+      retryable: false,
+      driverModelId: request.driverModelId,
+      modelName,
+      rawText,
+      ...(usage ? { usage } : {}),
+      providerDiagnostics
+    });
+  }
+
+  return { rawText, providerDiagnostics };
 }
 
 function parseJsonContent(
@@ -505,13 +677,14 @@ function parseJsonContent(
   request: LlmRequest,
   modelName: string,
   usage?: LlmUsage,
-  maxOutputTokens = request.maxOutputTokens
+  maxOutputTokens = request.maxOutputTokens,
+  providerDiagnostics?: LlmProviderDiagnostics
 ): unknown {
   const candidate = extractJsonObjectCandidate(rawText);
   try {
     return JSON.parse(candidate);
   } catch {
-    const likelyTruncated = isLikelyJsonTruncation(candidate, rawText, usage, maxOutputTokens);
+    const likelyTruncated = isLikelyJsonTruncation(candidate, rawText, usage, maxOutputTokens, providerDiagnostics);
     throw new LlmProviderError({
       message: likelyTruncated
         ? "json_truncated: LLM provider returned truncated JSON."
@@ -522,17 +695,25 @@ function parseJsonContent(
       modelName,
       rawText,
       ...(usage ? { usage } : {}),
+      ...(providerDiagnostics ? { providerDiagnostics } : {}),
       parseCandidate: candidate
     });
   }
 }
 
-function isLikelyJsonTruncation(candidate: string, rawText: string, usage: LlmUsage | undefined, maxOutputTokens: number | undefined): boolean {
+function isLikelyJsonTruncation(
+  candidate: string,
+  rawText: string,
+  usage: LlmUsage | undefined,
+  maxOutputTokens: number | undefined,
+  providerDiagnostics?: LlmProviderDiagnostics
+): boolean {
   const trimmed = candidate.trim();
   if (!trimmed.startsWith("{")) {
     return false;
   }
-  const hitOutputLimit = Boolean(maxOutputTokens && usage && usage.completionTokens >= maxOutputTokens);
+  const finishReason = String(providerDiagnostics?.finishReason ?? "").toLowerCase();
+  const hitOutputLimit = Boolean(maxOutputTokens && usage && usage.completionTokens >= maxOutputTokens) || /length|max_tokens|token/.test(finishReason);
   return hitOutputLimit && (!trimmed.endsWith("}") || extractFirstBalancedJsonObject(stripJsonFence(rawText)) === undefined);
 }
 
@@ -559,6 +740,179 @@ function invalidShapeError(request: LlmRequest, modelName: string): LlmProviderE
 
 function isRetryableProviderError(error: unknown): error is LlmProviderError {
   return error instanceof LlmProviderError && error.retryable;
+}
+
+function shouldAttemptStructuredRepair(error: LlmProviderError, rawText: string): boolean {
+  if (error.message.includes("json_truncated") || error.message.includes("reasoning_exhausted_empty_content")) {
+    return false;
+  }
+  const trimmed = rawText.trim();
+  if (trimmed.length < 8 || trimmed === "{" || trimmed === "[" || trimmed === "{}" || trimmed === "[]") {
+    return false;
+  }
+  return true;
+}
+
+function shouldRetryWithExpandedJsonBudget(
+  error: unknown,
+  request: LlmRequest,
+  modelName: string,
+  body: Record<string, unknown>
+): boolean {
+  if (!(error instanceof LlmProviderError)) {
+    return false;
+  }
+  if (request.responseFormat !== "json_object" || !isDeepSeekReasoningModel(modelName)) {
+    return false;
+  }
+  if (request.task === "judge_narrative" || hasDisabledThinking(body)) {
+    return false;
+  }
+  if (!error.message.includes("reasoning_exhausted_empty_content") && !error.message.includes("json_truncated")) {
+    return false;
+  }
+
+  const currentBudget = numberFromUnknown(body.max_tokens);
+  return expandedJsonBudgetForTask(request.task, currentBudget) > currentBudget;
+}
+
+function hasDisabledThinking(body: Record<string, unknown>): boolean {
+  const thinking = isRecord(body.thinking) ? body.thinking : undefined;
+  return thinking?.type === "disabled";
+}
+
+function normalizeThinkingBody(body: Record<string, unknown>): Record<string, unknown> {
+  if (!hasDisabledThinking(body)) {
+    return body;
+  }
+  const { reasoning_effort: _reasoningEffort, ...rest } = body;
+  return rest;
+}
+
+function expandedJsonBudgetForTask(task: LlmRequest["task"], currentBudget: number): number {
+  const taskFloor: Partial<Record<LlmRequest["task"], number>> = {
+    team_plan: 3200,
+    agent_action: 1800,
+    judge: 2200,
+    judge_verdict: 2200,
+    judge_narrative: 1600,
+    judge_review: 2200,
+    combat_resolution: 2200,
+    coach_timeout: 1600
+  };
+  const hardCap = 3600;
+  const expanded = Math.max(taskFloor[task] ?? 1600, currentBudget * 2, currentBudget + 400);
+  return Math.min(expanded, hardCap);
+}
+
+function repairBudgetForTask(task: LlmRequest["task"], requestedBudget: number): number {
+  const taskBudget: Partial<Record<LlmRequest["task"], number>> = {
+    team_plan: 1600,
+    agent_action: 1400,
+    judge: 1600,
+    judge_verdict: 1600,
+    judge_narrative: 1200,
+    judge_review: 1600,
+    combat_resolution: 1600,
+    coach_timeout: 1400,
+    coach_post_match_review: 1800
+  };
+  const fallback = taskBudget[task] ?? 1400;
+  if (requestedBudget <= 0) {
+    return fallback;
+  }
+  return Math.max(1200, Math.min(fallback, requestedBudget));
+}
+
+function buildModelExtraParams(input: {
+  modelName: string;
+  reasoningMode: ReasoningMode;
+  reasoningEffort: ReasoningEffort;
+  repair: boolean;
+}): Record<string, unknown> {
+  if (!isDeepSeekReasoningModel(input.modelName)) {
+    return {};
+  }
+
+  const mode = input.repair ? "disabled" : input.reasoningMode;
+  if (mode === "disabled") {
+    return {
+      thinking: { type: "disabled" }
+    };
+  }
+  if (mode === "enabled") {
+    return {
+      thinking: { type: "enabled" },
+      reasoning_effort: input.reasoningEffort
+    };
+  }
+  return {};
+}
+
+function repairHardConstraintsForRequest(request: LlmRequest): string {
+  if (request.schemaName !== "TeamRoundPlanDecision") {
+    return "Hard constraints: keep existing ids exactly when present. Do not invent new team, player, zone, or enum ids.";
+  }
+
+  const input = isRecord(request.input) ? request.input : {};
+  const activeAgents = Array.isArray(input.activeAgents) ? input.activeAgents : [];
+  const allowedAgentIds = activeAgents
+    .map((agent) => (isRecord(agent) && typeof agent.id === "string" ? agent.id : undefined))
+    .filter((id): id is string => Boolean(id));
+  const allowedZoneIds = collectAllowedZoneIds(input);
+  const constraints = compactObject({
+    teamId: typeof input.teamId === "string" ? input.teamId : undefined,
+    side: typeof input.side === "string" ? input.side : undefined,
+    allowedAgentIds,
+    allowedZoneIds
+  });
+
+  return [
+    "Hard constraints for TeamRoundPlanDecision:",
+    JSON.stringify(constraints),
+    "Every playerDirectives[].agentId must be copied exactly from allowedAgentIds.",
+    "Never use player1, player2, agent1, agent2, star_rifler, role names, display names, or invented ids."
+  ].join("\n");
+}
+
+function collectAllowedZoneIds(input: Record<string, unknown>): string[] {
+  const candidates: string[] = [];
+  const pushString = (value: unknown): void => {
+    if (typeof value === "string" && value.trim().length > 0) {
+      candidates.push(value.trim());
+    }
+  };
+  const visit = (value: unknown, depth: number): void => {
+    if (depth > 4) {
+      return;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        visit(item, depth + 1);
+      }
+      return;
+    }
+    if (!isRecord(value)) {
+      return;
+    }
+    for (const [key, entry] of Object.entries(value)) {
+      if (key.toLowerCase().includes("zoneid") || key.toLowerCase() === "id") {
+        pushString(entry);
+      } else if (key.toLowerCase().includes("zone") || key === "mapSemanticContext") {
+        visit(entry, depth + 1);
+      }
+    }
+  };
+  visit(input, 0);
+  return [...new Set(candidates)].slice(0, 12);
+}
+
+function isDeepSeekReasoningModel(modelName: string): boolean {
+  return modelName.trim().toLowerCase().includes("deepseek");
+}
+
+function numberFromUnknown(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
 function isAbortError(error: unknown): boolean {
@@ -632,6 +986,23 @@ function combineUsage(left: LlmUsage, right: LlmUsage): LlmUsage {
 function numberField(record: Record<string, unknown>, key: string): number {
   const value = record[key];
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function stringField(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+function previewProviderText(value: string | undefined): string | undefined {
+  const sanitized = sanitizeProviderText(value ?? "").trim();
+  if (!sanitized) {
+    return undefined;
+  }
+  return sanitized.length > 800 ? `${sanitized.slice(0, 800)}...` : sanitized;
+}
+
+function compactDiagnostics(value: Record<string, unknown>): LlmProviderDiagnostics {
+  return Object.fromEntries(Object.entries(value).filter(([, entry]) => typeof entry !== "undefined")) as LlmProviderDiagnostics;
 }
 
 function compactObject(value: Record<string, unknown>): Record<string, unknown> {

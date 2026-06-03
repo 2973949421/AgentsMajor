@@ -211,6 +211,7 @@ export async function resetPhase18RoundWebRun(fixtureId: string, runId?: string 
 
 export async function resetPhase18FullBo3WebRun(fixtureId: string, runId?: string | null): Promise<WebResetResult> {
   return mutatePhase18Run(fixtureId, runId, async (run) => {
+    const discardedActiveRun = activeExecution?.runId === run.id;
     if (activeExecution?.runId === run.id) {
       activeExecution = null;
     }
@@ -228,7 +229,7 @@ export async function resetPhase18FullBo3WebRun(fixtureId: string, runId?: strin
         patchSimulationRunRecord(run, {
           status: "discarded",
           completedAt: new Date().toISOString(),
-          latestError: null
+          latestError: discardedActiveRun ? "Run was discarded by full BO3 reset while execution was active." : "Run was discarded by full BO3 reset."
         })
     };
   });
@@ -325,8 +326,14 @@ export function startPhase17ShowcaseWebRun(matchId: string): WebRunProgress {
   return stripLegacyPromise(state);
 }
 
-export async function startPhase18NextRoundWebRun(fixtureId: string, runId?: string | null): Promise<WebRunProgress> {
-  return startPhase18WebRun({ fixtureId, runId, mode: "phase18_next_round" });
+export type WebRunRetryMode = "full_round" | "resume_from_stage";
+
+export async function startPhase18NextRoundWebRun(
+  fixtureId: string,
+  runId?: string | null,
+  retryMode: WebRunRetryMode = "full_round"
+): Promise<WebRunProgress> {
+  return startPhase18WebRun({ fixtureId, runId, mode: "phase18_next_round", retryMode });
 }
 
 export async function startPhase18CurrentMapWebRun(fixtureId: string, runId?: string | null): Promise<WebRunProgress> {
@@ -693,6 +700,7 @@ async function startPhase18WebRun(input: {
   fixtureId: string;
   runId: string | null | undefined;
   mode: Extract<WebRunMode, "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3">;
+  retryMode?: WebRunRetryMode;
 }): Promise<WebRunProgress> {
   if (input.fixtureId !== phase18CanonIds.fixtureId && input.fixtureId !== phase18CanonIds.matchId) {
     throw new Error(`Web runner only supports the Phase 1.8 pilot fixture: ${phase18CanonIds.fixtureId}`);
@@ -784,7 +792,8 @@ async function startPhase18WebRun(input: {
           })
         : runPhase18ScopeFromWeb({
             runtimeMatchId: persistedRun.runtimeMatchId,
-            scope: mapWebRunModeToScope(input.mode)
+            scope: mapWebRunModeToScope(input.mode),
+            retryMode: input.retryMode
           });
     activeExecution = {
       runId: persistedRun.id,
@@ -836,7 +845,28 @@ async function finalizePhase18Run(
   try {
     await recoverAbandonedPhase18Runs(repositories, runId);
     const storedRun = normalizeSimulationRunRecord(await repositories.simulationRuns.getById(runId));
-    if (!storedRun || storedRun.status === "discarded") {
+    if (!storedRun) {
+      return;
+    }
+    if (storedRun.status === "discarded") {
+      const discardError = storedRun.latestError ?? latestError ?? "Run was discarded before execution finalized.";
+      const facts = await readPhase18RunFacts(repositories, storedRun.runtimeMatchId);
+      const savedRun = patchSimulationRunRecord(storedRun, {
+        latestCommittedRoundNumber: facts.latestCommittedRoundNumber,
+        hasFreshReplay: facts.hasFreshReplay,
+        latestError: discardError,
+        completedAt: storedRun.completedAt ?? new Date().toISOString()
+      });
+      await repositories.simulationRuns.save(savedRun);
+      await appendWebRunExecutionEvent(repositories, {
+        type: "web_run_execution_finished",
+        run: savedRun,
+        executionId,
+        mode,
+        status: "failed",
+        facts,
+        latestError: discardError
+      });
       return;
     }
 

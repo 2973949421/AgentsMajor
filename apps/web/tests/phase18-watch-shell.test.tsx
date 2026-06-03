@@ -16,7 +16,9 @@ describe("Phase 1.9 watch shell", () => {
 
     expect(html).toContain("生成下一局");
     expect(html).toContain("生成当前地图");
+    expect(html).toContain("一直生成");
     expect(html).toContain("生成整场 BO3");
+    expect(html).not.toContain(">断点继续</button>");
     expect(html).not.toContain("Run Phase 1.7");
   });
 
@@ -31,6 +33,8 @@ describe("Phase 1.9 watch shell", () => {
 
     expect(html).toContain("当前播放仍停留在 R2");
     expect(html).toContain("最新失败尝试发生在 R3");
+    expect(html).toContain("重试该回合");
+    expect(html).toContain("断点继续");
     expect(html).toContain("最近错误：judge failed");
   });
 
@@ -78,6 +82,11 @@ function failedProgressFixture(): WebRunProgress {
       runningCalls: 0
     },
     llmCalls: [],
+    recoveredFailureCount: 0,
+    currentExecutionStartedCalls: 1,
+    currentExecutionCompletedCalls: 0,
+    currentExecutionFailedCalls: 1,
+    currentExecutionRunningCalls: 0,
     recentRuns: [],
     error: "judge failed",
     result: {

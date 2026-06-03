@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { DashScopeOpenAiProvider, LlmProviderError } from "./dashscope-openai-provider.js";
 import { loadAgentMajorLlmConfig } from "./env.js";
-import { resolveDriverModelConfig } from "./model-registry.js";
+import { envOpenAiCompatibleDriverModelId, resolveDriverModelConfig } from "./model-registry.js";
 
 describe("Phase 1.5 DashScope OpenAI provider", () => {
   it("keeps real LLM disabled unless explicitly enabled and configured", () => {
@@ -16,8 +16,8 @@ describe("Phase 1.5 DashScope OpenAI provider", () => {
       })
     ).toMatchObject({
       enabled: true,
-      phase18DriverModelId: "driver_qwen_3_max_2026_01_23",
-      casterDriverModelId: "driver_qwen_3_max_2026_01_23"
+      phase18DriverModelId: "driver_deepseek_v4_flash",
+      casterDriverModelId: "driver_deepseek_v4_flash"
     });
     expect(
       loadAgentMajorLlmConfig({
@@ -30,9 +30,30 @@ describe("Phase 1.5 DashScope OpenAI provider", () => {
   });
 
   it("resolves exact configured model names", () => {
+    expect(resolveDriverModelConfig("driver_deepseek_v4_flash").modelName).toBe("deepseek-v4-flash");
     expect(resolveDriverModelConfig("driver_kimi_k2_5").modelName).toBe("kimi-k2.5");
     expect(resolveDriverModelConfig("driver_qwen_3_6_plus").modelName).toBe("qwen3.6-plus");
     expect(() => resolveDriverModelConfig("driver_missing")).toThrow(/Unknown driver model id/);
+  });
+
+  it("supports env-first OpenAI-compatible provider configuration", () => {
+    const config = loadAgentMajorLlmConfig({
+      AGENT_MAJOR_REAL_LLM_ENABLED: "true",
+      AGENT_MAJOR_LLM_PROVIDER: "openai_compatible",
+      AGENT_MAJOR_LLM_BASE_URL: "https://opencode.ai/zen/go/v1",
+      AGENT_MAJOR_LLM_API_KEY: "local-secret",
+      AGENT_MAJOR_LLM_MODEL: "deepseek-v4-flash"
+    });
+
+    expect(config).toMatchObject({
+      enabled: true,
+      providerId: "openai_compatible",
+      baseUrl: "https://opencode.ai/zen/go/v1",
+      modelName: "deepseek-v4-flash",
+      phase18DriverModelId: envOpenAiCompatibleDriverModelId,
+      reasoningMode: "enabled",
+      reasoningEffort: "high"
+    });
   });
 
   it("sends non-streaming OpenAI-compatible requests and parses usage", async () => {
@@ -171,7 +192,301 @@ describe("Phase 1.5 DashScope OpenAI provider", () => {
     expect((thrown as LlmProviderError).message).toContain("json_truncated");
     expect((thrown as LlmProviderError).rawText).toBe(truncated);
     expect((thrown as LlmProviderError).usage?.completionTokens).toBe(20);
+    expect(seenBodies).toHaveLength(1);
+  });
+
+  it("classifies finish_reason length JSON fragments as json_truncated without repair", async () => {
+    const seenBodies: unknown[] = [];
+    const truncated = "{\n  \"teamId\": \"team-a\",\n  \"side\": \"attack\",\n  \"primaryIntent\": \"hit";
+    const provider = new DashScopeOpenAiProvider({
+      baseUrl: "https://example.test/v1",
+      apiKey: "secret-key",
+      maxRetries: 0,
+      fetchFn: async (_url, init) => {
+        seenBodies.push(JSON.parse(String(init?.body)));
+        return new Response(
+          JSON.stringify({
+            choices: [{ finish_reason: "length", message: { content: truncated, reasoning_content: "reasoning consumed the budget" } }],
+            usage: { prompt_tokens: 40, completion_tokens: 11, total_tokens: 51 }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+    });
+
+    let thrown: unknown;
+    try {
+      await provider.generateStructured({
+        task: "team_plan",
+        driverModelId: "driver_kimi_k2_5",
+        input: { teamId: "team-a", side: "attack", activeAgents: [] },
+        schemaName: "TeamRoundPlanDecision",
+        responseFormat: "json_object",
+        maxOutputTokens: 1200
+      });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(LlmProviderError);
+    expect((thrown as LlmProviderError).message).toContain("json_truncated");
+    expect((thrown as LlmProviderError).providerDiagnostics?.finishReason).toBe("length");
+    expect(seenBodies).toHaveLength(1);
+  });
+
+  it("retries DeepSeek reasoning exhaustion once with an expanded structured JSON budget", async () => {
+    const seenBodies: unknown[] = [];
+    const provider = new DashScopeOpenAiProvider({
+      baseUrl: "https://example.test/v1",
+      apiKey: "secret-key",
+      maxRetries: 0,
+      fetchFn: async (_url, init) => {
+        seenBodies.push(JSON.parse(String(init?.body)));
+        const firstAttempt = seenBodies.length === 1;
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                finish_reason: firstAttempt ? "length" : "stop",
+                message: firstAttempt
+                  ? {
+                      content: "",
+                      reasoning_content: "{\"text\":\"reasoning draft must not be parsed as final json\"}"
+                    }
+                  : { content: "{\"teamId\":\"team-a\",\"side\":\"attack\"}" }
+              }
+            ],
+            usage: firstAttempt
+              ? { prompt_tokens: 5981, completion_tokens: 1599, total_tokens: 7580 }
+              : { prompt_tokens: 5981, completion_tokens: 38, total_tokens: 6019 }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+    });
+
+    const response = await provider.generateStructured<{ teamId: string; side: string }>({
+      task: "team_plan",
+      driverModelId: "driver_deepseek_v4_flash",
+      input: { teamId: "team-a", side: "attack" },
+      schemaName: "TeamRoundPlanDecision",
+      responseFormat: "json_object",
+      maxOutputTokens: 1600
+    });
+
+    expect(response.data).toEqual({ teamId: "team-a", side: "attack" });
     expect(seenBodies).toHaveLength(2);
+    expect(seenBodies[0]).toMatchObject({
+      model: "deepseek-v4-flash",
+      max_tokens: 1600,
+      thinking: { type: "enabled" },
+      reasoning_effort: "high"
+    });
+    expect(seenBodies[1]).toMatchObject({
+      model: "deepseek-v4-flash",
+      max_tokens: 3200,
+      thinking: { type: "enabled" },
+      reasoning_effort: "high"
+    });
+  });
+
+  it("uses env model names directly and disables thinking for JSON repair", async () => {
+    const seenBodies: unknown[] = [];
+    const provider = new DashScopeOpenAiProvider({
+      baseUrl: "https://example.test/v1",
+      apiKey: "secret-key",
+      modelName: "deepseek-v4-flash",
+      reasoningMode: "enabled",
+      reasoningEffort: "high",
+      maxRetries: 0,
+      fetchFn: async (_url, init) => {
+        seenBodies.push(JSON.parse(String(init?.body)));
+        const content =
+          seenBodies.length === 1
+            ? "{\"teamId\":\"team-a\",\"side\":\"attack\",\"primaryIntent\":\"hit B\""
+            : "{\"teamId\":\"team-a\",\"side\":\"attack\",\"primaryIntent\":\"hit B\",\"primaryZoneId\":\"site_b\",\"coordinationSummary\":\"一起进点。\",\"playerDirectives\":[{\"agentId\":\"agent-a\",\"directive\":\"先拿信息。\"}],\"winCondition\":\"下包后守住。\",\"risk\":\"被前压打断。\",\"confidence\":0.8}";
+        return new Response(
+          JSON.stringify({
+            choices: [{ message: { content } }],
+            usage: { prompt_tokens: 40, completion_tokens: 20, total_tokens: 60 }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+    });
+
+    const response = await provider.generateStructured({
+      task: "team_plan",
+      driverModelId: envOpenAiCompatibleDriverModelId,
+      input: {
+        teamId: "team-a",
+        side: "attack",
+        activeAgents: [{ id: "agent-a" }]
+      },
+      schemaName: "TeamRoundPlanDecision",
+      responseFormat: "json_object",
+      maxOutputTokens: 3200
+    });
+
+    expect(response.data).toMatchObject({ teamId: "team-a", side: "attack" });
+    expect(seenBodies[0]).toMatchObject({
+      model: "deepseek-v4-flash",
+      thinking: { type: "enabled" },
+      reasoning_effort: "high"
+    });
+    expect(seenBodies[1]).toMatchObject({
+      model: "deepseek-v4-flash",
+      thinking: { type: "disabled" },
+      max_tokens: 1600
+    });
+    const repairPrompt = ((seenBodies[1] as { messages?: Array<{ content?: string }> }).messages ?? [])
+      .map((message) => message.content ?? "")
+      .join("\n");
+    expect(repairPrompt).toContain("allowedAgentIds");
+    expect(repairPrompt).toContain("agent-a");
+    expect(repairPrompt).toContain("Never use player1");
+  });
+
+  it("lets task extraParams disable DeepSeek thinking without sending reasoning_effort", async () => {
+    const seenBodies: unknown[] = [];
+    const provider = new DashScopeOpenAiProvider({
+      baseUrl: "https://example.test/v1",
+      apiKey: "secret-key",
+      modelName: "deepseek-v4-flash",
+      reasoningMode: "enabled",
+      reasoningEffort: "high",
+      maxRetries: 0,
+      fetchFn: async (_url, init) => {
+        seenBodies.push(JSON.parse(String(init?.body)));
+        return new Response(
+          JSON.stringify({
+            choices: [{ finish_reason: "stop", message: { content: "{\"text\":\"ok\"}" } }],
+            usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+    });
+
+    await provider.generateStructured<{ text: string }>({
+      task: "agent_action",
+      driverModelId: "driver_deepseek_v4_flash",
+      input: { agentId: "agent-a" },
+      schemaName: "AgentActionDecision",
+      responseFormat: "json_object",
+      maxOutputTokens: 1400,
+      extraParams: { thinking: { type: "disabled" } }
+    });
+
+    expect(seenBodies).toHaveLength(1);
+    expect(seenBodies[0]).toMatchObject({
+      model: "deepseek-v4-flash",
+      thinking: { type: "disabled" }
+    });
+    expect(seenBodies[0]).not.toHaveProperty("reasoning_effort");
+  });
+
+  it("does not expand budgets for disabled finalizer stages", async () => {
+    const seenBodies: unknown[] = [];
+    const provider = new DashScopeOpenAiProvider({
+      baseUrl: "https://example.test/v1",
+      apiKey: "secret-key",
+      modelName: "deepseek-v4-flash",
+      reasoningMode: "enabled",
+      reasoningEffort: "high",
+      maxRetries: 0,
+      fetchFn: async (_url, init) => {
+        seenBodies.push(JSON.parse(String(init?.body)));
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                finish_reason: "length",
+                message: {
+                  content: "",
+                  reasoning_content: "reasoning consumed the finalizer budget"
+                }
+              }
+            ],
+            usage: { prompt_tokens: 7000, completion_tokens: 1599, total_tokens: 8599 }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+    });
+
+    let thrown: unknown;
+    try {
+      await provider.generateStructured({
+        task: "judge_narrative",
+        driverModelId: "driver_deepseek_v4_flash",
+        input: { verdict: { winnerTeamId: "team-a" } },
+        schemaName: "JudgeNarrativeDecision",
+        responseFormat: "json_object",
+        maxOutputTokens: 1600,
+        extraParams: { thinking: { type: "disabled" } }
+      });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(LlmProviderError);
+    expect((thrown as LlmProviderError).message).toContain("reasoning_exhausted_empty_content");
+    expect(seenBodies).toHaveLength(1);
+    expect(seenBodies[0]).toMatchObject({
+      max_tokens: 1600,
+      thinking: { type: "disabled" }
+    });
+  });
+
+  it("classifies DeepSeek empty content with reasoning diagnostics without trusting reasoning_content", async () => {
+    const provider = new DashScopeOpenAiProvider({
+      baseUrl: "https://example.test/v1",
+      apiKey: "secret-key",
+      maxRetries: 0,
+      fetchFn: async () =>
+        new Response(
+          JSON.stringify({
+            choices: [
+              {
+                finish_reason: "length",
+                message: {
+                  content: "",
+                  reasoning_content: "{\"text\":\"this is only chain-of-thought style reasoning\"}"
+                }
+              }
+            ],
+            usage: { prompt_tokens: 5981, completion_tokens: 3599, total_tokens: 9580 }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        )
+    });
+
+    let thrown: unknown;
+    try {
+      await provider.generateStructured({
+        task: "team_plan",
+        driverModelId: "driver_deepseek_v4_flash",
+        input: { teamId: "team-a", side: "attack" },
+        schemaName: "TeamRoundPlanDecision",
+        responseFormat: "json_object",
+        maxOutputTokens: 3600
+      });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(LlmProviderError);
+    expect((thrown as LlmProviderError).message).toContain("reasoning_exhausted_empty_content");
+    expect((thrown as LlmProviderError).rawText).toBe("");
+    expect((thrown as LlmProviderError).providerDiagnostics).toMatchObject({
+      finishReason: "length",
+      contentLength: 0,
+      emptyContentWithReasoning: true,
+      providerResponseShape: "openai_chat_completion"
+    });
+    expect((thrown as LlmProviderError).providerDiagnostics?.reasoningContentLength).toBeGreaterThan(0);
+    expect((thrown as LlmProviderError).providerDiagnostics?.reasoningContentPreview).toContain("this is only");
   });
 
   it("retries transient provider failures before returning a structured response", async () => {

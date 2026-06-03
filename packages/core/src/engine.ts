@@ -132,14 +132,18 @@ export interface StartMapInput {
   mapGameId: string;
 }
 
+export type RoundRetryMode = "full_round" | "resume_from_stage";
+
 export interface PlayNextRoundInput {
   mapGameId: string;
+  retryMode?: RoundRetryMode | undefined;
 }
 
 export interface RunCurrentMapInput {
   mapGameId: string;
   mode?: "auto" | "debug";
   maxRounds?: number;
+  retryMode?: RoundRetryMode | undefined;
 }
 
 export interface RunCurrentMapResult {
@@ -204,6 +208,10 @@ interface RoundGeneration {
   keyEvents: RoundKeyEvent[];
   killLedger: RoundKillLedgerEntry[];
   roundCombatResolution: RoundCombatResolution;
+}
+
+interface RoundGenerationOptions {
+  retryMode?: RoundRetryMode | undefined;
 }
 
 interface ResolvedCoachTimeout {
@@ -298,12 +306,13 @@ interface Phase18JudgePromptContext {
     judgeRubricContext?: Record<string, unknown>;
     defenderThesisContext?: DefenderThesisContext;
     rubricProfile?: JudgeRubricProfile;
+    tacticalCollision?: TacticalCollision;
     evaluationOrder: Array<{
       teamId: string;
       teamName: string;
       activeAgents: Array<{ id: string; role: string }>;
       teamPlan?: TeamRoundPlanDecision;
-      initialProposalSummary?: TeamInitialProposalSummary;
+      initialProposalSummary?: Record<string, unknown>;
       coachContext?: Record<string, unknown>;
     }>;
     teamAId: string;
@@ -312,7 +321,6 @@ interface Phase18JudgePromptContext {
     teamBName: string;
     activeTeamAAgentIds: string[];
     activeTeamBAgentIds: string[];
-    agentOutputsByTeam: Record<string, AgentOutput[]>;
     judgeEvidenceDigest: Record<
       string,
       {
@@ -520,7 +528,7 @@ class Phase12SimulationEngine implements SimulationEngine {
 
   async playNextRound(input: PlayNextRoundInput): Promise<Round> {
     try {
-      const generation = await this.prepareRoundGeneration(input.mapGameId);
+      const generation = await this.prepareRoundGeneration(input.mapGameId, { retryMode: input.retryMode });
       const round = await this.commitRoundGeneration(generation);
       const committedMapGame = await this.context.repositories.mapGames.getById(round.mapGameId);
       if (committedMapGame) {
@@ -552,7 +560,7 @@ class Phase12SimulationEngine implements SimulationEngine {
         await this.startMap({ mapGameId: mapGame.id });
       }
 
-      await this.playNextRound({ mapGameId: input.mapGameId });
+      await this.playNextRound({ mapGameId: input.mapGameId, retryMode: input.retryMode });
       const updated = await required(this.context.repositories.mapGames.getById(input.mapGameId), `MapGame not found: ${input.mapGameId}`);
       if (updated.status === "completed" || mode === "debug") {
         return this.buildRunCurrentMapResult(updated);
@@ -701,7 +709,7 @@ class Phase12SimulationEngine implements SimulationEngine {
     });
   }
 
-  private async prepareRoundGeneration(mapGameId: string): Promise<RoundGeneration> {
+  private async prepareRoundGeneration(mapGameId: string, options: RoundGenerationOptions = {}): Promise<RoundGeneration> {
     const mapGame = await required(this.context.repositories.mapGames.getById(mapGameId), `MapGame not found: ${mapGameId}`);
     if (mapGame.status === "completed") {
       const latestRound = (await this.context.repositories.rounds.listByMapGame(mapGame.id)).filter((round) => round.status === "completed").at(-1);
@@ -754,7 +762,8 @@ class Phase12SimulationEngine implements SimulationEngine {
         return (await this.context.repositories.economyStates.getLatestByAgent(agent.id, mapGame.id)) ?? initialEconomy(agent, mapGame.id, now);
       })
     );
-    const recentRoundReports = (await this.context.repositories.roundReports.listByMapGame(mapGame.id)).slice(-3);
+    const previousRoundReports = await this.context.repositories.roundReports.listByMapGame(mapGame.id);
+    const recentRoundReports = previousRoundReports.slice(-3);
     const recentPublicRoundSummaries = recentRoundReports.map((report) =>
       buildNeutralPublicRoundSummary({
         report,
@@ -855,7 +864,8 @@ class Phase12SimulationEngine implements SimulationEngine {
           beforeEconomy,
           ...(tacticalPlans ? { tacticalPlans } : {}),
           recentPublicRoundSummaries,
-          ...(coachTimeout ? { coachTimeout } : {})
+          ...(coachTimeout ? { coachTimeout } : {}),
+          retryMode: options.retryMode
         })
       : undefined;
 
@@ -871,12 +881,38 @@ class Phase12SimulationEngine implements SimulationEngine {
       buyDecisionByAgent,
       teamEconomyPlans,
       ...(teamPlans ? { teamPlans } : {}),
-      ...(coachTimeout ? { coachTimeout } : {})
+      ...(coachTimeout ? { coachTimeout } : {}),
+      retryMode: options.retryMode
     });
     const submittedAgentOutputs = buildSubmittedAgentOutputs({
       agentOutputs,
       buyDecisionByAgent
     });
+    const tacticalRound =
+      tacticalPlans && sideAssignment
+        ? (() => {
+            const collision = resolveTacticalCollision({
+              ...tacticalPlans,
+              sideAssignment,
+              buyTypeByTeam: Object.fromEntries(buyTypeByTeam),
+              scoreBeforeRound,
+              teamAId: teamA.id,
+              activeAgentsById: Object.fromEntries(allActive.map((agent) => [agent.id, agent]))
+            });
+            const tacticalContext = buildPublicTacticalContext({
+              ...tacticalPlans,
+              sideAssignment,
+              collision
+            });
+            return {
+              ...tacticalPlans,
+              sideAssignment,
+              collision,
+              tacticalContext
+            };
+          })()
+        : undefined;
+    const tacticalCollision = tacticalRound?.collision;
     const judgeResult = await this.judgeRound({
       match,
       round,
@@ -895,8 +931,10 @@ class Phase12SimulationEngine implements SimulationEngine {
       ...(teamPlans ? { teamPlans } : {}),
       ...(coachTimeout ? { coachTimeout } : {}),
       agentOutputs: submittedAgentOutputs,
+      ...(tacticalCollision ? { tacticalCollision } : {}),
       recentPublicRoundSummaries,
-      recentWinnerTeamIds: recentRoundReports.map((report) => report.winnerTeamId)
+      recentWinnerTeamIds: previousRoundReports.map((report) => report.winnerTeamId),
+      retryMode: options.retryMode
     });
     const winnerTeamId = judgeResult.winnerTeamId;
     const loserTeamId = judgeResult.loserTeamId;
@@ -916,32 +954,6 @@ class Phase12SimulationEngine implements SimulationEngine {
       activeB
     });
     const economyStates = (economyDelta.agents as AgentEconomyDelta[]).map((delta) => economyStateFromDelta(delta, mapGame.id, roundId, now));
-    const tacticalRound =
-      tacticalPlans && sideAssignment
-        ? (() => {
-            const collision = resolveTacticalCollision({
-              ...tacticalPlans,
-              sideAssignment,
-              buyTypeByTeam: Object.fromEntries(buyTypeByTeam),
-              scoreBeforeRound,
-              judgeResult,
-              teamAId: teamA.id,
-              activeAgentsById: Object.fromEntries(allActive.map((agent) => [agent.id, agent]))
-            });
-            const tacticalContext = buildPublicTacticalContext({
-              ...tacticalPlans,
-              sideAssignment,
-              collision
-            });
-            return {
-              ...tacticalPlans,
-              sideAssignment,
-              collision,
-              tacticalContext
-            };
-          })()
-        : undefined;
-    const tacticalCollision = tacticalRound?.collision;
     const keyEvents = tacticalCollision
       ? buildKeyEvents({
           roundId,
@@ -987,7 +999,8 @@ class Phase12SimulationEngine implements SimulationEngine {
       teamABuyType,
       teamBBuyType,
       keyEvents,
-      tacticalCollision
+      tacticalCollision,
+      retryMode: options.retryMode
     });
     const killLedger = roundCombatResolution.killEvents;
 
@@ -1042,6 +1055,7 @@ class Phase12SimulationEngine implements SimulationEngine {
     teamBBuyType: BuyType;
     keyEvents: RoundKeyEvent[];
     tacticalCollision: TacticalCollision | undefined;
+    retryMode?: RoundRetryMode | undefined;
   }): Promise<RoundCombatResolution> {
     const deterministic = (source: "deterministic_resolution" | "deterministic_fallback") =>
       buildRoundCombatResolution({ ...input, source });
@@ -1066,6 +1080,8 @@ class Phase12SimulationEngine implements SimulationEngine {
     try {
       const response = await this.runObservedStructuredCall<RoundCombatResolution>({
         callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_combat_resolution`,
+        stageId: "combat_resolution",
+        retryMode: input.retryMode,
         attemptNumber: input.observabilityAttempt,
         task: "combat_resolution",
         schemaName: "CombatResolutionDraft",
@@ -1075,7 +1091,7 @@ class Phase12SimulationEngine implements SimulationEngine {
         seed: `combat_resolution:${input.round.id}`,
         modelTier: "cheap",
         temperature: 0,
-        maxOutputTokens: 1700,
+        maxOutputTokens: 2200,
         match: input.match,
         mapGame: input.mapGame,
         round: input.round,
@@ -1088,6 +1104,8 @@ class Phase12SimulationEngine implements SimulationEngine {
       try {
         const repair = await this.runObservedStructuredCall<RoundCombatResolution>({
           callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_combat_resolution_repair`,
+          stageId: "combat_resolution:repair",
+          retryMode: input.retryMode,
           attemptNumber: input.observabilityAttempt,
           task: "combat_resolution",
           schemaName: "CombatResolutionDraft",
@@ -1101,7 +1119,7 @@ class Phase12SimulationEngine implements SimulationEngine {
           seed: `combat_resolution_repair:${input.round.id}`,
           modelTier: "cheap",
           temperature: 0,
-          maxOutputTokens: 1100,
+          maxOutputTokens: 1600,
           match: input.match,
           mapGame: input.mapGame,
           round: input.round,
@@ -1309,6 +1327,31 @@ class Phase12SimulationEngine implements SimulationEngine {
           },
           createdAt: now
         });
+        if (generation.judgeResult.judgeScorecard) {
+          await this.appendEvent({
+            id: `evt_${round.id}_judge_evidence_score_materialized`,
+            type: "judge_evidence_score_materialized",
+            category: "judge",
+            tournamentId: match.tournamentId,
+            matchId: match.id,
+            mapGameId: mapGame.id,
+            roundId: round.id,
+            scopeType: "round",
+            scopeId: round.id,
+            payload: {
+              schemaVersion: 1,
+              sourceEventIds: [judgeEvent.id],
+              scorecardSource: generation.judgeResult.judgeScorecard.scorecardSource,
+              winnerTeamId: generation.judgeResult.winnerTeamId,
+              winnerFromScore: generation.judgeResult.judgeScorecard.winnerFromScore,
+              scoreDelta: generation.judgeResult.judgeScorecard.scoreDelta,
+              marginFromScore: generation.judgeResult.judgeScorecard.marginFromScore,
+              decisiveDimensions: generation.judgeResult.judgeScorecard.decisiveDimensions,
+              normalizedFieldNotes: generation.judgeResult.judgeScorecard.normalizedFieldNotes ?? []
+            },
+            createdAt: now
+          });
+        }
         let siteExecuteEvent: Event | undefined;
         if (generation.tacticalRound && tacticalPlanEvent && zoneDeploymentEvent) {
           const siteExecutePayload = {
@@ -2108,7 +2151,8 @@ class Phase12SimulationEngine implements SimulationEngine {
       seed: `coach_timeout:${input.round.id}:${losingTeam.id}`,
       modelTier: "cheap",
       temperature: 0,
-      maxOutputTokens: 900,
+      maxOutputTokens: 1600,
+      extraParams: llmThinkingDisabledParams,
       match: input.match,
       mapGame: input.mapGame,
       round: input.round,
@@ -2210,7 +2254,7 @@ class Phase12SimulationEngine implements SimulationEngine {
         seed: `coach_post_match_review:${match.id}:${team.id}`,
         modelTier: "cheap",
         temperature: 0,
-        maxOutputTokens: 1700,
+        maxOutputTokens: 2200,
         match,
         validateResponseData: (data) =>
           validateCoachPostMatchReview({
@@ -2375,6 +2419,7 @@ class Phase12SimulationEngine implements SimulationEngine {
           ok: true,
           rawText: validatedResponse.rawText,
           usage: validatedResponse.usage,
+          providerDiagnostics: validatedResponse.providerDiagnostics,
           structuredRepair: validatedResponse.structuredRepair,
           data: validatedResponse.data
         }
@@ -2418,6 +2463,7 @@ class Phase12SimulationEngine implements SimulationEngine {
           inputTokens: validatedResponse.usage.promptTokens,
           outputTokens: validatedResponse.usage.completionTokens,
           repaired: Boolean(validatedResponse.structuredRepair),
+          providerDiagnostics: validatedResponse.providerDiagnostics,
           rawTextPreview: previewText(validatedResponse.structuredRepair?.originalRawText),
           repairRawTextPreview: previewText(validatedResponse.structuredRepair?.repairRawText)
         },
@@ -2450,6 +2496,7 @@ class Phase12SimulationEngine implements SimulationEngine {
           rawTextPreview: previewText(failedRawText),
           parseCandidatePreview: previewText(diagnostic.parseCandidate),
           usage: failedUsage,
+          providerDiagnostics: latestResponse?.providerDiagnostics ?? diagnostic.providerDiagnostics,
           data: latestResponse?.data,
           structuredRepair: latestResponse?.structuredRepair,
           errorKind,
@@ -2498,6 +2545,7 @@ class Phase12SimulationEngine implements SimulationEngine {
           responseArtifactId,
           rawTextPreview: previewText(failedRawText),
           parseCandidatePreview: previewText(diagnostic.parseCandidate),
+          providerDiagnostics: latestResponse?.providerDiagnostics ?? diagnostic.providerDiagnostics,
           errorKind,
           error: errorMessage
         },
@@ -2525,6 +2573,7 @@ class Phase12SimulationEngine implements SimulationEngine {
     tacticalPlans?: RuleBasedTacticalPlans;
     recentPublicRoundSummaries: string[];
     coachTimeout?: ResolvedCoachTimeout;
+    retryMode?: RoundRetryMode | undefined;
   }): Promise<Record<string, TeamRoundPlanDecision>> {
     const sides = [
       { team: input.teamA, opponent: input.teamB, activeAgents: input.activeA },
@@ -2534,95 +2583,104 @@ class Phase12SimulationEngine implements SimulationEngine {
 
     for (const side of sides) {
       const teamSide = side.team.id === input.sideAssignment.attackingTeamId ? "attack" : "defense";
-      const response = await this.runObservedStructuredCall<TeamRoundPlanDecision>({
-        callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_team_${safeId(side.team.id)}_team_plan`,
-        attemptNumber: input.observabilityAttempt,
-        task: "team_plan",
-        schemaName: "TeamRoundPlanDecision",
-        driverModelId: side.activeAgents[0]?.driverModelId ?? "",
-        requestInput: {
-          objective: "Create one coherent team plan for this round. Every player action will be generated from this plan.",
-          roundId: input.round.id,
-          roundNumber: input.round.roundNumber,
-          mapName: input.mapGame.mapName,
-          mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName),
-          judgeRubricContext: readPhase18JudgeRubricContext(this.context, input.mapGame.mapName),
-          teamId: side.team.id,
-          teamName: side.team.displayName,
-          initialProposal: readTeamMaterialInitialProposal(side.team),
-          coachContext: readTeamHeadCoachProfile(side.team),
-          teamMemoryOverlay: await this.readApprovedTeamMemoryOverlay(side.team.id),
-          opponentTeamId: side.opponent.id,
-          opponentTeamName: side.opponent.displayName,
-          side: teamSide,
-          sideAssignment: input.sideAssignment,
-          scoreBeforeRound: input.scoreBeforeRound,
-          buyType: input.buyTypeByTeam.get(side.team.id) ?? "eco",
-          economyPosture: input.teamEconomyPlans[side.team.id]?.posture ?? "eco",
-          roundEconomyPhase: input.teamEconomyPlans[side.team.id]?.phase ?? resolveRoundEconomyPhase(input.round.roundNumber),
-          economyPostureReason: input.teamEconomyPlans[side.team.id]?.postureReason ?? "默认经济态势。",
-          teamLossCount: input.teamEconomyPlans[side.team.id]?.lossCount ?? 1,
-          teamEconomy: sumEconomyByTeam(input.beforeEconomy, side.team.id),
-          activeAgents: side.activeAgents.map((agent) => ({
-            id: agent.id,
-            displayName: agent.displayName,
-            role: agent.role,
-            secondaryRoles: agent.secondaryRoles ?? [],
-            roleResponsibilities: agent.roleProfile?.agentMajorResponsibilities ?? [],
-            baseProfile: agent.baseProfile,
-            tokenBank: input.beforeEconomy.find((state) => state.agentId === agent.id)?.tokenBank ?? 0,
-            currentBuyType: input.teamEconomyPlans[side.team.id]?.decisions.find((decision) => decision.agentId === agent.id)?.buyType ?? "eco",
-            currentPosture: input.teamEconomyPlans[side.team.id]?.decisions.find((decision) => decision.agentId === agent.id)?.economyPosture ?? "eco",
-            loadoutPackage:
-              input.teamEconomyPlans[side.team.id]?.decisions.find((decision) => decision.agentId === agent.id)?.loadoutPackage ??
-              "pistol_eco_pack"
-          })),
-          dropPlan: input.teamEconomyPlans[side.team.id]?.dropDecisions ?? [],
-          competitiveParityNote: buildCompetitiveParityNote(input.teamEconomyPlans, side.team.id),
-          tacticalHint:
-            teamSide === "attack"
-              ? input.tacticalPlans?.attackPlan
-              : input.tacticalPlans?.defenseDeployment,
-          recentPublicRoundSummaries: input.recentPublicRoundSummaries,
-          ...(input.coachTimeout?.teamId === side.team.id ? { coachCorrection: input.coachTimeout.correction } : {})
-        },
-        responseFormat: "json_object",
-        seed: `team_plan:${input.round.id}:${side.team.id}`,
-        modelTier: "cheap",
-        temperature: 0,
-        maxOutputTokens: 1600,
-        match: input.match,
-        mapGame: input.mapGame,
+      const teamMemoryOverlay = await this.readApprovedTeamMemoryOverlay(side.team.id);
+      const requestInput = buildCompactTeamPlanRequestInput({
+        context: this.context,
         round: input.round,
-        roundNumber: input.round.roundNumber,
-        validateResponseData: (data) =>
-          validateTeamRoundPlan({
-            plan: teamRoundPlanDecisionSchema.parse(
-              normalizeTeamRoundPlanPayload(sanitizeLlmPayload(data), {
-                defaultPosture: input.teamEconomyPlans[side.team.id]?.posture ?? "eco",
-                economySummary: input.teamEconomyPlans[side.team.id]?.postureReason ?? "按当前经济态势执行团队买型。",
-                buyIntentByAgent: side.activeAgents.map((agent) => {
-                  const decision = input.teamEconomyPlans[side.team.id]?.decisions.find((entry) => entry.agentId === agent.id);
-                  const buyIntent: {
-                    agentId: string;
-                    targetPosture: EconomyPosture;
-                    preferredLoadout?: LoadoutPackage;
-                  } = {
-                    agentId: agent.id,
-                    targetPosture: decision?.economyPosture ?? input.teamEconomyPlans[side.team.id]?.posture ?? "eco"
-                  };
-                  if (decision?.loadoutPackage) {
-                    buyIntent.preferredLoadout = decision.loadoutPackage;
-                  }
-                  return buyIntent;
-                })
-              })
-            ),
-            teamId: side.team.id,
-            expectedSide: teamSide,
-            activeAgents: side.activeAgents
-          })
+        mapGame: input.mapGame,
+        team: side.team,
+        opponent: side.opponent,
+        activeAgents: side.activeAgents,
+        side: teamSide,
+        sideAssignment: input.sideAssignment,
+        scoreBeforeRound: input.scoreBeforeRound,
+        buyType: input.buyTypeByTeam.get(side.team.id) ?? "eco",
+        beforeEconomy: input.beforeEconomy,
+        tacticalHint: teamSide === "attack" ? input.tacticalPlans?.attackPlan : input.tacticalPlans?.defenseDeployment,
+        recentPublicRoundSummaries: input.recentPublicRoundSummaries,
+        competitiveParityNote: buildCompetitiveParityNote(input.teamEconomyPlans, side.team.id) ?? "",
+        teamMemoryOverlay,
+        ...(input.teamEconomyPlans[side.team.id] ? { teamEconomyPlan: input.teamEconomyPlans[side.team.id] } : {}),
+        ...(input.coachTimeout?.teamId === side.team.id ? { coachCorrection: input.coachTimeout.correction } : {})
       });
+      const validateResponseData = (data: unknown) =>
+        validateTeamRoundPlan({
+          plan: teamRoundPlanDecisionSchema.parse(
+            normalizeTeamRoundPlanPayload(sanitizeLlmPayload(data), {
+              activeAgents: side.activeAgents,
+              defaultPosture: input.teamEconomyPlans[side.team.id]?.posture ?? "eco",
+              economySummary: input.teamEconomyPlans[side.team.id]?.postureReason ?? "按当前经济态势执行团队买型。",
+              buyIntentByAgent: side.activeAgents.map((agent) => {
+                const decision = input.teamEconomyPlans[side.team.id]?.decisions.find((entry) => entry.agentId === agent.id);
+                const buyIntent: {
+                  agentId: string;
+                  targetPosture: EconomyPosture;
+                  preferredLoadout?: LoadoutPackage;
+                } = {
+                  agentId: agent.id,
+                  targetPosture: decision?.economyPosture ?? input.teamEconomyPlans[side.team.id]?.posture ?? "eco"
+                };
+                if (decision?.loadoutPackage) {
+                  buyIntent.preferredLoadout = decision.loadoutPackage;
+                }
+                return buyIntent;
+              })
+            })
+          ),
+          teamId: side.team.id,
+          expectedSide: teamSide,
+          activeAgents: side.activeAgents
+        });
+      let response: LlmResponse<TeamRoundPlanDecision>;
+      try {
+        response = await this.runObservedStructuredCall<TeamRoundPlanDecision>({
+          callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_team_${safeId(side.team.id)}_team_plan`,
+          stageId: `team_plan:${side.team.id}`,
+          retryMode: input.retryMode,
+          attemptNumber: input.observabilityAttempt,
+          task: "team_plan",
+          schemaName: "TeamRoundPlanDecision",
+          driverModelId: side.activeAgents[0]?.driverModelId ?? "",
+          requestInput,
+          responseFormat: "json_object",
+          seed: `team_plan:${input.round.id}:${side.team.id}`,
+          modelTier: "cheap",
+          temperature: 0,
+          maxOutputTokens: 3200,
+          extraParams: llmThinkingEnabledParams,
+          match: input.match,
+          mapGame: input.mapGame,
+          round: input.round,
+          roundNumber: input.round.roundNumber,
+          validateResponseData
+        });
+      } catch (error) {
+        const validationError = error instanceof Error ? error.message : String(error);
+        if (!shouldRetryStructuredJsonWithoutThinking(validationError)) {
+          throw error;
+        }
+        response = await this.runObservedStructuredCall<TeamRoundPlanDecision>({
+          callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_team_${safeId(side.team.id)}_team_plan_no_thinking`,
+          stageId: `team_plan:${side.team.id}`,
+          retryMode: input.retryMode,
+          attemptNumber: input.observabilityAttempt,
+          task: "team_plan",
+          schemaName: "TeamRoundPlanDecision",
+          driverModelId: side.activeAgents[0]?.driverModelId ?? "",
+          requestInput,
+          responseFormat: "json_object",
+          seed: `team_plan_no_thinking:${input.round.id}:${side.team.id}`,
+          modelTier: "cheap",
+          temperature: 0,
+          maxOutputTokens: 2200,
+          extraParams: llmThinkingDisabledParams,
+          match: input.match,
+          mapGame: input.mapGame,
+          round: input.round,
+          roundNumber: input.round.roundNumber,
+          validateResponseData
+        });
+      }
       output[side.team.id] = response.data;
     }
 
@@ -2642,6 +2700,7 @@ class Phase12SimulationEngine implements SimulationEngine {
     teamEconomyPlans: Record<string, TeamEconomyPlan>;
     teamPlans?: Record<string, TeamRoundPlanDecision>;
     coachTimeout?: ResolvedCoachTimeout;
+    retryMode?: RoundRetryMode | undefined;
   }): Promise<AgentOutput[]> {
     const outputs: AgentOutput[] = [];
     for (const agent of input.agents) {
@@ -2676,11 +2735,16 @@ class Phase12SimulationEngine implements SimulationEngine {
         opponentTeamName: opponentTeam.displayName,
         role: agent.role,
         secondaryRoles: agent.secondaryRoles ?? [],
-        roleResponsibilities: agent.roleProfile?.agentMajorResponsibilities ?? [],
-        baseProfile: agent.baseProfile,
-        mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName),
-        teamPlan,
-        playerDirective,
+        roleResponsibilities: (agent.roleProfile?.agentMajorResponsibilities ?? []).slice(0, 3).map((entry) => truncatePromptText(entry, 100)),
+        baseProfile: compactAgentProfile(agent),
+        mapSemanticContext: compactMapSemanticContext(readPhase18MapSemanticContext(this.context, input.mapGame.mapName)),
+        teamPlan: compactJudgeTeamPlan(teamPlan),
+        playerDirective: playerDirective
+          ? {
+              agentId: playerDirective.agentId,
+              directive: truncatePromptText(playerDirective.directive, 120)
+            }
+          : undefined,
         ...(coachAdjustment ? { coachAdjustment } : {}),
         buyType,
         economyPosture: buyDecision?.economyPosture ?? input.teamEconomyPlans[agent.teamId]?.posture ?? "eco",
@@ -2688,14 +2752,26 @@ class Phase12SimulationEngine implements SimulationEngine {
         economyPostureReason: input.teamEconomyPlans[agent.teamId]?.postureReason ?? "默认经济态势。",
         loadoutPackage: buyDecision?.loadoutPackage ?? "pistol_eco_pack",
         outputBudget: buyDecision?.outputBudget ?? 180,
-        economyIntent: teamPlan?.economyIntent,
+        economyIntent: teamPlan?.economyIntent
+          ? {
+              defaultPosture: teamPlan.economyIntent.defaultPosture,
+              summary: truncatePromptText(teamPlan.economyIntent.summary, 100)
+            }
+          : undefined,
         competitiveParityNote: buildCompetitiveParityNote(input.teamEconomyPlans, agent.teamId),
         posture,
-        sideContext: input.sideContext
+        sideContext: removeUndefined({
+          phase: input.sideContext.phase,
+          activeSide: input.sideContext.activeSide,
+          reactiveSide: input.sideContext.reactiveSide,
+          sideSwitchIndex: input.sideContext.sideSwitchIndex
+        })
       };
       const response = this.context.useLlmAgentActions
         ? await this.runObservedStructuredCall<AgentActionDecision>({
             callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_agent_${safeId(agent.id)}_agent_action`,
+            stageId: `agent_action:${agent.id}`,
+            retryMode: input.retryMode,
             attemptNumber: input.observabilityAttempt,
             task: "agent_action",
             schemaName: "AgentActionDecision",
@@ -2705,7 +2781,8 @@ class Phase12SimulationEngine implements SimulationEngine {
             seed: `${input.round.id}:${agent.id}`,
             modelTier: "cheap",
             temperature: 0,
-            maxOutputTokens: 1100,
+            maxOutputTokens: 1400,
+            extraParams: llmThinkingDisabledParams,
             match: input.match,
             mapGame: input.mapGame,
             round: input.round,
@@ -2769,8 +2846,10 @@ class Phase12SimulationEngine implements SimulationEngine {
     teamPlans?: Record<string, TeamRoundPlanDecision>;
     coachTimeout?: ResolvedCoachTimeout;
     agentOutputs: AgentOutput[];
+    tacticalCollision?: TacticalCollision;
     recentPublicRoundSummaries: string[];
     recentWinnerTeamIds: string[];
+    retryMode?: RoundRetryMode | undefined;
   }): Promise<JudgeResult> {
     if (this.context.useLlmJudgeResults) {
       const mapSemanticContext = readPhase18MapSemanticContext(this.context, input.mapGame.mapName);
@@ -2804,6 +2883,7 @@ class Phase12SimulationEngine implements SimulationEngine {
           mapSemanticContext,
           ...(input.teamPlans ? { teamPlans: input.teamPlans } : {}),
           agentOutputs: input.agentOutputs,
+          ...(input.tacticalCollision ? { tacticalCollision: input.tacticalCollision } : {}),
           recentPublicRoundSummaries: input.recentPublicRoundSummaries,
           rubricProfile
         });
@@ -2813,12 +2893,15 @@ class Phase12SimulationEngine implements SimulationEngine {
         roundNumber: input.roundNumber,
         mapName: input.mapGame.mapName,
         scoreBeforeRound: input.scoreBeforeRound,
-        mapSemanticContext,
-        judgeRubricContext,
-        rubricProfile,
+        mapSemanticContext: compactMapSemanticContext(mapSemanticContext),
+        judgeRubricContext: compactJudgeRubricContext(judgeRubricContext),
         ...(scoreTensionGuardrail ? { scoreTensionGuardrail } : {}),
-        ...(input.coachTimeout ? { appliedCoachCorrection: input.coachTimeout.correction } : {}),
-        ...judgePromptContext.requestInput
+        ...(input.coachTimeout ? { appliedCoachCorrection: compactCoachCorrection(input.coachTimeout.correction) } : {}),
+        ...judgePromptContext.requestInput,
+        evaluationOrder: compactJudgeEvaluationOrder(judgePromptContext.requestInput.evaluationOrder),
+        recentPublicRoundSummaries: judgePromptContext.requestInput.recentPublicRoundSummaries
+          .slice(-2)
+          .map((summary) => truncatePromptText(summary, 140))
       };
       const driverModelId = input.activeA[0]?.driverModelId ?? input.activeB[0]?.driverModelId ?? "";
       const verdictResponse = await this.generateJudgeVerdict({
@@ -2829,7 +2912,8 @@ class Phase12SimulationEngine implements SimulationEngine {
         round: input.round,
         roundNumber: input.roundNumber,
         observabilityAttempt: input.observabilityAttempt,
-        driverModelId
+        driverModelId,
+        retryMode: input.retryMode
       });
       const narrativeResponse = await this.generateJudgeNarrative({
         verdict: verdictResponse.data,
@@ -2840,7 +2924,8 @@ class Phase12SimulationEngine implements SimulationEngine {
         round: input.round,
         roundNumber: input.roundNumber,
         observabilityAttempt: input.observabilityAttempt,
-        driverModelId
+        driverModelId,
+        retryMode: input.retryMode
       });
       const authoritativeJudgeResult = this.composeJudgeResultFromStages({
         verdict: verdictResponse.data,
@@ -2884,7 +2969,8 @@ class Phase12SimulationEngine implements SimulationEngine {
         teamB: input.teamB,
         activeA: input.activeA,
         activeB: input.activeB,
-        sideAssignment: input.sideAssignment
+        sideAssignment: input.sideAssignment,
+        retryMode: input.retryMode
       });
     }
 
@@ -2969,6 +3055,7 @@ class Phase12SimulationEngine implements SimulationEngine {
     roundNumber: number;
     observabilityAttempt: number;
     driverModelId: string;
+    retryMode?: RoundRetryMode | undefined;
   }): Promise<LlmResponse<JudgeVerdictDecision>> {
     const validateResponseData = (data: unknown) => {
       try {
@@ -3018,6 +3105,8 @@ class Phase12SimulationEngine implements SimulationEngine {
     try {
       return await this.runObservedStructuredCall<JudgeVerdictDecision>({
         callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_judge_verdict`,
+        stageId: "judge_verdict",
+        retryMode: input.retryMode,
         attemptNumber: input.observabilityAttempt,
         task: "judge_verdict",
         schemaName: "JudgeVerdictDecision",
@@ -3027,7 +3116,8 @@ class Phase12SimulationEngine implements SimulationEngine {
         seed: `judge_verdict:${input.round.id}`,
         modelTier: "cheap",
         temperature: 0,
-        maxOutputTokens: 900,
+        maxOutputTokens: 2200,
+        extraParams: llmThinkingEnabledParams,
         match: input.match,
         mapGame: input.mapGame,
         round: input.round,
@@ -3036,11 +3126,36 @@ class Phase12SimulationEngine implements SimulationEngine {
       });
     } catch (error) {
       const validationError = error instanceof Error ? error.message : String(error);
+      if (shouldRetryStructuredJsonWithoutThinking(validationError)) {
+        return this.runObservedStructuredCall<JudgeVerdictDecision>({
+          callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_judge_verdict_no_thinking`,
+          stageId: "judge_verdict",
+          retryMode: input.retryMode,
+          attemptNumber: input.observabilityAttempt,
+          task: "judge_verdict",
+          schemaName: "JudgeVerdictDecision",
+          driverModelId: input.driverModelId,
+          requestInput: input.judgeRequestInput,
+          responseFormat: "json_object",
+          seed: `judge_verdict_no_thinking:${input.round.id}`,
+          modelTier: "cheap",
+          temperature: 0,
+          maxOutputTokens: 2200,
+          extraParams: llmThinkingDisabledParams,
+          match: input.match,
+          mapGame: input.mapGame,
+          round: input.round,
+          roundNumber: input.roundNumber,
+          validateResponseData
+        });
+      }
       if (!shouldAttemptJudgeRepair(validationError)) {
         throw error;
       }
       return this.runObservedStructuredCall<JudgeVerdictDecision>({
         callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_judge_verdict_repair`,
+        stageId: "judge_verdict:repair",
+        retryMode: input.retryMode,
         attemptNumber: input.observabilityAttempt,
         task: "judge_verdict",
         schemaName: "JudgeVerdictDecision",
@@ -3089,7 +3204,8 @@ class Phase12SimulationEngine implements SimulationEngine {
         seed: `judge_verdict_repair:${input.round.id}`,
         modelTier: "cheap",
         temperature: 0,
-        maxOutputTokens: 1100,
+        maxOutputTokens: 2200,
+        extraParams: llmThinkingDisabledParams,
         match: input.match,
         mapGame: input.mapGame,
         round: input.round,
@@ -3109,6 +3225,7 @@ class Phase12SimulationEngine implements SimulationEngine {
     roundNumber: number;
     observabilityAttempt: number;
     driverModelId: string;
+    retryMode?: RoundRetryMode | undefined;
   }): Promise<LlmResponse<JudgeNarrativeDecision>> {
     const validateResponseData = (data: unknown) => {
       try {
@@ -3124,8 +3241,8 @@ class Phase12SimulationEngine implements SimulationEngine {
     };
     const requestInput = {
       objective: "Write the readable judge narrative and judgeInference for the locked verdict. Do not change verdict facts.",
-      verdict: input.verdict,
-      originalJudgeInput: input.judgeRequestInput,
+      verdict: compactJudgeNarrativeVerdict(input.verdict),
+      originalJudgeInput: compactJudgeNarrativeOriginalInput(input.judgeRequestInput),
       narrativeLocks: {
         winnerTeamId: input.verdict.winnerTeamId,
         loserTeamId: input.verdict.loserTeamId,
@@ -3134,13 +3251,15 @@ class Phase12SimulationEngine implements SimulationEngine {
         mainAttackZoneId: input.verdict.diagnostic.mainAttackZoneId,
         mainDefenseZoneId: input.verdict.diagnostic.mainDefenseZoneId
       },
-      mapSemanticContext: readPhase18MapSemanticContext(this.context, input.mapGame.mapName),
-      judgeRubricContext: readPhase18JudgeRubricContext(this.context, input.mapGame.mapName)
+      mapSemanticContext: compactMapSemanticContext(readPhase18MapSemanticContext(this.context, input.mapGame.mapName)),
+      judgeRubricContext: compactJudgeRubricContext(readPhase18JudgeRubricContext(this.context, input.mapGame.mapName))
     };
 
     try {
       return await this.runObservedStructuredCall<JudgeNarrativeDecision>({
         callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_judge_narrative`,
+        stageId: "judge_narrative",
+        retryMode: input.retryMode,
         attemptNumber: input.observabilityAttempt,
         task: "judge_narrative",
         schemaName: "JudgeNarrativeDecision",
@@ -3150,7 +3269,8 @@ class Phase12SimulationEngine implements SimulationEngine {
         seed: `judge_narrative:${input.round.id}`,
         modelTier: "cheap",
         temperature: 0,
-        maxOutputTokens: 950,
+        maxOutputTokens: 1600,
+        extraParams: llmThinkingDisabledParams,
         match: input.match,
         mapGame: input.mapGame,
         round: input.round,
@@ -3159,35 +3279,55 @@ class Phase12SimulationEngine implements SimulationEngine {
       });
     } catch (error) {
       const validationError = error instanceof Error ? error.message : String(error);
-      if (!shouldAttemptJudgeRepair(validationError)) {
+      const repairable = shouldAttemptJudgeRepair(validationError);
+      if (!repairable && !shouldUseLocalJudgeNarrativeFallback(validationError)) {
         throw error;
       }
-      return this.runObservedStructuredCall<JudgeNarrativeDecision>({
-        callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_judge_narrative_repair`,
-        attemptNumber: input.observabilityAttempt,
-        task: "judge_narrative",
-        schemaName: "JudgeNarrativeDecision",
-        driverModelId: input.driverModelId,
-        requestInput: {
-          ...requestInput,
-          objective: "Repair the failed judge narrative. Return one complete JudgeNarrativeDecision only.",
-          validationError,
-          repairRules: [
-            "不得改变 verdict 的胜方、败方、胜法、MVP、主攻区或主守区。",
-            "judgeInference.source 必须是 judge_inference。",
-            "boundary 必须说明战斗结果是裁判推断，不是 agent_action 原始事实。"
-          ]
-        },
-        responseFormat: "json_object",
-        seed: `judge_narrative_repair:${input.round.id}`,
-        modelTier: "cheap",
-        temperature: 0,
-        maxOutputTokens: 950,
-        match: input.match,
-        mapGame: input.mapGame,
-        round: input.round,
+      if (repairable) {
+        try {
+          return await this.runObservedStructuredCall<JudgeNarrativeDecision>({
+            callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_judge_narrative_repair`,
+            stageId: "judge_narrative:repair",
+            retryMode: input.retryMode,
+            attemptNumber: input.observabilityAttempt,
+            task: "judge_narrative",
+            schemaName: "JudgeNarrativeDecision",
+            driverModelId: input.driverModelId,
+            requestInput: {
+              ...requestInput,
+              objective: "Repair the failed judge narrative. Return one complete JudgeNarrativeDecision only.",
+              validationError,
+              repairRules: [
+                "不得改变 verdict 的胜方、败方、胜法、MVP、主攻区或主守区。",
+                "judgeInference.source 必须是 judge_inference。",
+                "boundary 必须说明战斗结果是裁判推断，不是 agent_action 原始事实。"
+              ]
+            },
+            responseFormat: "json_object",
+            seed: `judge_narrative_repair:${input.round.id}`,
+            modelTier: "cheap",
+            temperature: 0,
+            maxOutputTokens: 1600,
+            extraParams: llmThinkingDisabledParams,
+            match: input.match,
+            mapGame: input.mapGame,
+            round: input.round,
+            roundNumber: input.roundNumber,
+            validateResponseData
+          });
+        } catch (repairError) {
+          const repairMessage = repairError instanceof Error ? repairError.message : String(repairError);
+          if (!shouldUseLocalJudgeNarrativeFallback(validationError) && !shouldUseLocalJudgeNarrativeFallback(repairMessage)) {
+            throw repairError;
+          }
+        }
+      }
+
+      return buildLocalJudgeNarrativeFallbackResponse({
+        verdict: input.verdict,
         roundNumber: input.roundNumber,
-        validateResponseData
+        mapName: input.mapGame.mapName,
+        validationError
       });
     }
   }
@@ -3207,7 +3347,7 @@ class Phase12SimulationEngine implements SimulationEngine {
     try {
       const promptJudgeResult = judgeResultSchema.parse({
         ...input.verdict,
-        reason: input.narrative.reason,
+        reason: buildStagedJudgeReason(input.verdict, input.narrative),
         judgeInference: input.narrative.judgeInference
       });
       const translatedJudgeResult = input.judgePromptContext.validateAndTranslate(promptJudgeResult);
@@ -3245,10 +3385,13 @@ class Phase12SimulationEngine implements SimulationEngine {
     activeA: Agent[];
     activeB: Agent[];
     sideAssignment: SideAssignment;
+    retryMode?: RoundRetryMode | undefined;
   }): Promise<JudgeResult> {
     const teamPlans = input.judgePromptContext.actualTeamPlans;
     const response = await this.runObservedStructuredCall<JudgeResult>({
       callId: `llm_${safeId(input.round.id)}_attempt_${input.observabilityAttempt}_judge_review`,
+      stageId: "judge_review",
+      retryMode: input.retryMode,
       attemptNumber: input.observabilityAttempt,
       task: "judge_review",
       schemaName: "JudgeResult",
@@ -3361,6 +3504,8 @@ class Phase12SimulationEngine implements SimulationEngine {
 
   private async runObservedStructuredCall<TData>(input: {
     callId: string;
+    stageId?: string;
+    retryMode?: RoundRetryMode | undefined;
     attemptNumber: number;
     task: "team_plan" | "agent_action" | "judge_verdict" | "judge_narrative" | "judge_review" | "combat_resolution" | "coach_timeout";
     schemaName: string;
@@ -3371,6 +3516,7 @@ class Phase12SimulationEngine implements SimulationEngine {
     modelTier: "cheap" | "standard" | "strong";
     temperature: number;
     maxOutputTokens?: number;
+    extraParams?: Record<string, unknown>;
     match: Match;
     mapGame: MapGame;
     round: Round;
@@ -3379,13 +3525,92 @@ class Phase12SimulationEngine implements SimulationEngine {
     validateResponseData?: (data: unknown) => TData;
   }) {
     const promptContractId = PHASE20_PRE_PROMPT_CONTRACT_ID;
+    const stageId = input.stageId ?? `${input.task}:${input.agent?.id ?? "round"}`;
     const promptHash = stableHex(buildPhase20PrePromptHashSource({
       task: input.task,
       schemaName: input.schemaName,
       requestInput: input.requestInput,
       promptContractId
     }));
+    if (input.retryMode === "resume_from_stage") {
+      const checkpoint = await this.readValidatedRoundStageCheckpoint<TData>({
+        matchId: input.match.id,
+        roundId: input.round.id,
+        stageId,
+        task: input.task,
+        schemaName: input.schemaName,
+        promptContractId,
+        promptHash
+      });
+      if (checkpoint) {
+        const reusedAt = timestamp();
+        await this.appendEvent({
+          id: `evt_${input.callId}_stage_reused`,
+          type: "round_generation_stage_reused",
+          category: "runtime_control",
+          tournamentId: input.match.tournamentId,
+          matchId: input.match.id,
+          mapGameId: input.mapGame.id,
+          scopeType: "map",
+          scopeId: input.mapGame.id,
+          payload: removeUndefined({
+            schemaVersion: 1,
+            attemptNumber: input.attemptNumber,
+            callId: input.callId,
+            reusedFromCallId: checkpoint.callId,
+            stageId,
+            taskType: input.task,
+            schemaName: input.schemaName,
+            roundId: input.round.id,
+            roundNumber: input.roundNumber,
+            agentId: input.agent?.id,
+            promptContractId,
+            promptHash,
+            requestArtifactId: checkpoint.requestArtifactId,
+            responseArtifactId: checkpoint.responseArtifactId,
+            reusedAt
+          }),
+          createdAt: reusedAt
+        });
+        return {
+          data: checkpoint.data,
+          usage: {
+            promptTokens: 0,
+            completionTokens: 0,
+            totalTokens: 0
+          },
+          requestArtifactId: checkpoint.requestArtifactId,
+          responseArtifactId: checkpoint.responseArtifactId
+        };
+      }
+    }
     const startedAt = timestamp();
+    await this.appendEvent({
+      id: `evt_${input.callId}_stage_started`,
+      type: "round_generation_stage_started",
+      category: "runtime_control",
+      tournamentId: input.match.tournamentId,
+      matchId: input.match.id,
+      mapGameId: input.mapGame.id,
+      scopeType: "map",
+      scopeId: input.mapGame.id,
+      payload: removeUndefined({
+        schemaVersion: 1,
+        attemptNumber: input.attemptNumber,
+        callId: input.callId,
+        stageId,
+        taskType: input.task,
+        schemaName: input.schemaName,
+        roundId: input.round.id,
+        roundNumber: input.roundNumber,
+        agentId: input.agent?.id,
+        promptContractId,
+        promptHash,
+        retryMode: input.retryMode ?? "full_round",
+        startedAt
+      }),
+      createdAt: startedAt
+    });
     const requestArtifactId = await this.writeLlmArtifact({
       callId: input.callId,
       suffix: "request",
@@ -3401,6 +3626,7 @@ class Phase12SimulationEngine implements SimulationEngine {
         schemaName: input.schemaName,
         promptContractId,
         promptHash,
+        ...(input.extraParams ? { extraParams: input.extraParams } : {}),
         input: input.requestInput
       }
     });
@@ -3461,7 +3687,8 @@ class Phase12SimulationEngine implements SimulationEngine {
         seed: input.seed,
         modelTier: input.modelTier,
         temperature: input.temperature,
-        ...(input.maxOutputTokens ? { maxOutputTokens: input.maxOutputTokens } : {})
+        ...(input.maxOutputTokens ? { maxOutputTokens: input.maxOutputTokens } : {}),
+        ...(input.extraParams ? { extraParams: input.extraParams } : {})
       });
       latestResponse = response;
       assertNoMojibakePayload(response.rawText, `${input.task} raw response`);
@@ -3484,12 +3711,42 @@ class Phase12SimulationEngine implements SimulationEngine {
           taskType: input.task,
           driverModelId: input.driverModelId,
           promptContractId,
+          ...(input.extraParams ? { extraParams: input.extraParams } : {}),
           ok: true,
           rawText: validatedResponse.rawText,
           usage: validatedResponse.usage,
+          providerDiagnostics: validatedResponse.providerDiagnostics,
           structuredRepair: validatedResponse.structuredRepair,
           data: validatedResponse.data
         }
+      });
+      await this.appendEvent({
+        id: `evt_${input.callId}_stage_validated`,
+        type: "round_generation_stage_validated",
+        category: "runtime_control",
+        tournamentId: input.match.tournamentId,
+        matchId: input.match.id,
+        mapGameId: input.mapGame.id,
+        scopeType: "map",
+        scopeId: input.mapGame.id,
+        payload: removeUndefined({
+          schemaVersion: 1,
+          attemptNumber: input.attemptNumber,
+          callId: input.callId,
+          stageId,
+          taskType: input.task,
+          schemaName: input.schemaName,
+          roundId: input.round.id,
+          roundNumber: input.roundNumber,
+          agentId: input.agent?.id,
+          promptContractId,
+          promptHash,
+          requestArtifactId,
+          responseArtifactId,
+          validatedData: validatedResponse.data,
+          validatedAt: completedAt
+        }),
+        createdAt: completedAt
       });
       await this.context.repositories.llmCalls.save(removeUndefined({
       id: input.callId,
@@ -3536,6 +3793,7 @@ class Phase12SimulationEngine implements SimulationEngine {
           inputTokens: validatedResponse.usage.promptTokens,
           outputTokens: validatedResponse.usage.completionTokens,
           repaired: Boolean(validatedResponse.structuredRepair),
+          providerDiagnostics: validatedResponse.providerDiagnostics,
           rawTextPreview: previewText(validatedResponse.structuredRepair?.originalRawText),
           repairRawTextPreview: previewText(validatedResponse.structuredRepair?.repairRawText)
         },
@@ -3566,11 +3824,13 @@ class Phase12SimulationEngine implements SimulationEngine {
           taskType: input.task,
           driverModelId: input.driverModelId,
           promptContractId,
+          ...(input.extraParams ? { extraParams: input.extraParams } : {}),
           ok: false,
           rawText: failedRawText,
           rawTextPreview: previewText(failedRawText),
           parseCandidatePreview: previewText(diagnostic.parseCandidate),
           usage: failedUsage,
+          providerDiagnostics: latestResponse?.providerDiagnostics ?? diagnostic.providerDiagnostics,
           data: latestResponse?.data,
           structuredRepair: latestResponse?.structuredRepair,
           errorKind,
@@ -3625,13 +3885,88 @@ class Phase12SimulationEngine implements SimulationEngine {
           responseArtifactId,
           rawTextPreview: previewText(failedRawText),
           parseCandidatePreview: previewText(diagnostic.parseCandidate),
+          providerDiagnostics: latestResponse?.providerDiagnostics ?? diagnostic.providerDiagnostics,
           errorKind,
           error: errorMessage
         },
         createdAt: failedAt
       });
+      await this.appendEvent({
+        id: `evt_${input.callId}_stage_failed`,
+        type: "round_generation_stage_failed",
+        category: "runtime_control",
+        tournamentId: input.match.tournamentId,
+        matchId: input.match.id,
+        mapGameId: input.mapGame.id,
+        scopeType: "map",
+        scopeId: input.mapGame.id,
+        payload: removeUndefined({
+          schemaVersion: 1,
+          attemptNumber: input.attemptNumber,
+          callId: input.callId,
+          stageId,
+          taskType: input.task,
+          schemaName: input.schemaName,
+          roundId: input.round.id,
+          roundNumber: input.roundNumber,
+          agentId: input.agent?.id,
+          promptContractId,
+          promptHash,
+          responseArtifactId,
+          errorKind,
+          providerDiagnostics: latestResponse?.providerDiagnostics ?? diagnostic.providerDiagnostics,
+          error: errorMessage,
+          failedAt
+        }),
+        createdAt: failedAt
+      });
       throw error;
     }
+  }
+
+  private async readValidatedRoundStageCheckpoint<TData>(input: {
+    matchId: string;
+    roundId: string;
+    stageId: string;
+    task: Phase20PrePromptTask;
+    schemaName: string;
+    promptContractId: string;
+    promptHash: string;
+  }): Promise<{
+    data: TData;
+    callId: string;
+    requestArtifactId?: string;
+    responseArtifactId?: string;
+  } | null> {
+    const events = await this.context.repositories.events.listByMatch(input.matchId);
+    for (const event of [...events].sort((left, right) => right.globalSequence - left.globalSequence)) {
+      if (event.type !== "round_generation_stage_validated") {
+        continue;
+      }
+      const payload = isRecord(event.payload) ? event.payload : null;
+      if (
+        !payload ||
+        payload.roundId !== input.roundId ||
+        payload.stageId !== input.stageId ||
+        payload.taskType !== input.task ||
+        payload.schemaName !== input.schemaName ||
+        payload.promptContractId !== input.promptContractId ||
+        payload.promptHash !== input.promptHash ||
+        typeof payload.callId !== "string" ||
+        typeof payload.validatedData === "undefined"
+      ) {
+        continue;
+      }
+
+      return {
+        data: payload.validatedData as TData,
+        callId: payload.callId,
+        ...(typeof payload.requestArtifactId === "string" ? { requestArtifactId: payload.requestArtifactId } : {}),
+        ...(typeof payload.responseArtifactId === "string" ? { responseArtifactId: payload.responseArtifactId } : {})
+      };
+    }
+
+    return null;
   }
 
   private async writeLlmArtifact(input: {
@@ -6388,6 +6723,13 @@ function validateCoachPostMatchReview(input: {
 const coachTimeoutMinRoundNumber = 5;
 const coachTimeoutCooldownRounds = 3;
 const coachTimeoutBalanceGuardrail = "平衡约束：主区优先，但至少保留一个次级区域的信息锚点或回防锚点，禁止五人全部压向同一单点。";
+const llmThinkingDisabledParams = {
+  thinking: { type: "disabled" }
+} satisfies Record<string, unknown>;
+const llmThinkingEnabledParams = {
+  thinking: { type: "enabled" },
+  reasoning_effort: "high"
+} satisfies Record<string, unknown>;
 
 function constrainCoachTimeoutCorrection(correction: CoachTimeoutCorrection): CoachTimeoutCorrection {
   return {
@@ -6507,7 +6849,7 @@ function validateTeamRoundPlan(input: {
   }
   for (const agentId of directiveAgentIds) {
     if (!activeAgentIds.has(agentId)) {
-      throw new Error(`Team plan returned directive for inactive agent: ${agentId}`);
+      throw new Error(`repair_invalid_agent_id: Team plan returned directive for inactive agent: ${agentId}`);
     }
   }
   for (const agentId of activeAgentIds) {
@@ -6597,7 +6939,23 @@ function ensureJudgeDiagnostic(input: {
     throw new Error("Judge diagnostic is required for Phase 2.0-pre real LLM rounds.");
   }
 
-  const diagnostic = parsedDiagnostic.data;
+  const diagnostic: JudgeDiagnostic = {
+    ...parsedDiagnostic.data,
+    attackedOpportunityGap: expandThinJudgeDiagnosticField({
+      label: "机会缺口",
+      value: parsedDiagnostic.data.attackedOpportunityGap,
+      fallback: parsedDiagnostic.data.decisiveEvidence,
+      teamA: input.teamA,
+      teamB: input.teamB
+    }),
+    defendedCoreProposition: expandThinJudgeDiagnosticField({
+      label: "防守命题",
+      value: parsedDiagnostic.data.defendedCoreProposition,
+      fallback: parsedDiagnostic.data.decisiveEvidence,
+      teamA: input.teamA,
+      teamB: input.teamB
+    })
+  };
   if (!input.judgeResult.judgeInference || input.judgeResult.judgeInference.source !== "judge_inference") {
     throw new Error("Judge judgeInference is required for Phase 2.0-pre combat/result narration.");
   }
@@ -6753,9 +7111,12 @@ function expandThinJudgeDiagnosticField(input: {
 }): string {
   const normalized = normalizeStagedJudgeNarrativeText(input.value);
   const hasActorCue = hasJudgeSideCue(normalized, input.teamA, input.teamB);
-  const hasReasonCue = /(因为|导致|暴露|说明|证明|未能|使得|通过|从而|意味着|形成|守住|失守|验证)/.test(normalized);
+  const hasReasonCue = hasJudgeDiagnosticReasonCue(normalized);
   if (normalized.length >= 10 && hasActorCue && hasReasonCue) {
     return normalized;
+  }
+  if (normalized.length >= 10 && hasReasonCue) {
+    return `${input.teamA.displayName} 与 ${input.teamB.displayName} 的攻防互动中，${normalized}`;
   }
   return `${input.label}：${normalized}。${normalizeStagedJudgeNarrativeText(input.fallback)}`;
 }
@@ -6767,6 +7128,31 @@ function normalizeStagedJudgeNarrativeText(value: string): string {
     .replace(/至少两次关键击杀/g, "关键火力贡献")
     .replace(/至少两名/g, "多名")
     .trim();
+}
+
+function buildStagedJudgeReason(verdict: JudgeVerdictDecision, narrative: JudgeNarrativeDecision): string {
+  const parts = [narrative.reason.trim()].filter((value) => value.length > 0);
+  const additions = [
+    typeof verdict.winnerReason === "string" && verdict.winnerReason.trim().length > 0
+      ? `${verdict.winnerTeamId} 成功：${verdict.winnerReason.trim()}`
+      : "",
+    typeof verdict.loserFailureReason === "string" && verdict.loserFailureReason.trim().length > 0
+      ? `${verdict.loserTeamId} 失败：${verdict.loserFailureReason.trim()}`
+      : "",
+    typeof verdict.attackedOpportunityGapText === "string" && verdict.attackedOpportunityGapText.trim().length > 0
+      ? `机会缺口：${verdict.attackedOpportunityGapText.trim()}`
+      : "",
+    typeof verdict.defendedCorePropositionText === "string" && verdict.defendedCorePropositionText.trim().length > 0
+      ? `守方命题：${verdict.defendedCorePropositionText.trim()}`
+      : ""
+  ].filter((value) => value.length > 0);
+  for (const addition of additions) {
+    const normalizedAddition = normalizeForJudgeReason(addition);
+    if (!parts.some((part) => normalizeForJudgeReason(part).includes(normalizedAddition))) {
+      parts.push(addition);
+    }
+  }
+  return normalizeStagedJudgeNarrativeText(parts.join(" "));
 }
 
 function normalizeJudgeScorecardNarrativeText(scorecard: JudgeScorecard): JudgeScorecard {
@@ -6840,6 +7226,89 @@ function buildFallbackJudgeRoundWinType(winnerTeamId: string, sideAssignment: Si
 
 function shouldAttemptJudgeRepair(errorMessage: string): boolean {
   return /does not parse as JSON|invalid_enum_value|Expected array, received object|Expected string, received object|required|missing|diagnostic|decisiveEvidence|zoneRelation|roundWinType|judgeScorecard|rubricProfile|winnerFromScore|marginFromScore|totalScore/i.test(errorMessage);
+}
+
+function shouldUseLocalJudgeNarrativeFallback(errorMessage: string): boolean {
+  return /reasoning_exhausted_empty_content|provider_empty_content|json_truncated|does not parse as JSON|invalid_response/i.test(
+    errorMessage
+  );
+}
+
+function shouldRetryStructuredJsonWithoutThinking(errorMessage: string): boolean {
+  return /reasoning_exhausted_empty_content|provider_empty_content|json_truncated/i.test(errorMessage);
+}
+
+function buildLocalJudgeNarrativeFallbackResponse(input: {
+  verdict: JudgeVerdictDecision;
+  roundNumber: number;
+  mapName: string;
+  validationError: string;
+}): LlmResponse<JudgeNarrativeDecision> {
+  const narrative = normalizeJudgeNarrativeDecisionForVerdict(buildLocalJudgeNarrativeFallback(input), input.verdict);
+  validateJudgeNarrativeAgainstVerdict(narrative, input.verdict);
+  const rawText = JSON.stringify(narrative);
+  return {
+    data: narrative,
+    rawText,
+    usage: {
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0
+    },
+    providerDiagnostics: {
+      finishReason: "local_fallback",
+      contentLength: rawText.length,
+      reasoningContentLength: 0,
+      emptyContentWithReasoning: false,
+      providerResponseShape: "local_judge_narrative_fallback"
+    }
+  };
+}
+
+function buildLocalJudgeNarrativeFallback(input: {
+  verdict: JudgeVerdictDecision;
+  roundNumber: number;
+  mapName: string;
+  validationError: string;
+}): JudgeNarrativeDecision {
+  const verdict = input.verdict;
+  const winTypeText = describeJudgeRoundWinTypeForNarrative(verdict.roundWinType);
+  const decisiveEvidence = truncatePromptText(verdict.diagnostic.decisiveEvidence, 180) || "裁判已锁定的维度证据";
+  const defendedCore = truncatePromptText(verdict.diagnostic.defendedCoreProposition, 160) || "守方核心命题";
+  const attackedGap = truncatePromptText(verdict.diagnostic.attackedOpportunityGap, 160) || "攻防机会缺口";
+  const zoneText = `${verdict.diagnostic.mainAttackZoneId} / ${verdict.diagnostic.mainDefenseZoneId}`;
+  const reason = `${input.mapName} 第 ${input.roundNumber} 回合，${verdict.winnerTeamId} 以${winTypeText}取胜。关键证据是：${decisiveEvidence}。${verdict.loserTeamId} 失败在于没有充分回应：${defendedCore}，也未能处理 ${attackedGap}。`;
+
+  return {
+    reason,
+    judgeInference: {
+      source: "judge_inference",
+      boundary: "以下战斗和结果描述是裁判根据已锁定 verdict、区域关系、队伍计划和行动摘要作出的推断，不是 agent_action 原始事实。",
+      csResolution: `${verdict.winnerTeamId} 以${winTypeText}完成本回合结算，MVP 为 ${verdict.mvpAgentId}。`,
+      combatNarrative: `裁判推断本回合主要交汇区域为 ${zoneText}；胜负依据来自已锁定的 decisiveEvidence 与 scorecard 摘要，而不是重新改判。`,
+      evidenceBasis: [
+        `locked_verdict:${verdict.winnerTeamId}`,
+        `round_win_type:${verdict.roundWinType}`,
+        `main_zones:${zoneText}`,
+        `fallback_reason:${truncatePromptText(input.validationError, 80)}`
+      ]
+    }
+  };
+}
+
+function describeJudgeRoundWinTypeForNarrative(roundWinType: JudgeRoundWinType): string {
+  switch (roundWinType) {
+    case "attack_elimination":
+      return "攻方收束";
+    case "attack_bomb_explosion":
+      return "攻方目标完成";
+    case "defense_elimination":
+      return "守方收束";
+    case "defense_timeout_no_plant":
+      return "守方拖住目标推进";
+    case "defense_defuse":
+      return "守方回收目标";
+  }
 }
 
 function validateJudgeVerdictDecision(input: {
@@ -6964,7 +7433,7 @@ function normalizeJudgeInferenceBoundary(boundary: string): string {
 }
 
 function hasJudgeInferenceBoundaryMarker(value: string): boolean {
-  return /(裁判推断|judge inference|合理推断|逻辑推断|反向推导|推导|结算层|不是 agent_action|非 agent_action|不是原始事实|非原始事实|非原始行动事实|未在输入中直接提供|未直接提供)/i.test(value);
+  return /(裁判.{0,16}推断|judge inference|合理推断|逻辑推断|反向推导|推导|结算层|不是\s*agent_action|非\s*agent_action|并非\s*agent_action|不是原始事实|非原始事实|非原始行动事实|未在输入中直接提供|未直接提供)/i.test(value);
 }
 
 function sanitizeNarrativeTextForRoundWinType(value: string, roundWinType: JudgeRoundWinType): string {
@@ -7475,6 +7944,8 @@ function materializeJudgeVerdictPayload(input: {
     payload: materializedRecord,
     teamAId: input.teamAId,
     teamBId: input.teamBId,
+    activeTeamAAgentIds: input.activeTeamAAgentIds,
+    activeTeamBAgentIds: input.activeTeamBAgentIds,
     sideAssignment: input.sideAssignment,
     defenderThesisContext: input.defenderThesisContext,
     ...(input.rubricProfile ? { rubricProfile: input.rubricProfile } : {})
@@ -7618,6 +8089,8 @@ function materializeJudgeVerdictScorecardPayload(input: {
   defenderThesisContext?: DefenderThesisContext | undefined;
   teamAId: string;
   teamBId: string;
+  activeTeamAAgentIds?: string[];
+  activeTeamBAgentIds?: string[];
   sideAssignment: SideAssignment;
 }): unknown {
   const record = readUnknownRecord(input.payload);
@@ -7633,10 +8106,10 @@ function materializeJudgeVerdictScorecardPayload(input: {
   if (!winnerTeamId || !loserTeamId || !margin || !roundWinType) {
     return input.payload;
   }
-  const source: JudgeScorecardSource = readUnknownRecord(record.judgeScorecard) ? "code_completed_from_verdict" : "code_completed_from_verdict";
+  const source: JudgeScorecardSource = "evidence_materialized_from_draft";
   const judgeScorecard = buildCodeCompletedJudgeScorecard({
       source,
-      lightweightScorecard: record.judgeScorecard,
+      lightweightScorecard: readUnknownRecord(record.judgeScorecard) ? record.judgeScorecard : { teamScores: record.teamScores },
       rubricProfile: input.rubricProfile,
       winnerTeamId,
       loserTeamId,
@@ -7648,11 +8121,74 @@ function materializeJudgeVerdictScorecardPayload(input: {
       roundWinType,
       reason: normalizeCoachTimeoutText(readUnknownRecord(record.diagnostic)?.decisiveEvidence) ?? "LLM 裁判未返回完整评分表，代码按 verdict 事实补齐审计结构。"
   });
+  const finalWinnerTeamId = judgeScorecard.winnerFromScore;
+  const finalLoserTeamId = finalWinnerTeamId === input.teamAId ? input.teamBId : input.teamAId;
+  const finalRoundWinType = normalizeRoundWinTypeForWinner(roundWinType, finalWinnerTeamId, input.sideAssignment);
+  const candidateWinnerOverridden = finalWinnerTeamId !== winnerTeamId;
+  const finalMvpAgentId =
+    finalWinnerTeamId === input.teamAId
+      ? input.activeTeamAAgentIds?.[0]
+      : finalWinnerTeamId === input.teamBId
+        ? input.activeTeamBAgentIds?.[0]
+        : undefined;
+  const candidateMvpAgentId = typeof record.mvpAgentId === "string" ? record.mvpAgentId : undefined;
+  const candidateMvpOverridden = Boolean(finalMvpAgentId && candidateMvpAgentId !== finalMvpAgentId);
+  const finalJudgeScorecard = candidateWinnerOverridden
+    ? {
+        ...judgeScorecard,
+        normalizedFieldNotes: [
+          ...(judgeScorecard.normalizedFieldNotes ?? []),
+          `LLM candidate winner ${winnerTeamId}; code materialized winner ${finalWinnerTeamId} from judgeScorecard totals.`
+        ]
+      }
+    : candidateMvpOverridden
+      ? {
+        ...judgeScorecard,
+        normalizedFieldNotes: [
+          ...(judgeScorecard.normalizedFieldNotes ?? []),
+          `LLM candidate mvpAgentId ${candidateMvpAgentId}; code materialized MVP ${finalMvpAgentId} from final winner roster.`
+        ]
+      }
+    : judgeScorecard;
   return {
     ...record,
+    winnerTeamId: finalWinnerTeamId,
+    loserTeamId: finalLoserTeamId,
     margin: judgeScorecard.marginFromScore,
-    judgeScorecard
+    roundWinType: finalRoundWinType,
+    attackWinConditionMet: finalRoundWinType.startsWith("attack_"),
+    defenseWinConditionMet: finalRoundWinType.startsWith("defense_"),
+    ...(finalMvpAgentId ? { mvpAgentId: finalMvpAgentId } : {}),
+    ...(candidateWinnerOverridden || candidateMvpOverridden
+      ? {
+          ...(candidateWinnerOverridden ? { candidateWinnerTeamId: winnerTeamId } : {}),
+          normalizedFieldNotes: [
+            ...((Array.isArray(record.normalizedFieldNotes) ? record.normalizedFieldNotes : []) as string[]),
+            ...(candidateWinnerOverridden
+              ? [`LLM candidate winner ${winnerTeamId}; code materialized winner ${finalWinnerTeamId} from judgeScorecard totals.`]
+              : []),
+            ...(candidateMvpOverridden
+              ? [`LLM candidate mvpAgentId ${candidateMvpAgentId}; code materialized MVP ${finalMvpAgentId} from final winner roster.`]
+              : [])
+          ]
+        }
+      : {}),
+    judgeScorecard: finalJudgeScorecard
   };
+}
+
+function normalizeRoundWinTypeForWinner(
+  roundWinType: JudgeRoundWinType,
+  winnerTeamId: string,
+  sideAssignment: SideAssignment
+): JudgeRoundWinType {
+  if (winnerTeamId === sideAssignment.attackingTeamId) {
+    return roundWinType.startsWith("attack_") ? roundWinType : "attack_elimination";
+  }
+  if (winnerTeamId === sideAssignment.defendingTeamId) {
+    return roundWinType.startsWith("defense_") ? roundWinType : "defense_elimination";
+  }
+  return roundWinType;
 }
 
 function judgeScorecardSchemaSafeParse(value: unknown): JudgeScorecard | undefined {
@@ -7674,7 +8210,7 @@ function buildCodeCompletedJudgeScorecard(input: {
   roundWinType: JudgeRoundWinType;
   reason: string;
 }): JudgeScorecard {
-  const fallback = buildDeterministicJudgeScorecard({
+  const fallback = buildEvidenceMaterializedFallbackJudgeScorecard({
     rubricProfile: input.rubricProfile,
     winnerTeamId: input.winnerTeamId,
     loserTeamId: input.loserTeamId,
@@ -7721,7 +8257,8 @@ function buildCodeCompletedJudgeScorecard(input: {
   const winnerFromScore = teamATotal >= teamBTotal ? input.teamAId : input.teamBId;
   const scoreDelta = roundJudgeScore(Math.abs(teamATotal - teamBTotal), 2);
   const marginFromScore = deriveJudgeMarginFromScoreDelta(scoreDelta);
-  const decisiveDimensions = deriveJudgeDecisiveDimensions(teamScores[input.winnerTeamId], teamScores[input.loserTeamId]);
+  const loserFromScore = winnerFromScore === input.teamAId ? input.teamBId : input.teamAId;
+  const decisiveDimensions = deriveJudgeDecisiveDimensions(teamScores[winnerFromScore], teamScores[loserFromScore]);
   return {
     ...fallback,
     ...(input.defenderThesisContext ? { defenderThesisContext: input.defenderThesisContext } : {}),
@@ -7735,6 +8272,92 @@ function buildCodeCompletedJudgeScorecard(input: {
     normalizedFieldNotes: [
       ...(input.margin !== marginFromScore ? [`LLM proposed margin ${input.margin}; code derived ${marginFromScore} from scoreDelta.`] : [])
     ]
+  };
+}
+
+function buildEvidenceMaterializedFallbackJudgeScorecard(input: {
+  rubricProfile: JudgeRubricProfile;
+  winnerTeamId: string;
+  loserTeamId: string;
+  teamAId: string;
+  teamBId: string;
+  sideAssignment: SideAssignment;
+  defenderThesisContext?: DefenderThesisContext | undefined;
+  margin: JudgeResult["margin"];
+  roundWinType: JudgeRoundWinType;
+  reason: string;
+  source: JudgeScorecardSource;
+}): JudgeScorecard {
+  const winnerDimensionScores: Record<JudgeScoreDimension, number> = {
+    objectiveScore: 6.25,
+    mapControlScore: 6.05,
+    submissionQualityScore: 6.35,
+    coordinationScore: 6.15,
+    economyAdjustedScore: 5.9,
+    riskControlScore: 6,
+    proofScore: 6.3
+  };
+  const loserDimensionScores: Record<JudgeScoreDimension, number> = {
+    objectiveScore: 5.95,
+    mapControlScore: 5.8,
+    submissionQualityScore: 5.9,
+    coordinationScore: 5.85,
+    economyAdjustedScore: 5.75,
+    riskControlScore: 5.8,
+    proofScore: 5.9
+  };
+  const buildTeamScore = (teamId: string, scores: Record<JudgeScoreDimension, number>) => {
+    const side = teamId === input.sideAssignment.attackingTeamId ? "attack" : "defense";
+    const teamScore = {
+      teamId,
+      side,
+      objectiveScore: buildEvidenceMaterializedFallbackDimension(scores.objectiveScore, "round_context", "胜利目标证据不足，使用中性目标维度补齐。"),
+      mapControlScore: buildEvidenceMaterializedFallbackDimension(scores.mapControlScore, "zone_relation", "区域控制证据不足，使用中性地图维度补齐。"),
+      submissionQualityScore: buildEvidenceMaterializedFallbackDimension(scores.submissionQualityScore, "submitted_output", "提交质量证据不足，使用中性提交维度补齐。"),
+      coordinationScore: buildEvidenceMaterializedFallbackDimension(scores.coordinationScore, "team_plan", "协同证据不足，使用中性协同维度补齐。"),
+      economyAdjustedScore: buildEvidenceMaterializedFallbackDimension(scores.economyAdjustedScore, "economy", "经济约束证据不足，只在经济维度中性补齐。"),
+      riskControlScore: buildEvidenceMaterializedFallbackDimension(scores.riskControlScore, "round_context", "风险控制证据不足，使用中性风险维度补齐。"),
+      proofScore: buildEvidenceMaterializedFallbackDimension(scores.proofScore, "judge_rubric_context", "证明强度证据不足，使用中性证明维度补齐。"),
+      totalScore: 0
+    } satisfies JudgeScorecard["teamScores"][string];
+    return {
+      ...teamScore,
+      totalScore: calculateWeightedJudgeScore(teamScore, input.rubricProfile.dimensionWeights)
+    };
+  };
+  const teamScores = {
+    [input.winnerTeamId]: buildTeamScore(input.winnerTeamId, winnerDimensionScores),
+    [input.loserTeamId]: buildTeamScore(input.loserTeamId, loserDimensionScores)
+  };
+  const teamATotal = teamScores[input.teamAId]?.totalScore ?? 0;
+  const teamBTotal = teamScores[input.teamBId]?.totalScore ?? 0;
+  const winnerFromScore = teamATotal >= teamBTotal ? input.teamAId : input.teamBId;
+  const loserFromScore = winnerFromScore === input.teamAId ? input.teamBId : input.teamAId;
+  const scoreDelta = roundJudgeScore(Math.abs(teamATotal - teamBTotal), 2);
+  return {
+    scorecardSource: input.source,
+    ...(input.defenderThesisContext ? { defenderThesisContext: input.defenderThesisContext } : {}),
+    rubricProfile: input.rubricProfile,
+    teamScores,
+    scoreDelta,
+    winnerFromScore,
+    marginFromScore: deriveJudgeMarginFromScoreDelta(scoreDelta),
+    decisiveDimensions: deriveJudgeDecisiveDimensions(teamScores[winnerFromScore], teamScores[loserFromScore]),
+    roundWinTypeJustification: `${input.roundWinType} 来自语义草稿；维度分缺失时使用中性证据 fallback，不使用固定胜方模板。`,
+    ...(input.margin !== deriveJudgeMarginFromScoreDelta(scoreDelta) ? { llmProposedMargin: input.margin } : {}),
+    normalizedFieldNotes: ["LLM draft did not provide usable teamScores; code used neutral evidence fallback instead of fixed winner/loser template."]
+  };
+}
+
+function buildEvidenceMaterializedFallbackDimension(
+  score: number,
+  evidenceSource: JudgeScorecard["teamScores"][string][JudgeScoreDimension]["evidenceSource"],
+  evidence: string
+): JudgeScorecard["teamScores"][string][JudgeScoreDimension] {
+  return {
+    score,
+    evidence,
+    evidenceSource
   };
 }
 
@@ -7880,10 +8503,16 @@ function validateJudgeNarrativeField(input: {
   }
 
   const hasActorCue = hasJudgeSideCue(normalized, input.teamA, input.teamB);
-  const hasReasonCue = /(因为|导致|暴露|说明|证明|未能|使得|通过|从而|意味着|形成|守住|失守|验证)/.test(normalized);
+  const hasReasonCue = hasJudgeDiagnosticReasonCue(normalized);
   if (!hasActorCue || !hasReasonCue) {
     throw new Error(`${input.label} must name the side and explain why the gap or proposition matters.`);
   }
+}
+
+function hasJudgeDiagnosticReasonCue(value: string): boolean {
+  return /(因为|导致|暴露|说明|证明|未能|使得|通过|从而|意味着|形成|守住|失守|验证|瞄准|漏洞|缺口|击穿|突破|覆盖|主攻|显示|阻止|转化|防护|间隙|集中)/.test(
+    value
+  );
 }
 
 function hasJudgeSideCue(value: string, teamA: Team, teamB: Team): boolean {
@@ -8023,7 +8652,7 @@ function validateJudgeConfidenceAndMargin(input: { judgeResult: JudgeResult }): 
 
   if (
     input.judgeResult.margin === "decisive" &&
-    !/(彻底|完全|明确|显著|决定性| decisively | decisive | full wipe | 团灭 | 清场 | 引爆 | 拆包)/i.test(
+    !/(彻底|完全|明确|显著|决定性|decisively|decisive|full\s*wipe|团灭|全歼|清场|引爆|爆炸|下包爆炸|拆包)/i.test(
       input.judgeResult.reason
     )
   ) {
@@ -8038,7 +8667,7 @@ function collectMentionedPhase18Zones(reason: string, mapSemanticContext: Record
   const normalizedReason = normalizeForJudgeReason(reason);
   const mentioned = new Set<string>();
 
-  for (const [zoneId, displayName] of Object.entries(displayZoneNames ?? {})) {
+  for (const [zoneId, displayName] of Object.entries({ ...phase18DefaultZoneDisplayNames, ...(displayZoneNames ?? {}) })) {
     if (mentionsZone(normalizedReason, zoneId, displayName)) {
       mentioned.add(zoneId);
     }
@@ -8053,11 +8682,38 @@ function collectMentionedPhase18Zones(reason: string, mapSemanticContext: Record
   return mentioned;
 }
 
+const phase18DefaultZoneDisplayNames: Record<string, string> = {
+  spawn_a: "T 出生点",
+  spawn_b: "CT 出生点",
+  buyer_mid: "中路",
+  conversion_site_a: "A 点",
+  conversion_site_b: "B 点",
+  pricing_ramp: "A 大",
+  retention_connector: "A 小",
+  token_economy: "B 洞"
+};
+
 function mentionsZone(normalizedReason: string, zoneId: string, displayName: unknown): boolean {
   if (mentionsNormalizedZoneAlias(normalizedReason, normalizeForJudgeReason(zoneId))) {
     return true;
   }
-  return typeof displayName === "string" && mentionsNormalizedZoneAlias(normalizedReason, normalizeForJudgeReason(displayName));
+  if (typeof displayName === "string" && mentionsNormalizedZoneAlias(normalizedReason, normalizeForJudgeReason(displayName))) {
+    return true;
+  }
+  return phase18ZoneMentionAliases(zoneId).some((alias) =>
+    mentionsNormalizedZoneAlias(normalizedReason, normalizeForJudgeReason(alias))
+  );
+}
+
+function phase18ZoneMentionAliases(zoneId: string): string[] {
+  switch (zoneId) {
+    case "conversion_site_a":
+      return ["A区", "A 区", "A点", "A 点", "A包点", "A 包点", "A site"];
+    case "conversion_site_b":
+      return ["B区", "B 区", "B点", "B 点", "B包点", "B 包点", "B site"];
+    default:
+      return [];
+  }
 }
 
 function mentionsNormalizedZoneAlias(normalizedText: string, normalizedAlias: string): boolean {
@@ -8136,6 +8792,7 @@ function buildJudgePromptContext(input: {
     mapSemanticContext?: Record<string, unknown> | undefined;
     teamPlans?: Record<string, TeamRoundPlanDecision> | undefined;
     agentOutputs: AgentOutput[];
+    tacticalCollision?: TacticalCollision;
     recentPublicRoundSummaries: string[];
     rubricProfile?: JudgeRubricProfile;
   }): Phase18JudgePromptContext {
@@ -8192,12 +8849,6 @@ function buildJudgePromptContext(input: {
     ? sanitizeTeamPlansForJudge(input.teamPlans, promptTeamIdByActualTeamId, promptAgentIdByActualAgentId, sanitizeReplacements)
     : undefined;
   const promptSideAssignment = sanitizeSideAssignmentForJudge(input.sideAssignment, promptTeamIdByActualTeamId);
-  const promptAgentOutputsByTeam = buildPromptAgentOutputsByTeam({
-    agentOutputs: input.agentOutputs,
-    promptTeamIdByActualTeamId,
-    promptAgentIdByActualAgentId,
-    replacements: sanitizeReplacements
-  });
   const judgeEvidenceDigest = buildJudgeEvidenceDigest({
     agentOutputs: input.agentOutputs,
     promptTeamIdByActualTeamId,
@@ -8219,16 +8870,16 @@ function buildJudgePromptContext(input: {
       teamId: promptTeamA.id,
       teamName: promptTeamA.displayName,
       activeAgents: promptActiveA,
-      initialProposalSummary: sanitizeJudgeRecord(readTeamInitialProposalSummary(input.teamA), sanitizeReplacements),
-      coachContext: sanitizeJudgeRecord(readTeamHeadCoachProfile(input.teamA), sanitizeReplacements),
+      initialProposalSummary: sanitizeJudgeRecord(stripJudgePrestigeFields(readTeamInitialProposalSummary(input.teamA)), sanitizeReplacements),
+      coachContext: sanitizeJudgeRecord(stripJudgePrestigeFields(readTeamHeadCoachProfile(input.teamA)), sanitizeReplacements),
       teamPlan: promptTeamPlans?.[promptTeamA.id]
     }),
     buildJudgeEvaluationEntry({
       teamId: promptTeamB.id,
       teamName: promptTeamB.displayName,
       activeAgents: promptActiveB,
-      initialProposalSummary: sanitizeJudgeRecord(readTeamInitialProposalSummary(input.teamB), sanitizeReplacements),
-      coachContext: sanitizeJudgeRecord(readTeamHeadCoachProfile(input.teamB), sanitizeReplacements),
+      initialProposalSummary: sanitizeJudgeRecord(stripJudgePrestigeFields(readTeamInitialProposalSummary(input.teamB)), sanitizeReplacements),
+      coachContext: sanitizeJudgeRecord(stripJudgePrestigeFields(readTeamHeadCoachProfile(input.teamB)), sanitizeReplacements),
       teamPlan: promptTeamPlans?.[promptTeamB.id]
     })
   ];
@@ -8260,6 +8911,7 @@ function buildJudgePromptContext(input: {
         "公开历史摘要只用于说明比分、胜法和经济阶段，不得把连胜、连败或旧回合叙事直接当作当前回合的强弱证明。",
       defenderThesisContext,
       ...(input.rubricProfile ? { rubricProfile: input.rubricProfile } : {}),
+      ...(input.tacticalCollision ? { tacticalCollision: sanitizeJudgeValue(input.tacticalCollision, sanitizeReplacements) as TacticalCollision } : {}),
       evaluationOrder,
       teamAId: promptTeamA.id,
       teamBId: promptTeamB.id,
@@ -8267,15 +8919,21 @@ function buildJudgePromptContext(input: {
       teamBName: promptTeamB.displayName,
       activeTeamAAgentIds: promptActiveA.map((agent) => agent.id),
       activeTeamBAgentIds: promptActiveB.map((agent) => agent.id),
-      agentOutputsByTeam: promptAgentOutputsByTeam,
       judgeEvidenceDigest,
       recentPublicRoundSummaries: input.recentPublicRoundSummaries.map((summary) => sanitizeJudgeText(summary, sanitizeReplacements))
     },
     ...(input.teamPlans ? { actualTeamPlans: input.teamPlans } : {}),
     actualAgentOutputs: input.agentOutputs,
     validateAndTranslate: (judgeResult: JudgeResult) => {
-      const promptValidated = validateJudgeResult({
+      const promptMvpMaterializedJudgeResult = materializeJudgePromptMvpAgentId({
         judgeResult,
+        teamA: promptTeamA,
+        teamB: promptTeamB,
+        activeA: promptActiveA,
+        activeB: promptActiveB
+      });
+      const promptValidated = validateJudgeResult({
+        judgeResult: promptMvpMaterializedJudgeResult,
         teamA: promptTeamA,
         teamB: promptTeamB,
         activeA: promptActiveA,
@@ -8308,6 +8966,41 @@ function buildJudgePromptContext(input: {
       };
     },
     translatePromptText: (value: string) => desanitizeJudgeText(value, desanitizeReplacements)
+  };
+}
+
+function materializeJudgePromptMvpAgentId(input: {
+  judgeResult: JudgeResult;
+  teamA: Team;
+  teamB: Team;
+  activeA: Agent[];
+  activeB: Agent[];
+}): JudgeResult {
+  const winnerAgents =
+    input.judgeResult.winnerTeamId === input.teamA.id
+      ? input.activeA
+      : input.judgeResult.winnerTeamId === input.teamB.id
+        ? input.activeB
+        : [];
+  if (winnerAgents.some((agent) => agent.id === input.judgeResult.mvpAgentId)) {
+    return input.judgeResult;
+  }
+  const fallbackMvpAgentId = winnerAgents[0]?.id;
+  if (!fallbackMvpAgentId) {
+    return input.judgeResult;
+  }
+  const note = `LLM candidate mvpAgentId ${input.judgeResult.mvpAgentId}; code materialized MVP ${fallbackMvpAgentId} from final winner roster.`;
+  return {
+    ...input.judgeResult,
+    mvpAgentId: fallbackMvpAgentId,
+    ...(input.judgeResult.judgeScorecard
+      ? {
+          judgeScorecard: {
+            ...input.judgeResult.judgeScorecard,
+            normalizedFieldNotes: [...(input.judgeResult.judgeScorecard.normalizedFieldNotes ?? []), note]
+          }
+        }
+      : {})
   };
 }
 
@@ -8443,6 +9136,249 @@ function readTeamMaterialInitialProposal(team: Team): TeamInitialProposal | unde
 function readTeamHeadCoachProfile(team: Team): Record<string, unknown> | undefined {
   const source = readUnknownRecord(team.source);
   return readUnknownRecord(source?.headCoachProfile);
+}
+
+function buildCompactTeamPlanRequestInput(input: {
+  context: Pick<EngineContext, "phase18MapSemanticsByMapName">;
+  round: Round;
+  mapGame: MapGame;
+  team: Team;
+  opponent: Team;
+  activeAgents: Agent[];
+  side: "attack" | "defense";
+  sideAssignment: SideAssignment;
+  scoreBeforeRound: ScorePair;
+  buyType: BuyType;
+  teamEconomyPlan?: TeamEconomyPlan | undefined;
+  beforeEconomy: EconomyState[];
+  tacticalHint?: RuleBasedTacticalPlans["attackPlan"] | RuleBasedTacticalPlans["defenseDeployment"] | undefined;
+  recentPublicRoundSummaries: string[];
+  competitiveParityNote: string;
+  teamMemoryOverlay?: unknown;
+  coachCorrection?: CoachTimeoutCorrection | undefined;
+}): Record<string, unknown> {
+  const mapSemanticContext = compactMapSemanticContext(readPhase18MapSemanticContext(input.context, input.mapGame.mapName));
+  const judgeRubricContext = compactJudgeRubricContext(readPhase18JudgeRubricContext(input.context, input.mapGame.mapName));
+  const initialProposal = compactTeamInitialProposal(readTeamMaterialInitialProposal(input.team));
+  const coachContext = compactCoachContext(readTeamHeadCoachProfile(input.team));
+  const economyPlan = input.teamEconomyPlan;
+
+  return removeUndefined({
+    objective: "Create one coherent team plan for this round. Every player action will be generated from this plan.",
+    roundId: input.round.id,
+    roundNumber: input.round.roundNumber,
+    mapName: input.mapGame.mapName,
+    mapSemanticContext,
+    judgeRubricContext,
+    teamId: input.team.id,
+    teamName: input.team.displayName,
+    initialProposal,
+    coachContext,
+    teamMemoryOverlay: compactTeamMemoryOverlay(input.teamMemoryOverlay),
+    opponentTeamId: input.opponent.id,
+    opponentTeamName: input.opponent.displayName,
+    side: input.side,
+    sideAssignment: input.sideAssignment,
+    scoreBeforeRound: input.scoreBeforeRound,
+    buyType: input.buyType,
+    economyPosture: economyPlan?.posture ?? "eco",
+    roundEconomyPhase: economyPlan?.phase ?? resolveRoundEconomyPhase(input.round.roundNumber),
+    economyPostureReason: truncatePromptText(economyPlan?.postureReason ?? "默认经济态势。", 120),
+    teamLossCount: economyPlan?.lossCount ?? 1,
+    teamEconomy: sumEconomyByTeam(input.beforeEconomy, input.team.id),
+    allowedAgentIds: input.activeAgents.map((agent) => agent.id),
+    activeAgents: input.activeAgents.map((agent) => {
+      const decision = economyPlan?.decisions.find((entry) => entry.agentId === agent.id);
+      return removeUndefined({
+        id: agent.id,
+        displayName: agent.displayName,
+        role: agent.role,
+        secondaryRoles: (agent.secondaryRoles ?? []).slice(0, 2),
+        roleResponsibilities: (agent.roleProfile?.agentMajorResponsibilities ?? []).slice(0, 3).map((entry) => truncatePromptText(entry, 90)),
+        profileSummary: compactAgentProfile(agent),
+        tokenBank: input.beforeEconomy.find((state) => state.agentId === agent.id)?.tokenBank ?? 0,
+        currentBuyType: decision?.buyType ?? "eco",
+        currentPosture: decision?.economyPosture ?? "eco",
+        loadoutPackage: decision?.loadoutPackage ?? "pistol_eco_pack"
+      });
+    }),
+    dropPlan: (economyPlan?.dropDecisions ?? []).slice(0, 3).map((decision) => ({
+      fromAgentId: decision.fromAgentId,
+      toAgentId: decision.toAgentId,
+      amount: decision.amount,
+      reason: truncatePromptText(decision.reason, 80)
+    })),
+    competitiveParityNote: truncatePromptText(input.competitiveParityNote, 180),
+    tacticalHint: compactTacticalHint(input.tacticalHint),
+    recentPublicRoundSummaries: input.recentPublicRoundSummaries.slice(-2).map((summary) => truncatePromptText(summary, 160)),
+    finalOutputRules: [
+      "playerDirectives[].agentId must be copied exactly from allowedAgentIds.",
+      "Do not output player1/player2/agent1/role names/display names as agentId.",
+      "Keep each directive to one concise Chinese sentence."
+    ],
+    ...(input.coachCorrection ? { coachCorrection: compactCoachCorrection(input.coachCorrection) } : {})
+  });
+}
+
+function compactMapSemanticContext(context: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+  if (!context) {
+    return undefined;
+  }
+  const proposition = readUnknownRecord(context.proposition);
+  const displayZoneNames = readUnknownRecord(proposition?.displayZoneNames);
+  return removeUndefined({
+    proposition: removeUndefined({
+      mapTheme: pickString(proposition, "mapTheme"),
+      coreQuestion: truncatePromptText(pickString(proposition, "coreQuestion"), 180),
+      attackFocus: pickStringArray(proposition, "attackFocus").slice(0, 4),
+      defenseFocus: pickStringArray(proposition, "defenseFocus").slice(0, 4),
+      regulationRoundThemes: compactRoundThemes(proposition?.regulationRoundThemes),
+      overtimeRoundThemes: compactRoundThemes(proposition?.overtimeRoundThemes),
+      displayZoneNames: displayZoneNames
+        ? Object.fromEntries(Object.entries(displayZoneNames).filter(([, value]) => typeof value === "string").slice(0, 8))
+        : undefined
+    })
+  });
+}
+
+function compactJudgeRubricContext(context: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+  if (!context) {
+    return undefined;
+  }
+  return removeUndefined({
+    coreJudgmentAxis: pickString(context, "coreJudgmentAxis"),
+    reasonMustCover: pickStringArray(context, "reasonMustCover").slice(0, 4),
+    biasGuardrails: pickStringArray(context, "biasGuardrails").slice(0, 4)
+  });
+}
+
+function compactTeamInitialProposal(proposal: TeamInitialProposal | undefined): Record<string, unknown> | undefined {
+  if (!proposal) {
+    return undefined;
+  }
+  return removeUndefined({
+    proposalId: proposal.proposalId,
+    version: proposal.version,
+    teamThesis: truncatePromptText(proposal.teamThesis, 240),
+    opportunity: truncatePromptText(proposal.opportunity, 160),
+    product: truncatePromptText(proposal.product, 140),
+    engineering: truncatePromptText(proposal.engineering, 140),
+    business: truncatePromptText(proposal.business, 140),
+    operations: truncatePromptText(proposal.operations, 120),
+    scaling: truncatePromptText(proposal.scaling, 120),
+    moat: truncatePromptText(proposal.moat, 120),
+    mustHoldClaims: proposal.mustHoldClaims.slice(0, 3).map((entry) => truncatePromptText(entry, 120)),
+    failureModes: proposal.failureModes.slice(0, 3).map((entry) => truncatePromptText(entry, 120)),
+    playerOperatingPrinciples: proposal.playerOperatingPrinciples.slice(0, 5).map((entry) => truncatePromptText(entry, 100)),
+    frontendSummary: truncatePromptText(proposal.frontendSummary, 180)
+  });
+}
+
+function compactCoachContext(context: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+  if (!context) {
+    return undefined;
+  }
+  return removeUndefined({
+    displayName: pickString(context, "displayName"),
+    dutySummary: truncatePromptText(pickString(context, "dutySummary"), 140),
+    style: truncatePromptText(pickString(context, "style") ?? pickString(context, "coachingStyle"), 100)
+  });
+}
+
+function compactTeamMemoryOverlay(value: unknown): Record<string, unknown> | undefined {
+  const record = readUnknownRecord(value);
+  if (!record) {
+    return undefined;
+  }
+  return removeUndefined({
+    proposedStrategyPatch: truncatePromptText(pickString(record, "proposedStrategyPatch"), 180),
+    timeoutQualityReview: truncatePromptText(pickString(record, "timeoutQualityReview"), 140),
+    keptBeliefs: pickStringArray(record, "keptBeliefs").slice(0, 2).map((entry) => truncatePromptText(entry, 90)),
+    brokenBeliefs: pickStringArray(record, "brokenBeliefs").slice(0, 2).map((entry) => truncatePromptText(entry, 90))
+  });
+}
+
+function compactCoachCorrection(correction: CoachTimeoutCorrection): Record<string, unknown> {
+  return removeUndefined({
+    teamId: correction.teamId,
+    triggerRoundNumber: correction.triggerRoundNumber,
+    nextRoundObjective: truncatePromptText(correction.nextRoundObjective, 140),
+    ownCoreToHold: truncatePromptText(correction.ownCoreToHold, 120),
+    opponentGapToHit: truncatePromptText(correction.opponentGapToHit, 120),
+    zonePriorityShift: truncatePromptText(correction.zonePriorityShift, 120),
+    teamDirective: truncatePromptText(correction.teamDirective, 140),
+    playerAdjustments: correction.playerAdjustments.map((entry) => ({
+      agentId: entry.agentId,
+      adjustment: truncatePromptText(entry.adjustment, 90)
+    }))
+  });
+}
+
+function compactTacticalHint(value: unknown): Record<string, unknown> | undefined {
+  const record = readUnknownRecord(value);
+  if (!record) {
+    return undefined;
+  }
+  return removeUndefined({
+    teamId: pickString(record, "teamId"),
+    primaryTargetZoneId: pickString(record, "primaryTargetZoneId"),
+    secondaryTargetZoneId: pickString(record, "secondaryTargetZoneId"),
+    feintZoneId: pickString(record, "feintZoneId"),
+    approach: pickString(record, "approach"),
+    setup: pickString(record, "setup"),
+    heavyZoneId: pickString(record, "heavyZoneId"),
+    weakZoneIds: pickStringArray(record, "weakZoneIds").slice(0, 3),
+    rotatePolicy: pickString(record, "rotatePolicy"),
+    intentSummary: truncatePromptText(pickString(record, "intentSummary"), 160),
+    deploymentSummary: truncatePromptText(pickString(record, "deploymentSummary"), 160)
+  });
+}
+
+function compactAgentProfile(agent: Agent): string | undefined {
+  const baseProfile = readUnknownRecord(agent.baseProfile);
+  const parts = [
+    pickString(baseProfile, "summary"),
+    pickString(baseProfile, "style"),
+    pickString(baseProfile, "strength"),
+    pickString(baseProfile, "signature")
+  ].filter((entry): entry is string => Boolean(entry));
+  return parts.length > 0 ? truncatePromptText(parts.join("；"), 140) : undefined;
+}
+
+function compactRoundThemes(value: unknown): Array<Record<string, unknown>> | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const themes = value
+    .map((entry) => readUnknownRecord(entry))
+    .filter((entry): entry is Record<string, unknown> => Boolean(entry))
+    .slice(0, 6)
+    .map((entry) =>
+      removeUndefined({
+        round: pickString(entry, "round"),
+        theme: truncatePromptText(pickString(entry, "theme"), 100)
+      })
+    );
+  return themes.length > 0 ? themes : undefined;
+}
+
+function stripJudgePrestigeFields(value: unknown): Record<string, unknown> | undefined {
+  const record = readUnknownRecord(value);
+  if (!record) {
+    return undefined;
+  }
+  const blockedFields = new Set(["frontendSummary", "personaSummary", "seedLabel", "powerRanking", "starPower"]);
+  return Object.fromEntries(
+    Object.entries(record).filter(([key, item]) => {
+      if (blockedFields.has(key)) {
+        return false;
+      }
+      if (typeof item === "string" && /(头号种子|明星阵容|豪门|超级明星|顶级强队|夺冠热门)/.test(item)) {
+        return false;
+      }
+      return true;
+    })
+  );
 }
 
 function readTeamInitialProposalSummary(team: Team): TeamInitialProposalSummary | undefined {
@@ -8810,6 +9746,7 @@ function normalizeAgentActionDecision(decision: AgentActionDecision): AgentActio
 function normalizeTeamRoundPlanPayload(
   data: unknown,
   options?: {
+    activeAgents?: Array<{ id: string; displayName?: string; role?: string }>;
     defaultPosture?: EconomyPosture;
     economySummary?: string;
     buyIntentByAgent?: Array<{
@@ -8851,6 +9788,7 @@ function normalizeTeamRoundPlanPayload(
       });
     }
   }
+  playerDirectives = normalizeTeamPlanDirectiveAgentIds(playerDirectives, options?.activeAgents);
 
   let economyIntent: unknown = record.economyIntent;
   const economyIntentRecord = readUnknownRecord(record.economyIntent);
@@ -8903,6 +9841,58 @@ function normalizeTeamRoundPlanPayload(
     ...(typeof record.risk === "string" ? { risk: normalizeChineseFirstTacticalText(record.risk) } : {}),
     economyIntent
   };
+}
+
+function normalizeTeamPlanDirectiveAgentIds(
+  playerDirectives: unknown,
+  activeAgents: Array<{ id: string; displayName?: string; role?: string }> | undefined
+): unknown {
+  if (!Array.isArray(playerDirectives) || !activeAgents || activeAgents.length === 0) {
+    return playerDirectives;
+  }
+
+  const directiveRecords = playerDirectives.map((entry) => readUnknownRecord(entry));
+  if (directiveRecords.some((entry) => !entry || typeof entry.agentId !== "string")) {
+    return playerDirectives;
+  }
+
+  const activeAgentIds = new Set(activeAgents.map((agent) => agent.id));
+  const allAlreadyValid = directiveRecords.every((entry) => activeAgentIds.has(String(entry?.agentId)));
+  if (allAlreadyValid) {
+    return playerDirectives;
+  }
+
+  const directiveAgentIds = directiveRecords.map((entry) => String(entry?.agentId ?? ""));
+  const canMapByPosition =
+    directiveRecords.length === activeAgents.length &&
+    directiveAgentIds.every(isOrderedAgentPlaceholder) &&
+    orderedPlaceholdersAreUniqueAndContiguous(directiveAgentIds);
+  if (!canMapByPosition) {
+    return playerDirectives;
+  }
+
+  return directiveRecords.map((entry, index) => ({
+    ...entry,
+    agentId: activeAgents[index]?.id
+  }));
+}
+
+function isOrderedAgentPlaceholder(value: string): boolean {
+  return /^(?:player|agent)[_-]?[1-9]\d*$/i.test(value.trim());
+}
+
+function orderedPlaceholdersAreUniqueAndContiguous(values: string[]): boolean {
+  const indexes = values
+    .map((value) => /(\d+)$/.exec(value.trim())?.[1])
+    .map((value) => (value ? Number.parseInt(value, 10) : Number.NaN));
+  if (indexes.some((value) => !Number.isFinite(value))) {
+    return false;
+  }
+  const unique = new Set(indexes);
+  if (unique.size !== indexes.length) {
+    return false;
+  }
+  return indexes.every((value) => value >= 1 && value <= indexes.length);
 }
 
 function normalizeCoachTimeoutCorrectionPayload(data: unknown): unknown {
@@ -9364,6 +10354,14 @@ function pickString(record: Record<string, unknown> | undefined, key: string): s
   return record && typeof record[key] === "string" ? (record[key] as string) : undefined;
 }
 
+function truncatePromptText(value: string | undefined, maxLength: number): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  return trimmed.length > maxLength ? `${trimmed.slice(0, maxLength)}...` : trimmed;
+}
+
 function pickStringArray(record: Record<string, unknown> | undefined, key: string): string[] {
   if (!record || !Array.isArray(record[key])) {
     return [];
@@ -9384,11 +10382,192 @@ function buildJudgeEvaluationEntry(input: {
     teamId: input.teamId,
     teamName: input.teamName,
     activeAgents: input.activeAgents.map((agent) => ({ id: agent.id, role: agent.role })),
-    teamPlan: input.teamPlan,
-    initialProposalSummary: input.initialProposalSummary,
-    coachContext: input.coachContext
+    teamPlan: compactJudgeTeamPlan(input.teamPlan),
+    initialProposalSummary: compactJudgeInitialProposalSummary(input.initialProposalSummary),
+    coachContext: compactCoachContext(input.coachContext)
   });
   return entry as Phase18JudgePromptContext["requestInput"]["evaluationOrder"][number];
+}
+
+function compactJudgeEvaluationOrder(
+  entries: Phase18JudgePromptContext["requestInput"]["evaluationOrder"]
+): Phase18JudgePromptContext["requestInput"]["evaluationOrder"] {
+  return entries.map((entry) => {
+    const teamPlan = readUnknownRecord(entry.teamPlan);
+    const initialProposalSummary = readUnknownRecord(entry.initialProposalSummary);
+    const coachContext = readUnknownRecord(entry.coachContext);
+    return removeUndefined({
+      teamId: entry.teamId,
+      teamName: entry.teamName,
+      activeAgents: entry.activeAgents.map((agent) => ({ id: agent.id, role: agent.role })),
+      teamPlan: teamPlan ? compactJudgeTeamPlan(teamPlan as TeamRoundPlanDecision) : undefined,
+      initialProposalSummary: compactJudgeInitialProposalSummary(initialProposalSummary),
+      coachContext: compactCoachContext(coachContext)
+    }) as Phase18JudgePromptContext["requestInput"]["evaluationOrder"][number];
+  });
+}
+
+function compactJudgeNarrativeVerdict(verdict: JudgeVerdictDecision): Record<string, unknown> {
+  const scorecard = verdict.judgeScorecard;
+  const judgeInference = readUnknownRecord(verdict.judgeInference);
+  return removeUndefined({
+    winnerTeamId: verdict.winnerTeamId,
+    loserTeamId: verdict.loserTeamId,
+    roundWinType: verdict.roundWinType,
+    margin: verdict.margin,
+    attackWinConditionMet: verdict.attackWinConditionMet,
+    defenseWinConditionMet: verdict.defenseWinConditionMet,
+    mvpAgentId: verdict.mvpAgentId,
+    confidence: verdict.confidence,
+    reason: truncatePromptText(normalizeCoachTimeoutText(verdict.reason), 360),
+    judgeInference: judgeInference
+      ? removeUndefined({
+          source: pickString(judgeInference, "source"),
+          boundary: truncatePromptText(pickString(judgeInference, "boundary"), 180),
+          csResolution: truncatePromptText(pickString(judgeInference, "csResolution"), 160),
+          combatNarrative: truncatePromptText(pickString(judgeInference, "combatNarrative"), 220),
+          evidenceBasis: pickStringArray(judgeInference, "evidenceBasis").slice(0, 4).map((entry) => truncatePromptText(entry, 90))
+        })
+      : undefined,
+    diagnostic: removeUndefined({
+      currentSubTheme: verdict.diagnostic.currentSubTheme,
+      attackedOpportunityGap: truncatePromptText(verdict.diagnostic.attackedOpportunityGap, 180),
+      defendedCoreProposition: truncatePromptText(verdict.diagnostic.defendedCoreProposition, 180),
+      mainAttackZoneId: verdict.diagnostic.mainAttackZoneId,
+      mainDefenseZoneId: verdict.diagnostic.mainDefenseZoneId,
+      zoneRelation: verdict.diagnostic.zoneRelation
+        ? {
+            attackZoneId: verdict.diagnostic.zoneRelation.attackZoneId,
+            defenseZoneId: verdict.diagnostic.zoneRelation.defenseZoneId,
+            relationType: verdict.diagnostic.zoneRelation.relationType,
+            relationSummary: truncatePromptText(verdict.diagnostic.zoneRelation.relationSummary, 160),
+            outcomeImpact: truncatePromptText(verdict.diagnostic.zoneRelation.outcomeImpact, 160)
+          }
+        : undefined,
+      decisiveEvidence: truncatePromptText(verdict.diagnostic.decisiveEvidence, 220)
+    }),
+    scorecardSummary: scorecard
+      ? removeUndefined({
+          scorecardSource: scorecard.scorecardSource,
+          winnerFromScore: scorecard.winnerFromScore,
+          marginFromScore: scorecard.marginFromScore,
+          scoreDelta: scorecard.scoreDelta,
+          decisiveDimensions: scorecard.decisiveDimensions,
+          teamTotals: Object.fromEntries(
+            Object.entries(scorecard.teamScores).map(([teamId, teamScore]) => [
+              teamId,
+              {
+                side: teamScore.side,
+                totalScore: teamScore.totalScore
+              }
+            ])
+          )
+        })
+      : undefined
+  });
+}
+
+function compactJudgeNarrativeOriginalInput(value: unknown): Record<string, unknown> | undefined {
+  const record = readUnknownRecord(value);
+  if (!record) {
+    return undefined;
+  }
+  return removeUndefined({
+    roundId: record.roundId,
+    roundNumber: record.roundNumber,
+    mapName: truncatePromptText(pickString(record, "mapName"), 80),
+    scoreBeforeRound: record.scoreBeforeRound,
+    sideAssignment: record.sideAssignment,
+    teamAId: pickString(record, "teamAId"),
+    teamBId: pickString(record, "teamBId"),
+    teamAName: pickString(record, "teamAName"),
+    teamBName: pickString(record, "teamBName"),
+    activeTeamAAgentIds: Array.isArray(record.activeTeamAAgentIds) ? record.activeTeamAAgentIds : undefined,
+    activeTeamBAgentIds: Array.isArray(record.activeTeamBAgentIds) ? record.activeTeamBAgentIds : undefined,
+    mapSemanticContext: compactMapSemanticContext(readUnknownRecord(record.mapSemanticContext)),
+    scoreTensionGuardrail: truncatePromptText(pickString(record, "scoreTensionGuardrail"), 220),
+    tacticalCollision: compactTacticalCollisionForPrompt(record.tacticalCollision),
+    judgeEvidenceDigest: compactJudgeNarrativeEvidenceDigest(record.judgeEvidenceDigest),
+    recentPublicRoundSummaries: Array.isArray(record.recentPublicRoundSummaries)
+      ? record.recentPublicRoundSummaries.slice(-2).map((summary) => truncatePromptText(String(summary), 120))
+      : undefined
+  });
+}
+
+function compactJudgeNarrativeEvidenceDigest(value: unknown): Record<string, unknown> | undefined {
+  const digest = readUnknownRecord(value);
+  if (!digest) {
+    return undefined;
+  }
+  return Object.fromEntries(
+    Object.entries(digest).map(([teamId, teamValue]) => {
+      const teamDigest = readUnknownRecord(teamValue);
+      const items = Array.isArray(teamDigest?.items)
+        ? teamDigest.items.slice(0, 3).map((item) => {
+            const itemRecord = readUnknownRecord(item);
+            return removeUndefined({
+              agentId: pickString(itemRecord, "agentId"),
+              role: pickString(itemRecord, "role"),
+              evidence: pickStringArray(itemRecord, "evidence").slice(0, 2).map((entry) => truncatePromptText(entry, 70))
+            });
+          })
+        : [];
+      return [
+        teamId,
+        removeUndefined({
+          side: pickString(teamDigest, "side"),
+          itemCount: items.length,
+          items
+        })
+      ];
+    })
+  );
+}
+
+function compactTacticalCollisionForPrompt(value: unknown): Record<string, unknown> | undefined {
+  const record = readUnknownRecord(value);
+  if (!record) {
+    return undefined;
+  }
+  return removeUndefined({
+    primaryZoneId: pickString(record, "primaryZoneId"),
+    result: pickString(record, "result"),
+    attackScore: typeof record.attackScore === "number" ? record.attackScore : undefined,
+    defenseScore: typeof record.defenseScore === "number" ? record.defenseScore : undefined,
+    summary: truncatePromptText(pickString(record, "summary"), 160)
+  });
+}
+
+function compactJudgeTeamPlan(plan: TeamRoundPlanDecision | undefined): Record<string, unknown> | undefined {
+  if (!plan) {
+    return undefined;
+  }
+  return removeUndefined({
+    teamId: plan.teamId,
+    side: plan.side,
+    primaryIntent: truncatePromptText(plan.primaryIntent, 90),
+    primaryZoneId: plan.primaryZoneId,
+    secondaryZoneId: plan.secondaryZoneId,
+    coordinationSummary: truncatePromptText(plan.coordinationSummary, 90),
+    playerDirectives: plan.playerDirectives.map((directive) => ({
+      agentId: directive.agentId,
+      directive: truncatePromptText(directive.directive, 70)
+    })),
+    winCondition: truncatePromptText(plan.winCondition, 90),
+    risk: truncatePromptText(plan.risk, 80),
+    confidence: plan.confidence
+  });
+}
+
+function compactJudgeInitialProposalSummary(summary: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+  if (!summary) {
+    return undefined;
+  }
+  return removeUndefined({
+    teamThesis: truncatePromptText(pickString(summary, "teamThesis"), 160),
+    mustHoldClaims: pickStringArray(summary, "mustHoldClaims").slice(0, 2).map((entry) => truncatePromptText(entry, 80)),
+    failureModes: pickStringArray(summary, "failureModes").slice(0, 2).map((entry) => truncatePromptText(entry, 80))
+  });
 }
 
 function buildPromptTeam(actualTeam: Team, promptId: string, displayName: string, shortName: string): Team {
@@ -9609,7 +10788,7 @@ function buildJudgeEvidenceDigest(input: {
     outputsByTeam.set(promptTeamId, [...(outputsByTeam.get(promptTeamId) ?? []), output as AgentOutput & Partial<SubmittedAgentOutput>]);
   }
   const maxItems = Math.max(0, ...[...outputsByTeam.values()].map((outputs) => outputs.length));
-  const maxEvidencePerItem = 3;
+  const maxEvidencePerItem = 2;
   return Object.fromEntries(
     [...outputsByTeam.entries()]
       .sort(([left], [right]) => left.localeCompare(right))
@@ -9666,9 +10845,9 @@ function summarizeSubmittedOutputEvidence(
     .map((value) => normalizeCoachTimeoutText(value))
     .filter((value): value is string => Boolean(value))
     .map((value) => sanitizeJudgeText(value, replacements))
-    .map((value) => (value.length > 120 ? `${value.slice(0, 117)}...` : value))
+    .map((value) => (value.length > 80 ? `${value.slice(0, 77)}...` : value))
     .filter((value, index, values) => values.indexOf(value) === index)
-    .slice(0, 3);
+    .slice(0, 2);
 }
 
 function sanitizeJudgeText(value: string, replacements: Array<{ source: string; target: string }>): string {
@@ -10121,6 +11300,7 @@ function readLlmErrorDiagnostic(error: unknown): {
   rawText?: string;
   usage?: LlmResponse["usage"];
   parseCandidate?: string;
+  providerDiagnostics?: LlmResponse["providerDiagnostics"];
 } {
   if (!isRecord(error)) {
     return {};
@@ -10140,11 +11320,21 @@ function readLlmErrorDiagnostic(error: unknown): {
           }
         }
       : {}),
-    ...(typeof error.parseCandidate === "string" ? { parseCandidate: error.parseCandidate } : {})
+    ...(typeof error.parseCandidate === "string" ? { parseCandidate: error.parseCandidate } : {}),
+    ...(isRecord(error.providerDiagnostics) ? { providerDiagnostics: error.providerDiagnostics as LlmResponse["providerDiagnostics"] } : {})
   };
 }
 
 function classifyLlmErrorKind(errorMessage: string): string {
+  if (errorMessage.includes("repair_invalid_agent_id")) {
+    return "repair_invalid_agent_id";
+  }
+  if (errorMessage.includes("reasoning_exhausted_empty_content")) {
+    return "reasoning_exhausted_empty_content";
+  }
+  if (errorMessage.includes("provider_empty_content")) {
+    return "provider_empty_content";
+  }
   if (errorMessage.includes("json_truncated")) {
     return "json_truncated";
   }

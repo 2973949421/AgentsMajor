@@ -41,15 +41,26 @@ export interface LlmUsage {
   totalTokens: number;
 }
 
+export interface LlmProviderDiagnostics {
+  finishReason?: string;
+  contentLength?: number;
+  reasoningContentLength?: number;
+  reasoningContentPreview?: string;
+  emptyContentWithReasoning?: boolean;
+  providerResponseShape?: string;
+}
+
 export interface LlmResponse<TData = unknown> {
   data: TData;
   usage: LlmUsage;
   rawText?: string;
+  providerDiagnostics?: LlmProviderDiagnostics;
   artifactIds?: string[];
   structuredRepair?: {
     originalRawText: string;
     repairRawText: string;
     repairUsage: LlmUsage;
+    repairProviderDiagnostics?: LlmProviderDiagnostics;
     parseError: string;
   };
 }

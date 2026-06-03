@@ -88,7 +88,7 @@ export async function POST(request: Request, context: RouteContext) {
       validation.mode === "phase17_showcase_match" && matchId === phase17CanonIds.matchId
         ? startPhase17ShowcaseWebRun(matchId)
         : validation.mode === "phase18_next_round" && (matchId === phase18CanonIds.fixtureId || matchId === phase18CanonIds.matchId)
-          ? await startPhase18NextRoundWebRun(matchId, requestedRunId)
+          ? await startPhase18NextRoundWebRun(matchId, requestedRunId, validation.retryMode)
           : validation.mode === "phase18_current_map" && (matchId === phase18CanonIds.fixtureId || matchId === phase18CanonIds.matchId)
             ? await startPhase18CurrentMapWebRun(matchId, requestedRunId)
             : validation.mode === "phase18_keep_generating_map" && (matchId === phase18CanonIds.fixtureId || matchId === phase18CanonIds.matchId)
