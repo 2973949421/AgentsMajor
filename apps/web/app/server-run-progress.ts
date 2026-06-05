@@ -1153,7 +1153,7 @@ function readLlmCalls(repositories: ReturnType<typeof createSqliteRepositories>,
       `SELECT type, payload_json
        FROM events
        WHERE match_id = ?
-         AND type IN ('llm_call_started', 'llm_call_completed', 'llm_call_failed')
+         AND type IN ('llm_call_started', 'llm_call_completed', 'llm_call_failed', 'llm_call_stale_marked_failed')
        ORDER BY global_sequence ASC`
     )
     .all(runtimeMatchId) as Array<{ type?: unknown; payload_json?: unknown }>;

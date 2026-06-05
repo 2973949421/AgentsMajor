@@ -7,6 +7,8 @@ import {
   DashScopeOpenAiProvider,
   defaultDriverModels,
   FakeProvider,
+  buildScoreTensionDiagnostic,
+  inferWinnerSide,
   type AgentMajorLlmConfig,
   loadAgentMajorLlmConfig,
   type RoundRetryMode,
@@ -265,6 +267,15 @@ export async function runPhase18KeepGeneratingMapFromWeb(input: {
     let consecutiveSchemaFailures = 0;
 
     while (outerAttemptNumber < maxOuterAttempts) {
+      const currentRun = await repositories.simulationRuns.getById(input.runId);
+      if (currentRun && ["completed", "discarded", "failed"].includes(currentRun.status)) {
+        await markStartedLlmCallsForRunFailed(repositories, {
+          runId: input.runId,
+          completedAt: new Date().toISOString(),
+          error: `stale_started_call_after_process_interrupt: run ${input.runId} is ${currentRun.status}; active execution stopped before this stage completed.`
+        });
+        return await toWebRunResultFromMatch(repositories, seeded.matchId);
+      }
       const mapGame = await repositories.mapGames.getById(mapGameId);
       const match = await repositories.matches.getById(seeded.matchId);
       if (!mapGame || !match) {
@@ -684,6 +695,28 @@ async function deleteRoundArtifacts(repositories: SqliteRepositoryBundle, roundI
   repositories.sqlite.prepare("DELETE FROM rounds WHERE id = ? AND map_game_id = ?").run(roundId, mapGameId);
 }
 
+async function markStartedLlmCallsForRunFailed(
+  repositories: SqliteRepositoryBundle,
+  input: {
+    runId: string;
+    completedAt: string;
+    error: string;
+  }
+): Promise<number> {
+  const result = repositories.sqlite
+    .prepare(
+      `UPDATE llm_calls
+       SET status = 'failed',
+           error = ?,
+           completed_at = ?,
+           latency_ms = COALESCE(latency_ms, 0)
+       WHERE status = 'started'
+         AND id LIKE ?`
+    )
+    .run(input.error, input.completedAt, `%${input.runId}%`) as { changes?: number };
+  return typeof result.changes === "number" ? result.changes : 0;
+}
+
 async function restoreCoachStatesForMap(
   repositories: SqliteRepositoryBundle,
   mapGameId: string,
@@ -799,31 +832,33 @@ async function appendScoreTensionDiagnosticIfNeeded(
   repositories: SqliteRepositoryBundle,
   input: {
     match: { id: string; tournamentId: string };
-    mapGame: { id: string; teamAScore: number; teamBScore: number; status: string };
+    mapGame: { id: string; mapName?: string; teamAScore: number; teamBScore: number; status: string };
     runId: string;
     executionId: string;
     roundNumber: number;
   }
 ): Promise<void> {
   const reports = (await repositories.roundReports.listByMapGame(input.mapGame.id)).sort((left, right) => left.roundNumber - right.roundNumber);
-  const latestWinnerTeamId = reports.at(-1)?.winnerTeamId;
-  let winningStreak = 0;
-  for (let index = reports.length - 1; index >= 0; index -= 1) {
-    if (!latestWinnerTeamId || reports[index]?.winnerTeamId !== latestWinnerTeamId) {
-      break;
-    }
-    winningStreak += 1;
-  }
-  const scoreDiff = Math.abs(input.mapGame.teamAScore - input.mapGame.teamBScore);
-  const level =
-    input.mapGame.status === "completed" && scoreDiff >= 5
-      ? "map_final_gap"
-      : winningStreak >= 4 || scoreDiff >= 4
-        ? "strong"
-        : winningStreak >= 3
-          ? "warning"
-          : null;
-  if (!level) {
+  const diagnostic = buildScoreTensionDiagnostic({
+    mapName: input.mapGame.mapName,
+    score: {
+      teamA: input.mapGame.teamAScore,
+      teamB: input.mapGame.teamBScore
+    },
+    scoreHistory: reports.map((report) => report.scoreAfterRound),
+    outcomes: reports.map((report) => ({
+      winnerTeamId: report.winnerTeamId,
+      winnerSide: inferWinnerSide({
+        winnerTeamId: report.winnerTeamId,
+        attackingTeamId: report.tacticalContext?.sideAssignment.attackingTeamId,
+        defendingTeamId: report.tacticalContext?.sideAssignment.defendingTeamId,
+        roundWinType: report.judgeResult.roundWinType,
+        tacticalResult: report.tacticalContext?.collision.result
+      })
+    })),
+    mapCompleted: input.mapGame.status === "completed"
+  });
+  if (!diagnostic) {
     return;
   }
 
@@ -844,14 +879,37 @@ async function appendScoreTensionDiagnosticIfNeeded(
       executionId: input.executionId,
       mapGameId: input.mapGame.id,
       roundNumber: input.roundNumber,
-      level,
-      latestWinnerTeamId,
-      winningStreak,
+      level: diagnostic.level,
+      teamStreakLevel: diagnostic.teamStreakLevel,
+      sideBiasLevel: diagnostic.sideBiasLevel,
+      latestWinnerTeamId: diagnostic.latestWinnerTeamId,
+      winningStreak: diagnostic.winningStreak,
+      latestWinnerSide: diagnostic.latestWinnerSide,
+      sideWinningStreak: diagnostic.sideWinningStreak,
+      attackWins: diagnostic.attackWins,
+      defenseWins: diagnostic.defenseWins,
+      attackWinRate: diagnostic.attackWinRate,
+      defenseWinRate: diagnostic.defenseWinRate,
+      dominantSide: diagnostic.dominantSide,
+      mapSideProfile: diagnostic.mapSideProfile,
+      sideBiasSuspected: diagnostic.sideBiasSuspected,
+      scorePatternSuspected: diagnostic.scorePatternSuspected,
+      reviewRequired: diagnostic.sideBiasSuspected || diagnostic.scorePatternSuspected,
+      reviewReason: diagnostic.scorePatternSuspected
+        ? "score_pattern_review_required"
+        : diagnostic.sideBiasSuspected
+          ? "side_bias_review_required"
+          : undefined,
+      patternType: diagnostic.patternType,
+      latestTieScore: diagnostic.latestTieScore,
+      overtimeCycleCount: diagnostic.overtimeCycleCount,
+      possibleSources: diagnostic.possibleSources,
       score: {
         teamA: input.mapGame.teamAScore,
         teamB: input.mapGame.teamBScore
       },
-      scoreDiff,
+      scoreDiff: diagnostic.scoreDiff,
+      instruction: diagnostic.instruction,
       note: "诊断事件只暴露一边倒风险，不直接改写胜负。"
     },
     globalSequence: globalSequence + 1,
@@ -865,6 +923,9 @@ async function appendScoreTensionDiagnosticIfNeeded(
 
 function classifyKeepGeneratingError(error: string): string {
   const lower = error.toLowerCase();
+  if (lower.includes("stale_started_call_after_process_interrupt")) {
+    return "stale_started_call_after_process_interrupt";
+  }
   if (lower.includes("map must be running") || lower.includes("current status: scheduled") || lower.includes("map_state_precondition")) {
     return "map_state_precondition";
   }

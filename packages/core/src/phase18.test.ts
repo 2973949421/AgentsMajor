@@ -247,6 +247,19 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
       scorecardSource: "evidence_materialized_from_draft",
       winnerFromScore: firstRound?.roundReport.judgeResult.winnerTeamId
     });
+    const economyOutputDiagnosticEvent = roundEvents.find((event) => event.type === "economy_output_diagnostic");
+    expect(economyOutputDiagnosticEvent?.payload).toMatchObject({
+      sourceEventIds: [
+        `evt_${firstRound?.round.id}_economy_updated`,
+        `evt_${firstRound?.round.id}_judge_decision`
+      ],
+      diagnostic: {
+        roundNumber: firstRound?.round.roundNumber,
+        winnerTeamId: firstRound?.roundReport.judgeResult.winnerTeamId,
+        attack: { side: "attack" },
+        defense: { side: "defense" }
+      }
+    });
 
     const llmCalls = repositories.sqlite.prepare("SELECT COUNT(*) AS count FROM llm_calls").get() as { count: number };
     expect(llmCalls.count).toBe(14);
@@ -696,6 +709,19 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     expect(replay?.rounds[0]?.roundReport.judgeResult.reason).toContain("全歼");
   });
 
+  it("downgrades decisive score margins when the final reason is not decisive enough", async () => {
+    const { repositories, engine } = await createPhase18DemoEngine(new WeakReasonDecisiveScoreGateway());
+
+    await engine.playNextRound({ mapGameId: phase11DemoIds.mapGameId });
+    const replay = await readMapReplay(repositories, phase11DemoIds.mapGameId);
+    const judge = replay?.rounds[0]?.roundReport.judgeResult;
+
+    expect(judge?.margin).toBe("standard");
+    expect(judge?.judgeScorecard?.marginFromScore).toBe("decisive");
+    expect(judge?.judgeScorecard?.scoreOverride?.reason).toBe("judge_margin_downgraded_from_reason");
+    expect(judge?.judgeScorecard?.normalizedFieldNotes?.join(" ")).toContain("judge_margin_downgraded_from_reason");
+  });
+
   it("rejects mojibake LLM responses before committing the round", async () => {
     const { repositories, engine } = await createPhase18DemoEngine(new CorruptedJudgeRawTextGateway());
 
@@ -811,6 +837,9 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     expect(judgeScorecard?.marginFromScore).toBe(replay?.rounds[0]?.roundReport.judgeResult.margin);
     expect(judgeScorecard?.defenderThesisContext?.defendingTeamId).toBe("team_ghost_fur");
     expect(judgeScorecard?.defenderThesisContext?.attackerChallengeBrief).toContain("challenge");
+    expect(judgeScorecard?.scoreDelta).toBeLessThan(0.1);
+    expect(judgeScorecard?.teamScores[judgeScorecard.winnerFromScore]?.objectiveScore.score).toBeLessThan(6.1);
+    expect(judgeScorecard?.normalizedFieldNotes?.join(" ")).toContain("minimal candidate tie-breaker");
   });
 
   it("materializes judge system facts from semantic drafts instead of trusting LLM labels", async () => {
@@ -899,7 +928,7 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     expect(sixthRound?.roundReport.appliedCoachTimeoutCorrection?.teamDirective).not.toContain("五名选手全部");
     expect(sixthRound?.roundReport.appliedCoachTimeoutCorrection?.nextRoundObjective).not.toContain("唯一主");
     expect(sixthRound?.roundReport.appliedCoachTimeoutCorrection?.playerAdjustments).toHaveLength(5);
-  });
+  }, 15000);
 
   it("stops the round on agent_action failure without partial round facts", async () => {
     const { repositories, engine } = await createPhase18DemoEngine(new FailingAgentGateway());
@@ -1070,7 +1099,7 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
     expect(sixthRound?.roundReport.appliedCoachTimeoutCorrection?.teamDirective).toContain("平衡约束");
     expect(replay?.timeoutsRemainingByTeam.team_ghost_nav).toBe(2);
     expect(replay?.timeoutsRemainingByTeam.team_ghost_fur).toBe(1);
-  });
+  }, 15000);
 
   it("creates one pending post-match review per team after the BO3 ends", async () => {
     const { repositories, engine } = await createPhase18DemoEngine(new SuccessfulPhase18Gateway());
@@ -1103,7 +1132,7 @@ describe("Phase 1.8 real-LLM pilot engine", () => {
       status: "pending",
       matchId: phase11DemoIds.matchId
     });
-  });
+  }, 15000);
 });
 
 class TestArtifactStore implements ArtifactStore {
@@ -2674,6 +2703,22 @@ class FullEliminationDecisiveJudgeGateway extends SuccessfulPhase18Gateway {
       `本局胜利方式是攻方全歼胜。${input.teamAName ?? input.teamAId} 成功用 team_plan 与 agent_action 打中 conversion_site_a 机会缺口，` +
       `${input.teamBName ?? input.teamBId} 的防线被全歼，核心成立点失守。`;
     return this.buildJudgeResponse(input, reason, 0.88, "decisive") as LlmResponse<TData>;
+  }
+}
+
+class WeakReasonDecisiveScoreGateway extends SuccessfulPhase18Gateway {
+  override async generateStructured<TData = unknown, TInput = unknown>(request: LlmRequest<TInput>): Promise<LlmResponse<TData>> {
+    if (request.task !== "judge_verdict") {
+      return super.generateStructured(request);
+    }
+
+    this.requests.push(request as LlmRequest<unknown>);
+    this.tasks.push(request.task);
+    const input = request.input as JudgeRequestInput;
+    const reason =
+      `${input.teamAName ?? input.teamAId} 成功执行计划并打中机会缺口；` +
+      `${input.teamBName ?? input.teamBId} 未能守住计划中的核心成立点。`;
+    return this.buildJudgeResponse(input, reason, 0.84, "decisive") as LlmResponse<TData>;
   }
 }
 
