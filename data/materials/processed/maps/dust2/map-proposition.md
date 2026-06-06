@@ -22,6 +22,15 @@ processed/maps/dust2/judge-rubric.md
 processed/maps/dust2/judge-rubric.json
 ```
 
+Dust2 的节点连接图资产见：
+
+```text
+processed/maps/dust2/node-graph.md
+processed/maps/dust2/node-graph.json
+```
+
+节点连接图用于固定 Dust2 重要位置、路线、T / CT 阶段可达性和时空硬约束，后续节点化回合引擎不得让 LLM 自行猜测地点和路线。
+
 ## 2. 地图总定义
 
 Dust2 在 Agent Major 中固定定义为：

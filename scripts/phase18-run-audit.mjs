@@ -78,6 +78,7 @@ try {
         ORDER BY type
       `).all(run.runtime_map_game_id)
     : [];
+  const effectiveRounds = rounds.filter((round) => isEffectiveRoundStatus(round.status));
   const classification = classifyRun({ run, hangingCalls, recentFailures, llmStatusRows });
   const recoveredSummary = buildRecoveredSummary({ run, recentFailures, llmStatusRows });
 
@@ -90,6 +91,7 @@ try {
     auditReason: classification.reason,
     latestCommittedRound: run.latest_committed_round_number,
     expectedTotalCalls: run.expected_total_calls,
+    effectiveRounds: effectiveRounds.length,
     latestError: run.latest_error ?? null,
     startedAt: run.started_at,
     completedAt: run.completed_at
@@ -110,7 +112,7 @@ try {
   }
 
   printSection("回合");
-  console.log(`committed/total: ${rounds.filter((round) => round.status === "committed").length}/${rounds.length}`);
+  console.log(`effective/total: ${effectiveRounds.length}/${rounds.length}`);
   const latestRounds = rounds.slice(-8).map((round) => ({
     round: round.round_number,
     status: round.status,
@@ -189,6 +191,12 @@ function classifyRun({ run, hangingCalls, recentFailures, llmStatusRows }) {
       reason: `存在 ${hangingCalls.length} 个 started 状态 LLM call，需要断点恢复或收尾。`
     };
   }
+  if (isProviderNetworkFailure(latestError)) {
+    return {
+      kind: "provider_network_failure",
+      reason: "最新错误是 provider 网络连接中断，可以重试或续跑，不应视为结构代码失败。"
+    };
+  }
   if (isExternalProviderBlocked(latestError)) {
     return {
       kind: "external_provider_blocked",
@@ -240,9 +248,17 @@ function buildRecoveredSummary({ run, recentFailures, llmStatusRows }) {
 }
 
 function isExternalProviderBlocked(error) {
-  return /EACCES|ECONNREFUSED|ENOTFOUND|fetch failed|network|connect /i.test(String(error ?? ""));
+  return /EACCES|ECONNREFUSED|ENOTFOUND/i.test(String(error ?? ""));
+}
+
+function isProviderNetworkFailure(error) {
+  return /ECONNRESET|UND_ERR_SOCKET|socket disconnected|secure TLS connection|fetch failed|network|connect /i.test(String(error ?? ""));
 }
 
 function isSchemaFailure(error) {
   return /schema|validation|zod|parse|invalid_enum|json_parse|json_truncated/i.test(String(error ?? ""));
+}
+
+function isEffectiveRoundStatus(status) {
+  return status === "completed" || status === "committed";
 }

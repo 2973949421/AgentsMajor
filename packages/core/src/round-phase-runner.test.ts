@@ -1,0 +1,169 @@
+import type { Agent, EconomyPosture, LoadoutPackage } from "@agent-major/shared";
+import { describe, expect, it } from "vitest";
+
+import { buildNodeEconomyResources } from "./economy-resource-adapter.js";
+import type { TeamEconomyPlan } from "./economy-rules.js";
+import { loadMapNodeGraph } from "./node-graph-service.js";
+import { runNodeRoundShadow } from "./round-phase-runner.js";
+
+describe("round phase runner shadow mode", () => {
+  it("generates five Dust2 phase snapshots without producing a formal winner", () => {
+    const graph = loadMapNodeGraph("dust2");
+    const economyResources = resourcesForRound();
+    const result = runNodeRoundShadow({
+      roundId: "round_shadow_1",
+      roundNumber: 1,
+      graph,
+      economyResources
+    });
+
+    expect(result.mode).toBe("shadow");
+    expect(result.phases.map((phase) => phase.phaseId)).toEqual([
+      "default_opening",
+      "first_contact",
+      "mid_round_decision",
+      "execute_or_retake",
+      "post_plant_or_clutch"
+    ]);
+    expect("winnerTeamId" in result).toBe(false);
+    expect(result.notes.join(" ")).toContain("不写正式 winner");
+  });
+
+  it("does not place attacking agents on A or B default plant nodes during default opening", () => {
+    const graph = loadMapNodeGraph("dust2");
+    const result = runNodeRoundShadow({
+      roundId: "round_shadow_1",
+      roundNumber: 1,
+      graph,
+      economyResources: resourcesForRound()
+    });
+    const opening = result.phases.find((phase) => phase.phaseId === "default_opening")!;
+    const aDefault = opening.nodeStates.find((state) => state.nodeId === "a_default")!;
+    const bDefault = opening.nodeStates.find((state) => state.nodeId === "b_default")!;
+
+    expect(aDefault.attackAgentIds).toHaveLength(0);
+    expect(bDefault.attackAgentIds).toHaveLength(0);
+  });
+
+  it("allows defending agents to initialize on A and B default defense nodes", () => {
+    const graph = loadMapNodeGraph("dust2");
+    const result = runNodeRoundShadow({
+      roundId: "round_shadow_1",
+      roundNumber: 1,
+      graph,
+      economyResources: resourcesForRound()
+    });
+    const opening = result.phases.find((phase) => phase.phaseId === "default_opening")!;
+    const aDefault = opening.nodeStates.find((state) => state.nodeId === "a_default")!;
+    const bDefault = opening.nodeStates.find((state) => state.nodeId === "b_default")!;
+
+    expect(aDefault.defenseAgentIds.length).toBeGreaterThan(0);
+    expect(bDefault.defenseAgentIds.length).toBeGreaterThan(0);
+  });
+
+  it("emits AP budgets for every resource agent in every phase", () => {
+    const graph = loadMapNodeGraph("dust2");
+    const result = runNodeRoundShadow({
+      roundId: "round_shadow_1",
+      roundNumber: 1,
+      graph,
+      economyResources: resourcesForRound()
+    });
+
+    for (const phase of result.phases) {
+      const budgets = phase.actionPointBudgets ?? [];
+      expect(budgets).toHaveLength(10);
+      expect(budgets.every((budget) => budget.baseAp === 3)).toBe(true);
+      expect(budgets.every((budget) => budget.remainingAp >= 0)).toBe(true);
+    }
+  });
+
+  it("attaches win condition checks to phase snapshots without writing a formal top-level winner", () => {
+    const graph = loadMapNodeGraph("dust2");
+    const result = runNodeRoundShadow({
+      roundId: "round_shadow_1",
+      roundNumber: 1,
+      graph,
+      economyResources: resourcesForRound()
+    });
+
+    expect(result.phases.every((phase) => phase.winConditionCheck.phaseId === phase.phaseId)).toBe(true);
+    expect(result.finalWinCondition?.isRoundOver).toBe(true);
+    expect("winnerTeamId" in result).toBe(false);
+  });
+
+  it("materializes transition notes after the opening phase", () => {
+    const graph = loadMapNodeGraph("dust2");
+    const result = runNodeRoundShadow({
+      roundId: "round_shadow_1",
+      roundNumber: 1,
+      graph,
+      economyResources: resourcesForRound()
+    });
+    const firstContact = result.phases.find((phase) => phase.phaseId === "first_contact")!;
+
+    expect(firstContact.transitionNotes?.join(" ")).toContain("物化");
+  });
+});
+
+function resourcesForRound() {
+  const attackAgents = agents("team_attack", "attack_agent");
+  const defenseAgents = agents("team_defense", "defense_agent");
+  return buildNodeEconomyResources({
+    roundNumber: 1,
+    phaseId: "default_opening",
+    activeAgents: [...attackAgents, ...defenseAgents],
+    teamPlans: [
+      teamPlan("team_attack", "attack", "full_eco", "pistol_eco_pack", attackAgents.map((agent) => agent.id)),
+      teamPlan("team_defense", "defense", "rifle_buy", "rifle_full_ct_pack", defenseAgents.map((agent) => agent.id))
+    ]
+  });
+}
+
+function teamPlan(
+  teamId: string,
+  side: "attack" | "defense",
+  posture: EconomyPosture,
+  loadoutPackage: LoadoutPackage,
+  agentIds: string[]
+): TeamEconomyPlan {
+  return {
+    teamId,
+    side,
+    phase: "gun_round",
+    lossCount: 0,
+    posture,
+    postureReason: "test posture reason",
+    summaryBuyType: posture === "rifle_buy" ? "fullBuy" : "eco",
+    totalCash: posture === "rifle_buy" ? 25000 : 3000,
+    dropDecisions: [],
+    decisions: agentIds.map((agentId) => ({
+      agentId,
+      teamId,
+      tokenBankBefore: posture === "rifle_buy" ? 5000 : 800,
+      tokenBankAfterDrop: posture === "rifle_buy" ? 5000 : 800,
+      buyType: posture === "rifle_buy" ? "fullBuy" : "eco",
+      economyPosture: posture,
+      loadoutPackage,
+      spend: posture === "rifle_buy" ? 5000 : 300,
+      outputBudget: posture === "rifle_buy" ? 1200 : 360,
+      dropSent: 0,
+      dropReceived: 0,
+      notes: []
+    }))
+  };
+}
+
+function agents(teamId: string, prefix: string): Agent[] {
+  return ["entry", "star_rifler", "awper", "igl", "support"].map((role, index) => ({
+    id: `${prefix}_${index + 1}`,
+    teamId,
+    driverModelId: "driver_test",
+    role,
+    displayName: `${prefix}_${index + 1}`,
+    baseProfile: {},
+    currentState: "ready",
+    createdAt: "2026-05-01T00:00:00.000Z",
+    updatedAt: "2026-05-01T00:00:00.000Z"
+  })) as Agent[];
+}
