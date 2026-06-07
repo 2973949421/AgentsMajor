@@ -21,6 +21,13 @@ describe("NodeGraphService", () => {
     expect(graph.timing_model.round_phases).toHaveLength(5);
   });
 
+  it("loads the Dust2 node graph when called from the web app working directory", () => {
+    const graph = loadMapNodeGraph("dust2", { rootDir: "apps/web" });
+
+    expect(graph.map_slug).toBe("dust2");
+    expect(graph.nodes).toHaveLength(39);
+  });
+
   it("rejects unsupported map slugs", () => {
     expect(() => loadMapNodeGraph("mirage")).toThrow("Unsupported map node graph");
   });

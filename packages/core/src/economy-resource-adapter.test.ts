@@ -41,6 +41,21 @@ describe("economy resource adapter", () => {
     expect(resource.notes.join(" ")).toContain("仍受 AP 与 node graph 限制");
   });
 
+  it("maps pistol resources into low-config execute ability without treating them as full utility", () => {
+    const resources = buildNodeEconomyResources({
+      roundNumber: 1,
+      phaseId: "execute_or_retake",
+      activeAgents: [agent("agent_1", "team_a", "entry")],
+      teamPlans: [teamPlan("team_a", "attack", "pistol_round", "pistol_round_pack", ["agent_1"])]
+    });
+
+    const resource = resources.agentResourcesById.agent_1!;
+    expect(resource.allowedActionTypes).toContain("execute_site");
+    expect(resource.utilityTier).toBe("basic");
+    expect(resource.canUseExecuteUtility).toBe(false);
+    expect(resource.riskProfile).toBe("medium");
+  });
+
   it("maps overtime reset plans to competitive rifle resources, not full eco", () => {
     const resources = buildNodeEconomyResources({
       roundNumber: 19,

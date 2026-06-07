@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 
 import { mapNodeGraphSchema, type MapNodeGraph, type MapSide, type RoundPhaseId } from "@agent-major/shared";
 
@@ -21,10 +21,27 @@ export function loadMapNodeGraph(mapSlug: string, options: LoadMapNodeGraphOptio
     throw new NodeGraphServiceError(`Unsupported map node graph: ${mapSlug}`);
   }
 
-  const rootDir = options.rootDir ?? process.cwd();
-  const raw = readFileSync(join(rootDir, dust2NodeGraphPath), "utf8");
+  const rootDir = resolveProjectRootForNodeGraph(options.rootDir ?? process.cwd());
+  const graphPath = join(rootDir, dust2NodeGraphPath);
+  const raw = readFileSync(graphPath, "utf8");
   const graph = mapNodeGraphSchema.parse(JSON.parse(raw));
   return validateMapNodeGraph(graph);
+}
+
+export function resolveProjectRootForNodeGraph(startDirectory: string): string {
+  let current = resolve(startDirectory);
+
+  while (true) {
+    if (existsSync(join(current, dust2NodeGraphPath))) {
+      return current;
+    }
+
+    const parent = dirname(current);
+    if (parent === current) {
+      throw new NodeGraphServiceError(`Unable to locate Dust2 node graph asset from ${startDirectory}`);
+    }
+    current = parent;
+  }
 }
 
 export function validateMapNodeGraph(graph: MapNodeGraph): MapNodeGraph {

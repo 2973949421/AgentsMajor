@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { PHASE20_PRE_PROMPT_CONTRACT_ID, commitDust2NodeRoundExperimental } from "@agent-major/core";
+import { PHASE20_PRE_PROMPT_CONTRACT_ID, commitDust2NodeRoundExperimental, runDust2NodeMapExperimental } from "@agent-major/core";
 import { createSqliteRepositories, defaultSqlitePath } from "@agent-major/db";
 import { buildPhase18RuntimeMatchId, phase17CanonIds, phase18CanonIds, phase20PrePilotMapIds } from "@agent-major/materials";
 
@@ -45,7 +45,8 @@ type SimulationRunMode =
   | "phase18_current_map"
   | "phase18_keep_generating_map"
   | "phase18_full_bo3"
-  | "phase20_node_round_experimental";
+  | "phase20_node_round_experimental"
+  | "phase20_node_map_experimental";
 
 interface SimulationRunRecord {
   id: string;
@@ -73,7 +74,8 @@ export type WebRunMode =
   | "phase18_current_map"
   | "phase18_keep_generating_map"
   | "phase18_full_bo3"
-  | "phase20_node_round_experimental";
+  | "phase20_node_round_experimental"
+  | "phase20_node_map_experimental";
 export type WebRunLlmCallStatus = "started" | "completed" | "failed";
 export type WebRunHistory = Phase18RunHistoryEntry;
 
@@ -163,6 +165,44 @@ export interface WebRunNodeShadowProgress {
   errorKind?: string;
 }
 
+export interface WebRunNodeMapExperimentalRoundProgress {
+  roundId: string;
+  roundNumber: number;
+  winnerTeamId?: string;
+  loserTeamId?: string;
+  roundWinType?: string;
+  nodeTraceArtifactId: string;
+  totalApSpent: number;
+  fallbackCount: number;
+  ignoredFields: string[];
+  finalHardCondition?: {
+    isRoundOver: boolean;
+    winnerSide?: "attack" | "defense";
+    winnerTeamId?: string;
+    roundWinType?: string;
+    reason: string;
+  };
+}
+
+export interface WebRunNodeMapExperimentalProgress {
+  status: "created";
+  source: "node_round_engine_map_experimental";
+  mode: "phase20_node_map_experimental";
+  writesDb: true;
+  replacesLegacyRoundPath: false;
+  summaryArtifactId: string;
+  mapGameId: string;
+  mapName: string;
+  roundsCommitted: number;
+  finalScore: { teamA: number; teamB: number };
+  completionReason: string;
+  roundTraceArtifactIds: string[];
+  totalFallbackCount: number;
+  fallbackReasons: string[];
+  ignoredFields: string[];
+  roundSummaries: WebRunNodeMapExperimentalRoundProgress[];
+}
+
 export interface WebRunProgress {
   runId: string;
   mode: WebRunMode;
@@ -203,6 +243,7 @@ export interface WebRunProgress {
   contractStatus?: "current" | "legacy" | "mixed" | "blocked";
   progressPercent: number;
   nodeShadow?: WebRunNodeShadowProgress;
+  nodeMapExperimental?: WebRunNodeMapExperimentalProgress;
   result?: WebRunSingleMapResult;
   error?: string;
   recentRuns: WebRunHistory[];
@@ -433,6 +474,10 @@ export async function startPhase20NodeRoundExperimentalWebRun(fixtureId: string,
   return startPhase18WebRun({ fixtureId, runId, mode: "phase20_node_round_experimental" });
 }
 
+export async function startPhase20NodeMapExperimentalWebRun(fixtureId: string, runId?: string | null): Promise<WebRunProgress> {
+  return startPhase18WebRun({ fixtureId, runId, mode: "phase20_node_map_experimental" });
+}
+
 export async function readWebRunProgress(runId?: string, fixtureId: string = phase18FixtureId): Promise<WebRunProgress | null> {
   if (runId && latestPhase17Run?.runId === runId) {
     return stripLegacyPromise(latestPhase17Run);
@@ -455,6 +500,7 @@ export async function readWebRunProgress(runId?: string, fixtureId: string = pha
       const nodeShadow =
         readNodeShadowSidecarProgress(repositories, run.id, run.runtimeMatchId) ??
         readCommittedNodeTraceProgress(repositories, run.id, run.runtimeMatchId);
+    const nodeMapExperimental = readNodeMapExperimentalProgress(repositories, run.runtimeMatchId);
     const casterModes = readCasterModes(repositories, facts.mapGameIds);
     const completedAt = run.completedAt ?? undefined;
     const progress = buildPhase18Progress({
@@ -465,6 +511,7 @@ export async function readWebRunProgress(runId?: string, fixtureId: string = pha
       attemptEvents,
       executionEvents,
       nodeShadow,
+      nodeMapExperimental,
       casterModes,
       recentRuns: await listPhase18RunHistoryEntries(repositories, fixtureId)
     });
@@ -775,7 +822,7 @@ export function readCommittedNodeTraceProgress(
   if (!row || typeof row.artifactUri !== "string") {
     return null;
   }
-  const parsed = parseUnknownRecord(readFileSync(row.artifactUri, "utf8"));
+  const parsed = parseUnknownRecord(readArtifactTextByUri(row.artifactUri));
   const report = parseUnknownRecord(parsed?.committedReport);
   const audit = parseUnknownRecord(report?.audit);
   if (!report || report.source !== "node_round_engine_committed") {
@@ -811,6 +858,49 @@ export function readCommittedNodeTraceProgress(
     totalApSpent: readNumber(audit?.totalApSpent),
     ...summarizeCommittedFinalWinCondition(report.finalWinCondition),
     phaseSummaries: readCommittedPhaseSummaries(report.phaseSummaries)
+  };
+}
+
+export function readNodeMapExperimentalProgress(
+  repositories: ReturnType<typeof createSqliteRepositories>,
+  runtimeMatchId: string
+): WebRunNodeMapExperimentalProgress | null {
+  const row = repositories.sqlite
+    .prepare(
+      `SELECT a.id AS artifactId,
+              a.uri AS artifactUri
+       FROM artifacts a
+       WHERE a.match_id = ?
+         AND a.artifact_type = 'node_map_experimental_summary'
+       ORDER BY a.created_at DESC, a.id DESC
+       LIMIT 1`
+    )
+    .get(runtimeMatchId) as { artifactId?: unknown; artifactUri?: unknown } | undefined;
+  if (!row || typeof row.artifactId !== "string" || typeof row.artifactUri !== "string") {
+    return null;
+  }
+  const summary = parseUnknownRecord(readArtifactTextByUri(row.artifactUri));
+  if (!summary || summary.source !== "node_round_engine_map_experimental") {
+    return null;
+  }
+  const fallbackSummary = parseUnknownRecord(summary.fallbackSummary);
+  return {
+    status: "created",
+    source: "node_round_engine_map_experimental",
+    mode: "phase20_node_map_experimental",
+    writesDb: true,
+    replacesLegacyRoundPath: false,
+    summaryArtifactId: row.artifactId,
+    mapGameId: typeof summary.mapGameId === "string" ? summary.mapGameId : "",
+    mapName: typeof summary.mapName === "string" ? summary.mapName : "Dust2",
+    roundsCommitted: readNumber(summary.roundsCommitted),
+    finalScore: readScorePair(summary.finalScore),
+    completionReason: typeof summary.completionReason === "string" ? summary.completionReason : "map_completed",
+    roundTraceArtifactIds: readStringArray(summary.roundTraceArtifactIds),
+    totalFallbackCount: readNumber(fallbackSummary?.totalFallbackCount),
+    fallbackReasons: readStringArray(fallbackSummary?.reasons),
+    ignoredFields: readStringArray(fallbackSummary?.ignoredFields),
+    roundSummaries: readNodeMapRoundSummaries(summary.roundSummaries)
   };
 }
 
@@ -899,6 +989,57 @@ function summarizeCommittedFinalWinCondition(value: unknown): Pick<WebRunNodeSha
   };
 }
 
+function readNodeMapRoundSummaries(value: unknown): WebRunNodeMapExperimentalRoundProgress[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((item) => parseUnknownRecord(item))
+    .filter((item): item is Record<string, unknown> => Boolean(item))
+    .map((item): WebRunNodeMapExperimentalRoundProgress => {
+      const final = parseUnknownRecord(item.finalHardCondition);
+      const winnerSide = final?.winnerSide === "attack" || final?.winnerSide === "defense" ? final.winnerSide : undefined;
+      return {
+        roundId: typeof item.roundId === "string" ? item.roundId : "",
+        roundNumber: readNumber(item.roundNumber),
+        ...(typeof item.winnerTeamId === "string" ? { winnerTeamId: item.winnerTeamId } : {}),
+        ...(typeof item.loserTeamId === "string" ? { loserTeamId: item.loserTeamId } : {}),
+        ...(typeof item.roundWinType === "string" ? { roundWinType: item.roundWinType } : {}),
+        nodeTraceArtifactId: typeof item.nodeTraceArtifactId === "string" ? item.nodeTraceArtifactId : "",
+        totalApSpent: readNumber(item.totalApSpent),
+        fallbackCount: readNumber(item.fallbackCount),
+        ignoredFields: readStringArray(item.ignoredFields),
+        ...(final
+          ? {
+              finalHardCondition: {
+                isRoundOver: final.isRoundOver === true,
+                ...(winnerSide ? { winnerSide } : {}),
+                ...(typeof final.winnerTeamId === "string" ? { winnerTeamId: final.winnerTeamId } : {}),
+                ...(typeof final.roundWinType === "string" ? { roundWinType: final.roundWinType } : {}),
+                reason: typeof final.reason === "string" ? final.reason : "节点化地图灰度 hard win condition."
+              }
+            }
+          : {})
+      };
+    })
+    .filter((item) => item.roundId.length > 0 && item.nodeTraceArtifactId.length > 0);
+}
+
+function readScorePair(value: unknown): { teamA: number; teamB: number } {
+  const record = parseUnknownRecord(value);
+  return {
+    teamA: readNumber(record?.teamA),
+    teamB: readNumber(record?.teamB)
+  };
+}
+
+function readArtifactTextByUri(uri: string): string {
+  if (uri.startsWith("local:")) {
+    return readFileSync(resolve(findProjectRoot(process.cwd()), uri.slice("local:".length)), "utf8");
+  }
+  return readFileSync(uri, "utf8");
+}
+
 function readCommittedPhaseSummaries(value: unknown): WebRunNodeShadowPhaseProgress[] {
   if (!Array.isArray(value)) {
     return [];
@@ -959,7 +1100,12 @@ async function appendWebRunExecutionEvent(
       executionId: string;
       mode: Extract<
         WebRunMode,
-        "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3" | "phase20_node_round_experimental"
+        | "phase18_next_round"
+        | "phase18_current_map"
+        | "phase18_keep_generating_map"
+        | "phase18_full_bo3"
+        | "phase20_node_round_experimental"
+        | "phase20_node_map_experimental"
       >;
     status: "running" | "completed" | "failed";
     facts: Awaited<ReturnType<typeof readPhase18RunFacts>>;
@@ -1026,8 +1172,13 @@ async function startPhase18WebRun(input: {
   fixtureId: string;
   runId: string | null | undefined;
   mode: Extract<
-    WebRunMode,
-    "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3" | "phase20_node_round_experimental"
+      WebRunMode,
+      | "phase18_next_round"
+      | "phase18_current_map"
+      | "phase18_keep_generating_map"
+      | "phase18_full_bo3"
+      | "phase20_node_round_experimental"
+      | "phase20_node_map_experimental"
   >;
   retryMode?: WebRunRetryMode;
 }): Promise<WebRunProgress> {
@@ -1084,13 +1235,13 @@ async function startPhase18WebRun(input: {
       {
         fixtureId: phase18FixtureId,
         status: "running",
-        requestedMode: continuedRun?.requestedMode ?? mapWebRunModeToSimulationRunMode(input.mode),
+        requestedMode: mapWebRunModeToSimulationRunMode(input.mode),
         promptContractId: continuedRun?.promptContractId ?? PHASE20_PRE_PROMPT_CONTRACT_ID,
         runtimeMatchId,
         runtimeMapGameId: facts.mapGameId ?? continuedRun?.runtimeMapGameId ?? null,
         baselineCompletedRounds: facts.completedRounds,
         estimatedTotalRounds: facts.completedRounds + remainingRounds,
-        expectedTotalCalls: remainingRounds * phase18CallsPerRound,
+        expectedTotalCalls: isNodeExperimentalWebRunMode(input.mode) ? 0 : remainingRounds * phase18CallsPerRound,
         latestCommittedRoundNumber: facts.latestCommittedRoundNumber,
         hasFreshReplay: facts.hasFreshReplay,
         latestError: null,
@@ -1113,7 +1264,11 @@ async function startPhase18WebRun(input: {
     });
 
       const promise =
-        input.mode === "phase20_node_round_experimental"
+        input.mode === "phase20_node_map_experimental"
+          ? runPhase20NodeMapExperimentalFromWeb({
+              runtimeMatchId: persistedRun.runtimeMatchId
+            })
+        : input.mode === "phase20_node_round_experimental"
           ? runPhase20NodeRoundExperimentalFromWeb({
               runtimeMatchId: persistedRun.runtimeMatchId
             })
@@ -1149,12 +1304,21 @@ async function startPhase18WebRun(input: {
   return progress;
 }
 
+function isNodeExperimentalWebRunMode(mode: WebRunMode): boolean {
+  return mode === "phase20_node_round_experimental" || mode === "phase20_node_map_experimental";
+}
+
   async function finalizePhase18RunPromise(
     runId: string,
     executionId: string,
     mode: Extract<
       WebRunMode,
-      "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3" | "phase20_node_round_experimental"
+      | "phase18_next_round"
+      | "phase18_current_map"
+      | "phase18_keep_generating_map"
+      | "phase18_full_bo3"
+      | "phase20_node_round_experimental"
+      | "phase20_node_map_experimental"
     >,
     promise: Promise<WebRunSingleMapResult>
   ): Promise<void> {
@@ -1168,6 +1332,23 @@ async function startPhase18WebRun(input: {
       activeExecution = null;
     }
   }
+  }
+
+  async function runPhase20NodeMapExperimentalFromWeb(input: { runtimeMatchId: string }): Promise<WebRunSingleMapResult> {
+    const projectRoot = findProjectRoot(process.cwd());
+    const repositories = createSqliteRepositories(resolve(projectRoot, defaultSqlitePath));
+    try {
+      const mapGameId = await selectCurrentPhase18MapGameId(repositories, input.runtimeMatchId);
+      await runDust2NodeMapExperimental({
+        repositories,
+        artifactStore: new ServerLocalArtifactStore(projectRoot, repositories.artifacts),
+        mapGameId,
+        enableMapExperimentalMode: true
+      });
+      return await toWebRunResultFromMatch(repositories, input.runtimeMatchId);
+    } finally {
+      repositories.close();
+    }
   }
 
   async function runPhase20NodeRoundExperimentalFromWeb(input: { runtimeMatchId: string }): Promise<WebRunSingleMapResult> {
@@ -1192,7 +1373,12 @@ async function startPhase18WebRun(input: {
     executionId: string,
     mode: Extract<
       WebRunMode,
-      "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3" | "phase20_node_round_experimental"
+      | "phase18_next_round"
+      | "phase18_current_map"
+      | "phase18_keep_generating_map"
+      | "phase18_full_bo3"
+      | "phase20_node_round_experimental"
+      | "phase20_node_map_experimental"
     >,
     latestError?: string
   ): Promise<void> {
@@ -1322,7 +1508,12 @@ async function mutatePhase18Run(
     runtimeMatchId: string,
     mode: Extract<
       WebRunMode,
-      "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3" | "phase20_node_round_experimental"
+      | "phase18_next_round"
+      | "phase18_current_map"
+      | "phase18_keep_generating_map"
+      | "phase18_full_bo3"
+      | "phase20_node_round_experimental"
+      | "phase20_node_map_experimental"
     >
   ): Promise<number> {
     if (mode === "phase18_next_round" || mode === "phase20_node_round_experimental") {
@@ -1352,6 +1543,9 @@ async function mutatePhase18Run(
   if (mode === "phase18_current_map" || mode === "phase18_keep_generating_map") {
     return currentMapRemaining;
   }
+  if (mode === "phase20_node_map_experimental") {
+    return currentMapRemaining;
+  }
 
   const completedMaps = maps.filter((mapGame) => mapGame.status === "completed").length;
   return currentMapRemaining + Math.max(0, phase20PrePilotMapIds.length - completedMaps - 1) * estimatedMaxRoundsPerMap;
@@ -1372,6 +1566,7 @@ function buildPhase18Progress(input: {
   attemptEvents: RoundGenerationAttemptEvent[];
   executionEvents: WebRunExecutionEvent[];
   nodeShadow: WebRunNodeShadowProgress | null;
+  nodeMapExperimental: WebRunNodeMapExperimentalProgress | null;
   casterModes: Array<{ mode: string | null; count: number }>;
   recentRuns: WebRunHistory[];
 }): WebRunProgress {
@@ -1440,6 +1635,7 @@ function buildPhase18Progress(input: {
     contractStatus: deriveProgressContractStatus(input.run, input.llmCalls),
     progressPercent,
     ...(input.nodeShadow ? { nodeShadow: input.nodeShadow } : {}),
+    ...(input.nodeMapExperimental ? { nodeMapExperimental: input.nodeMapExperimental } : {}),
     ...(input.facts.runtimeMatchStatus
       ? {
           result: {
@@ -1780,7 +1976,12 @@ function mapWebRunModeToScope(mode: Extract<WebRunMode, "phase18_next_round" | "
   function mapWebRunModeToSimulationRunMode(
     mode: Extract<
       WebRunMode,
-      "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3" | "phase20_node_round_experimental"
+      | "phase18_next_round"
+      | "phase18_current_map"
+      | "phase18_keep_generating_map"
+      | "phase18_full_bo3"
+      | "phase20_node_round_experimental"
+      | "phase20_node_map_experimental"
     >
   ): SimulationRunMode {
     return mode;
@@ -1790,7 +1991,12 @@ function mapWebRunModeToScope(mode: Extract<WebRunMode, "phase18_next_round" | "
     mode: SimulationRunMode
   ): Extract<
     WebRunMode,
-    "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3" | "phase20_node_round_experimental"
+    | "phase18_next_round"
+    | "phase18_current_map"
+    | "phase18_keep_generating_map"
+    | "phase18_full_bo3"
+    | "phase20_node_round_experimental"
+    | "phase20_node_map_experimental"
   > {
     return mode;
   }

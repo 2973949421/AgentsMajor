@@ -39,12 +39,16 @@ export function evaluateMapState(score: ScorePair, roundNumber: number): MapStat
 
   const overtimeRoundNumber = roundNumber - mr6MapRules.regularRounds;
   const overtimeCycle = Math.floor((overtimeRoundNumber - 1) / mr6MapRules.overtimeMaxRounds);
+  const overtimeRoundInCycle = ((overtimeRoundNumber - 1) % mr6MapRules.overtimeMaxRounds) + 1;
   const cycleStartScore = 6 + overtimeCycle * mr6MapRules.overtimeRoundsPerHalf;
   if (score.teamA >= cycleStartScore + mr6MapRules.overtimeWinScore) {
     return { state: "completed", phase: "overtime", winnerSide: "teamA" };
   }
   if (score.teamB >= cycleStartScore + mr6MapRules.overtimeWinScore) {
     return { state: "completed", phase: "overtime", winnerSide: "teamB" };
+  }
+  if (overtimeRoundInCycle >= 4 && Math.abs(score.teamA - score.teamB) >= 2) {
+    return { state: "completed", phase: "overtime", winnerSide: score.teamA > score.teamB ? "teamA" : "teamB" };
   }
 
   return { state: "overtime", phase: "overtime" };

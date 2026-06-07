@@ -67,13 +67,12 @@ export function evaluateNodeRoundWinCondition(input: EvaluateNodeRoundWinConditi
   }
 
   if (input.phaseSnapshot.phaseId === finalPhaseId) {
-    const plantHeldByAttack = plantedState.plantedNodeId ? verdictControlForNode(input.localVerdicts, plantedState.plantedNodeId) === "attack" : false;
-    if (plantedState.bombState === "planted" && plantHeldByAttack) {
+    if (plantedState.bombState === "planted") {
       return buildCompletedResult(input, { ...plantedState, bombState: "exploded" }, {
         winnerSide: "attack",
         roundWinType: "bomb_exploded",
-        reason: "攻方完成下包并在最终阶段守住包点，按 shadow 硬条件判定包炸获胜。",
-        evidence: [`bombState=planted`, `attackControl=${plantedState.plantedNodeId}`],
+        reason: "攻方完成下包，且守方未在最终阶段完成拆包，按 shadow 硬条件判定包炸获胜。",
+        evidence: [`bombState=planted`, `defuseCompleted=false`, `plantedNode=${plantedState.plantedNodeId ?? "unknown"}`],
         ...(plantedState.plantedNodeId ? { nodeId: plantedState.plantedNodeId } : {})
       });
     }
@@ -117,7 +116,8 @@ function materializeBombState(input: EvaluateNodeRoundWinConditionInput, previou
   const plantAction = input.agentActions.find(
     (action) => action.side === "attack" && action.actionType === "execute_site" && isPlantNode(input.graph, action.targetNodeId)
   );
-  if (previousState.bombState === "not_planted" && plantAction && verdictControlForNode(input.localVerdicts, plantAction.targetNodeId) === "attack") {
+  const plantControl = plantAction ? verdictControlForNode(input.localVerdicts, plantAction.targetNodeId) : undefined;
+  if (previousState.bombState === "not_planted" && plantAction && (plantControl === "attack" || plantControl === "contested")) {
     return {
       bombState: "planted",
       plantedNodeId: plantAction.targetNodeId

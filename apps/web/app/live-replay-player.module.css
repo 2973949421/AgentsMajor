@@ -525,10 +525,14 @@
 .mapCompleteToast button,
 .opsActionPrimary,
 .opsActionSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 30px;
   padding: 0 9px;
   cursor: pointer;
   font: inherit;
+  text-decoration: none;
 }
 
 .playbackButtons button:disabled,

@@ -213,6 +213,7 @@ export function createEnvNodeLlmDraftProvider(
         modelTier: "standard",
         temperature: 0.2,
         maxOutputTokens: 900,
+        extraParams: { thinking: { type: "disabled" } },
         messages: buildRealNodeJudgeMessages(request)
       });
       return {

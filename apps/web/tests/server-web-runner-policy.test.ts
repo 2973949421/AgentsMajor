@@ -77,6 +77,22 @@ describe("Phase 1.7 web runner policy", () => {
         { AGENT_MAJOR_WEB_RUNNER_ENABLED: "true", NODE_ROUND_EXPERIMENTAL_ENABLED: "true" }
       )
     ).toEqual({ ok: true, action: "run", mode: "phase20_node_round_experimental", retryMode: "full_round" });
+    expect(
+      validateWebRunnerRequest(
+        localRequest(),
+        { mode: "phase20_node_map_experimental", confirmReset: true },
+        projectRoot,
+        { AGENT_MAJOR_WEB_RUNNER_ENABLED: "true" }
+      )
+    ).toMatchObject({ ok: false, status: 403 });
+    expect(
+      validateWebRunnerRequest(
+        localRequest(),
+        { mode: "phase20_node_map_experimental", confirmReset: true },
+        projectRoot,
+        { AGENT_MAJOR_WEB_RUNNER_ENABLED: "true", NODE_ROUND_MAP_EXPERIMENTAL_ENABLED: "true" }
+      )
+    ).toEqual({ ok: true, action: "run", mode: "phase20_node_map_experimental", retryMode: "full_round" });
   });
 
   it("rejects the frozen legacy web mode", () => {

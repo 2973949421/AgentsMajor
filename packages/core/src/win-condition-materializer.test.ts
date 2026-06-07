@@ -73,6 +73,24 @@ describe("win condition materializer", () => {
     expect(result.plantedNodeId).toBe("a_default");
   });
 
+  it("allows a plant attempt on a contested plant node", () => {
+    const result = evaluateNodeRoundWinCondition({
+      graph: loadMapNodeGraph("dust2"),
+      phaseSnapshot: snapshot("execute_or_retake", [
+        { nodeId: "a_default", attack: ["a1"], defense: ["d1"] },
+        { nodeId: "ct_spawn", attack: [], defense: ["d2"] }
+      ]),
+      agentActions: [action("a1", "team_attack", "attack", "execute_or_retake", "a_default", "execute_site")],
+      localVerdicts: [verdict("a_default", "contested", "execute_or_retake"), verdict("ct_spawn", "defense", "execute_or_retake")],
+      attackTeamId: "team_attack",
+      defenseTeamId: "team_defense"
+    });
+
+    expect(result.isRoundOver).toBe(false);
+    expect(result.bombState).toBe("planted");
+    expect(result.plantedNodeId).toBe("a_default");
+  });
+
   it("awards attack when the planted bomb is held through the final phase", () => {
     const result = evaluateNodeRoundWinCondition({
       graph: loadMapNodeGraph("dust2"),
@@ -82,6 +100,26 @@ describe("win condition materializer", () => {
       ]),
       agentActions: [],
       localVerdicts: [verdict("a_default", "attack", "post_plant_or_clutch"), verdict("ct_spawn", "defense", "post_plant_or_clutch")],
+      attackTeamId: "team_attack",
+      defenseTeamId: "team_defense",
+      previousState: { bombState: "planted", plantedNodeId: "a_default" }
+    });
+
+    expect(result.isRoundOver).toBe(true);
+    expect(result.winnerSide).toBe("attack");
+    expect(result.roundWinType).toBe("bomb_exploded");
+    expect(result.bombState).toBe("exploded");
+  });
+
+  it("awards attack when a planted bomb is not defused even if defense controls the site", () => {
+    const result = evaluateNodeRoundWinCondition({
+      graph: loadMapNodeGraph("dust2"),
+      phaseSnapshot: snapshot("post_plant_or_clutch", [
+        { nodeId: "a_default", attack: [], defense: ["d1"] },
+        { nodeId: "a_safe", attack: ["a1"], defense: [] }
+      ]),
+      agentActions: [],
+      localVerdicts: [verdict("a_default", "defense", "post_plant_or_clutch"), verdict("a_safe", "attack", "post_plant_or_clutch")],
       attackTeamId: "team_attack",
       defenseTeamId: "team_defense",
       previousState: { bombState: "planted", plantedNodeId: "a_default" }

@@ -1035,6 +1035,455 @@ LLM agent action 禁止：
 - 不用节点化灰度结果直接覆盖旧主线。
 - 不在该阶段扩 16 队、BO3 或其他地图。
 
+### 阶段 N17：Dust2 区块地图层与 Node Lab 验收台
+
+目标：
+
+- 把当前 39 个细节点的展示，升级为 Dust2 真实地图分区块展示。
+- 第一层只展示 10-15 个关键区块，避免前端堆叠和验收困难。
+- 细节点继续保留在 graph 和 trace 中，但不作为第一屏主展示。
+- Node Lab 成为新引擎验收台，而不是旧 Phase18 控制台的附属按钮。
+
+建议第一版区块：
+
+| 区块 | 覆盖细节点 | 主要意义 |
+|---|---|---|
+| T Spawn | `t_spawn` | T 方开局与分路起点。 |
+| Outside Tunnels | `outside_tunnels` | B 洞集合与慢摸前置区域。 |
+| B Tunnels | `upper_tunnels`、`lower_tunnels`、`b_tunnel_exit` | B 区进攻通道。 |
+| B Site | `b_site`、`b_default`、`b_back_site`、`b_plat`、`b_big_box`、`b_fence`、`b_car`、`b_headshot` | B 点主交火、下包、守包区。 |
+| B Doors / Window | `b_doors`、`b_window` | CT 回防、B 点信息交换与夹击入口。 |
+| CT / Mid Doors | `ct_spawn`、`mid_doors` | CT 回防枢纽和中门争夺。 |
+| Top Mid / Mid | `top_mid`、`mid`、`xbox`、`green`、`suicide` | 中路控图、夹 B、夹 A 的核心区。 |
+| Cat / Short | `cat`、`short_stairs`、`a_short` | A 小控制和 A 点进攻入口。 |
+| Long Doors | `long_doors`、`outside_long` | A 大第一接触入口。 |
+| A Long / Pit | `a_long`、`long_corner`、`blue`、`pit`、`a_car` | A 大推进、防守反清、长距离交火区。 |
+| A Site | `a_default`、`a_ramp`、`a_safe`、`a_quad`、`a_goose`、`a_ninja`、`a_lift` | A 点下包、守包、回防区。 |
+
+预期新增：
+
+- `dust2-sector-layout.ts` 或等价 Web 布局配置。
+- `dust2-sector-map.ts` 或 materials 资产中的区块定义。
+- Node Lab 区块地图组件：
+  - 地图底图统一暗色处理。
+  - 区块用半透明高亮表示控制状态。
+  - 节点细节通过 hover / detail panel 展开。
+- 区块级 progress：
+  - round 进度条。
+  - phase 进度条。
+  - 当前区块状态。
+  - fallback / rejected draft 标记。
+
+验收：
+
+- 第一屏不再渲染全部 39 个细节点。
+- 用户能按 round + phase 查看区块控制状态。
+- 每个区块能显示：
+  - attack 人数。
+  - defense 人数。
+  - 控制权。
+  - 是否交火。
+  - 是否触发胜负检查。
+  - 是否有 LLM fallback / rejected draft。
+- 前端区块全部来自 graph / sector asset，不手写不存在点位。
+- 没有 node trace 的旧 run 正常显示。
+- Next build 和 Node Lab tests 通过。
+
+禁止：
+
+- 不在前端重新计算 winner。
+- 不让前端伪造击杀、HP、装备、包状态。
+- 不把区块图做成新的事实来源。
+- 不删除细节点 graph；第一版只是展示分层。
+
+### 阶段 N18：AP 真实化与行动合法性收口
+
+目标：
+
+- 让 AP 点数从展示字段变成真实比赛约束。
+- AP 必须和地图距离、行动类型、装备负担、经济资源、角色职责挂钩。
+- AP 不直接决定对枪胜负，但决定“能不能做、能做多少、是否需要降级”。
+
+预期新增或扩展：
+
+- `node-action-point-rules.ts`
+- `node-action-validator.ts`
+- `node-route-cost-service.ts`
+- AP 审计字段：
+  - `routeCost`
+  - `actionCost`
+  - `utilityCost`
+  - `roleModifier`
+  - `loadoutModifier`
+  - `overBudgetReason`
+
+第一版 AP 规则：
+
+| 行动 | AP 成本 | 约束 |
+|---|---:|---|
+| 保持位置 / 架枪 | 0-1 | 合法低成本动作，可连续出现。 |
+| 沿相邻边移动 | 1 / edge | 必须通过 graph route。 |
+| 抢信息 / peek | 1 | 可能提高局部风险。 |
+| 丢基础道具 | 1 | 需要 `utilityTier` 支持。 |
+| 完整爆弹 / execute utility | 2 | 需要 buy resource 支持。 |
+| 进点 / retake | 2 | 需要站位和资源条件。 |
+| 下包 / 拆包 | 2 | 只能发生在合法包点和合法 phase。 |
+| 大范围转点 | route cost + 1 | 超 AP 必须降级或推迟。 |
+
+AP 与资源挂钩：
+
+- `full_eco`：基础 AP 可保留，但禁止高配道具和复杂 execute。
+- `pistol / force`：允许局部抢点和低配道具。
+- `rifle / awp / full_buy`：允许完整默认、进点、回防。
+- AWP / 重装备可增加移动或转点负担，但不直接降低胜率。
+- entry / lurker / support / awper / IGL 可有轻量 role modifier。
+
+验收：
+
+- LLM 输出的 action 必须经过 AP validator。
+- 超 AP 行动不会直接进入 node trace，必须降级或 fallback。
+- T 默认阶段不能靠高 AP 直接跳到包点。
+- 大范围转点必须消耗 route cost。
+- 低经济 agent 不能通过 LLM 写完整高配爆弹。
+- AP 审计在 Node Lab 可见。
+- 测试覆盖 route cost、action cost、utility cost、over budget fallback。
+
+禁止：
+
+- 不把 AP 做成完整桌游复杂系统。
+- 不让 AP 随机影响 winner。
+- 不用 AP 暗中控分。
+- 不为了让 LLM 输出通过而放宽 route / phase / economy 校验。
+
+### 阶段 N19：队伍资产、角色分工与商业底色深接入
+
+目标：
+
+- 让队伍材料不再只是 prompt 背景，而是进入节点化行动选择。
+- 队伍 strategy、initial proposal、coach context、agent role、商业分工必须影响 phase action。
+- 每个行动仍然保留 CS 动作与商业计划意图的双重表达。
+
+预期新增或扩展：
+
+- `team-node-strategy-adapter.ts`
+- `agent-role-node-profile.ts`
+- `node-business-intent-materializer.ts`
+- `coach-node-context-adapter.ts`
+
+输入资产：
+
+- team strategy。
+- Dust2 initial proposal。
+- coach context。
+- agent profile。
+- role / task 分工。
+- 经济状态。
+- 当前节点状态和上一 phase 结果。
+
+角色映射：
+
+| CS 角色 | 节点化职责 | 商业分工映射 |
+|---|---|---|
+| IGL | 路线选择、转点、资源调度 | 战略 / 管理 / 资源配置 |
+| Entry | 第一接触、进点、承担高风险 | 市场切入 / 首批验证 |
+| Support | 道具、补枪、协作动作 | 运营 / 交付 / 协同 |
+| Lurker | 控图、断后、信息差 | 渠道 / 竞品观察 / 长尾机会 |
+| AWPer | 关键角度、威慑、保枪 | 技术壁垒 / 高价值能力 |
+| Anchor | 守点、拖延、信息反馈 | 稳定运营 / 风险防守 |
+
+验收：
+
+- agent action 不再只有 generic `map_control`，必须体现角色职责。
+- businessIntent 必填，且不能是空泛口号。
+- 队伍 strategy 能影响 route / target sector / risk profile。
+- coach context 能进入 timeout / review，但不直接改 winner。
+- 同一 agent 在不同角色下的合法 action 倾向不同。
+- 队伍资产缺失时有明确 fallback，不编造 role。
+- 测试覆盖 role adapter、strategy adapter、business intent materializer。
+
+禁止：
+
+- 不按队伍名硬编码强弱。
+- 不让商业意图替代 CS 合法性。
+- 不让 coach 直接改 round winner。
+- 不把所有 agent 都生成同质化行动。
+
+### 阶段 N20：真实 LLM 输出稳定化与调用粒度升级
+
+目标：
+
+- 让真实 LLM 真正产生可采纳的阶段行动和局部裁判，而不是大量 JSON 截断后 fallback。
+- 在“不担心成本”的前提下，优先提高有效输出率和博弈质量。
+- 调用粒度从“整 phase 合并调用”升级为“关键区块 / 关键冲突调用”，但仍保留上限和审计。
+
+预期新增或扩展：
+
+- `node-llm-budget-policy.ts`
+- `node-llm-request-compressor.ts`
+- `node-llm-output-contract.ts`
+- `node-llm-call-router.ts`
+- Node Lab LLM call timeline。
+
+调用策略：
+
+- 默认不再强行每 phase 只调用 2 次。
+- 第一优先级调用 contested / high-impact sector。
+- 低影响 agent 可沿用 deterministic / hold action。
+- 每个区块调用输入只包含：
+  - 当前区块状态。
+  - 相邻区块摘要。
+  - 参与 agent 资源。
+  - 上一 phase 结果。
+  - 允许 actionType。
+  - 输出 schema 最小形状。
+- repair / finalizer 继续禁用思考或低预算。
+- 主行动生成可保留推理，但最终 content 必须短 JSON。
+
+稳定性要求：
+
+- 输出字段短。
+- 每次只输出本区块或本小组。
+- 不输出完整 round narrative。
+- 不输出 winner。
+- 不输出 kill ledger，除非 N21 已接入 combat materializer 的受控 schema。
+- JSON 截断时可缩小 scope 重试，不无限扩 token。
+
+验收：
+
+- real provider 模式下，agent action draft accepted rate 明显高于 N16 基线。
+- `json_truncated` 不再长期导致 100% fallback。
+- Node Lab 可显示每次真实 LLM 调用：
+  - scope。
+  - sector。
+  - accepted / rejected。
+  - fallback reason。
+  - content length。
+  - reasoning length。
+- `providerMode=real` 的完整地图可完成至少一个小上限样本。
+- 测试覆盖 truncated fallback、unknown node rejection、over AP rejection、short contract acceptance。
+
+禁止：
+
+- 不为了通过而关闭所有校验。
+- 不让 LLM 直接写最终 winner。
+- 不让 LLM 自由发明 node / sector。
+- 不把失败隐藏成成功。
+
+### 阶段 N21：战斗与交火物化系统
+
+目标：
+
+- 补齐当前节点化引擎最明显缺口：交火不产生可靠伤亡，导致胜负大量 timeout。
+- 让局部交火从“controlAfter 文案”升级为可审计的 combat fact。
+- 战斗结果由代码和 LLM 共同产生：LLM 给局部碰撞解释和候选，代码根据人数、位置、经济、AP、角色、节点优势物化合法结果。
+
+预期新增：
+
+- `node-combat-materializer.ts`
+- `node-engagement-resolver.ts`
+- `node-casualty-ledger.ts`
+- `node-combat-balance-rules.ts`
+
+输入：
+
+- 同一区块攻守人数。
+- actionType。
+- weaponTier / utilityTier。
+- AP 投入。
+- 节点默认优势。
+- 信息优势。
+- 角色。
+- 商业意图是否被验证 / 破坏。
+- LLM local judge draft。
+
+输出：
+
+- `engagementOccurred`
+- `casualties`
+- `survivors`
+- `damageSummary`，第一版可不用 HP。
+- `tradeSummary`
+- `controlAfter`
+- `evidence`
+
+第一版可接受简化：
+
+- 不做逐发子弹。
+- 不做 HP / armor 精算。
+- 只做人数变化、击杀归因、trade 关系和控制权。
+- 允许 5v2 被反打，但必须有节点、资源、信息或商业漏洞证据。
+
+验收：
+
+- 至少一部分回合能因 elimination 提前结束。
+- local verdict casualties 不再长期为空。
+- casualties 中 agentId 必须来自 active agents。
+- 死亡 agent 后续 phase 不能继续行动。
+- trade / survivor 能进入 node trace。
+- combat fact 能被 RoundReportBridge 展示。
+- 不因战斗物化破坏旧 Phase18 主线。
+
+禁止：
+
+- 不随机生成击杀。
+- 不按队伍名补偿击杀。
+- 不让 LLM 直接写未经校验的 kill ledger。
+- 不把商业文案直接等同击杀事实。
+
+### 阶段 N22：下包、拆包、守包与残局物化系统
+
+目标：
+
+- 补齐 timeout 之外的核心 CS 胜负方式。
+- 让下包、拆包、守包、包炸、残局成为 node trace 中的明确状态链。
+- 解决当前 `bombState=not_planted -> timeout` 过多的问题。
+
+预期新增：
+
+- `node-bomb-state-materializer.ts`
+- `node-post-plant-runner.ts`
+- `node-clutch-resolver.ts`
+- `node-defuse-rules.ts`
+
+状态：
+
+- `bombState = not_planted | planting | planted | defusing | defused | exploded`
+- `plantedNodeId`
+- `plantStartedByAgentId`
+- `plantCompletedByAgentId`
+- `defuseStartedByAgentId`
+- `defuseCompletedByAgentId`
+- `postPlantControl`
+- `retakePressure`
+
+规则：
+
+- 下包只能在 A/B 合法包点区块。
+- 下包需要合法 phase、活着的 T agent、足够 AP、包点控制或 contested 条件。
+- 拆包需要活着的 CT agent、到达 planted node、足够 AP、局部控制条件。
+- 包炸需要 planted 后进入守包 / 残局且未成功 defuse。
+- 残局可以通过全歼、拆包、包炸结束。
+
+验收：
+
+- 完整地图样本不再全部 `timeout`。
+- 至少出现：
+  - `bomb_exploded`
+  - `defuse`
+  - `elimination`
+  - `timeout`
+  中的多种 win type。
+- bomb state 在每个 phase 可审计。
+- 下包 / 拆包 action 必须经过 AP、node、phase、alive agent 校验。
+- 前端区块图能显示 bomb state。
+
+禁止：
+
+- 不让 LLM 直接写 `bomb_exploded` 或 `defuse`。
+- 不允许非包点下包。
+- 不允许 dead agent 下包 / 拆包。
+- 不为了减少 timeout 硬塞 plant。
+
+### 阶段 N23：经济系统深接入与跨回合资源闭环
+
+目标：
+
+- 让经济真正持续影响节点化比赛，而不是只作为行动说明或购买标签。
+- 每回合经济继承、掉枪、发枪、保枪、下包奖励、拆包奖励、连败奖励、买型选择都进入节点化资源层。
+- 经济影响行动能力、道具能力、风险选择和 AP 效率，但不直接决定 winner。
+
+预期新增或扩展：
+
+- `node-economy-state-bridge.ts`
+- `node-loadout-materializer.ts`
+- `node-drop-plan-materializer.ts`
+- `node-save-weapon-rules.ts`
+- `node-economy-audit.ts`
+
+关键行为：
+
+- 每回合开始读取上一回合经济状态。
+- team 可共享经济信息和买型讨论。
+- agent 只能使用个人金钱、获得 drop 或保留装备。
+- full_eco / force / half / rifle / awp buy 映射到 loadout package。
+- save 行为会影响下一回合资源。
+- 下包 / 拆包 / 胜负奖励进入下一回合。
+- overtime 经济不错误重置为 full_eco。
+
+与 AP / 战斗联动：
+
+- utilityTier 影响可用道具行动。
+- weaponTier 影响交火候选质量。
+- armor / rifle / awp 影响风险能力。
+- 低经济不等于必败，但必须改变合理策略。
+- 高经济不等于必赢，但允许复杂 execute / retake。
+
+验收：
+
+- 连续地图中经济状态每回合继承。
+- eco round 不生成完整高配爆弹。
+- full buy round 能生成完整默认和进点资源。
+- save weapon 能影响下一回合。
+- drop plan 能影响个人 loadout。
+- 经济 audit 能解释每回合买型、预算、掉枪、保枪、奖励。
+- 战斗和 AP 读取的是 node economy resources，而不是自由文本。
+
+禁止：
+
+- 不用经济直接控分。
+- 不让 outputBudget 裁剪直接变成弱证据。
+- 不按队伍名补钱。
+- 不让经济系统重回 engine.ts。
+
+### 阶段 N24：真实 LLM 节点化完整地图验收与旧引擎对照封板
+
+目标：
+
+- 用真实 LLM 跑 Dust2 节点化完整地图，验证新引擎是否形成真正博弈。
+- 将旧 Phase18 整回合引擎定位为 fallback / 对照路径，而不是继续承载节点化核心。
+- 形成进入下一阶段前的封板报告。
+
+验收维度：
+
+- 地图能完成。
+- LLM 真实参与 agent action 和 local judge，且 accepted rate 达到可用水平。
+- win type 不再长期单一 timeout。
+- 至少出现多种硬胜负：
+  - elimination。
+  - timeout。
+  - bomb_exploded。
+  - defuse。
+- AP 超支率可控，超支有降级或 fallback。
+- 经济状态连续继承。
+- 队伍 role / strategy / coach context 可在行动中被看见。
+- 商业意图不是空话，能被局部裁判验证或破坏。
+- 区块地图能显示 round / phase / node state / bomb state / combat state。
+- 旧 Phase18 仍可作为 fallback 手动运行。
+- 审计能区分：
+  - provider failure。
+  - schema failure。
+  - AP invalid。
+  - graph invalid。
+  - combat materialization failure。
+  - bomb materialization failure。
+
+预期交付：
+
+- `node-engine-readiness-report.md`
+- N17-N24 测试矩阵。
+- Node Lab 验收截图 / artifact 索引。
+- 旧引擎保留与剥离策略：
+  - 保留旧 Phase18 作为 fallback。
+  - 禁止继续向旧 engine 链路加入节点化新逻辑。
+  - 将旧 judge/combat/broadcast 逐步降级为对照和回放兼容。
+
+禁止：
+
+- 不把单局样本包装成完全成功。
+- 不因真实 LLM 失败回退到假成功。
+- 不在 N24 扩 BO3 / 其他地图 / 16 队。
+- 不删除旧引擎 fallback，除非已有明确替代和回滚方案。
+
 ## 8. 与原阶段 0-8 的映射
 
 | 原阶段 | 当前状态 | 节点化计划影响 |
@@ -1047,7 +1496,7 @@ LLM agent action 禁止：
 | 阶段 5：scorecard fallback | 基本完成 | 节点化路径后续减少对 scorecard fallback 的依赖。 |
 | 阶段 6：攻守/比分诊断 | 基本完成 | 节点化后通过路线、时空、AP 解释偏置来源。 |
 | 阶段 7：CoachService | 基本完成 | 后续 coach 可读取节点轨迹做 timeout / review。 |
-| 阶段 8：真实生成验收 | 外部网络有波动 | N11 开始真实 LLM shadow；N15 开始 experimental commit；N16 才进行完整地图灰度。 |
+| 阶段 8：真实生成验收 | 外部网络有波动 | N11 开始真实 LLM shadow；N15 开始 experimental commit；N16 完成完整地图灰度；N17-N24 用于让灰度路径具备真实博弈质量。 |
 
 ## 9. 验证策略
 
@@ -1075,12 +1524,18 @@ LLM agent action 禁止：
 - 查看节点状态是否连续推进。
 - 查看局部裁判是否只裁节点事实。
 - 查看最终 winner 是否来自硬条件，而不是 judge 直接写死。
+- 查看 Dust2 区块地图是否符合真实地图空间关系。
+- 查看 AP 是否真实限制移动、道具、下包、拆包、转点和回防。
+- 查看经济是否按回合继承，并通过资源能力影响行动。
+- 查看队伍资产、agent role、coach context 和商业分工是否进入行动。
+- 查看战斗、下包、拆包、守包、残局是否形成可审计事实链。
+- 查看真实 LLM 调用是否有 accepted / rejected / fallback 记录。
 
 ### 9.1 每次计划模式必须引用的检查项
 
 后续任何节点化相关计划必须写清：
 
-- 当前处于 N0-N16 哪一阶段。
+- 当前处于 N0-N24 哪一阶段。
 - 本轮要完成哪个阶段，哪些阶段不碰。
 - 是否修改旧回合路径。
 - 是否影响 `engine.ts`。
@@ -1088,6 +1543,7 @@ LLM agent action 禁止：
 - 是否影响 JudgePipeline。
 - 是否调用真实 LLM。
 - 是否影响 Web / 前端节点化展示。
+- 是否影响 AP、战斗、下包、经济继承或队伍资产接入。
 - 自动验证命令。
 - 人工验收流程。
 - 回滚策略。
@@ -1135,10 +1591,11 @@ LLM agent action 禁止：
 
 当前 OpenCode Go 截图显示，`deepseek-v4-flash` 单次调用成本大致在低千分之一美元级别。60 美元月额度足够支持实验，但仍需控制失败率和调用数。
 
-节点化第一版预算原则：
+节点化预算原则：
 
-- 不以 request 数无限扩展为默认策略。
-- 每回合目标控制在约 8-16 次 LLM 调用。
+- N0-N16 阶段不以 request 数无限扩展为默认策略。
+- N0-N16 每回合目标控制在约 8-16 次 LLM 调用，用于验证结构和边界。
+- N17-N24 阶段以“形成真实博弈和提高可采纳输出率”为优先级，可以提高调用粒度。
 - 每个时间点优先双队合并行动，或双方各一次行动。
 - 局部裁判每个时间点一次。
 - 非关键 agent 使用继承 / 保持位置 / 代码模板，减少无效调用。
@@ -1148,8 +1605,12 @@ LLM agent action 禁止：
 - N14 才允许真实 LLM agent phase action shadow。
 - N15 才允许节点化 experimental committed round。
 - N16 才允许 Dust2 完整地图灰度。
+- N17 才将前端验收切到 Dust2 区块地图层。
+- N18 才让 AP 成为硬行动约束。
+- N20 才允许按关键区块 / 关键冲突提高真实 LLM 调用粒度。
+- N24 才做真实 LLM 节点化完整地图封板验收。
 
-如果未来成本上升，优先减少 LLM 参与节点，而不是放宽校验。
+如果未来成本上升，优先减少 LLM 参与节点或降低低价值区块调用，而不是放宽 graph、AP、economy、combat、bomb 校验。
 
 ## 12. 观测与审计要求
 
@@ -1171,60 +1632,90 @@ LLM agent action 禁止：
 
 ## 13. 需要保留但暂不解决的问题
 
-以下问题已经被识别，但不应阻塞 N0-N10：
+以下问题已经被识别，但不应阻塞 N17-N24 主线：
 
 - 完整 HP / 护甲 / 枪械弹道。
 - 每颗道具的物理落点和精确持续时间。
 - 更真实的个人枪法差异。
-- 完整观赛 UI 的节点地图展示。
 - BO3 长期版本演化。
 - 16 队扩展。
 - 最终比分平衡和地图攻守微调。
+- 其他地图的区块化资产。
+- 更精细的道具轨迹和烟闪持续时间。
 
-这些问题应该在节点化骨架稳定后按专项处理。
+这些问题应该在 Dust2 节点化完整地图能形成可信博弈后按专项处理。
 
 ## 14. 当前下一步建议
 
-当前 N0-N9 已完成 shadow 第一版，N10 已追加执行并正式写回本母版。
+当前 N0-N16 已完成第一版，节点化路径已经具备：
 
-下一步不得继续临时口头新增阶段。后续推进必须从本文件的 N11-N16 中选择。
+- Dust2 node graph。
+- schema / graph service。
+- economy resource adapter。
+- phase runner。
+- deterministic / LLM shadow。
+- experimental committed round。
+- Dust2 full map gray validation。
+- Node Lab 初版。
+
+但 N16 仍暴露出核心质量缺口：
+
+- 前端展示仍偏节点堆叠，不像真实 CS 地图区块。
+- AP 仍偏审计字段，没有成为足够强的行动合法性系统。
+- 队伍资产、角色分工、商业分工进入行动还不够深。
+- 真实 LLM 已接入，但 action draft 仍存在 `json_truncated` 和低采纳率。
+- 战斗伤亡、下包、拆包、残局物化不足，导致 win type 容易集中在 `timeout`。
+- 经济继承已有基础，但还没有与 loadout、drop、save、AP、战斗充分闭环。
+
+下一步不得继续临时口头新增阶段。后续推进必须从本文件的 N17-N24 中选择。
 
 建议顺序：
 
-1. 先固化 N10：
-   - 确认 `node-llm-boundary`、`node-llm-stage-runner`、`llm_shadow` report audit 已测试通过。
-   - 将 N10 的文档、代码、测试作为一个稳定基线提交。
+1. 先进入 N17：
+   - 把 Node Lab 从抽象节点图升级为 Dust2 区块地图验收台。
+   - 使用 10-15 个大区块作为第一层展示。
+   - 保留细节点 trace，但不再让第一屏堆满 39 个节点。
 
-2. 再进入 N11：
-   - 只做真实 LLM 局部裁判受控实验。
-   - 不接 DB，不接 Web，不改旧正式回合。
-   - 验证真实模型是否遵守 nodeId、phaseId、字段边界和短 JSON 输出。
+2. N17 通过后进入 N18：
+   - 做 AP 真实化。
+   - 让移动、转点、道具、下包、拆包、回防真正受 AP 约束。
 
-3. N11 通过后进入 N12：
-   - 将 node shadow 作为旧 run 的旁路审计接入。
-   - 旧 winner、score、经济、RoundReport 不受影响。
+3. N18 通过后进入 N19：
+   - 深接队伍 strategy、initial proposal、coach context、agent role。
+   - 让队伍分工和商业底色真正影响节点行动。
 
-4. N12 通过后进入 N13：
-   - 做前端节点化展示适配。
-   - 第一版可以是表格 / 时间线 / 节点摘要，不强制完整交互地图。
+4. N19 通过后进入 N20：
+   - 专项解决真实 LLM 输出稳定性。
+   - 提高 agent action draft 采纳率，降低 JSON 截断。
+   - 将调用粒度升级为关键区块 / 关键冲突，而不是粗糙整 phase。
 
-5. N13 通过后进入 N14：
-   - 让 LLM 参与 agent phase action shadow。
-   - 仍然不提交正式 winner。
+5. N20 通过后进入 N21：
+   - 做战斗和交火物化。
+   - 让 contested node 能产生 casualties、trade、survivor、controlAfter。
 
-6. N14 通过后进入 N15：
-   - 开启 Dust2 单回合 experimental committed path。
+6. N21 通过后进入 N22：
+   - 做下包、拆包、守包、包炸、残局物化。
+   - 解决 win type 长期 timeout 的结构问题。
 
-7. N15 稳定后进入 N16：
-   - 做 Dust2 完整地图灰度验收。
+7. N22 通过后进入 N23：
+   - 做经济系统深接入。
+   - 让 drop、save、loadout、奖励、连败、买型影响 AP、战斗和行动能力。
+
+8. N23 稳定后进入 N24：
+   - 做真实 LLM 节点化完整地图封板验收。
+   - 明确旧 Phase18 作为 fallback / 对照路径。
 
 真正测试口径：
 
-- 现在可以测试：deterministic shadow 和 fixture LLM shadow。
-- N11 后可以测试：真实 LLM 局部裁判 shadow。
-- N13 后可以测试：前端节点化展示。
-- N15 后可以测试：节点化单回合正式提交。
-- N16 后可以测试：Dust2 节点化完整地图。
+- N16 后可以测试：Dust2 节点化完整地图是否能跑完。
+- N17 后可以测试：前端是否能按 CS 地图区块验收。
+- N18 后可以测试：AP 是否真实限制行动。
+- N19 后可以测试：队伍资产和角色分工是否真正进入比赛。
+- N20 后可以测试：真实 LLM agent action 是否稳定可采纳。
+- N21 后可以测试：交火是否产生可信伤亡和控制权变化。
+- N22 后可以测试：胜负方式是否不再长期 timeout。
+- N23 后可以测试：经济是否形成跨回合资源闭环。
+- N24 后可以测试：真实 LLM Dust2 节点化完整地图是否具备进入下一阶段的质量。
 
 ## 15. 阶段完成记录要求
 
@@ -1249,5 +1740,13 @@ LLM agent action 禁止：
 | N14 | 待填 | 待填 | 待填 | LLM agent phase action shadow |
 | N15 | 待填 | 待填 | 待填 | experimental committed node round |
 | N16 | 待填 | 待填 | 待填 | Dust2 full map gray validation |
+| N17 | 待填 | 待填 | 待填 | Dust2 sector map and Node Lab console |
+| N18 | 待填 | 待填 | 待填 | real AP legality and route cost |
+| N19 | 待填 | 待填 | 待填 | team assets, roles, coach context |
+| N20 | 待填 | 待填 | 待填 | stable real LLM node actions |
+| N21 | 待填 | 待填 | 待填 | combat and casualty materialization |
+| N22 | 待填 | 待填 | 待填 | bomb, defuse, post-plant, clutch materialization |
+| N23 | 待填 | 待填 | 待填 | economy/loadout/drop/save loop |
+| N24 | 待填 | 待填 | 待填 | real LLM full map readiness and old engine fallback audit |
 
 如果某阶段只是部分完成，必须写“部分完成”，不能包装成完成。

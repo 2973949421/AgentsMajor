@@ -26,6 +26,14 @@ describe("Phase 1.2 map rules", () => {
     });
   });
 
+  it("completes an overtime cycle once a team reaches a two-round lead after four overtime rounds", () => {
+    expect(evaluateMapState({ teamA: 19, teamB: 21 }, 40)).toEqual({
+      state: "completed",
+      phase: "overtime",
+      winnerSide: "teamB"
+    });
+  });
+
   it("switches side context after round 6 and every 3 overtime rounds", () => {
     expect(getSideContext(6).activeSide).toBe("teamA");
     expect(getSideContext(7).activeSide).toBe("teamB");

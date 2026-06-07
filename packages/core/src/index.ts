@@ -39,6 +39,7 @@ export * from "./phase20-pre-prompt-contract.js";
 export * from "./phase18-structured-messages.js";
 export * from "./phase18-context-boundary.js";
 export * from "./node-graph-service.js";
+export * from "./map-sector-service.js";
 export * from "./round-phase-runner.js";
 export * from "./local-node-judge-pipeline.js";
 export * from "./node-llm-boundary.js";
@@ -48,6 +49,7 @@ export * from "./win-condition-materializer.js";
 export * from "./node-round-report-bridge.js";
 export * from "./node-shadow-experiment.js";
 export * from "./node-round-experimental-committer.js";
+export * from "./node-map-experimental-runner.js";
 export * from "./ports.js";
 export {
   DashScopeOpenAiProvider,

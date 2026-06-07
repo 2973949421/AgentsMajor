@@ -616,8 +616,16 @@ LLM 不能直接绕过代码写最终事实。
 | N14 | LLM 阶段行动 Shadow Harness | LLM 生成 agent phase action，但代码校验 AP / graph / economy。 |
 | N15 | Dust2 节点化 experimental committed round | 单回合显式 experimental commit。 |
 | N16 | Dust2 节点化完整地图灰度验收 | 完整 Dust2 map 灰度，不扩 BO3。 |
+| N17 | Dust2 区块地图层与 Node Lab 验收台 | 10-15 个地图区块、区块状态、LLM audit、round / phase 进度。 |
+| N18 | AP 真实化与行动合法性收口 | AP 与路线、行动、道具、下包、拆包、转点和回防真实挂钩。 |
+| N19 | 队伍资产、角色分工与商业底色深接入 | strategy、initial proposal、coach、role 和商业分工进入行动。 |
+| N20 | 真实 LLM 输出稳定化与调用粒度升级 | 提高 real LLM draft 采纳率，按关键区块 / 关键冲突调用。 |
+| N21 | 战斗与交火物化系统 | 交火、伤亡、trade、survivor、控制权变化可审计。 |
+| N22 | 下包、拆包、守包与残局物化系统 | bomb state、post-plant、defuse、clutch 进入硬胜负链。 |
+| N23 | 经济系统深接入与跨回合资源闭环 | buy、drop、save、loadout、奖励、连败与 AP / 战斗联动。 |
+| N24 | 真实 LLM 节点化完整地图验收与旧引擎对照封板 | real LLM Dust2 完整地图质量验收，明确旧引擎 fallback / 对照定位。 |
 
-以后如果需要新增 N17 或更后阶段，必须先更新实施计划母版，再执行计划模式。
+以后如果需要新增 N25 或更后阶段，必须先更新实施计划母版，再执行计划模式。
 
 不能在对话中临时口头新增阶段并直接实现。
 
@@ -648,6 +656,26 @@ N16 完成后可以测试：
 
 - Dust2 节点化完整地图。
 - 经济继承、节点推进、LLM 局部裁判、前端展示和 hard win condition 的完整闭环。
+
+N17 完成后可以测试：
+
+- Dust2 区块地图是否适合人工验收。
+- Node Lab 是否能按 round / phase / 区块展示真实节点状态。
+
+N20 完成后可以测试：
+
+- 真实 LLM agent action 是否稳定可采纳。
+- 调用粒度提高后是否形成更像博弈的局部选择。
+
+N22 完成后可以测试：
+
+- 胜负方式是否不再长期集中在 timeout。
+- 下包、拆包、守包、包炸、残局是否进入可审计事实链。
+
+N24 完成后可以测试：
+
+- 真实 LLM Dust2 节点化完整地图是否具备进入下一阶段的质量。
+- 旧 Phase18 引擎是否可以稳定作为 fallback / 对照路径。
 
 ## 19. 当前共识结论
 

@@ -14,7 +14,8 @@ export type RunMode =
   | "phase18_current_map"
   | "phase18_keep_generating_map"
   | "phase18_full_bo3"
-  | "phase20_node_round_experimental";
+  | "phase20_node_round_experimental"
+  | "phase20_node_map_experimental";
 type RunRetryMode = "full_round" | "resume_from_stage";
 type AnyRunMode = RunMode | "phase17_showcase_match";
 type ResetScope = "round" | "map" | "match";
@@ -123,6 +124,44 @@ export interface WebRunNodeShadowProgress {
   errorKind?: string;
 }
 
+export interface WebRunNodeMapExperimentalRoundProgress {
+  roundId: string;
+  roundNumber: number;
+  winnerTeamId?: string;
+  loserTeamId?: string;
+  roundWinType?: string;
+  nodeTraceArtifactId: string;
+  totalApSpent: number;
+  fallbackCount: number;
+  ignoredFields: string[];
+  finalHardCondition?: {
+    isRoundOver: boolean;
+    winnerSide?: "attack" | "defense";
+    winnerTeamId?: string;
+    roundWinType?: string;
+    reason: string;
+  };
+}
+
+export interface WebRunNodeMapExperimentalProgress {
+  status: "created";
+  source: "node_round_engine_map_experimental";
+  mode: "phase20_node_map_experimental";
+  writesDb: true;
+  replacesLegacyRoundPath: false;
+  summaryArtifactId: string;
+  mapGameId: string;
+  mapName: string;
+  roundsCommitted: number;
+  finalScore: { teamA: number; teamB: number };
+  completionReason: string;
+  roundTraceArtifactIds: string[];
+  totalFallbackCount: number;
+  fallbackReasons: string[];
+  ignoredFields: string[];
+  roundSummaries: WebRunNodeMapExperimentalRoundProgress[];
+}
+
 export interface WebRunProgress {
   runId: string;
   mode: AnyRunMode;
@@ -165,6 +204,7 @@ export interface WebRunProgress {
   promptContractId?: string;
   contractStatus?: "current" | "legacy" | "mixed" | "blocked";
   nodeShadow?: WebRunNodeShadowProgress;
+  nodeMapExperimental?: WebRunNodeMapExperimentalProgress;
   recentRuns: RunMatchHistoryEntry[];
   error?: string;
   result?: {
@@ -357,9 +397,17 @@ export function RunMatchControls({
         { label: "契约状态", value: formatContractStatus(progress.contractStatus) },
         { label: "当前地图", value: progress.currentMapOrder ? `M${progress.currentMapOrder}` : "--" },
         { label: "当前回合", value: progress.currentRoundNumber ? `R${progress.currentRoundNumber}` : "--" },
-        { label: "调用预估", value: formatExpectedCalls(progress) },
-        { label: "历史完成调用", value: String(progress.llmSummary.completedCalls) },
-        { label: "本次完成调用", value: String(progress.currentExecutionCompletedCalls ?? 0) },
+        ...(isNodeExperimentalMode(progress.mode)
+          ? [
+              { label: "节点模式", value: formatExpectedCalls(progress) },
+              { label: "节点 Trace", value: formatNodeTraceSummary(progress) },
+              { label: "旧 LLM 调用", value: "0（预期）" }
+            ]
+          : [
+              { label: "调用预估", value: formatExpectedCalls(progress) },
+              { label: "历史完成调用", value: String(progress.llmSummary.completedCalls) },
+              { label: "本次完成调用", value: String(progress.currentExecutionCompletedCalls ?? 0) }
+            ]),
         { label: "当前尝试", value: progress.currentOuterAttemptNumber ? `#${progress.currentOuterAttemptNumber}` : "--" },
         { label: "已恢复失败", value: String(progress.recoveredFailureCount ?? 0) }
       ]
@@ -430,17 +478,9 @@ export function RunMatchControls({
         <button type="button" className={styles.opsActionSecondary} onClick={() => handleRun("phase18_full_bo3")} disabled={state === "running"}>
           {state === "running" && progress?.mode === "phase18_full_bo3" ? "正在生成整场 BO3..." : "生成整场 BO3"}
         </button>
-        {runnerPolicy.nodeRoundExperimentalEnabled ? (
-          <button
-            type="button"
-            className={styles.opsActionSecondary}
-            onClick={() => handleRun("phase20_node_round_experimental")}
-            disabled={state === "running"}
-            title="只提交一个 Dust2 节点化 experimental 回合，不接入一直生成。"
-          >
-            {state === "running" && progress?.mode === "phase20_node_round_experimental" ? "节点化实验中..." : "节点化实验回合"}
-          </button>
-        ) : null}
+        <a className={styles.opsActionSecondary} href="/node-lab" title="进入独立节点化实验台，旧 Phase18 控制台不再作为节点化主入口。">
+          进入节点化实验台
+        </a>
       </div>
       <span className={styles.opsMetaLine}>一直生成会在生成类失败后自动断点继续同一回合，直到当前地图结束或触发明确熔断。</span>
 
@@ -613,6 +653,83 @@ export function RunMatchControls({
                             ? `${formatNodeShadowSide(phase.winCondition.winnerSide)} / ${phase.winCondition.roundWinType ?? "--"}`
                             : "未结束"}
                         </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </div>
+        </details>
+      ) : null}
+
+      {progress?.nodeMapExperimental ? (
+        <details className={styles.opsDisclosure} open>
+          <summary>节点化实验地图</summary>
+          <div className={styles.opsDisclosureBody}>
+            <div className={styles.opsSummaryGrid}>
+              <div className={styles.opsSummaryItem}>
+                <span>来源</span>
+                <strong>{progress.nodeMapExperimental.source}</strong>
+              </div>
+              <div className={styles.opsSummaryItem}>
+                <span>写库</span>
+                <strong>{progress.nodeMapExperimental.writesDb ? "true" : "false"}</strong>
+              </div>
+              <div className={styles.opsSummaryItem}>
+                <span>回合</span>
+                <strong>{progress.nodeMapExperimental.roundsCommitted}</strong>
+              </div>
+              <div className={styles.opsSummaryItem}>
+                <span>比分</span>
+                <strong>
+                  {progress.nodeMapExperimental.finalScore.teamA}:{progress.nodeMapExperimental.finalScore.teamB}
+                </strong>
+              </div>
+              <div className={styles.opsSummaryItem}>
+                <span>结束原因</span>
+                <strong>{progress.nodeMapExperimental.completionReason}</strong>
+              </div>
+              <div className={styles.opsSummaryItem}>
+                <span>Fallback</span>
+                <strong>{progress.nodeMapExperimental.totalFallbackCount}</strong>
+              </div>
+            </div>
+            <span className={styles.opsMetaLine}>Summary artifact：{progress.nodeMapExperimental.summaryArtifactId}</span>
+            {progress.nodeMapExperimental.fallbackReasons.length > 0 ? (
+              <span className={styles.opsMetaLine}>Fallback：{progress.nodeMapExperimental.fallbackReasons.join(" / ")}</span>
+            ) : null}
+            {progress.nodeMapExperimental.ignoredFields.length > 0 ? (
+              <span className={styles.opsMetaLine}>忽略字段：{progress.nodeMapExperimental.ignoredFields.join(" / ")}</span>
+            ) : null}
+            {progress.nodeMapExperimental.roundSummaries.length > 0 ? (
+              <div className={styles.opsTableWrap}>
+                <table className={styles.opsTable}>
+                  <thead>
+                    <tr>
+                      <th>回合</th>
+                      <th>Winner</th>
+                      <th>胜法</th>
+                      <th>Hard condition</th>
+                      <th>AP</th>
+                      <th>Fallback</th>
+                      <th>Trace artifact</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {progress.nodeMapExperimental.roundSummaries.map((round) => (
+                      <tr key={round.roundId}>
+                        <td>R{round.roundNumber}</td>
+                        <td>{round.winnerTeamId ?? "--"}</td>
+                        <td>{round.roundWinType ?? "--"}</td>
+                        <td>
+                          {round.finalHardCondition
+                            ? `${formatNodeShadowSide(round.finalHardCondition.winnerSide)} / ${round.finalHardCondition.reason}`
+                            : "--"}
+                        </td>
+                        <td>{round.totalApSpent}</td>
+                        <td>{round.fallbackCount}</td>
+                        <td>{round.nodeTraceArtifactId}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -955,6 +1072,9 @@ function buildFixtureUrl(matchId: string): string {
 }
 
 function buildCompletedMessage(progress: WebRunProgress): string {
+  if (isNodeExperimentalMode(progress.mode)) {
+    return `节点化实验完成。比分 ${progress.result?.score ?? "待定"}，${formatNodeTraceSummary(progress)}，不调用旧 Phase18 LLM stage。`;
+  }
   return `运行完成。比分 ${progress.result?.score ?? "待定"}，LLM 调用已完成 ${progress.llmSummary.completedCalls} 次，${formatExpectedCalls(progress)}。`;
 }
 
@@ -974,6 +1094,9 @@ function formatExpectedCalls(progress: WebRunProgress): string {
   if (progress.mode === "phase20_node_round_experimental") {
     return "节点化实验单回合，不调用旧 Phase18 LLM stage";
   }
+  if (progress.mode === "phase20_node_map_experimental") {
+    return "节点化实验地图，不调用旧 Phase18 LLM stage";
+  }
   return progress.llmSummary.expectedTotalCalls > 0 ? `约 ${progress.llmSummary.expectedTotalCalls} 次` : "按需调用";
 }
 
@@ -983,8 +1106,26 @@ function isPhase18Mode(mode: AnyRunMode): mode is RunMode {
     mode === "phase18_current_map" ||
     mode === "phase18_keep_generating_map" ||
     mode === "phase18_full_bo3" ||
-    mode === "phase20_node_round_experimental"
+    mode === "phase20_node_round_experimental" ||
+    mode === "phase20_node_map_experimental"
   );
+}
+
+function isNodeExperimentalMode(mode: AnyRunMode): boolean {
+  return mode === "phase20_node_round_experimental" || mode === "phase20_node_map_experimental";
+}
+
+function formatNodeTraceSummary(progress: WebRunProgress): string {
+  if (progress.nodeMapExperimental) {
+    return `${progress.nodeMapExperimental.roundsCommitted} 回合 / ${progress.nodeMapExperimental.roundTraceArtifactIds.length} trace`;
+  }
+  if (progress.nodeShadow?.nodeTraceArtifactId) {
+    return `R${progress.nodeShadow.roundNumber ?? "--"} / ${progress.nodeShadow.nodeTraceArtifactId}`;
+  }
+  if (progress.nodeShadow) {
+    return `R${progress.nodeShadow.roundNumber ?? "--"} / trace 生成中`;
+  }
+  return "等待节点 trace";
 }
 
 function runStartMessage(mode: RunMode): string {
@@ -999,6 +1140,8 @@ function runStartMessage(mode: RunMode): string {
       return "开始执行 Phase 1.8 整场 BO3 真实 LLM 生成...";
     case "phase20_node_round_experimental":
       return "开始执行节点化实验单回合；本模式不会接入一直生成。";
+    case "phase20_node_map_experimental":
+      return "开始执行节点化实验地图；本模式只运行当前 Dust2 地图。";
     default:
       return "开始执行 Phase 1.8 整场 BO3 真实 LLM 生成...";
   }

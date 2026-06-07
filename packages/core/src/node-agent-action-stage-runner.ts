@@ -191,6 +191,7 @@ export function createEnvNodeAgentActionDraftProvider(
         modelTier: "standard",
         temperature: 0.35,
         maxOutputTokens: 1200,
+        extraParams: { thinking: { type: "disabled" } },
         messages: buildRealNodeAgentActionMessages(request)
       });
       return {

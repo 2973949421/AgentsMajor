@@ -8,7 +8,8 @@ type SimulationRunMode =
   | "phase18_current_map"
   | "phase18_keep_generating_map"
   | "phase18_full_bo3"
-  | "phase20_node_round_experimental";
+  | "phase20_node_round_experimental"
+  | "phase20_node_map_experimental";
 
 export interface SimulationRunRecord {
   id: string;

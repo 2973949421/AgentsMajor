@@ -49,7 +49,7 @@ export interface BuildNodeEconomyResourcesInput {
 }
 
 const lowResourceActions: AgentPhaseActionType[] = ["hold_position", "watch_angle", "gather_info", "map_control", "prepare_trade", "save"];
-const mediumResourceActions: AgentPhaseActionType[] = [...lowResourceActions, "use_utility", "seek_duel", "fake_pressure", "rotate", "retake"];
+const mediumResourceActions: AgentPhaseActionType[] = [...lowResourceActions, "use_utility", "seek_duel", "fake_pressure", "rotate", "retake", "execute_site"];
 const fullResourceActions: AgentPhaseActionType[] = [...mediumResourceActions, "execute_site", "post_plant_hold", "defuse"];
 
 export function buildNodeEconomyResources(input: BuildNodeEconomyResourcesInput): NodeRoundEconomyResources {

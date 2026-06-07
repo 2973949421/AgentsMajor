@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 
@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   readMapProgressSnapshot,
+  readNodeMapExperimentalProgress,
   readNodeShadowSidecarProgress,
   summarizeLlmCalls,
   summarizeNodeShadowSidecarPayload,
@@ -114,6 +115,83 @@ describe("Phase 1.8 web run progress", () => {
       expect(progress?.phaseSummaries.length).toBe(report.phaseSummaries.length);
       expect(progress?.writesDb).toBe(false);
       expect(progress?.replacesLegacyRoundPath).toBe(false);
+    } finally {
+      repositories.close();
+    }
+  });
+
+  it("reads node map experimental summary artifacts without legacy run facts", async () => {
+    const tempRoot = mkdtempSync(resolve(tmpdir(), "agent-major-web-progress-"));
+    const repositories = createSqliteRepositories(resolve(tempRoot, "agent-major.sqlite"));
+    try {
+      seedPhase18ProgressFixture(repositories);
+      const artifactPath = resolve(tempRoot, "node-map-summary.json");
+      writeFileSync(
+        artifactPath,
+        JSON.stringify({
+          source: "node_round_engine_map_experimental",
+          mode: "phase20_node_map_experimental",
+          writesDb: true,
+          replacesLegacyRoundPath: false,
+          mapGameId: "map-2",
+          mapName: "Dust2",
+          roundsCommitted: 2,
+          finalScore: { teamA: 1, teamB: 1 },
+          completionReason: "map_completed",
+          roundTraceArtifactIds: ["artifact-round-1", "artifact-round-2"],
+          fallbackSummary: {
+            totalFallbackCount: 1,
+            reasons: ["fixture fallback"],
+            ignoredFields: ["winnerTeamId"]
+          },
+          roundSummaries: [
+            {
+              roundId: "round-node-1",
+              roundNumber: 1,
+              winnerTeamId: "team-a",
+              loserTeamId: "team-b",
+              roundWinType: "elimination",
+              nodeTraceArtifactId: "artifact-round-1",
+              totalApSpent: 20,
+              fallbackCount: 1,
+              ignoredFields: ["winnerTeamId"],
+              finalHardCondition: {
+                isRoundOver: true,
+                winnerSide: "attack",
+                winnerTeamId: "team-a",
+                roundWinType: "elimination",
+                reason: "fixture hard condition"
+              }
+            }
+          ]
+        }),
+        "utf8"
+      );
+      await repositories.artifacts.save({
+        id: "artifact-map-summary",
+        artifactType: "node_map_experimental_summary",
+        tournamentId: "tournament-1",
+        matchId: "match-1",
+        mapGameId: "map-2",
+        uri: artifactPath,
+        mimeType: "application/json",
+        status: "ready",
+        createdAt: "2026-05-04T00:00:00.000Z"
+      });
+
+      const progress = readNodeMapExperimentalProgress(repositories, "match-1");
+
+      expect(progress).toMatchObject({
+        source: "node_round_engine_map_experimental",
+        mode: "phase20_node_map_experimental",
+        writesDb: true,
+        replacesLegacyRoundPath: false,
+        summaryArtifactId: "artifact-map-summary",
+        roundsCommitted: 2,
+        totalFallbackCount: 1
+      });
+      expect(progress?.roundTraceArtifactIds).toEqual(["artifact-round-1", "artifact-round-2"]);
+      expect(progress?.roundSummaries[0]?.finalHardCondition?.winnerSide).toBe("attack");
     } finally {
       repositories.close();
     }
