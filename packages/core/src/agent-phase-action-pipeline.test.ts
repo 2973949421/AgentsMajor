@@ -84,6 +84,38 @@ describe("agent phase action pipeline", () => {
       expect(action.businessIntent).toContain(action.teamId);
     }
   });
+
+  it("can apply validated LLM shadow drafts without changing default deterministic behavior", () => {
+    const graph = loadMapNodeGraph("dust2");
+    const economyResources = resources({
+      attackPosture: "rifle_buy",
+      attackLoadout: "rifle_full_t_pack",
+      defensePosture: "rifle_buy",
+      defenseLoadout: "rifle_full_ct_pack"
+    });
+    const phaseSnapshot = snapshot("first_contact");
+    const deterministic = buildAgentPhaseActions({ graph, phaseSnapshot, economyResources });
+    const target = deterministic[0]!;
+    const llmShadow = buildAgentPhaseActions({
+      graph,
+      phaseSnapshot,
+      economyResources,
+      mode: "llm_shadow",
+      llmDrafts: [
+        {
+          agentId: target.agentId,
+          phaseId: phaseSnapshot.phaseId,
+          targetNodeId: target.targetNodeId,
+          actionType: target.actionType,
+          apCost: 1,
+          businessIntent: "LLM shadow 通过合法草案增强商业行动说明。"
+        }
+      ]
+    });
+
+    expect(buildAgentPhaseActions({ graph, phaseSnapshot, economyResources })).toEqual(deterministic);
+    expect(llmShadow.find((action) => action.agentId === target.agentId)?.businessIntent).toContain("LLM shadow");
+  });
 });
 
 function snapshot(phaseId: RoundNodeStateSnapshot["phaseId"]): RoundNodeStateSnapshot {

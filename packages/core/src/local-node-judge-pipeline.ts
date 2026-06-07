@@ -1,9 +1,13 @@
 import type { AgentPhaseAction, LocalNodeVerdict, MapNodeGraph, MapNodeState, RoundNodeStateSnapshot } from "@agent-major/shared";
 
+import type { LocalNodeJudgeDraft } from "./node-llm-boundary.js";
+
 export interface BuildLocalNodeVerdictsInput {
   graph: MapNodeGraph;
   phaseSnapshot: RoundNodeStateSnapshot;
   agentActions: AgentPhaseAction[];
+  mode?: "deterministic" | "llm_shadow";
+  llmDrafts?: LocalNodeJudgeDraft[];
 }
 
 const winConditionCheckPhases = new Set(["execute_or_retake", "post_plant_or_clutch"]);
@@ -11,7 +15,7 @@ const plantOrRetakeKinds = new Set(["plant", "site", "retake"]);
 
 export function buildLocalNodeVerdicts(input: BuildLocalNodeVerdictsInput): LocalNodeVerdict[] {
   const actionsByNode = groupActionsByTargetNode(input.agentActions);
-  return input.phaseSnapshot.nodeStates.map((nodeState) =>
+  const deterministicVerdicts = input.phaseSnapshot.nodeStates.map((nodeState) =>
     buildLocalNodeVerdict({
       graph: input.graph,
       nodeState,
@@ -19,6 +23,50 @@ export function buildLocalNodeVerdicts(input: BuildLocalNodeVerdictsInput): Loca
       phaseId: input.phaseSnapshot.phaseId
     })
   );
+  if (input.mode !== "llm_shadow" || !input.llmDrafts || input.llmDrafts.length === 0) {
+    return deterministicVerdicts;
+  }
+  return applyLocalNodeJudgeDrafts({
+    phaseSnapshot: input.phaseSnapshot,
+    deterministicVerdicts,
+    llmDrafts: input.llmDrafts
+  });
+}
+
+export function applyLocalNodeJudgeDrafts(input: {
+  phaseSnapshot: RoundNodeStateSnapshot;
+  deterministicVerdicts: LocalNodeVerdict[];
+  llmDrafts: LocalNodeJudgeDraft[];
+}): LocalNodeVerdict[] {
+  const draftByNodeId = new Map(input.llmDrafts.map((draft) => [draft.nodeId, draft] as const));
+  const nodeStateById = new Map(input.phaseSnapshot.nodeStates.map((nodeState) => [nodeState.nodeId, nodeState] as const));
+
+  return input.deterministicVerdicts.map((verdict) => {
+    const draft = draftByNodeId.get(verdict.nodeId);
+    const nodeState = nodeStateById.get(verdict.nodeId);
+    if (!draft || !nodeState) {
+      return verdict;
+    }
+    const conflictReason = candidateControlConflictReason(nodeState, draft.controlAfterCandidate);
+    if (conflictReason) {
+      return {
+        ...verdict,
+        summary: `${draft.summary} LLM shadow 候选控制权与节点人数事实冲突，已降级为 deterministic 控制权：${verdict.controlAfter}。`,
+        businessPlanValidated: mergeStrings(verdict.businessPlanValidated, draft.businessPlanValidated),
+        businessPlanBroken: mergeStrings(verdict.businessPlanBroken, [conflictReason, ...draft.businessPlanBroken, ...draft.riskNotes])
+      };
+    }
+
+    return {
+      ...verdict,
+      summary: draft.summary,
+      controlAfter: draft.controlAfterCandidate,
+      informationAdvantage: informationAdvantageForControl(draft.controlAfterCandidate),
+      businessPlanValidated: mergeStrings(verdict.businessPlanValidated, draft.businessPlanValidated),
+      businessPlanBroken: mergeStrings(verdict.businessPlanBroken, [...draft.businessPlanBroken, ...draft.riskNotes]),
+      nextPhaseInitiative: initiativeForControl(draft.controlAfterCandidate)
+    };
+  });
 }
 
 function buildLocalNodeVerdict(input: {
@@ -83,4 +131,26 @@ function initiativeForControl(control: LocalNodeVerdict["controlAfter"]): LocalN
 
 function shouldTriggerWinConditionCheck(phaseId: RoundNodeStateSnapshot["phaseId"], nodeKind: string | undefined): boolean {
   return winConditionCheckPhases.has(phaseId) && Boolean(nodeKind && plantOrRetakeKinds.has(nodeKind));
+}
+
+function candidateControlConflictReason(nodeState: MapNodeState, candidate: LocalNodeVerdict["controlAfter"]): string | undefined {
+  const hasAttack = nodeState.attackAgentIds.length > 0;
+  const hasDefense = nodeState.defenseAgentIds.length > 0;
+  if (hasAttack && hasDefense && candidate !== "contested") {
+    return `llm_candidate_control_conflict:${nodeState.nodeId}:expected_contested:got_${candidate}`;
+  }
+  if (hasAttack && !hasDefense && candidate === "defense") {
+    return `llm_candidate_control_conflict:${nodeState.nodeId}:no_defense_agents`;
+  }
+  if (!hasAttack && hasDefense && candidate === "attack") {
+    return `llm_candidate_control_conflict:${nodeState.nodeId}:no_attack_agents`;
+  }
+  if (!hasAttack && !hasDefense && (candidate === "attack" || candidate === "defense" || candidate === "contested")) {
+    return `llm_candidate_control_conflict:${nodeState.nodeId}:empty_node`;
+  }
+  return undefined;
+}
+
+function mergeStrings(left: string[] | undefined, right: string[] | undefined): string[] {
+  return [...new Set([...(left ?? []), ...(right ?? [])].filter((value) => value.length > 0))];
 }

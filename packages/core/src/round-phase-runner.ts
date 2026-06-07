@@ -5,6 +5,18 @@ import type { NodeAgentEconomyResource, NodeRoundEconomyResources } from "./econ
 import { buildAgentPhaseActions } from "./agent-phase-action-pipeline.js";
 import { buildLocalNodeVerdicts } from "./local-node-judge-pipeline.js";
 import { materializeNodeStateTransition } from "./node-state-materializer.js";
+import {
+  runNodeLlmShadowStage,
+  type NodeLlmDraftProvider,
+  type NodeLlmProviderMode,
+  type NodeLlmShadowStageAudit
+} from "./node-llm-stage-runner.js";
+import {
+  runNodeAgentActionShadowStage,
+  type NodeAgentActionDraftProvider,
+  type NodeAgentActionLlmStageAudit,
+  type NodeAgentActionProviderMode
+} from "./node-agent-action-stage-runner.js";
 import { evaluateNodeRoundWinCondition, type NodeRoundWinConditionResult, type NodeRoundWinConditionState } from "./win-condition-materializer.js";
 
 export interface RunNodeRoundShadowInput {
@@ -12,6 +24,70 @@ export interface RunNodeRoundShadowInput {
   roundNumber: number;
   graph: MapNodeGraph;
   economyResources: NodeRoundEconomyResources;
+}
+
+export interface RunNodeRoundShadowWithNodeLlmInput extends RunNodeRoundShadowInput {
+  nodeLlm: {
+    provider: NodeLlmDraftProvider;
+    maxLlmCalls: number;
+    providerMode?: NodeLlmProviderMode;
+    modelId?: string;
+  };
+  agentActionLlm?: NodeRoundAgentActionLlmConfig;
+}
+
+export interface RunNodeRoundShadowWithAgentActionLlmInput extends RunNodeRoundShadowInput {
+  agentActionLlm: NodeRoundAgentActionLlmConfig;
+  nodeLlm?: {
+    provider: NodeLlmDraftProvider;
+    maxLlmCalls: number;
+    providerMode?: NodeLlmProviderMode;
+    modelId?: string;
+  };
+}
+
+interface RunNodeRoundShadowWithAnyLlmInput extends RunNodeRoundShadowInput {
+  nodeLlm?: RunNodeRoundShadowWithNodeLlmInput["nodeLlm"];
+  agentActionLlm?: NodeRoundAgentActionLlmConfig;
+}
+
+export interface NodeRoundAgentActionLlmConfig {
+  provider: NodeAgentActionDraftProvider;
+  maxLlmCalls: number;
+  providerMode?: NodeAgentActionProviderMode;
+  modelId?: string;
+}
+
+export interface NodeRoundLlmShadowAudit {
+  enabled: boolean;
+  providerMode: NodeLlmProviderMode;
+  modelId?: string;
+  callsAttempted: number;
+  fallbackCount: number;
+  fallbackReasons: string[];
+  ignoredFields: string[];
+  draftValidCount: number;
+  draftRejectedCount: number;
+  contentLength: number;
+  reasoningContentLength: number;
+  jsonTruncated: boolean;
+  reasoningExhausted: boolean;
+}
+
+export interface NodeRoundAgentActionLlmShadowAudit {
+  enabled: boolean;
+  providerMode: NodeAgentActionProviderMode;
+  modelId?: string;
+  callsAttempted: number;
+  fallbackCount: number;
+  fallbackReasons: string[];
+  ignoredFields: string[];
+  draftAcceptedCount: number;
+  draftRejectedCount: number;
+  contentLength: number;
+  reasoningContentLength: number;
+  jsonTruncated: boolean;
+  reasoningExhausted: boolean;
 }
 
 export interface NodeRoundShadowResult {
@@ -23,11 +99,15 @@ export interface NodeRoundShadowResult {
   phases: NodeRoundPhaseSnapshot[];
   resourceSnapshot: NodeRoundEconomyResources;
   finalWinCondition?: NodeRoundWinConditionResult;
+  nodeLlmAudit?: NodeRoundLlmShadowAudit;
+  agentActionLlmAudit?: NodeRoundAgentActionLlmShadowAudit;
   notes: string[];
 }
 
 export type NodeRoundPhaseSnapshot = RoundNodeStateSnapshot & {
   winConditionCheck: NodeRoundWinConditionResult;
+  nodeLlmAudit?: NodeLlmShadowStageAudit;
+  agentActionLlmAudit?: NodeAgentActionLlmStageAudit;
   transitionNotes?: string[];
 };
 
@@ -83,6 +163,56 @@ export function runNodeRoundShadow(input: RunNodeRoundShadowInput): NodeRoundSha
   };
 }
 
+export async function runNodeRoundShadowWithNodeLlm(input: RunNodeRoundShadowWithNodeLlmInput): Promise<NodeRoundShadowResult> {
+  return runNodeRoundShadowWithAnyLlm(input);
+}
+
+export async function runNodeRoundShadowWithAgentActionLlm(input: RunNodeRoundShadowWithAgentActionLlmInput): Promise<NodeRoundShadowResult> {
+  return runNodeRoundShadowWithAnyLlm(input);
+}
+
+async function runNodeRoundShadowWithAnyLlm(input: RunNodeRoundShadowWithAnyLlmInput): Promise<NodeRoundShadowResult> {
+  const phases: NodeRoundPhaseSnapshot[] = [];
+  const sortedPhases = [...input.graph.timing_model.round_phases].sort((left, right) => left.phase_index - right.phase_index);
+  let previousSnapshot: NodeRoundPhaseSnapshot | undefined;
+  let winConditionState: NodeRoundWinConditionState = { bombState: "not_planted" };
+  const nodeLlmAudit = input.nodeLlm ? buildEmptyNodeLlmAudit(input.nodeLlm) : undefined;
+  const agentActionLlmAudit = input.agentActionLlm ? buildEmptyAgentActionLlmAudit(input.agentActionLlm) : undefined;
+
+  for (const phase of sortedPhases) {
+    const phaseSnapshot = previousSnapshot
+      ? await buildMaterializedPhaseSnapshotWithNodeLlm(input, phase.id, previousSnapshot, winConditionState, nodeLlmAudit, agentActionLlmAudit)
+      : await buildInitialPhaseSnapshotWithNodeLlm(input, phase.id, winConditionState, nodeLlmAudit, agentActionLlmAudit);
+    phases.push(phaseSnapshot);
+    previousSnapshot = phaseSnapshot;
+    winConditionState = nextWinConditionState(phaseSnapshot.winConditionCheck);
+    if (phaseSnapshot.winConditionCheck.isRoundOver) {
+      break;
+    }
+  }
+
+  const finalWinCondition = phases.find((phase) => phase.winConditionCheck.isRoundOver)?.winConditionCheck;
+
+  return {
+    roundId: input.roundId,
+    roundNumber: input.roundNumber,
+    mapSlug: input.graph.map_slug,
+    graphAssetId: input.graph.asset_id,
+    mode: "shadow",
+    phases,
+    resourceSnapshot: input.economyResources,
+    ...(finalWinCondition ? { finalWinCondition } : {}),
+    ...(nodeLlmAudit ? { nodeLlmAudit } : {}),
+    ...(agentActionLlmAudit ? { agentActionLlmAudit } : {}),
+    notes: [
+      "节点化 shadow runner 只生成阶段轨迹，不写正式 winner。",
+      ...(nodeLlmAudit ? ["本结果启用局部节点裁判 LLM shadow；LLM 输出只作为局部解释草案。"] : []),
+      ...(agentActionLlmAudit ? ["本结果启用 agent 阶段行动 LLM shadow；LLM 输出只作为行动草案。"] : []),
+      "本结果不写 DB、不替换旧回合提交路径。"
+    ]
+  };
+}
+
 function buildInitialPhaseSnapshot(
   input: RunNodeRoundShadowInput,
   phaseId: RoundPhaseId,
@@ -120,6 +250,45 @@ function buildInitialPhaseSnapshot(
   return attachActionsVerdictsAndWinCondition(input, baseSnapshot, input.economyResources, previousWinConditionState);
 }
 
+async function buildInitialPhaseSnapshotWithNodeLlm(
+  input: RunNodeRoundShadowWithAnyLlmInput,
+  phaseId: RoundPhaseId,
+  previousWinConditionState: NodeRoundWinConditionState,
+  audit: NodeRoundLlmShadowAudit | undefined,
+  agentActionAudit: NodeRoundAgentActionLlmShadowAudit | undefined
+): Promise<NodeRoundPhaseSnapshot> {
+  const attackResources = input.economyResources.agents.filter((resource) => resource.side === "attack");
+  const defenseResources = input.economyResources.agents.filter((resource) => resource.side === "defense");
+  const attackReachable = getReachableNodes(input.graph, "attack", phaseId);
+  const defenseReachable = getReachableNodes(input.graph, "defense", phaseId);
+  const attackAssignments = assignAgentsToNodes(attackResources, phaseId, "attack", attackReachable);
+  const defenseAssignments = assignAgentsToNodes(defenseResources, phaseId, "defense", defenseReachable);
+  const activeNodeIds = uniqueSorted([
+    ...attackReachable,
+    ...defenseReachable,
+    ...Object.keys(attackAssignments),
+    ...Object.keys(defenseAssignments)
+  ]);
+
+  const nodeStates = activeNodeIds.map((nodeId) =>
+    buildNodeState({
+      phaseId,
+      nodeId,
+      attackAgentIds: attackAssignments[nodeId] ?? [],
+      defenseAgentIds: defenseAssignments[nodeId] ?? []
+    })
+  );
+
+  const baseSnapshot: RoundNodeStateSnapshot = {
+    roundId: input.roundId,
+    phaseId,
+    activeNodeIds,
+    nodeStates,
+    actionPointBudgets: input.economyResources.agents.map((resource) => buildActionPointBudget(resource, phaseId))
+  };
+  return attachActionsVerdictsAndWinConditionWithNodeLlm(input, baseSnapshot, input.economyResources, previousWinConditionState, audit, agentActionAudit);
+}
+
 function buildMaterializedPhaseSnapshot(
   input: RunNodeRoundShadowInput,
   phaseId: RoundPhaseId,
@@ -144,6 +313,36 @@ function buildMaterializedPhaseSnapshot(
   };
   return {
     ...attachActionsVerdictsAndWinCondition(input, baseSnapshot, phaseResources, previousWinConditionState),
+    transitionNotes: transition.notes
+  };
+}
+
+async function buildMaterializedPhaseSnapshotWithNodeLlm(
+  input: RunNodeRoundShadowWithAnyLlmInput,
+  phaseId: RoundPhaseId,
+  previousSnapshot: NodeRoundPhaseSnapshot,
+  previousWinConditionState: NodeRoundWinConditionState,
+  audit: NodeRoundLlmShadowAudit | undefined,
+  agentActionAudit: NodeRoundAgentActionLlmShadowAudit | undefined
+): Promise<NodeRoundPhaseSnapshot> {
+  const transition = materializeNodeStateTransition({
+    graph: input.graph,
+    previousSnapshot,
+    previousAgentActions: previousSnapshot.agentActions ?? [],
+    previousLocalVerdicts: previousSnapshot.localVerdicts ?? [],
+    economyResources: input.economyResources,
+    nextPhaseId: phaseId
+  });
+  const phaseResources = filterResourcesByLiveAgents(input.economyResources, transition.liveAgentIds);
+  const baseSnapshot: RoundNodeStateSnapshot = {
+    roundId: input.roundId,
+    phaseId,
+    activeNodeIds: transition.activeNodeIds,
+    nodeStates: transition.nodeStates,
+    actionPointBudgets: phaseResources.agents.map((resource) => buildActionPointBudget(resource, phaseId))
+  };
+  return {
+    ...(await attachActionsVerdictsAndWinConditionWithNodeLlm(input, baseSnapshot, phaseResources, previousWinConditionState, audit, agentActionAudit)),
     transitionNotes: transition.notes
   };
 }
@@ -179,6 +378,81 @@ function attachActionsVerdictsAndWinCondition(
     agentActions,
     localVerdicts,
     winConditionCheck
+  };
+}
+
+async function attachActionsVerdictsAndWinConditionWithNodeLlm(
+  input: RunNodeRoundShadowWithAnyLlmInput,
+  baseSnapshot: RoundNodeStateSnapshot,
+  economyResources: NodeRoundEconomyResources,
+  previousWinConditionState: NodeRoundWinConditionState,
+  audit: NodeRoundLlmShadowAudit | undefined,
+  agentActionAudit: NodeRoundAgentActionLlmShadowAudit | undefined
+): Promise<NodeRoundPhaseSnapshot> {
+  let agentActions = buildAgentPhaseActions({
+    graph: input.graph,
+    phaseSnapshot: baseSnapshot,
+    economyResources
+  });
+
+  let agentActionStageAudit: NodeAgentActionLlmStageAudit | undefined;
+  if (input.agentActionLlm && agentActionAudit) {
+    const remainingAgentActionCalls = Math.max(input.agentActionLlm.maxLlmCalls - agentActionAudit.callsAttempted, 0);
+    const agentActionStage = await runNodeAgentActionShadowStage({
+      graph: input.graph,
+      phaseSnapshot: baseSnapshot,
+      economyResources,
+      deterministicActions: agentActions,
+      provider: input.agentActionLlm.provider,
+      maxLlmCallsRemaining: remainingAgentActionCalls,
+      providerMode: input.agentActionLlm.providerMode ?? "fixture",
+      ...(input.agentActionLlm.modelId ? { modelId: input.agentActionLlm.modelId } : {})
+    });
+    agentActions = agentActionStage.agentActions;
+    agentActionStageAudit = agentActionStage.audit;
+    addAgentActionAudit(agentActionAudit, agentActionStage.audit);
+  }
+
+  let localVerdicts = buildLocalNodeVerdicts({
+    graph: input.graph,
+    phaseSnapshot: baseSnapshot,
+    agentActions
+  });
+  let nodeLlmStageAudit: NodeLlmShadowStageAudit | undefined;
+  if (input.nodeLlm && audit) {
+    const remainingCalls = Math.max(input.nodeLlm.maxLlmCalls - audit.callsAttempted, 0);
+    const llmStage = await runNodeLlmShadowStage({
+      graph: input.graph,
+      phaseSnapshot: baseSnapshot,
+      agentActions,
+      economyResources,
+      provider: input.nodeLlm.provider,
+      maxLlmCallsRemaining: remainingCalls,
+      providerMode: input.nodeLlm.providerMode ?? "fixture",
+      ...(input.nodeLlm.modelId ? { modelId: input.nodeLlm.modelId } : {})
+    });
+    localVerdicts = llmStage.localVerdicts;
+    nodeLlmStageAudit = llmStage.audit;
+    addNodeLlmAudit(audit, llmStage.audit);
+  }
+
+  const winConditionCheck = evaluateNodeRoundWinCondition({
+    graph: input.graph,
+    phaseSnapshot: baseSnapshot,
+    agentActions,
+    localVerdicts,
+    attackTeamId: getTeamIdForSide(input.economyResources, "attack"),
+    defenseTeamId: getTeamIdForSide(input.economyResources, "defense"),
+    previousState: previousWinConditionState
+  });
+
+  return {
+    ...baseSnapshot,
+    agentActions,
+    localVerdicts,
+    winConditionCheck,
+    ...(nodeLlmStageAudit ? { nodeLlmAudit: nodeLlmStageAudit } : {}),
+    ...(agentActionStageAudit ? { agentActionLlmAudit: agentActionStageAudit } : {})
   };
 }
 
@@ -222,6 +496,68 @@ function buildNodeState(input: {
     control: hasAttack && hasDefense ? "contested" : hasAttack ? "attack" : hasDefense ? "defense" : "neutral",
     businessIntent: `shadow:${input.phaseId}:${input.nodeId}`
   };
+}
+
+function buildEmptyNodeLlmAudit(config: RunNodeRoundShadowWithNodeLlmInput["nodeLlm"]): NodeRoundLlmShadowAudit {
+  return {
+    enabled: true,
+    providerMode: config.providerMode ?? "fixture",
+    ...(config.modelId ? { modelId: config.modelId } : {}),
+    callsAttempted: 0,
+    fallbackCount: 0,
+    fallbackReasons: [],
+    ignoredFields: [],
+    draftValidCount: 0,
+    draftRejectedCount: 0,
+    contentLength: 0,
+    reasoningContentLength: 0,
+    jsonTruncated: false,
+    reasoningExhausted: false
+  };
+}
+
+function buildEmptyAgentActionLlmAudit(config: NodeRoundAgentActionLlmConfig): NodeRoundAgentActionLlmShadowAudit {
+  return {
+    enabled: true,
+    providerMode: config.providerMode ?? "fixture",
+    ...(config.modelId ? { modelId: config.modelId } : {}),
+    callsAttempted: 0,
+    fallbackCount: 0,
+    fallbackReasons: [],
+    ignoredFields: [],
+    draftAcceptedCount: 0,
+    draftRejectedCount: 0,
+    contentLength: 0,
+    reasoningContentLength: 0,
+    jsonTruncated: false,
+    reasoningExhausted: false
+  };
+}
+
+function addNodeLlmAudit(total: NodeRoundLlmShadowAudit, stage: NodeLlmShadowStageAudit): void {
+  total.callsAttempted += stage.callsAttempted;
+  total.fallbackCount += stage.fallbackCount;
+  total.fallbackReasons.push(...stage.fallbackReasons);
+  total.ignoredFields.push(...stage.ignoredFields);
+  total.draftValidCount += stage.draftValidCount;
+  total.draftRejectedCount += stage.draftRejectedCount;
+  total.contentLength += stage.contentLength ?? 0;
+  total.reasoningContentLength += stage.reasoningContentLength ?? 0;
+  total.jsonTruncated = total.jsonTruncated || stage.jsonTruncated;
+  total.reasoningExhausted = total.reasoningExhausted || stage.reasoningExhausted;
+}
+
+function addAgentActionAudit(total: NodeRoundAgentActionLlmShadowAudit, stage: NodeAgentActionLlmStageAudit): void {
+  total.callsAttempted += stage.callsAttempted;
+  total.fallbackCount += stage.fallbackCount;
+  total.fallbackReasons.push(...stage.fallbackReasons);
+  total.ignoredFields.push(...stage.ignoredFields);
+  total.draftAcceptedCount += stage.draftAcceptedCount;
+  total.draftRejectedCount += stage.draftRejectedCount;
+  total.contentLength += stage.contentLength ?? 0;
+  total.reasoningContentLength += stage.reasoningContentLength ?? 0;
+  total.jsonTruncated = total.jsonTruncated || stage.jsonTruncated;
+  total.reasoningExhausted = total.reasoningExhausted || stage.reasoningExhausted;
 }
 
 function buildActionPointBudget(resource: NodeAgentEconomyResource, phaseId: RoundPhaseId): ActionPointBudget {

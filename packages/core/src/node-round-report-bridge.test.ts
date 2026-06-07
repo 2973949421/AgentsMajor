@@ -4,8 +4,15 @@ import { describe, expect, it } from "vitest";
 import { buildNodeEconomyResources } from "./economy-resource-adapter.js";
 import type { TeamEconomyPlan } from "./economy-rules.js";
 import { loadMapNodeGraph } from "./node-graph-service.js";
+import { createFixtureNodeAgentActionDraftProvider } from "./node-agent-action-stage-runner.js";
+import { createFixtureNodeLlmDraftProvider } from "./node-llm-stage-runner.js";
 import { buildNodeRoundShadowReport } from "./node-round-report-bridge.js";
-import { runNodeRoundShadow, type NodeRoundShadowResult } from "./round-phase-runner.js";
+import {
+  runNodeRoundShadow,
+  runNodeRoundShadowWithAgentActionLlm,
+  runNodeRoundShadowWithNodeLlm,
+  type NodeRoundShadowResult
+} from "./round-phase-runner.js";
 
 describe("node round report bridge", () => {
   it("converts a shadow result into an auditable shadow report", () => {
@@ -78,6 +85,59 @@ describe("node round report bridge", () => {
     expect(report.status).toBe("incomplete");
     expect(report.finalWinCondition).toBeUndefined();
     expect(report.audit.hasFinalWinCondition).toBe(false);
+  });
+
+  it("surfaces LLM shadow audit without changing report source", async () => {
+    const graph = loadMapNodeGraph("dust2");
+    const shadowResult = await runNodeRoundShadowWithNodeLlm({
+      roundId: "round_shadow_report_llm_test",
+      roundNumber: 1,
+      graph,
+      economyResources: resourcesForRound(),
+      nodeLlm: {
+        provider: createFixtureNodeLlmDraftProvider(),
+        maxLlmCalls: 2
+      }
+    });
+    const report = buildNodeRoundShadowReport({
+      shadowResult,
+      attackTeamId: "team_attack",
+      defenseTeamId: "team_defense"
+    });
+
+    expect(report.source).toBe("node_round_engine_shadow");
+    expect(report.audit.callsLlm).toBe(true);
+    expect(report.audit.llmShadowEnabled).toBe(true);
+    expect(report.audit.llmCallsAttempted).toBeGreaterThan(0);
+    expect(report.audit.writesDb).toBe(false);
+    expect(report.audit.replacesLegacyRoundPath).toBe(false);
+  });
+
+  it("surfaces agent action LLM shadow audit without changing report source", async () => {
+    const graph = loadMapNodeGraph("dust2");
+    const shadowResult = await runNodeRoundShadowWithAgentActionLlm({
+      roundId: "round_shadow_report_agent_action_llm_test",
+      roundNumber: 1,
+      graph,
+      economyResources: resourcesForRound(),
+      agentActionLlm: {
+        provider: createFixtureNodeAgentActionDraftProvider(),
+        maxLlmCalls: 2
+      }
+    });
+    const report = buildNodeRoundShadowReport({
+      shadowResult,
+      attackTeamId: "team_attack",
+      defenseTeamId: "team_defense"
+    });
+
+    expect(report.source).toBe("node_round_engine_shadow");
+    expect(report.audit.callsLlm).toBe(true);
+    expect(report.audit.agentActionLlmEnabled).toBe(true);
+    expect(report.audit.agentActionCallsAttempted).toBeGreaterThan(0);
+    expect(report.audit.agentActionDraftAcceptedCount).toBeGreaterThan(0);
+    expect(report.audit.writesDb).toBe(false);
+    expect(report.audit.replacesLegacyRoundPath).toBe(false);
   });
 });
 

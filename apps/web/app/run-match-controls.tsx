@@ -9,7 +9,12 @@ import styles from "./live-replay-player.module.css";
 const phase18FixtureId = "phase18_match_falcon_7b_vs_vitallmty";
 
 export type RunState = "idle" | "running" | "paused" | "stopped" | "success" | "failed";
-export type RunMode = "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3";
+export type RunMode =
+  | "phase18_next_round"
+  | "phase18_current_map"
+  | "phase18_keep_generating_map"
+  | "phase18_full_bo3"
+  | "phase20_node_round_experimental";
 type RunRetryMode = "full_round" | "resume_from_stage";
 type AnyRunMode = RunMode | "phase17_showcase_match";
 type ResetScope = "round" | "map" | "match";
@@ -58,6 +63,66 @@ export interface RunMatchHistoryEntry {
   benchmarkLabel?: string;
 }
 
+export interface WebRunNodeShadowPhaseProgress {
+  phaseId: string;
+  activeNodeCount: number;
+  actionCount: number;
+  localVerdictCount: number;
+  contestedNodeIds: string[];
+  attackControlledNodeIds: string[];
+  defenseControlledNodeIds: string[];
+  neutralNodeIds: string[];
+  actionTypeCounts: Record<string, number>;
+  businessIntentSummary: string[];
+  winCondition?: {
+    isRoundOver: boolean;
+    winnerSide?: "attack" | "defense";
+    roundWinType?: string;
+    reason: string;
+  };
+}
+
+export interface WebRunNodeShadowProgress {
+  status: "created" | "failed";
+  source: "node_round_engine_shadow" | "node_round_engine_committed";
+  reportStatus?: "complete" | "incomplete";
+  runId: string;
+  executionId: string;
+  createdAt: string;
+  reportId?: string;
+  nodeTraceArtifactId?: string;
+  nodeTraceSource?: "node_round_engine_committed";
+  roundNumber?: number;
+  providerMode: "none" | "fixture" | "real";
+  llmShadowEnabled: boolean;
+  writesDb: boolean;
+  replacesLegacyRoundPath: false;
+  phaseCount: number;
+  llmCallsAttempted: number;
+  llmFallbackCount: number;
+  fallbackReasons: string[];
+  ignoredLlmFields: string[];
+  draftValidCount: number;
+  draftRejectedCount: number;
+  contentLength: number;
+  reasoningContentLength: number;
+  jsonTruncated: boolean;
+  reasoningExhausted: boolean;
+  totalAgentActions: number;
+  totalLocalVerdicts: number;
+  totalApSpent: number;
+  finalWinCondition?: {
+    isRoundOver: boolean;
+    winnerSide?: "attack" | "defense";
+    winnerTeamId?: string;
+    roundWinType?: string;
+    reason: string;
+  };
+  phaseSummaries: WebRunNodeShadowPhaseProgress[];
+  error?: string;
+  errorKind?: string;
+}
+
 export interface WebRunProgress {
   runId: string;
   mode: AnyRunMode;
@@ -99,6 +164,7 @@ export interface WebRunProgress {
   currentExecutionRunningCalls: number;
   promptContractId?: string;
   contractStatus?: "current" | "legacy" | "mixed" | "blocked";
+  nodeShadow?: WebRunNodeShadowProgress;
   recentRuns: RunMatchHistoryEntry[];
   error?: string;
   result?: {
@@ -364,6 +430,17 @@ export function RunMatchControls({
         <button type="button" className={styles.opsActionSecondary} onClick={() => handleRun("phase18_full_bo3")} disabled={state === "running"}>
           {state === "running" && progress?.mode === "phase18_full_bo3" ? "正在生成整场 BO3..." : "生成整场 BO3"}
         </button>
+        {runnerPolicy.nodeRoundExperimentalEnabled ? (
+          <button
+            type="button"
+            className={styles.opsActionSecondary}
+            onClick={() => handleRun("phase20_node_round_experimental")}
+            disabled={state === "running"}
+            title="只提交一个 Dust2 节点化 experimental 回合，不接入一直生成。"
+          >
+            {state === "running" && progress?.mode === "phase20_node_round_experimental" ? "节点化实验中..." : "节点化实验回合"}
+          </button>
+        ) : null}
       </div>
       <span className={styles.opsMetaLine}>一直生成会在生成类失败后自动断点继续同一回合，直到当前地图结束或触发明确熔断。</span>
 
@@ -453,6 +530,97 @@ export function RunMatchControls({
           {failedAttemptNotice ? <span className={styles.opsMetaLine}>{failedAttemptNotice}</span> : null}
           {progress.error ? <span className={styles.opsErrorText}>最近错误：{progress.error}</span> : null}
         </div>
+      ) : null}
+
+      {progress?.nodeShadow ? (
+        <details className={styles.opsDisclosure}>
+          <summary>节点化 Shadow 审计</summary>
+          <div className={styles.opsDisclosureBody}>
+            <div className={styles.opsSummaryGrid}>
+              <div className={styles.opsSummaryItem}>
+                <span>状态</span>
+                <strong>{formatNodeShadowStatus(progress.nodeShadow)}</strong>
+              </div>
+              <div className={styles.opsSummaryItem}>
+                <span>来源</span>
+                <strong>{progress.nodeShadow.source}</strong>
+              </div>
+              <div className={styles.opsSummaryItem}>
+                <span>Provider</span>
+                <strong>{formatNodeShadowProvider(progress.nodeShadow.providerMode)}</strong>
+              </div>
+              <div className={styles.opsSummaryItem}>
+                <span>旁路承诺</span>
+                <strong>{progress.nodeShadow.writesDb ? "写库" : "不写正式事实"}</strong>
+              </div>
+              <div className={styles.opsSummaryItem}>
+                <span>阶段 / 行动</span>
+                <strong>
+                  {progress.nodeShadow.phaseCount} / {progress.nodeShadow.totalAgentActions}
+                </strong>
+              </div>
+              <div className={styles.opsSummaryItem}>
+                <span>局部裁判</span>
+                <strong>{progress.nodeShadow.totalLocalVerdicts}</strong>
+              </div>
+              <div className={styles.opsSummaryItem}>
+                <span>LLM fallback</span>
+                <strong>{progress.nodeShadow.llmFallbackCount}</strong>
+              </div>
+              <div className={styles.opsSummaryItem}>
+                <span>AP</span>
+                <strong>{progress.nodeShadow.totalApSpent}</strong>
+              </div>
+            </div>
+            {progress.nodeShadow.finalWinCondition ? (
+              <span className={styles.opsMetaLine}>
+                Shadow 硬胜负：{formatNodeShadowSide(progress.nodeShadow.finalWinCondition.winnerSide)} /{" "}
+                {progress.nodeShadow.finalWinCondition.roundWinType ?? "--"} / {progress.nodeShadow.finalWinCondition.reason}
+              </span>
+            ) : null}
+            {progress.nodeShadow.fallbackReasons.length > 0 ? (
+              <span className={styles.opsMetaLine}>Fallback：{progress.nodeShadow.fallbackReasons.join(" / ")}</span>
+            ) : null}
+            {progress.nodeShadow.ignoredLlmFields.length > 0 ? (
+              <span className={styles.opsMetaLine}>忽略字段：{progress.nodeShadow.ignoredLlmFields.join(" / ")}</span>
+            ) : null}
+            {progress.nodeShadow.error ? <span className={styles.opsErrorText}>Shadow 错误：{progress.nodeShadow.error}</span> : null}
+            {progress.nodeShadow.phaseSummaries.length > 0 ? (
+              <div className={styles.opsTableWrap}>
+                <table className={styles.opsTable}>
+                  <thead>
+                    <tr>
+                      <th>阶段</th>
+                      <th>节点</th>
+                      <th>行动</th>
+                      <th>裁判</th>
+                      <th>控制权</th>
+                      <th>商业意图</th>
+                      <th>胜负检查</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {progress.nodeShadow.phaseSummaries.map((phase) => (
+                      <tr key={phase.phaseId}>
+                        <td>{phase.phaseId}</td>
+                        <td>{phase.activeNodeCount}</td>
+                        <td>{phase.actionCount}</td>
+                        <td>{phase.localVerdictCount}</td>
+                        <td>{formatNodeControlSummary(phase)}</td>
+                        <td>{phase.businessIntentSummary.slice(0, 2).join(" / ") || "--"}</td>
+                        <td>
+                          {phase.winCondition?.isRoundOver
+                            ? `${formatNodeShadowSide(phase.winCondition.winnerSide)} / ${phase.winCondition.roundWinType ?? "--"}`
+                            : "未结束"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </div>
+        </details>
       ) : null}
 
       <details className={styles.opsDisclosure}>
@@ -803,11 +971,20 @@ function formatExpectedCalls(progress: WebRunProgress): string {
   if (progress.mode === "phase18_full_bo3") {
     return "BO3 约每回合 14 次";
   }
+  if (progress.mode === "phase20_node_round_experimental") {
+    return "节点化实验单回合，不调用旧 Phase18 LLM stage";
+  }
   return progress.llmSummary.expectedTotalCalls > 0 ? `约 ${progress.llmSummary.expectedTotalCalls} 次` : "按需调用";
 }
 
 function isPhase18Mode(mode: AnyRunMode): mode is RunMode {
-  return mode === "phase18_next_round" || mode === "phase18_current_map" || mode === "phase18_keep_generating_map" || mode === "phase18_full_bo3";
+  return (
+    mode === "phase18_next_round" ||
+    mode === "phase18_current_map" ||
+    mode === "phase18_keep_generating_map" ||
+    mode === "phase18_full_bo3" ||
+    mode === "phase20_node_round_experimental"
+  );
 }
 
 function runStartMessage(mode: RunMode): string {
@@ -819,6 +996,9 @@ function runStartMessage(mode: RunMode): string {
     case "phase18_keep_generating_map":
       return "开始执行 Phase 1.8 一直生成；生成类失败会自动重试同一回合...";
     case "phase18_full_bo3":
+      return "开始执行 Phase 1.8 整场 BO3 真实 LLM 生成...";
+    case "phase20_node_round_experimental":
+      return "开始执行节点化实验单回合；本模式不会接入一直生成。";
     default:
       return "开始执行 Phase 1.8 整场 BO3 真实 LLM 生成...";
   }
@@ -881,6 +1061,45 @@ function formatLlmStatus(status: WebRunLlmCallProgress["status"]): string {
     default:
       return "完成";
   }
+}
+
+function formatNodeShadowStatus(nodeShadow: WebRunNodeShadowProgress): string {
+  if (nodeShadow.status === "failed") {
+    return "旁路失败";
+  }
+  return nodeShadow.reportStatus === "complete" ? "旁路完成" : "旁路未完成";
+}
+
+function formatNodeShadowProvider(providerMode: WebRunNodeShadowProgress["providerMode"]): string {
+  switch (providerMode) {
+    case "real":
+      return "真实 LLM";
+    case "fixture":
+      return "Fixture";
+    case "none":
+    default:
+      return "Deterministic";
+  }
+}
+
+function formatNodeShadowSide(side: "attack" | "defense" | undefined): string {
+  if (side === "attack") {
+    return "攻方";
+  }
+  if (side === "defense") {
+    return "守方";
+  }
+  return "--";
+}
+
+function formatNodeControlSummary(phase: WebRunNodeShadowPhaseProgress): string {
+  const parts = [
+    phase.contestedNodeIds.length ? `争夺 ${phase.contestedNodeIds.length}` : "",
+    phase.attackControlledNodeIds.length ? `攻 ${phase.attackControlledNodeIds.length}` : "",
+    phase.defenseControlledNodeIds.length ? `守 ${phase.defenseControlledNodeIds.length}` : "",
+    phase.neutralNodeIds.length ? `空 ${phase.neutralNodeIds.length}` : ""
+  ].filter(Boolean);
+  return parts.join(" / ") || "--";
 }
 
 function formatRunStatusLabel(status: RunStatus): string {

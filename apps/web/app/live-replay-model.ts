@@ -1,5 +1,6 @@
-import { getTacticalMapLayout, resolveTacticalZone } from "@agent-major/core";
-import type { MapReplay, MatchReplay, RoundReplayItem, TacticalMapLayout, TacticalPathType, TacticalZoneRole } from "@agent-major/core";
+import type { MapReplay, MatchReplay, RoundReplayItem } from "@agent-major/core/map-replay";
+import { getTacticalMapLayout, resolveTacticalZone } from "@agent-major/core/tactical-map";
+import type { TacticalMapLayout, TacticalPathType, TacticalZoneRole } from "@agent-major/core/tactical-map";
 
 type SourceTimelineEvent = RoundReplayItem["timelineEvents"][number];
 type SourceRoundReport = RoundReplayItem["roundReport"];

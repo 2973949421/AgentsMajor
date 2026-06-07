@@ -16,6 +16,7 @@ export interface PublicWebRunnerPolicy {
   disabledReason?: WebRunnerDisabledReason;
   requiresToken: boolean;
   allowRemote: boolean;
+  nodeRoundExperimentalEnabled: boolean;
 }
 
 interface PrivateWebRunnerPolicy extends PublicWebRunnerPolicy {
@@ -61,7 +62,8 @@ export function getPublicWebRunnerPolicy(
     enabled: policy.enabled,
     ...(policy.disabledReason ? { disabledReason: policy.disabledReason } : {}),
     requiresToken: policy.requiresToken,
-    allowRemote: policy.allowRemote
+    allowRemote: policy.allowRemote,
+    nodeRoundExperimentalEnabled: policy.nodeRoundExperimentalEnabled
   };
 }
 
@@ -96,6 +98,9 @@ export function validateWebRunnerRequest(
   const mode = parseMode(body.mode);
   if (!mode) {
     return { ok: false, status: 400, error: "Unsupported run mode." };
+  }
+  if (mode === "phase20_node_round_experimental" && !loadPrivateWebRunnerPolicy(projectRoot, baseEnv).nodeRoundExperimentalEnabled) {
+    return { ok: false, status: 403, error: "Node round experimental mode is disabled: set NODE_ROUND_EXPERIMENTAL_ENABLED=true." };
   }
 
   return { ok: true, action: "run", mode, retryMode: parseRetryMode(body.retryMode) };
@@ -141,7 +146,8 @@ function parseMode(value: unknown): WebRunMode | null {
     value === "phase18_next_round" ||
     value === "phase18_current_map" ||
     value === "phase18_keep_generating_map" ||
-    value === "phase18_full_bo3"
+    value === "phase18_full_bo3" ||
+    value === "phase20_node_round_experimental"
   ) {
     return value;
   }
@@ -166,29 +172,31 @@ function loadPrivateWebRunnerPolicy(projectRoot: string, baseEnv: EnvRecord): Pr
   const enabled = isTruthy(env.AGENT_MAJOR_WEB_RUNNER_ENABLED);
   const allowProduction = isTruthy(env.AGENT_MAJOR_WEB_RUNNER_ALLOW_PRODUCTION);
   const allowRemote = isTruthy(env.AGENT_MAJOR_WEB_RUNNER_ALLOW_REMOTE);
+  const nodeRoundExperimentalEnabled = isTruthy(env.NODE_ROUND_EXPERIMENTAL_ENABLED);
   const adminToken = env.AGENT_MAJOR_WEB_RUNNER_TOKEN?.trim() || undefined;
   const nodeEnv = env.NODE_ENV?.trim().toLowerCase();
 
   if (!enabled) {
-    return disabledPolicy("web_runner_disabled", adminToken, allowRemote);
+    return disabledPolicy("web_runner_disabled", adminToken, allowRemote, nodeRoundExperimentalEnabled);
   }
 
   if (nodeEnv === "production" && !allowProduction) {
-    return disabledPolicy("web_runner_production_disabled", adminToken, allowRemote);
+    return disabledPolicy("web_runner_production_disabled", adminToken, allowRemote, nodeRoundExperimentalEnabled);
   }
 
   if (nodeEnv === "production" && !adminToken) {
-    return disabledPolicy("web_runner_production_requires_token", adminToken, allowRemote);
+    return disabledPolicy("web_runner_production_requires_token", adminToken, allowRemote, nodeRoundExperimentalEnabled);
   }
 
   if (allowRemote && !adminToken) {
-    return disabledPolicy("web_runner_remote_requires_token", adminToken, allowRemote);
+    return disabledPolicy("web_runner_remote_requires_token", adminToken, allowRemote, nodeRoundExperimentalEnabled);
   }
 
   return {
     enabled: true,
     requiresToken: Boolean(adminToken),
     allowRemote,
+    nodeRoundExperimentalEnabled,
     ...(adminToken ? { adminToken } : {})
   };
 }
@@ -196,13 +204,15 @@ function loadPrivateWebRunnerPolicy(projectRoot: string, baseEnv: EnvRecord): Pr
 function disabledPolicy(
   disabledReason: WebRunnerDisabledReason,
   adminToken: string | undefined,
-  allowRemote: boolean
+  allowRemote: boolean,
+  nodeRoundExperimentalEnabled: boolean
 ): PrivateWebRunnerPolicy {
   return {
     enabled: false,
     disabledReason,
     requiresToken: Boolean(adminToken),
-    allowRemote
+    allowRemote,
+    nodeRoundExperimentalEnabled
   };
 }
 

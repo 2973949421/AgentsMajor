@@ -2,15 +2,25 @@ import type { AgentPhaseAction, AgentPhaseActionType, MapNodeGraph, MapNodeState
 
 import type { NodeAgentEconomyResource, NodeRoundEconomyResources } from "./economy-resource-adapter.js";
 import { getReachableNodes } from "./node-graph-service.js";
+import { applyNodeAgentActionDrafts, type NodeAgentActionDraft } from "./node-agent-action-boundary.js";
 
 export interface BuildAgentPhaseActionsInput {
   graph: MapNodeGraph;
   phaseSnapshot: RoundNodeStateSnapshot;
   economyResources: NodeRoundEconomyResources;
+  mode?: "deterministic" | "llm_shadow";
+  llmDrafts?: NodeAgentActionDraft[];
 }
 
 export function buildAgentPhaseActions(input: BuildAgentPhaseActionsInput): AgentPhaseAction[] {
-  return input.economyResources.agents.map((resource) => buildAgentPhaseAction(input, resource));
+  const deterministicActions = input.economyResources.agents.map((resource) => buildAgentPhaseAction(input, resource));
+  if (input.mode !== "llm_shadow" || !input.llmDrafts || input.llmDrafts.length === 0) {
+    return deterministicActions;
+  }
+  return applyNodeAgentActionDrafts({
+    baselineActions: deterministicActions,
+    drafts: input.llmDrafts
+  });
 }
 
 function buildAgentPhaseAction(input: BuildAgentPhaseActionsInput, resource: NodeAgentEconomyResource): AgentPhaseAction {

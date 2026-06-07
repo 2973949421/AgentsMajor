@@ -590,6 +590,65 @@ LLM 不能直接绕过代码写最终事实。
    - 验证商业语义进入节点冲突，而不是赛后贴皮。
    - 验证裁判不再单点决定整局 winner。
 
+### 18.1 正式阶段口径
+
+节点化回合引擎的正式实施阶段以 `phase-2.0-pre-node-round-engine-implementation-plan.md` 为准。
+
+当前母版阶段固定为：
+
+| 阶段 | 名称 | 测试口径 |
+|---|---|---|
+| N0 | 文档与资产基线 | 文档、Dust2 graph、拓扑和阶段可达性。 |
+| N1 | Schema 与类型层 | 类型和 schema 测试。 |
+| N2 | NodeGraphService | graph 加载、路线和可达性测试。 |
+| N3 | EconomyResourceAdapter | 经济到节点资源能力的 adapter 测试。 |
+| N4 | RoundPhaseRunner shadow | deterministic shadow 阶段推进测试。 |
+| N5 | AgentPhaseActionPipeline | 阶段行动模板和 AP 合法性测试。 |
+| N6 | LocalNodeJudgePipeline | 局部节点裁判测试。 |
+| N6.5 | NodeStateMaterializer | 节点状态物化测试。 |
+| N7 | WinConditionMaterializer | 硬胜负条件测试。 |
+| N8 | RoundReportBridge | shadow report bridge 测试。 |
+| N9 | Dust2 单图 shadow 实验入口 | 本地 deterministic shadow 脚本测试。 |
+| N10 | Node LLM Harness | fixture / fake LLM shadow harness 测试。 |
+| N11 | 真实 LLM 局部裁判受控实验 | 显式真实 LLM shadow，小调用数、有 fallback。 |
+| N12 | 节点化旁路审计接入旧运行链路 | 旧 run sidecar audit，不改正式 winner。 |
+| N13 | 前端节点化展示适配 | Web 展示 phase、节点、AP、local verdict 和 audit。 |
+| N14 | LLM 阶段行动 Shadow Harness | LLM 生成 agent phase action，但代码校验 AP / graph / economy。 |
+| N15 | Dust2 节点化 experimental committed round | 单回合显式 experimental commit。 |
+| N16 | Dust2 节点化完整地图灰度验收 | 完整 Dust2 map 灰度，不扩 BO3。 |
+
+以后如果需要新增 N17 或更后阶段，必须先更新实施计划母版，再执行计划模式。
+
+不能在对话中临时口头新增阶段并直接实现。
+
+### 18.2 真正测试时间点
+
+当前可以测试：
+
+- deterministic node shadow。
+- fixture / fake LLM node shadow。
+- schema、graph、AP、economy adapter、local judge、win condition、report bridge。
+
+N11 完成后可以测试：
+
+- 真实 LLM 局部裁判 shadow。
+- 真实模型是否守住 nodeId、phaseId、字段边界。
+
+N13 完成后可以测试：
+
+- Web 前端节点化展示。
+- 用户是否能看懂 phase、节点、AP、商业意图、local verdict 和 fallback。
+
+N15 完成后可以测试：
+
+- Dust2 单回合节点化正式提交。
+- node trace 是否能桥接旧 RoundReport / replay。
+
+N16 完成后可以测试：
+
+- Dust2 节点化完整地图。
+- 经济继承、节点推进、LLM 局部裁判、前端展示和 hard win condition 的完整闭环。
+
 ## 19. 当前共识结论
 
 当前共识固定为：

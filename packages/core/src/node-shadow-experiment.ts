@@ -3,8 +3,25 @@ import type { Agent, EconomyPosture, LoadoutPackage } from "@agent-major/shared"
 import { buildNodeEconomyResources } from "./economy-resource-adapter.js";
 import type { TeamEconomyPlan } from "./economy-rules.js";
 import { loadMapNodeGraph } from "./node-graph-service.js";
+import {
+  createEnvNodeAgentActionDraftProvider,
+  createFixtureNodeAgentActionDraftProvider,
+  type NodeAgentActionDraftProvider,
+  type NodeAgentActionProviderMode
+} from "./node-agent-action-stage-runner.js";
+import {
+  createEnvNodeLlmDraftProvider,
+  createFixtureNodeLlmDraftProvider,
+  type NodeLlmDraftProvider,
+  type NodeLlmProviderMode
+} from "./node-llm-stage-runner.js";
 import { buildNodeRoundShadowReport, type NodeRoundShadowReport } from "./node-round-report-bridge.js";
-import { runNodeRoundShadow, type NodeRoundShadowResult } from "./round-phase-runner.js";
+import {
+  runNodeRoundShadow,
+  runNodeRoundShadowWithAgentActionLlm,
+  runNodeRoundShadowWithNodeLlm,
+  type NodeRoundShadowResult
+} from "./round-phase-runner.js";
 
 export interface Dust2NodeShadowExperimentResult {
   shadowResult: NodeRoundShadowResult;
@@ -23,9 +40,116 @@ export interface Dust2NodeShadowExperimentSummary {
   activeNodeCount: number;
   endedEarly: boolean;
   status: "complete" | "incomplete";
+  llmShadowEnabled: boolean;
+  providerMode: NodeLlmProviderMode;
+  modelId?: string;
+  llmCallsAttempted: number;
+  llmFallbackCount: number;
+  fallbackReasons: string[];
+  ignoredLlmFields: string[];
+  draftValidCount: number;
+  draftRejectedCount: number;
+  contentLength: number;
+  reasoningContentLength: number;
+  jsonTruncated: boolean;
+  reasoningExhausted: boolean;
+  agentActionLlmEnabled: boolean;
+  agentActionProviderMode: NodeAgentActionProviderMode;
+  agentActionModelId?: string;
+  agentActionCallsAttempted: number;
+  agentActionFallbackCount: number;
+  agentActionFallbackReasons: string[];
+  agentActionIgnoredFields: string[];
+  agentActionDraftAcceptedCount: number;
+  agentActionDraftRejectedCount: number;
+  agentActionContentLength: number;
+  agentActionReasoningContentLength: number;
+  agentActionJsonTruncated: boolean;
+  agentActionReasoningExhausted: boolean;
+}
+
+export interface RunDust2NodeShadowExperimentOptions {
+  llmShadow?: boolean;
+  providerMode?: Extract<NodeLlmProviderMode, "fixture" | "real">;
+  maxLlmCalls?: number;
+  nodeLlmProvider?: NodeLlmDraftProvider;
+  agentActionLlmShadow?: boolean;
+  agentActionProviderMode?: Extract<NodeAgentActionProviderMode, "fixture" | "real">;
+  maxAgentActionLlmCalls?: number;
+  nodeAgentActionProvider?: NodeAgentActionDraftProvider;
+  env?: Record<string, string | undefined>;
 }
 
 export function runDust2NodeShadowExperiment(): Dust2NodeShadowExperimentResult {
+  return buildExperimentResult(runDeterministicShadowRound());
+}
+
+export async function runDust2NodeShadowExperimentAsync(
+  options: RunDust2NodeShadowExperimentOptions = {}
+): Promise<Dust2NodeShadowExperimentResult> {
+  if (!options.llmShadow && !options.agentActionLlmShadow) {
+    return runDust2NodeShadowExperiment();
+  }
+
+  const fixture = buildExperimentFixture();
+  const nodeProviderSetup = options.llmShadow ? resolveNodeLlmProvider(options) : undefined;
+  const agentActionProviderSetup = options.agentActionLlmShadow ? resolveNodeAgentActionProvider(options) : undefined;
+  const baseInput = {
+    roundId: "dust2_node_shadow_round_1",
+    roundNumber: 1,
+    graph: fixture.graph,
+    economyResources: fixture.economyResources
+  };
+  const shadowResult =
+    nodeProviderSetup && agentActionProviderSetup
+      ? await runNodeRoundShadowWithNodeLlm({
+          ...baseInput,
+          nodeLlm: {
+            provider: nodeProviderSetup.provider,
+            maxLlmCalls: options.maxLlmCalls ?? 5,
+            providerMode: nodeProviderSetup.providerMode,
+            modelId: nodeProviderSetup.modelId
+          },
+          agentActionLlm: {
+            provider: agentActionProviderSetup.provider,
+            maxLlmCalls: options.maxAgentActionLlmCalls ?? 5,
+            providerMode: agentActionProviderSetup.providerMode,
+            modelId: agentActionProviderSetup.modelId
+          }
+        })
+      : nodeProviderSetup
+        ? await runNodeRoundShadowWithNodeLlm({
+            ...baseInput,
+            nodeLlm: {
+              provider: nodeProviderSetup.provider,
+              maxLlmCalls: options.maxLlmCalls ?? 5,
+              providerMode: nodeProviderSetup.providerMode,
+              modelId: nodeProviderSetup.modelId
+            }
+          })
+        : await runNodeRoundShadowWithAgentActionLlm({
+            ...baseInput,
+            agentActionLlm: {
+              provider: agentActionProviderSetup!.provider,
+              maxLlmCalls: options.maxAgentActionLlmCalls ?? 5,
+              providerMode: agentActionProviderSetup!.providerMode,
+              modelId: agentActionProviderSetup!.modelId
+            }
+          });
+  return buildExperimentResult(shadowResult);
+}
+
+function runDeterministicShadowRound(): NodeRoundShadowResult {
+  const fixture = buildExperimentFixture();
+  return runNodeRoundShadow({
+    roundId: "dust2_node_shadow_round_1",
+    roundNumber: 1,
+    graph: fixture.graph,
+    economyResources: fixture.economyResources
+  });
+}
+
+function buildExperimentFixture() {
   const attackAgents = buildAgents("team_attack", "attack_agent");
   const defenseAgents = buildAgents("team_defense", "defense_agent");
   const economyResources = buildNodeEconomyResources({
@@ -38,12 +162,10 @@ export function runDust2NodeShadowExperiment(): Dust2NodeShadowExperimentResult 
     ]
   });
   const graph = loadMapNodeGraph("dust2");
-  const shadowResult = runNodeRoundShadow({
-    roundId: "dust2_node_shadow_round_1",
-    roundNumber: 1,
-    graph,
-    economyResources
-  });
+  return { graph, economyResources };
+}
+
+function buildExperimentResult(shadowResult: NodeRoundShadowResult): Dust2NodeShadowExperimentResult {
   const report = buildNodeRoundShadowReport({
     shadowResult,
     attackTeamId: "team_attack",
@@ -65,9 +187,79 @@ export function runDust2NodeShadowExperiment(): Dust2NodeShadowExperimentResult 
       ...(report.finalWinCondition?.roundWinType ? { finalRoundWinType: report.finalWinCondition.roundWinType } : {}),
       ...(report.finalWinCondition?.bombState ? { finalBombState: report.finalWinCondition.bombState } : {}),
       activeNodeCount: Math.max(...report.phaseSummaries.map((phase) => phase.activeNodeCount), 0),
-      endedEarly: report.phaseCount < graph.timing_model.round_phases.length,
-      status: report.status
+      endedEarly: report.phaseCount < 5,
+      status: report.status,
+      llmShadowEnabled: report.audit.llmShadowEnabled,
+      providerMode: report.audit.providerMode,
+      ...(report.audit.modelId ? { modelId: report.audit.modelId } : {}),
+      llmCallsAttempted: report.audit.llmCallsAttempted,
+      llmFallbackCount: report.audit.llmFallbackCount,
+      fallbackReasons: report.audit.fallbackReasons,
+      ignoredLlmFields: report.audit.ignoredLlmFields,
+      draftValidCount: report.audit.draftValidCount,
+      draftRejectedCount: report.audit.draftRejectedCount,
+      contentLength: report.audit.contentLength,
+      reasoningContentLength: report.audit.reasoningContentLength,
+      jsonTruncated: report.audit.jsonTruncated,
+      reasoningExhausted: report.audit.reasoningExhausted,
+      agentActionLlmEnabled: report.audit.agentActionLlmEnabled,
+      agentActionProviderMode: report.audit.agentActionProviderMode,
+      ...(report.audit.agentActionModelId ? { agentActionModelId: report.audit.agentActionModelId } : {}),
+      agentActionCallsAttempted: report.audit.agentActionCallsAttempted,
+      agentActionFallbackCount: report.audit.agentActionFallbackCount,
+      agentActionFallbackReasons: report.audit.agentActionFallbackReasons,
+      agentActionIgnoredFields: report.audit.agentActionIgnoredFields,
+      agentActionDraftAcceptedCount: report.audit.agentActionDraftAcceptedCount,
+      agentActionDraftRejectedCount: report.audit.agentActionDraftRejectedCount,
+      agentActionContentLength: report.audit.agentActionContentLength,
+      agentActionReasoningContentLength: report.audit.agentActionReasoningContentLength,
+      agentActionJsonTruncated: report.audit.agentActionJsonTruncated,
+      agentActionReasoningExhausted: report.audit.agentActionReasoningExhausted
     }
+  };
+}
+
+function resolveNodeLlmProvider(options: RunDust2NodeShadowExperimentOptions): {
+  provider: NodeLlmDraftProvider;
+  providerMode: Extract<NodeLlmProviderMode, "fixture" | "real">;
+  modelId: string;
+} {
+  if (options.nodeLlmProvider) {
+    return {
+      provider: options.nodeLlmProvider,
+      providerMode: options.providerMode ?? "fixture",
+      modelId: options.providerMode === "real" ? "custom_real_node_llm" : "custom_fixture_node_llm"
+    };
+  }
+  if (options.providerMode === "real") {
+    return createEnvNodeLlmDraftProvider(options.env ?? process.env);
+  }
+  return {
+    provider: createFixtureNodeLlmDraftProvider(),
+    providerMode: "fixture",
+    modelId: "fixture_node_llm"
+  };
+}
+
+function resolveNodeAgentActionProvider(options: RunDust2NodeShadowExperimentOptions): {
+  provider: NodeAgentActionDraftProvider;
+  providerMode: Extract<NodeAgentActionProviderMode, "fixture" | "real">;
+  modelId: string;
+} {
+  if (options.nodeAgentActionProvider) {
+    return {
+      provider: options.nodeAgentActionProvider,
+      providerMode: options.agentActionProviderMode ?? "fixture",
+      modelId: options.agentActionProviderMode === "real" ? "custom_real_node_agent_action" : "custom_fixture_node_agent_action"
+    };
+  }
+  if (options.agentActionProviderMode === "real") {
+    return createEnvNodeAgentActionDraftProvider(options.env ?? process.env);
+  }
+  return {
+    provider: createFixtureNodeAgentActionDraftProvider(),
+    providerMode: "fixture",
+    modelId: "fixture_node_agent_action"
   };
 }
 

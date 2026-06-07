@@ -3,6 +3,7 @@ import type { AgentPhaseAction, LocalNodeVerdict, MapNodeControl, RoundPhaseId }
 import type { NodeRoundPhaseSnapshot, NodeRoundShadowResult } from "./round-phase-runner.js";
 
 export type NodeRoundShadowReportSource = "node_round_engine_shadow";
+export type NodeRoundCommittedReportSource = "node_round_engine_committed";
 export type NodeRoundShadowReportStatus = "complete" | "incomplete";
 
 export interface BuildNodeRoundShadowReportInput {
@@ -13,6 +14,10 @@ export interface BuildNodeRoundShadowReportInput {
   defenseTeamName?: string;
   mapName?: string;
   reportId?: string;
+}
+
+export interface BuildNodeRoundCommittedReportInput extends BuildNodeRoundShadowReportInput {
+  nodeTraceArtifactId?: string;
 }
 
 export interface NodeRoundShadowReport {
@@ -33,6 +38,13 @@ export interface NodeRoundShadowReport {
   audit: NodeRoundShadowAuditSummary;
   notes: string[];
 }
+
+export type NodeRoundCommittedReport = Omit<NodeRoundShadowReport, "source" | "audit" | "notes"> & {
+  source: NodeRoundCommittedReportSource;
+  nodeTraceArtifactId?: string;
+  audit: NodeRoundCommittedAuditSummary;
+  notes: string[];
+};
 
 export interface NodeRoundShadowTeamSummary {
   teamId: string;
@@ -70,15 +82,46 @@ export interface NodeRoundShadowPhaseSummary {
 export interface NodeRoundShadowAuditSummary {
   mode: "shadow";
   writesDb: false;
-  callsLlm: false;
+  callsLlm: boolean;
   replacesLegacyRoundPath: false;
   hasFinalWinCondition: boolean;
+  llmShadowEnabled: boolean;
+  providerMode: "none" | "fixture" | "real";
+  modelId?: string;
+  llmCallsAttempted: number;
+  llmFallbackCount: number;
+  fallbackReasons: string[];
+  ignoredLlmFields: string[];
+  draftValidCount: number;
+  draftRejectedCount: number;
+  contentLength: number;
+  reasoningContentLength: number;
+  jsonTruncated: boolean;
+  reasoningExhausted: boolean;
+  agentActionLlmEnabled: boolean;
+  agentActionProviderMode: "none" | "fixture" | "real";
+  agentActionModelId?: string;
+  agentActionCallsAttempted: number;
+  agentActionFallbackCount: number;
+  agentActionFallbackReasons: string[];
+  agentActionIgnoredFields: string[];
+  agentActionDraftAcceptedCount: number;
+  agentActionDraftRejectedCount: number;
+  agentActionContentLength: number;
+  agentActionReasoningContentLength: number;
+  agentActionJsonTruncated: boolean;
+  agentActionReasoningExhausted: boolean;
   phaseIds: RoundPhaseId[];
   totalAgentActions: number;
   totalLocalVerdicts: number;
   totalApSpent: number;
   maxActiveNodeCount: number;
 }
+
+export type NodeRoundCommittedAuditSummary = Omit<NodeRoundShadowAuditSummary, "mode" | "writesDb"> & {
+  mode: "committed";
+  writesDb: true;
+};
 
 export function buildNodeRoundShadowReport(input: BuildNodeRoundShadowReportInput): NodeRoundShadowReport {
   const finalWinCondition = input.shadowResult.finalWinCondition ? summarizeWinCondition(input.shadowResult.finalWinCondition) : undefined;
@@ -111,6 +154,29 @@ export function buildNodeRoundShadowReport(input: BuildNodeRoundShadowReportInpu
       ...input.shadowResult.notes,
       "NodeRoundShadowReport 是节点化 shadow 报告，不是旧 RoundReport 数据库记录。",
       "Bridge 只读 shadow 轨迹，不反向修改节点事实。"
+    ]
+  };
+}
+
+export function buildNodeRoundCommittedReport(input: BuildNodeRoundCommittedReportInput): NodeRoundCommittedReport {
+  const shadowReport = buildNodeRoundShadowReport(input);
+  if (!shadowReport.finalWinCondition?.isRoundOver) {
+    throw new Error("Cannot build committed node round report without a hard final win condition.");
+  }
+
+  return {
+    ...shadowReport,
+    source: "node_round_engine_committed",
+    ...(input.nodeTraceArtifactId ? { nodeTraceArtifactId: input.nodeTraceArtifactId } : {}),
+    audit: {
+      ...shadowReport.audit,
+      mode: "committed",
+      writesDb: true
+    },
+    notes: [
+      ...input.shadowResult.notes,
+      "NodeRoundCommittedReport 是节点化 experimental committed 报告，用于单回合实验提交。",
+      "正式 winner 只来自 WinConditionMaterializer 的硬胜负条件，LLM shadow 不拥有最终胜负写入权。"
     ]
   };
 }
@@ -154,9 +220,35 @@ function buildAudit(shadowResult: NodeRoundShadowResult, phaseSummaries: NodeRou
   return {
     mode: "shadow",
     writesDb: false,
-    callsLlm: false,
+    callsLlm: Boolean(shadowResult.nodeLlmAudit?.enabled || shadowResult.agentActionLlmAudit?.enabled),
     replacesLegacyRoundPath: false,
     hasFinalWinCondition: Boolean(shadowResult.finalWinCondition),
+    llmShadowEnabled: shadowResult.nodeLlmAudit?.enabled ?? false,
+    providerMode: shadowResult.nodeLlmAudit?.providerMode ?? "none",
+    ...(shadowResult.nodeLlmAudit?.modelId ? { modelId: shadowResult.nodeLlmAudit.modelId } : {}),
+    llmCallsAttempted: shadowResult.nodeLlmAudit?.callsAttempted ?? 0,
+    llmFallbackCount: shadowResult.nodeLlmAudit?.fallbackCount ?? 0,
+    fallbackReasons: uniqueSorted(shadowResult.nodeLlmAudit?.fallbackReasons ?? []),
+    ignoredLlmFields: uniqueSorted(shadowResult.nodeLlmAudit?.ignoredFields ?? []),
+    draftValidCount: shadowResult.nodeLlmAudit?.draftValidCount ?? 0,
+    draftRejectedCount: shadowResult.nodeLlmAudit?.draftRejectedCount ?? 0,
+    contentLength: shadowResult.nodeLlmAudit?.contentLength ?? 0,
+    reasoningContentLength: shadowResult.nodeLlmAudit?.reasoningContentLength ?? 0,
+    jsonTruncated: shadowResult.nodeLlmAudit?.jsonTruncated ?? false,
+    reasoningExhausted: shadowResult.nodeLlmAudit?.reasoningExhausted ?? false,
+    agentActionLlmEnabled: shadowResult.agentActionLlmAudit?.enabled ?? false,
+    agentActionProviderMode: shadowResult.agentActionLlmAudit?.providerMode ?? "none",
+    ...(shadowResult.agentActionLlmAudit?.modelId ? { agentActionModelId: shadowResult.agentActionLlmAudit.modelId } : {}),
+    agentActionCallsAttempted: shadowResult.agentActionLlmAudit?.callsAttempted ?? 0,
+    agentActionFallbackCount: shadowResult.agentActionLlmAudit?.fallbackCount ?? 0,
+    agentActionFallbackReasons: uniqueSorted(shadowResult.agentActionLlmAudit?.fallbackReasons ?? []),
+    agentActionIgnoredFields: uniqueSorted(shadowResult.agentActionLlmAudit?.ignoredFields ?? []),
+    agentActionDraftAcceptedCount: shadowResult.agentActionLlmAudit?.draftAcceptedCount ?? 0,
+    agentActionDraftRejectedCount: shadowResult.agentActionLlmAudit?.draftRejectedCount ?? 0,
+    agentActionContentLength: shadowResult.agentActionLlmAudit?.contentLength ?? 0,
+    agentActionReasoningContentLength: shadowResult.agentActionLlmAudit?.reasoningContentLength ?? 0,
+    agentActionJsonTruncated: shadowResult.agentActionLlmAudit?.jsonTruncated ?? false,
+    agentActionReasoningExhausted: shadowResult.agentActionLlmAudit?.reasoningExhausted ?? false,
     phaseIds: shadowResult.phases.map((phase) => phase.phaseId),
     totalAgentActions: phaseSummaries.reduce((sum, phase) => sum + phase.actionCount, 0),
     totalLocalVerdicts: phaseSummaries.reduce((sum, phase) => sum + phase.localVerdictCount, 0),

@@ -346,6 +346,8 @@ CREATE TABLE IF NOT EXISTS round_reports (
   highlight_tags_json text,
   judge_diagnostic_json text,
   tactical_context_json text,
+  node_trace_artifact_id text REFERENCES artifacts(id),
+  node_trace_source text,
   summary text NOT NULL,
   event_projection_json text NOT NULL,
   created_at text NOT NULL
@@ -512,6 +514,8 @@ CREATE INDEX IF NOT EXISTS summaries_scope_idx ON summaries(scope_type, scope_id
   ensureSqliteColumn(sqlite, "round_reports", "kill_ledger_json", "text");
   ensureSqliteColumn(sqlite, "round_reports", "round_combat_resolution_json", "text");
   ensureSqliteColumn(sqlite, "round_reports", "judge_diagnostic_json", "text");
+  ensureSqliteColumn(sqlite, "round_reports", "node_trace_artifact_id", "text");
+  ensureSqliteColumn(sqlite, "round_reports", "node_trace_source", "text");
   ensureSqliteColumn(sqlite, "team_map_coach_states", "token_bank", "integer NOT NULL DEFAULT 5000");
   ensureSqliteColumn(sqlite, "economy_states", "loss_count", "integer NOT NULL DEFAULT 1");
   ensureSqliteColumn(sqlite, "economy_states", "economy_posture", "text");
@@ -849,8 +853,8 @@ class RoundReportSqliteRepository implements RoundReportRepository {
     const item = roundReportSchema.parse(entity);
     this.sqlite
       .prepare(
-        `INSERT INTO round_reports (id, tournament_id, match_id, map_game_id, round_id, round_number, map_name, winner_team_id, score_before_round_json, score_after_round_json, judge_result_json, agent_outputs_json, llm_team_plans_json, applied_coach_timeout_correction_json, key_events_json, kill_ledger_json, round_combat_resolution_json, economy_delta_json, token_submission_json, highlight_tags_json, judge_diagnostic_json, tactical_context_json, summary, event_projection_json, created_at)
-         VALUES (@id, @tournamentId, @matchId, @mapGameId, @roundId, @roundNumber, @mapName, @winnerTeamId, @scoreBeforeRoundJson, @scoreAfterRoundJson, @judgeResultJson, @agentOutputsJson, @llmTeamPlansJson, @appliedCoachTimeoutCorrectionJson, @keyEventsJson, @killLedgerJson, @roundCombatResolutionJson, @economyDeltaJson, @tokenSubmissionJson, @highlightTagsJson, @judgeDiagnosticJson, @tacticalContextJson, @summary, @eventProjectionJson, @createdAt)
+        `INSERT INTO round_reports (id, tournament_id, match_id, map_game_id, round_id, round_number, map_name, winner_team_id, score_before_round_json, score_after_round_json, judge_result_json, agent_outputs_json, llm_team_plans_json, applied_coach_timeout_correction_json, key_events_json, kill_ledger_json, round_combat_resolution_json, economy_delta_json, token_submission_json, highlight_tags_json, judge_diagnostic_json, tactical_context_json, node_trace_artifact_id, node_trace_source, summary, event_projection_json, created_at)
+         VALUES (@id, @tournamentId, @matchId, @mapGameId, @roundId, @roundNumber, @mapName, @winnerTeamId, @scoreBeforeRoundJson, @scoreAfterRoundJson, @judgeResultJson, @agentOutputsJson, @llmTeamPlansJson, @appliedCoachTimeoutCorrectionJson, @keyEventsJson, @killLedgerJson, @roundCombatResolutionJson, @economyDeltaJson, @tokenSubmissionJson, @highlightTagsJson, @judgeDiagnosticJson, @tacticalContextJson, @nodeTraceArtifactId, @nodeTraceSource, @summary, @eventProjectionJson, @createdAt)
          ON CONFLICT(id) DO UPDATE SET
          tournament_id = excluded.tournament_id, match_id = excluded.match_id, map_game_id = excluded.map_game_id,
          round_id = excluded.round_id, round_number = excluded.round_number, map_name = excluded.map_name,
@@ -861,7 +865,8 @@ class RoundReportSqliteRepository implements RoundReportRepository {
          kill_ledger_json = excluded.kill_ledger_json, round_combat_resolution_json = excluded.round_combat_resolution_json,
          economy_delta_json = excluded.economy_delta_json, token_submission_json = excluded.token_submission_json,
          highlight_tags_json = excluded.highlight_tags_json, judge_diagnostic_json = excluded.judge_diagnostic_json,
-         tactical_context_json = excluded.tactical_context_json, summary = excluded.summary,
+         tactical_context_json = excluded.tactical_context_json, node_trace_artifact_id = excluded.node_trace_artifact_id,
+         node_trace_source = excluded.node_trace_source, summary = excluded.summary,
          event_projection_json = excluded.event_projection_json, created_at = excluded.created_at`
       )
       .run(
@@ -1397,6 +1402,8 @@ function mapRoundReport(row: Row) {
     ...optionalObject("highlightTags", parseOptionalJson(row.highlight_tags_json)),
     ...optionalObject("judgeDiagnostic", parseOptionalJson(row.judge_diagnostic_json)),
     ...optionalObject("tacticalContext", parseOptionalJson(row.tactical_context_json)),
+    ...optionalObject("nodeTraceArtifactId", nullableString(row.node_trace_artifact_id)),
+    ...optionalObject("nodeTraceSource", nullableString(row.node_trace_source)),
     summary: asString(row.summary),
     eventProjection: parseJson(row.event_projection_json),
     createdAt: asString(row.created_at)

@@ -1163,6 +1163,10 @@ export const eventProjectionSchema = z.object({
 });
 export type EventProjection = z.infer<typeof eventProjectionSchema>;
 
+export const nodeRoundTraceSources = ["node_round_engine_committed"] as const;
+export const nodeRoundTraceSourceSchema = z.enum(nodeRoundTraceSources);
+export type NodeRoundTraceSource = z.infer<typeof nodeRoundTraceSourceSchema>;
+
 export const roundReportSchema = z.object({
   id: z.string().min(1),
   tournamentId: z.string().min(1),
@@ -1186,6 +1190,8 @@ export const roundReportSchema = z.object({
   highlightTags: z.array(z.string()).optional(),
   judgeDiagnostic: judgeDiagnosticSchema.optional(),
   tacticalContext: tacticalRoundContextSchema.optional(),
+  nodeTraceArtifactId: z.string().min(1).optional(),
+  nodeTraceSource: nodeRoundTraceSourceSchema.optional(),
   summary: z.string().min(1),
   eventProjection: eventProjectionSchema,
   createdAt: isoDateString

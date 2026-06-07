@@ -63,6 +63,58 @@ describe("local node judge pipeline", () => {
     expect(earlyVerdict.triggersWinConditionCheck).toBe(false);
     expect(lateVerdict.triggersWinConditionCheck).toBe(true);
   });
+
+  it("uses llm shadow drafts to enhance summaries without adding final winner fields", () => {
+    const graph = loadMapNodeGraph("dust2");
+    const verdict = buildLocalNodeVerdicts({
+      graph,
+      phaseSnapshot: snapshot(),
+      agentActions: actions(),
+      mode: "llm_shadow",
+      llmDrafts: [
+        {
+          nodeId: "mid",
+          phaseId: "first_contact",
+          summary: "LLM shadow: 中路商业碰撞被解释为双方争夺 buyer 定义权。",
+          controlAfterCandidate: "contested",
+          businessPlanValidated: ["LLM validated buyer narrative"],
+          businessPlanBroken: [],
+          riskNotes: ["LLM risk note"],
+          confidence: 0.8
+        }
+      ]
+    }).find((item) => item.nodeId === "mid")!;
+
+    expect(verdict.summary).toContain("LLM shadow");
+    expect(verdict.businessPlanValidated?.join(" ")).toContain("LLM validated");
+    expect(verdict.businessPlanBroken?.join(" ")).toContain("LLM risk note");
+    expect("winnerTeamId" in verdict).toBe(false);
+  });
+
+  it("downgrades llm shadow control candidates that conflict with node occupancy", () => {
+    const graph = loadMapNodeGraph("dust2");
+    const verdict = buildLocalNodeVerdicts({
+      graph,
+      phaseSnapshot: snapshot(),
+      agentActions: actions(),
+      mode: "llm_shadow",
+      llmDrafts: [
+        {
+          nodeId: "a_default",
+          phaseId: "first_contact",
+          summary: "LLM shadow incorrectly gives attack control.",
+          controlAfterCandidate: "attack",
+          businessPlanValidated: [],
+          businessPlanBroken: [],
+          riskNotes: [],
+          confidence: 0.7
+        }
+      ]
+    }).find((item) => item.nodeId === "a_default")!;
+
+    expect(verdict.controlAfter).toBe("defense");
+    expect(verdict.businessPlanBroken?.join(" ")).toContain("llm_candidate_control_conflict");
+  });
 });
 
 function snapshot(phaseId: RoundNodeStateSnapshot["phaseId"] = "first_contact"): RoundNodeStateSnapshot {

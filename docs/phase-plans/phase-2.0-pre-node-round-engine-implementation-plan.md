@@ -699,24 +699,341 @@ AP 只在合法可达范围内生效：
 
 目标：
 
-- 只在 Dust2 单图启用节点化 experimental path。
+- 只在 Dust2 单图启用节点化 shadow 实验入口。
+- 通过本地脚本跑出完整节点化 shadow report。
 - 不扩展 BO3 和其他地图。
+- 不写 DB，不接 Web，不替换旧回合路径。
 
 验收：
 
-- 至少一次节点化 Dust2 round 完成。
-- 至少一次节点化 Dust2 round 因全歼提前结束。
-- 至少一次节点化 Dust2 round 进入下包 / 守包 / 拆包阶段。
+- `scripts/phase20-node-shadow-round.mjs` 可运行。
+- 输出 `source = node_round_engine_shadow`。
+- 输出 phaseCount、final win condition、active node count、是否提前结束。
+- report audit 明确 `writesDb = false`、`replacesLegacyRoundPath = false`。
+- 至少一次 deterministic Dust2 shadow round 完成。
 - 经济状态能影响行动能力。
 - 商业意图进入节点冲突。
-- 旧路径仍可手动回退。
-- artifact 能审计每个阶段的节点状态、AP、局部裁判和胜负条件。
+- 旧路径完全不受影响。
+- shadow report 能审计每个阶段的节点状态、AP、局部裁判和胜负条件。
 
 禁止：
 
 - 不扩展到其他地图。
 - 不扩展到完整 BO3。
 - 不把一次真实样本比分当作机制成功。
+- 不把 shadow report 包装成正式 RoundReport。
+- 不默认调用真实 LLM。
+
+### 阶段 N10：Node LLM Harness
+
+目标：
+
+- 把节点化 LLM 接入边界正式纳入母版，而不是临时口头追加。
+- 第一版只让 LLM 参与局部节点裁判解释和语义碰撞增强。
+- deterministic 路径继续保留。
+- LLM 失败时 fallback deterministic，不阻断 shadow round。
+
+预期新增：
+
+- `node-llm-boundary.ts`
+- `node-llm-stage-runner.ts`
+- `LocalNodeJudgePipeline` 的 `llm_shadow` 模式。
+- `RoundPhaseRunner` 的 LLM shadow 运行入口。
+- `NodeRoundShadowReport` 的 LLM shadow audit 字段。
+- `phase20-node-shadow-round.mjs --llm-shadow --max-llm-calls N`。
+
+LLM draft 允许字段：
+
+- `nodeId`
+- `phaseId`
+- `summary`
+- `controlAfterCandidate`
+- `businessPlanValidated`
+- `businessPlanBroken`
+- `riskNotes`
+- `confidence`
+
+LLM draft 禁止字段：
+
+- final winner。
+- roundWinType。
+- kill ledger。
+- 任意未注册 nodeId。
+- DB fact。
+- 经济参数修改。
+- 正式 RoundReport 字段。
+
+验收：
+
+- 默认脚本不调用 LLM。
+- `--llm-shadow` 只显式启用节点局部裁判 shadow。
+- fake / fixture provider 能跑完整 shadow report。
+- LLM 返回未知 nodeId 时 fallback deterministic。
+- LLM 返回 winner / roundWinType 时忽略并记录 audit。
+- provider 抛错时 fallback deterministic，不写 terminal error。
+- report audit 显示 `llmShadowEnabled`、`llmCallsAttempted`、`llmFallbackCount`、`fallbackReasons`。
+- TypeScript noEmit、package build 和节点 LLM 测试通过。
+
+禁止：
+
+- 不默认调用真实 LLM。
+- 不接旧 `phase18_next_round`。
+- 不写 DB。
+- 不让 LLM 控制最终 winner。
+- 不让 LLM 自由写节点、击杀、经济或正式回合事实。
+
+### 阶段 N11：真实 LLM 局部裁判受控实验
+
+目标：
+
+- 在 N10 的 fake / fixture harness 通过后，开启真实 provider 的局部节点裁判受控实验。
+- 真实 LLM 只用于局部节点裁判 shadow，不参与 agent action，不参与最终 winner。
+- 验证真实模型是否能遵守 nodeId、phaseId、字段边界和短 JSON 输出。
+
+预期新增：
+
+- `phase20-node-shadow-round.mjs --llm-shadow --provider real --max-llm-calls N` 或等价显式入口。
+- 真实 provider 调用审计字段：
+  - provider id。
+  - model id。
+  - request token 估算。
+  - response content length。
+  - reasoning content length。
+  - fallback reason。
+- 真实 LLM draft 与 deterministic verdict 的对比摘要。
+
+验收：
+
+- 默认仍不调用真实 LLM。
+- 真实 LLM 只能通过显式参数启用。
+- 单回合真实 LLM shadow 调用数可限制，例如 3-5 次。
+- 真实 LLM 输出未知 nodeId、winner、roundWinType、kill fact 时不会污染节点状态。
+- fallback 不阻断 shadow round。
+- audit 能区分：
+  - `llm_draft_valid`
+  - `llm_draft_repaired`
+  - `llm_draft_rejected`
+  - `provider_error`
+  - `reasoning_exhausted`
+  - `json_truncated`
+- 至少一次真实 LLM shadow round 能完成 report，或明确记录外部网络 / provider 阻断。
+
+禁止：
+
+- 不把真实 LLM shadow 写入 DB。
+- 不让真实 LLM 控制 winner。
+- 不把真实 LLM 失败包装成机制失败。
+- 不绕过 provider / 安全策略。
+- 不为了通过测试放宽 nodeId 或 phase 校验。
+
+### 阶段 N12：节点化旁路审计接入旧运行链路
+
+目标：
+
+- 把节点化 shadow report 作为旧 `phase18` 运行链路的旁路审计信息接入。
+- 旧正式回合仍由旧路径提交。
+- 节点化路径只用于比较、诊断和调试，不改变 winner、score、经济和 round commit。
+
+预期新增：
+
+- 旧 run 可关联一个 node shadow report artifact。
+- `phase18-run-audit.mjs` 能识别 node shadow report。
+- Web progress 或 run audit 能展示：
+  - 是否存在 node shadow。
+  - shadow phase 数。
+  - shadow final hard condition。
+  - deterministic / LLM shadow 状态。
+  - fallback count。
+  - 与正式 round winner 是否冲突。
+
+验收：
+
+- 普通 `phase18_next_round` 仍可不用 node shadow 运行。
+- 显式启用旁路审计时，旧 round commit 不受影响。
+- node shadow failure 不会写成正式 latest_error。
+- 旧 run audit 能列出 node shadow 状态和失败原因。
+- 不存在长期 started 的 node LLM call。
+- recovered node shadow failure 可见。
+
+禁止：
+
+- 不用 node shadow 改正式 winner。
+- 不用 node shadow 改正式 economy delta。
+- 不把旁路审计失败升级成正式 run terminal failure。
+- 不把 node shadow report 伪装成旧 RoundReport。
+
+### 阶段 N13：前端节点化展示适配
+
+目标：
+
+- 让 Web 前端能理解并展示节点化 shadow / experimental 结果。
+- 前端只展示审计和轨迹，不伪造节点事实。
+- 用户能看懂一回合如何从地图节点、时间阶段、AP、经济资源和局部裁判推进到硬胜负条件。
+
+预期新增或修改：
+
+- Web progress 显示 node shadow 状态：
+  - deterministic / LLM shadow。
+  - phase count。
+  - fallback count。
+  - latest fallback reason。
+- Round / report 页面增加节点化 shadow 区域。
+- 第一版前端可以先做文本 / 表格展示，不强制立即画完整交互地图。
+- 展示维度：
+  - 时间阶段。
+  - 活跃节点。
+  - 每个节点攻守人数。
+  - 控制权变化。
+  - agent 当前节点、目标节点、行动类型、AP 消耗。
+  - businessIntent。
+  - local verdict summary。
+  - hard win condition。
+  - LLM shadow audit。
+
+后续可视化方向：
+
+- Dust2 graph 小地图。
+- 节点连线。
+- 当前 phase 高亮。
+- 攻守人数 badge。
+- AP 消耗条。
+- 局部裁判解释面板。
+- deterministic 与 LLM shadow 对比视图。
+
+验收：
+
+- 旧 Web 控制台不崩。
+- 没有 node shadow 的旧 run 仍正常显示。
+- 有 node shadow 的 run 能看到 `source = node_round_engine_shadow`。
+- 用户能按 phase 查看节点行动和局部裁判。
+- 前端不允许手工推断未在 artifact 中存在的击杀、HP、装备或胜负事实。
+- Web 能显示 node shadow fallback reason。
+
+禁止：
+
+- 不让前端伪造节点事实。
+- 不在前端重新计算 winner。
+- 不把 shadow 结果当正式结果展示。
+- 不为了好看隐藏 fallback / rejected draft。
+
+### 阶段 N14：LLM 阶段行动 Shadow Harness
+
+目标：
+
+- 在局部裁判真实 LLM shadow 验证后，再让 LLM 参与 agent phase action。
+- LLM 生成阶段行动，但代码继续负责 nodeId、phase、AP、经济和合法性校验。
+- deterministic action pipeline 继续作为 fallback。
+
+预期新增：
+
+- `node-agent-action-boundary.ts`
+- `node-agent-action-stage-runner.ts`
+- `AgentPhaseActionPipeline` 的 `llm_shadow` 模式。
+- 每 phase 合并行动请求，避免每个 agent 单独调用。
+
+LLM agent action 必填：
+
+- `agentId`
+- `currentNodeId`
+- `targetNodeId`
+- `actionType`
+- `apCost`
+- `businessIntent`
+- `riskAssessment`
+- `expectedResult`
+
+LLM agent action 禁止：
+
+- kill fact。
+- final winner。
+- 经济参数修改。
+- 不存在 nodeId。
+- 当前 phase 不可达节点。
+- AP 超支且无明确降级。
+
+验收：
+
+- 默认仍 deterministic。
+- 显式 `llm_shadow` 才启用 agent action LLM。
+- LLM 输出 nodeId 经过 graph validator。
+- LLM 输出 AP 经过 AP validator。
+- LLM 输出 actionType 经过 economy resources 约束。
+- 低资源 agent 不能生成完整高配爆弹。
+- 按兵不动仍是合法行动。
+- LLM 无效时 fallback deterministic。
+- 每回合调用数仍控制在预算内。
+
+禁止：
+
+- 不让每个 agent 每个 phase 默认单独调用。
+- 不让 LLM 输出击杀或最终胜负。
+- 不放宽 AP / graph / economy 校验。
+
+### 阶段 N15：Dust2 节点化 experimental committed round
+
+目标：
+
+- 在 N11-N14 shadow 通过后，开启 Dust2 单回合 experimental committed path。
+- 该路径只在显式模式下运行。
+- 第一版只提交单回合节点化结果，不扩完整地图。
+- 旧路径保留 fallback。
+
+预期新增：
+
+- 新 run mode，例如 `phase20_node_round_experimental`。
+- Node round committed artifact。
+- 与旧 RoundReport 的兼容 bridge。
+- Web 控制区显式入口，默认隐藏或标记实验。
+
+验收：
+
+- 一次 Dust2 node round 可正式提交。
+- winner 来自 `WinConditionMaterializer` 硬条件。
+- RoundReport 能引用 node trace。
+- Web 能展示 node trace。
+- 旧 `生成当前地图` 和 `一直生成` 不受影响。
+- 节点化提交失败时能回退或明确 terminal，不污染旧 run。
+
+禁止：
+
+- 不默认替换旧 `phase18_next_round`。
+- 不扩 BO3。
+- 不扩其他地图。
+- 不把 shadow report 直接当 committed report。
+- 不绕过 hard win condition。
+
+### 阶段 N16：Dust2 节点化完整地图灰度验收
+
+目标：
+
+- 在单回合 experimental committed path 稳定后，进行 Dust2 单图完整地图灰度。
+- 验证节点化路径能跨回合继承经济、状态摘要、coach/review 输入和前端展示。
+- 该阶段才允许把节点化路径作为“真实测试”的主要对象。
+
+验收：
+
+- 至少一张 Dust2 节点化完整地图可完成，或明确因外部 provider / 网络失败而中止。
+- 每回合都有 node trace。
+- 每回合经济能继承。
+- 每回合 AP、agent action、local verdict、win condition 可审计。
+- 至少出现一种提前结束条件。
+- 至少出现一次下包 / 拆包 / 守包相关硬条件。
+- 前端可查看完整地图节点化轨迹。
+- 旧路径仍可手动运行对照。
+- 生成质量评估不只看比分，而看：
+  - node 合法性。
+  - AP 合法性。
+  - 商业意图质量。
+  - 局部裁判是否守边界。
+  - 经济是否以资源约束方式影响行动。
+  - hard win condition 是否可信。
+
+禁止：
+
+- 不把单一样本比分当作机制成功或失败。
+- 不为了让地图结束而硬控 winner。
+- 不用节点化灰度结果直接覆盖旧主线。
+- 不在该阶段扩 16 队、BO3 或其他地图。
 
 ## 8. 与原阶段 0-8 的映射
 
@@ -730,7 +1047,7 @@ AP 只在合法可达范围内生效：
 | 阶段 5：scorecard fallback | 基本完成 | 节点化路径后续减少对 scorecard fallback 的依赖。 |
 | 阶段 6：攻守/比分诊断 | 基本完成 | 节点化后通过路线、时空、AP 解释偏置来源。 |
 | 阶段 7：CoachService | 基本完成 | 后续 coach 可读取节点轨迹做 timeout / review。 |
-| 阶段 8：真实生成验收 | 外部网络有波动 | N9 才进入真实节点化验收。 |
+| 阶段 8：真实生成验收 | 外部网络有波动 | N11 开始真实 LLM shadow；N15 开始 experimental commit；N16 才进行完整地图灰度。 |
 
 ## 9. 验证策略
 
@@ -763,13 +1080,14 @@ AP 只在合法可达范围内生效：
 
 后续任何节点化相关计划必须写清：
 
-- 当前处于 N0-N9 哪一阶段。
+- 当前处于 N0-N16 哪一阶段。
 - 本轮要完成哪个阶段，哪些阶段不碰。
 - 是否修改旧回合路径。
 - 是否影响 `engine.ts`。
 - 是否影响 Economy/Output 规则。
 - 是否影响 JudgePipeline。
 - 是否调用真实 LLM。
+- 是否影响 Web / 前端节点化展示。
 - 自动验证命令。
 - 人工验收流程。
 - 回滚策略。
@@ -825,7 +1143,11 @@ AP 只在合法可达范围内生效：
 - 局部裁判每个时间点一次。
 - 非关键 agent 使用继承 / 保持位置 / 代码模板，减少无效调用。
 - repair 和 finalizer 保持短输入、短输出。
-- 真实 LLM 验收只在 N9 或明确需要时进行，N1-N4 优先本地 deterministic 测试。
+- N0-N10 优先本地 deterministic / fixture 测试。
+- N11 才允许真实 LLM 局部裁判 shadow。
+- N14 才允许真实 LLM agent phase action shadow。
+- N15 才允许节点化 experimental committed round。
+- N16 才允许 Dust2 完整地图灰度。
 
 如果未来成本上升，优先减少 LLM 参与节点，而不是放宽校验。
 
@@ -849,7 +1171,7 @@ AP 只在合法可达范围内生效：
 
 ## 13. 需要保留但暂不解决的问题
 
-以下问题已经被识别，但不应阻塞 N1-N4：
+以下问题已经被识别，但不应阻塞 N0-N10：
 
 - 完整 HP / 护甲 / 枪械弹道。
 - 每颗道具的物理落点和精确持续时间。
@@ -863,17 +1185,46 @@ AP 只在合法可达范围内生效：
 
 ## 14. 当前下一步建议
 
-当前已完成 N0 的大部分文档和资产工作。
+当前 N0-N9 已完成 shadow 第一版，N10 已追加执行并正式写回本母版。
 
-下一步不应直接写完整节点化 runtime，而应先完成：
+下一步不得继续临时口头新增阶段。后续推进必须从本文件的 N11-N16 中选择。
 
-1. 审阅并修正 Dust2 node graph。
-2. 补齐 node graph 中遗漏的重要点位或不合理连接。
-3. 固化 AP 第一版动作成本表。
-4. 编写 N1 Schema 层计划。
-5. 执行 N1：定义类型和 validator，不接真实 LLM。
+建议顺序：
 
-只有 N1 / N2 稳定后，才进入 N3 economy adapter 和 N4 shadow runner。
+1. 先固化 N10：
+   - 确认 `node-llm-boundary`、`node-llm-stage-runner`、`llm_shadow` report audit 已测试通过。
+   - 将 N10 的文档、代码、测试作为一个稳定基线提交。
+
+2. 再进入 N11：
+   - 只做真实 LLM 局部裁判受控实验。
+   - 不接 DB，不接 Web，不改旧正式回合。
+   - 验证真实模型是否遵守 nodeId、phaseId、字段边界和短 JSON 输出。
+
+3. N11 通过后进入 N12：
+   - 将 node shadow 作为旧 run 的旁路审计接入。
+   - 旧 winner、score、经济、RoundReport 不受影响。
+
+4. N12 通过后进入 N13：
+   - 做前端节点化展示适配。
+   - 第一版可以是表格 / 时间线 / 节点摘要，不强制完整交互地图。
+
+5. N13 通过后进入 N14：
+   - 让 LLM 参与 agent phase action shadow。
+   - 仍然不提交正式 winner。
+
+6. N14 通过后进入 N15：
+   - 开启 Dust2 单回合 experimental committed path。
+
+7. N15 稳定后进入 N16：
+   - 做 Dust2 完整地图灰度验收。
+
+真正测试口径：
+
+- 现在可以测试：deterministic shadow 和 fixture LLM shadow。
+- N11 后可以测试：真实 LLM 局部裁判 shadow。
+- N13 后可以测试：前端节点化展示。
+- N15 后可以测试：节点化单回合正式提交。
+- N16 后可以测试：Dust2 节点化完整地图。
 
 ## 15. 阶段完成记录要求
 
@@ -890,6 +1241,13 @@ AP 只在合法可达范围内生效：
 | N6 | 待填 | 待填 | 待填 | local judge |
 | N7 | 待填 | 待填 | 待填 | win materializer |
 | N8 | 待填 | 待填 | 待填 | report bridge |
-| N9 | 待填 | 待填 | 待填 | real Dust2 run |
+| N9 | 待填 | 待填 | 待填 | Dust2 shadow experiment |
+| N10 | 待填 | 待填 | 待填 | node LLM harness |
+| N11 | 待填 | 待填 | 待填 | real LLM local judge shadow |
+| N12 | 待填 | 待填 | 待填 | legacy run sidecar audit |
+| N13 | 待填 | 待填 | 待填 | frontend node shadow viewer |
+| N14 | 待填 | 待填 | 待填 | LLM agent phase action shadow |
+| N15 | 待填 | 待填 | 待填 | experimental committed node round |
+| N16 | 待填 | 待填 | 待填 | Dust2 full map gray validation |
 
 如果某阶段只是部分完成，必须写“部分完成”，不能包装成完成。

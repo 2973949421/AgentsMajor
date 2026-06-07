@@ -181,6 +181,8 @@ export const roundReports = sqliteTable("round_reports", {
   highlightTagsJson: text("highlight_tags_json", { mode: "json" }),
   judgeDiagnosticJson: text("judge_diagnostic_json", { mode: "json" }),
   tacticalContextJson: text("tactical_context_json", { mode: "json" }),
+  nodeTraceArtifactId: text("node_trace_artifact_id").references(() => artifacts.id),
+  nodeTraceSource: text("node_trace_source"),
   summary: text("summary").notNull(),
   eventProjectionJson: text("event_projection_json", { mode: "json" }).notNull(),
   createdAt: text("created_at").notNull()

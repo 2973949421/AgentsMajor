@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 import { buildNodeEconomyResources } from "./economy-resource-adapter.js";
 import type { TeamEconomyPlan } from "./economy-rules.js";
 import { loadMapNodeGraph } from "./node-graph-service.js";
-import { runNodeRoundShadow } from "./round-phase-runner.js";
+import { createFixtureNodeAgentActionDraftProvider } from "./node-agent-action-stage-runner.js";
+import { runNodeRoundShadow, runNodeRoundShadowWithAgentActionLlm } from "./round-phase-runner.js";
 
 describe("round phase runner shadow mode", () => {
   it("generates five Dust2 phase snapshots without producing a formal winner", () => {
@@ -103,6 +104,26 @@ describe("round phase runner shadow mode", () => {
     const firstContact = result.phases.find((phase) => phase.phaseId === "first_contact")!;
 
     expect(firstContact.transitionNotes?.join(" ")).toContain("物化");
+  });
+
+  it("can run agent action LLM shadow without producing a formal top-level winner", async () => {
+    const graph = loadMapNodeGraph("dust2");
+    const result = await runNodeRoundShadowWithAgentActionLlm({
+      roundId: "round_shadow_agent_action_llm",
+      roundNumber: 1,
+      graph,
+      economyResources: resourcesForRound(),
+      agentActionLlm: {
+        provider: createFixtureNodeAgentActionDraftProvider(),
+        maxLlmCalls: 5
+      }
+    });
+
+    expect(result.agentActionLlmAudit?.enabled).toBe(true);
+    expect(result.agentActionLlmAudit?.callsAttempted).toBeGreaterThan(0);
+    expect(result.phases.some((phase) => phase.agentActionLlmAudit?.enabled)).toBe(true);
+    expect("winnerTeamId" in result).toBe(false);
+    expect(result.notes.join(" ")).toContain("agent 阶段行动 LLM shadow");
   });
 });
 

@@ -3,7 +3,12 @@ import { PHASE20_PRE_PROMPT_CONTRACT_ID } from "@agent-major/core";
 import { phase18CanonIds, phase20PrePilotMapIds } from "@agent-major/materials";
 
 type SimulationRunStatus = "scheduled" | "running" | "completed" | "failed" | "discarded";
-type SimulationRunMode = "phase18_next_round" | "phase18_current_map" | "phase18_keep_generating_map" | "phase18_full_bo3";
+type SimulationRunMode =
+  | "phase18_next_round"
+  | "phase18_current_map"
+  | "phase18_keep_generating_map"
+  | "phase18_full_bo3"
+  | "phase20_node_round_experimental";
 
 export interface SimulationRunRecord {
   id: string;

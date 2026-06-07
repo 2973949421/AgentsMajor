@@ -3,9 +3,16 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 
 import { createSqliteRepositories } from "@agent-major/db";
+import { runDust2NodeShadowExperiment } from "@agent-major/core";
 import { describe, expect, it } from "vitest";
 
-import { readMapProgressSnapshot, summarizeLlmCalls, type WebRunLlmCallProgress } from "../app/server-run-progress";
+import {
+  readMapProgressSnapshot,
+  readNodeShadowSidecarProgress,
+  summarizeLlmCalls,
+  summarizeNodeShadowSidecarPayload,
+  type WebRunLlmCallProgress
+} from "../app/server-run-progress";
 import { listPhase18RunHistoryEntries, syncPhase18SimulationRun } from "../app/server-phase18-runs";
 
 describe("Phase 1.8 web run progress", () => {
@@ -35,6 +42,81 @@ describe("Phase 1.8 web run progress", () => {
     expect(summary.completedCalls).toBe(13);
     expect(summary.failedCalls).toBe(1);
     expect(summary.runningCalls).toBe(1);
+  });
+
+  it("summarizes node shadow sidecar payloads without treating them as formal run facts", () => {
+    const report = runDust2NodeShadowExperiment().report;
+    const summary = summarizeNodeShadowSidecarPayload(
+      {
+        schemaVersion: 1,
+        status: "created",
+        runId: "run-node",
+        executionId: "exec-node",
+        writesDb: false,
+        replacesLegacyRoundPath: false,
+        providerMode: "none",
+        llmShadowEnabled: false,
+        report
+      },
+      "2026-05-04T00:00:00.000Z"
+    );
+
+    expect(summary).toMatchObject({
+      status: "created",
+      source: "node_round_engine_shadow",
+      writesDb: false,
+      replacesLegacyRoundPath: false,
+      providerMode: "none",
+      llmShadowEnabled: false,
+      phaseCount: report.phaseCount
+    });
+    expect(summary?.finalWinCondition?.winnerTeamId).toBe(report.finalWinCondition?.winnerTeamId);
+  });
+
+  it("reads the latest node shadow sidecar event for a run", async () => {
+    const repositories = createSqliteRepositories(resolve(mkdtempSync(resolve(tmpdir(), "agent-major-web-progress-")), "agent-major.sqlite"));
+    try {
+      seedPhase18ProgressFixture(repositories);
+      const report = runDust2NodeShadowExperiment().report;
+      const [globalSequence, sequenceInScope] = await Promise.all([
+        repositories.events.getMaxGlobalSequence(),
+        repositories.events.getMaxSequenceInScope("map", "map-2")
+      ]);
+      await repositories.events.append({
+        id: "evt_run_node_shadow_created",
+        type: "node_round_shadow_report_created",
+        category: "runtime_control",
+        tournamentId: "tournament-1",
+        matchId: "match-1",
+        mapGameId: "map-2",
+        payload: {
+          schemaVersion: 1,
+          status: "created",
+          runId: "run-node",
+          executionId: "exec-node",
+          writesDb: false,
+          replacesLegacyRoundPath: false,
+          providerMode: "none",
+          llmShadowEnabled: false,
+          report
+        },
+        globalSequence: globalSequence + 1,
+        scopeType: "map",
+        scopeId: "map-2",
+        sequenceInScope: sequenceInScope + 1,
+        sourceModule: "test",
+        createdAt: "2026-05-04T00:00:00.000Z"
+      });
+
+      const progress = readNodeShadowSidecarProgress(repositories, "run-node", "match-1");
+
+      expect(progress?.reportId).toBe(report.id);
+      expect(progress?.phaseSummaries.length).toBe(report.phaseSummaries.length);
+      expect(progress?.writesDb).toBe(false);
+      expect(progress?.replacesLegacyRoundPath).toBe(false);
+    } finally {
+      repositories.close();
+    }
   });
 
   it("promotes stale scheduled runs with completedAt and replay facts to completed", async () => {
