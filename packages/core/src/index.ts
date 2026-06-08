@@ -1,5 +1,6 @@
 export * from "./phase18/index.js";
 export * from "./node-engine/index.js";
+export * from "./hex-engine/index.js";
 export * from "./judge/index.js";
 export * from "./economy/index.js";
 export * from "./coach/index.js";

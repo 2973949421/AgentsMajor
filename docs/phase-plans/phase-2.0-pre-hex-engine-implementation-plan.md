@@ -13,6 +13,8 @@
 
 本轮 N20 不改 runtime（运行时）、不改 UI（界面）、不改 DB（数据库）、不改比赛规则。它只做路线重置和文档封板，为 N21-N31 提供稳定依据。
 
+具体比赛运行规则不在 N20 或 N21 单独定义，而由 `phase-2.0-pre-hex-engine-runtime-contract.md` 作为 N21-N31 的共同技术契约承载。后续 schema（结构定义）、runtime（运行时）、LLM boundary（大语言模型边界）、combat resolver（战斗裁定器）和 report bridge（报告桥接）都必须先对齐该契约。
+
 ## 1. 目标
 
 N20 的目标：
@@ -41,6 +43,7 @@ N20 完成后必须满足：
 
 - `docs/phase-plans/phase-2.0-pre-hex-engine-reset-charter.md` 存在。
 - `docs/phase-plans/phase-2.0-pre-hex-engine-implementation-plan.md` 存在。
+- `docs/phase-plans/phase-2.0-pre-hex-engine-runtime-contract.md` 存在，并作为 N21-N31 共同技术契约。
 - 旧 `phase-2.0-pre-node-round-engine-charter.md` 已从主计划目录移入 `docs/phase-plans/frozen/phase-2.0-pre-node-round-engine-charter.superseded.md`。
 - 旧 `phase-2.0-pre-node-round-engine-implementation-plan.md` 已从主计划目录移入 `docs/phase-plans/frozen/phase-2.0-pre-node-round-engine-implementation-plan.superseded.md`。
 - frozen（冻结）目录有 README，明确旧文档只用于历史追溯，不得作为 N20+ 主线依据。
@@ -198,6 +201,38 @@ LLM 输出必须被代码校验：
 - N30 后：删除旧 node/sector runtime 依赖。
 - N31：删除旧 `node-engine` 中不再被引用的 action/judge/graph/sector 模块，并清理旧 Dust2 node/sector 资产。
 
+### F. 过渡期隔离规则
+
+当前实验新引擎不是旧 `Phase18`，但也不是 HexGrid（蜂巢格）终局方向。它必须冻结为历史实验层，不能继续作为第二条主线扩张。
+
+N21 起执行以下硬边界：
+
+- Hex runtime 新增代码必须放在 `packages/core/src/hex-engine/`。
+- Hex shared schema 必须使用独立 `hex` 命名，不复用 node/sector 作为主结构。
+- Hex 地图资产必须放在 `data/materials/processed/maps/<mapSlug>/hex/`。
+- Hex 前端入口必须走 `/hex-lab/*`，不继续扩 Node Lab 主控。
+- `hex-engine` 不得 import 旧 `node-engine/action`、`node-engine/judge`、`node-engine/graph`、`node-engine/sector` runtime 模块。
+- Hex pathfinding 不得依赖 `node-graph.json`。
+- Hex AP 不得依赖旧 node edge 成本。
+- Hex combat 不得依赖 `local-node-judge` 作为主裁定器。
+
+允许复用的是经验和非 node/sector 业务能力：
+
+- artifact / audit / fallback 的记录思路。
+- provider real/fixture 切换经验。
+- Web progress 展示经验。
+- RoundReport bridge 经验。
+- economy/output 系统。
+- team context 和 coach context。
+- LLM boundary 校验思想。
+
+禁止复用的是旧路线主模型：
+
+- `node-graph.json` 不再作为未来路径真相。
+- `sector-map.json` 不再作为未来地图区域真相。
+- node trace 不得混写为 hex trace。
+- local node judge 不得升级为 Hex Combat Resolver。
+
 ## 5. 分阶段执行步骤
 
 ### N20：路线重置与文档封板
@@ -214,10 +249,20 @@ LLM 输出必须被代码校验：
 
 目的：先让地图资产有机器结构。
 
+第一版落地内容：
+
+- `packages/shared/src/hex-schemas.ts`：定义 HexGrid schema/type。
+- `packages/core/src/hex-engine/map/hex-map-validator.ts`：校验 Hex map asset 的跨字段一致性。
+- `data/materials/processed/maps/dust2/hex/dust2-hex-map.draft.json`：只用于 N21 测试的 Dust2 draft asset，不是正式地图。
+
 验收：
 
 - 50x50 grid、cell、region、point schema 可测试。
 - 非法 cell、重复 region、悬空 point 能被测试抓住。
+- `10 cells = 1 AP` 写入 asset/config。
+- T/CT spawn、A/B bombsite、route hint 能被表达和校验。
+- `packages/core/src/hex-engine/architecture-boundary.test.ts` 通过，证明 HexEngine 不依赖旧 Node/Sector runtime 或旧 Dust2 node/sector 资产。
+- N21 不实现编辑器、比赛运行、LLM 调用或正式 Dust2 地图。
 
 ### N22：HexMapEditor（蜂巢地图编辑器）
 

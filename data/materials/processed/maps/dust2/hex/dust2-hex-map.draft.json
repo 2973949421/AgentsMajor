@@ -1,0 +1,238 @@
+{
+  "schemaVersion": 1,
+  "mapSlug": "dust2",
+  "displayName": "Dust2 Hex Draft",
+  "grid": {
+    "width": 50,
+    "height": 50,
+    "coordinateSystem": "col_row",
+    "origin": "top_left"
+  },
+  "apModel": {
+    "baseApPerPhase": 3,
+    "minAp": 0,
+    "cellsPerAp": 10,
+    "allowFractionalAp": true,
+    "resetsEachPhase": true
+  },
+  "cells": [
+    {
+      "cellId": "h_25_45",
+      "col": 25,
+      "row": 45,
+      "playable": true,
+      "terrain": "floor",
+      "flags": ["playable", "spawn_t"],
+      "regionId": "t_spawn",
+      "pointIds": ["t_spawn_point"]
+    },
+    {
+      "cellId": "h_26_44",
+      "col": 26,
+      "row": 44,
+      "playable": true,
+      "terrain": "floor",
+      "flags": ["playable", "route_hint"],
+      "regionId": "mid",
+      "pointIds": ["top_mid"]
+    },
+    {
+      "cellId": "h_27_35",
+      "col": 27,
+      "row": 35,
+      "playable": true,
+      "terrain": "floor",
+      "flags": ["playable", "choke"],
+      "regionId": "mid",
+      "pointIds": ["top_mid"]
+    },
+    {
+      "cellId": "h_31_29",
+      "col": 31,
+      "row": 29,
+      "playable": true,
+      "terrain": "floor",
+      "flags": ["playable", "choke"],
+      "regionId": "a_short",
+      "pointIds": ["catwalk"]
+    },
+    {
+      "cellId": "h_40_15",
+      "col": 40,
+      "row": 15,
+      "playable": true,
+      "terrain": "floor",
+      "flags": ["playable", "bombsite_a"],
+      "regionId": "a_site",
+      "pointIds": ["a_bombsite"]
+    },
+    {
+      "cellId": "h_24_06",
+      "col": 24,
+      "row": 6,
+      "playable": true,
+      "terrain": "floor",
+      "flags": ["playable", "spawn_ct"],
+      "regionId": "ct_spawn",
+      "pointIds": ["ct_spawn_point"]
+    },
+    {
+      "cellId": "h_07_13",
+      "col": 7,
+      "row": 13,
+      "playable": true,
+      "terrain": "floor",
+      "flags": ["playable", "bombsite_b"],
+      "regionId": "b_site",
+      "pointIds": ["b_bombsite"]
+    },
+    {
+      "cellId": "h_08_25",
+      "col": 8,
+      "row": 25,
+      "playable": true,
+      "terrain": "floor",
+      "flags": ["playable", "route_hint"],
+      "regionId": "b_tunnels",
+      "pointIds": ["upper_tunnels"]
+    }
+  ],
+  "regions": [
+    {
+      "regionId": "t_spawn",
+      "nameCn": "T 出生点",
+      "nameEn": "T Spawn",
+      "regionType": "spawn",
+      "cellIds": ["h_25_45"],
+      "businessSemantics": "T side launch area for opening plans."
+    },
+    {
+      "regionId": "mid",
+      "nameCn": "中路",
+      "nameEn": "Mid",
+      "regionType": "mid",
+      "cellIds": ["h_26_44", "h_27_35"],
+      "businessSemantics": "Central information and rotation pressure route."
+    },
+    {
+      "regionId": "a_short",
+      "nameCn": "A 小",
+      "nameEn": "A Short",
+      "regionType": "connector",
+      "cellIds": ["h_31_29"],
+      "businessSemantics": "Connector route into A site pressure."
+    },
+    {
+      "regionId": "a_site",
+      "nameCn": "A 点",
+      "nameEn": "A Site",
+      "regionType": "a_site",
+      "cellIds": ["h_40_15"],
+      "businessSemantics": "A bombsite commitment and post-plant area."
+    },
+    {
+      "regionId": "ct_spawn",
+      "nameCn": "CT 出生点",
+      "nameEn": "CT Spawn",
+      "regionType": "spawn",
+      "cellIds": ["h_24_06"],
+      "businessSemantics": "CT rotation and retake base."
+    },
+    {
+      "regionId": "b_site",
+      "nameCn": "B 点",
+      "nameEn": "B Site",
+      "regionType": "b_site",
+      "cellIds": ["h_07_13"],
+      "businessSemantics": "B bombsite commitment and anchor area."
+    },
+    {
+      "regionId": "b_tunnels",
+      "nameCn": "B 洞",
+      "nameEn": "B Tunnels",
+      "regionType": "tunnel",
+      "cellIds": ["h_08_25"],
+      "businessSemantics": "Tunnel route for B pressure and lurk timing."
+    }
+  ],
+  "points": [
+    {
+      "pointId": "t_spawn_point",
+      "nameCn": "T 出生点",
+      "nameEn": "T Spawn",
+      "pointType": "spawn",
+      "parentRegionId": "t_spawn",
+      "cellIds": ["h_25_45"]
+    },
+    {
+      "pointId": "top_mid",
+      "nameCn": "中路入口",
+      "nameEn": "Top Mid",
+      "pointType": "route",
+      "parentRegionId": "mid",
+      "cellIds": ["h_26_44", "h_27_35"]
+    },
+    {
+      "pointId": "catwalk",
+      "nameCn": "A 小",
+      "nameEn": "Catwalk",
+      "pointType": "route",
+      "parentRegionId": "a_short",
+      "cellIds": ["h_31_29"]
+    },
+    {
+      "pointId": "a_bombsite",
+      "nameCn": "A 包点",
+      "nameEn": "A Bombsite",
+      "pointType": "bombsite",
+      "parentRegionId": "a_site",
+      "cellIds": ["h_40_15"]
+    },
+    {
+      "pointId": "ct_spawn_point",
+      "nameCn": "CT 出生点",
+      "nameEn": "CT Spawn",
+      "pointType": "spawn",
+      "parentRegionId": "ct_spawn",
+      "cellIds": ["h_24_06"]
+    },
+    {
+      "pointId": "b_bombsite",
+      "nameCn": "B 包点",
+      "nameEn": "B Bombsite",
+      "pointType": "bombsite",
+      "parentRegionId": "b_site",
+      "cellIds": ["h_07_13"]
+    },
+    {
+      "pointId": "upper_tunnels",
+      "nameCn": "B 洞上层",
+      "nameEn": "Upper Tunnels",
+      "pointType": "route",
+      "parentRegionId": "b_tunnels",
+      "cellIds": ["h_08_25"]
+    }
+  ],
+  "routeHints": [
+    {
+      "routeId": "t_spawn_to_a_short",
+      "fromPointId": "t_spawn_point",
+      "toPointId": "a_bombsite",
+      "viaCellIds": ["h_25_45", "h_26_44", "h_27_35", "h_31_29", "h_40_15"],
+      "commonUse": "execute",
+      "notes": "Draft route to prove Hex route hints can express a T path into A."
+    },
+    {
+      "routeId": "t_spawn_to_b_tunnels",
+      "fromPointId": "t_spawn_point",
+      "toPointId": "b_bombsite",
+      "viaCellIds": ["h_25_45", "h_08_25", "h_07_13"],
+      "commonUse": "execute",
+      "notes": "Draft route to prove B pressure can be represented."
+    }
+  ],
+  "notes": [
+    "N21 draft asset only. Final Dust2 Hex asset must be drawn from the editor in N22/N23."
+  ]
+}
+

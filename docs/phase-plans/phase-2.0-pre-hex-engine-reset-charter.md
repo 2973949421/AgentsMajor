@@ -6,7 +6,13 @@
 
 从本文档生效起，未来 N20+ 的主线不再继续扩展旧 `NodeGraph（节点图）/ SectorMap（区块图）` 实验层，而是转向 `HexGrid（蜂巢格）` 地图底层、逐 agent（智能体）逐 phase（阶段）LLM（大语言模型）行动、代码硬约束地图/AP（行动点数）/经济/状态/胜负的完整比赛引擎。
 
-本文档是后续计划、schema（结构定义）、runtime（运行时）、front-end（前端）实验台和旧实验层删除的最高依据。旧节点化文档已经移入 `docs/phase-plans/frozen/`，只保留历史背景，不再作为未来主线。
+本文档是后续计划、schema（结构定义）、runtime（运行时）、front-end（前端）实验台和旧实验层删除的路线依据。具体比赛运行规则以 `phase-2.0-pre-hex-engine-runtime-contract.md` 为共同技术契约。旧节点化文档已经移入 `docs/phase-plans/frozen/`，只保留历史背景，不再作为未来主线。
+
+当前 HexGrid（蜂巢格）主线文档分三层：
+
+- `phase-2.0-pre-hex-engine-reset-charter.md`：路线纲领，回答为什么重置和旧路线如何处理。
+- `phase-2.0-pre-hex-engine-implementation-plan.md`：阶段实施计划，回答 N20-N31 如何推进。
+- `phase-2.0-pre-hex-engine-runtime-contract.md`：运行契约，回答 agent、LLM、AP、combat、economy、report 具体如何运转。
 
 ## 2. 重置结论
 
