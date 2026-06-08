@@ -1,3 +1,13 @@
+> [!IMPORTANT]
+> 本文档已被 HexGrid（蜂巢格）路线重置计划替代。
+>
+> 新主线文档：
+>
+> - `docs/phase-plans/phase-2.0-pre-hex-engine-reset-charter.md`
+> - `docs/phase-plans/phase-2.0-pre-hex-engine-implementation-plan.md`
+>
+> 本文档仅保留为历史背景，不再作为 N20+ 的实施依据。旧 `NodeGraph（节点图）/ SectorMap（区块图）` 路线停止扩展，后续按里程碑删除。
+
 # Phase 2.0-pre 节点化回合引擎实施计划
 
 ## 0. 当前阶段定位
