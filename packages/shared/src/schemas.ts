@@ -474,7 +474,25 @@ export const agentPhaseActionSchema = z.object({
   duelTargetAgentId: z.string().optional(),
   rotateCondition: z.string().optional(),
   retreatCondition: z.string().optional(),
-  informationTransfer: z.string().optional()
+  informationTransfer: z.string().optional(),
+  agentRole: z.string().min(1).optional(),
+  roleResponsibilities: z.array(z.string().min(1)).optional(),
+  roleActionBias: z.array(agentPhaseActionTypeSchema).optional(),
+  teamThesisAnchor: z.string().min(1).optional(),
+  businessOperatingPrinciple: z.string().min(1).optional(),
+  coachNote: z.string().min(1).optional(),
+  apCostBreakdown: z
+    .object({
+      routeCost: z.number().nonnegative(),
+      actionCost: z.number().int().nonnegative(),
+      utilityCost: z.number().int().nonnegative(),
+      loadoutModifier: z.number().int().nonnegative(),
+      totalCost: z.number().int().nonnegative(),
+      claimedCostFromLlm: z.number().int().nonnegative().optional()
+    })
+    .optional(),
+  fallbackReason: z.string().min(1).optional(),
+  apValidationNotes: z.array(z.string().min(1)).optional()
 });
 export type AgentPhaseAction = z.infer<typeof agentPhaseActionSchema>;
 

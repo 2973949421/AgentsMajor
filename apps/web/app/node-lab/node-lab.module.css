@@ -224,7 +224,7 @@
 
 .mapAndDetailGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(300px, 0.82fr);
+  grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.88fr);
   gap: 16px;
   align-items: start;
   min-width: 0;
@@ -339,17 +339,15 @@
   position: relative;
   aspect-ratio: 1 / 1;
   width: 100%;
-  max-width: 920px;
+  max-width: 860px;
   min-width: 0;
   min-height: 0;
   border: 1px solid #2d393f;
   border-radius: 8px;
   overflow: hidden;
-  background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    #0e1214;
-  background-size: 10% 10%;
+  margin: 0 auto;
+  background: #050708;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 16px 48px rgba(0, 0, 0, 0.34);
 }
 
 .sectorMapSvg {
@@ -360,7 +358,17 @@
 }
 
 .sectorMapBackground {
-  fill: #0d1114;
+  fill: #050708;
+}
+
+.radarBaseImage {
+  opacity: 0.82;
+  filter: saturate(0.74) contrast(1.08) brightness(0.72);
+}
+
+.radarToneOverlay {
+  pointer-events: none;
+  fill: rgba(5, 9, 11, 0.3);
 }
 
 .sectorEdge,
@@ -382,44 +390,52 @@
 .mapSector {
   vector-effect: non-scaling-stroke;
   cursor: pointer;
-  stroke: rgba(220, 232, 238, 0.42);
-  stroke-width: 0.45;
+  stroke: rgba(213, 232, 229, 0.34);
+  stroke-width: 0.34;
   transition: fill 120ms ease, stroke 120ms ease, opacity 120ms ease;
 }
 
 .mapSector:hover,
 .mapSectorSelected {
-  stroke: #e8f4ee;
-  stroke-width: 0.95;
+  stroke: #eef7f4;
+  stroke-width: 0.78;
+}
+
+.mapSector:focus-visible {
+  outline: none;
+  stroke: #ffffff;
+  stroke-width: 0.9;
 }
 
 .mapSectorActive {
-  filter: brightness(1.15);
+  filter: brightness(1.08);
 }
 
 .mapSectorAttack {
-  fill: rgba(216, 157, 83, 0.5);
+  fill: rgba(224, 143, 61, 0.26);
 }
 
 .mapSectorDefense {
-  fill: rgba(102, 169, 232, 0.46);
+  fill: rgba(90, 154, 220, 0.28);
 }
 
 .mapSectorContested {
-  fill: rgba(216, 100, 100, 0.54);
+  fill: rgba(214, 86, 78, 0.24);
+  stroke: rgba(255, 139, 128, 0.86);
+  stroke-width: 0.66;
 }
 
 .mapSectorNeutral {
-  fill: rgba(48, 57, 64, 0.56);
+  fill: rgba(110, 128, 137, 0.08);
 }
 
 .mapSectorEngaged {
-  stroke: #f08080;
+  stroke: rgba(255, 134, 118, 0.88);
 }
 
 .mapSectorWinCheck {
   stroke: #ffd166;
-  stroke-width: 1.05;
+  stroke-width: 0.82;
 }
 
 .mapSectorLabel,
@@ -435,20 +451,21 @@
 
 .mapSectorLabel {
   fill: #f4f8fb;
-  font-size: 2.15px;
+  font-size: 1.82px;
   font-weight: 800;
 }
 
 .mapSectorCount {
-  fill: #d1dde5;
-  font-size: 1.75px;
+  fill: #cfdee6;
+  font-size: 1.42px;
   font-weight: 700;
 }
 
 .mapSectorBang {
+  pointer-events: none;
   fill: #ffd166;
-  font-size: 3.6px;
-  font-weight: 900;
+  stroke: rgba(35, 24, 6, 0.9);
+  stroke-width: 0.45;
 }
 
 .mapBackdrop {
@@ -590,6 +607,8 @@
 
 .mapLegend {
   bottom: 10px;
+  right: auto;
+  max-width: calc(100% - 20px);
 }
 
 .mapStatusLine {
@@ -602,6 +621,7 @@
   padding: 4px 7px;
   border-radius: 999px;
   font-size: 0.72rem;
+  backdrop-filter: blur(6px);
 }
 
 .legendAttack {
@@ -748,6 +768,28 @@
   display: block;
   color: #95a3ad;
   font-size: 0.82rem;
+}
+
+.apBreakdown,
+.fallbackReason,
+.roleContextLine {
+  display: block;
+  margin-top: 4px;
+  font-style: normal;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.apBreakdown {
+  color: #92c6ff;
+}
+
+.fallbackReason {
+  color: #ffd37a;
+}
+
+.roleContextLine {
+  color: #a9ddb8;
 }
 
 @media (max-width: 1180px) {

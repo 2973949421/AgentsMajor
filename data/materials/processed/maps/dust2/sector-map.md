@@ -35,3 +35,21 @@ It does not replace `node-graph.json`. The 39 detailed nodes remain the runtime 
 - Sectors must not decide winner, economy, AP, kill facts, bomb result, or LLM behavior.
 - Every node in `node-graph.json` must belong to exactly one primary sector.
 - Node Lab may use sectors as its default map view and keep detailed nodes as a secondary/debug view.
+
+## Visual Metadata
+
+N17 adds radar-style visual metadata to every sector:
+
+- `visual.svgPath`: a hand-traced 0-100 SVG path used by Node Lab as the primary sector mask.
+- `visual.labelAnchor`: a 0-100 point used for the sector label and A/D counts.
+- `visual.labelPriority`: controls whether a label is visible by default or only when active/selected.
+- `visual.labelShort`: compact label for the radar-style view.
+
+The old `polygon` field remains as a fallback and for quick audits. The preferred Node Lab rendering order is:
+
+1. `apps/web/public/node-lab/dust2/dust2-radar-base.jpg`
+2. `visual.svgPath` sector masks
+3. low-opacity control state fill
+4. compact labels and win-check markers
+
+Graph edges and the 39 detailed nodes are debug layers. They should not be shown in the default spectator map.

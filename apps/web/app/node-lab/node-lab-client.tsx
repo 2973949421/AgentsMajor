@@ -63,6 +63,12 @@ interface NodeLabMapSector {
   nodeIds: string[];
   adjacentSectorIds: string[];
   polygon: Array<[number, number]>;
+  visual?: {
+    svgPath: string;
+    labelAnchor: [number, number];
+    labelPriority: "primary" | "secondary" | "debug";
+    labelShort: string;
+  };
 }
 
 interface NodeLabMapSectorEdge {
@@ -167,8 +173,24 @@ interface NodeLabPhaseDetail {
     targetNodeId: string;
     actionType: string;
     apCost: number;
+    apCostBreakdown?: {
+      routeCost: number;
+      actionCost: number;
+      utilityCost: number;
+      loadoutModifier: number;
+      totalCost: number;
+      claimedCostFromLlm?: number;
+    };
+    fallbackReason?: string;
+    apValidationNotes?: string[];
     side?: "attack" | "defense";
     teamId?: string;
+    agentRole?: string;
+    roleResponsibilities?: string[];
+    roleActionBias?: string[];
+    teamThesisAnchor?: string;
+    businessOperatingPrinciple?: string;
+    coachNote?: string;
     businessIntent: string;
   }>;
   localVerdicts: Array<{
@@ -637,38 +659,20 @@ function Dust2SectorMap({
     return <p className={styles.emptyText}>暂无可展示的 Dust2 区块状态。</p>;
   }
 
-  const sectorById = new Map(graph.sectors.map((sector) => [sector.sectorId, sector]));
   const sectorStateById = new Map(phase.sectorStates.map((state) => [state.sectorId, state]));
 
   return (
     <div className={styles.mapShell}>
       <svg className={styles.sectorMapSvg} viewBox="0 0 100 100" role="img" aria-label="Dust2 sector map" preserveAspectRatio="xMidYMid meet">
         <rect x="0" y="0" width="100" height="100" className={styles.sectorMapBackground} />
-        {graph.sectorEdges.map((edge) => {
-          const from = sectorById.get(edge.from);
-          const to = sectorById.get(edge.to);
-          if (!from || !to) {
-            return null;
-          }
-          const fromCenter = polygonCentroid(from.polygon);
-          const toCenter = polygonCentroid(to.polygon);
-          const highlighted = sectorStateById.get(edge.from)?.active || sectorStateById.get(edge.to)?.active;
-          return (
-            <line
-              key={`${edge.from}-${edge.to}-${edge.type}`}
-              x1={fromCenter.x}
-              y1={fromCenter.y}
-              x2={toCenter.x}
-              y2={toCenter.y}
-              className={highlighted ? styles.sectorEdgeActive : styles.sectorEdge}
-            />
-          );
-        })}
+        <image href="/node-lab/dust2/dust2-radar-base.jpg" x="0" y="0" width="100" height="100" preserveAspectRatio="xMidYMid slice" className={styles.radarBaseImage} />
+        <rect x="0" y="0" width="100" height="100" className={styles.radarToneOverlay} />
         {graph.sectors.map((sector) => {
           const state = sectorStateById.get(sector.sectorId);
-          const center = polygonCentroid(sector.polygon);
+          const center = sectorAnchor(sector);
           const control = normalizeControl(state?.controlAfter);
           const selected = selectedSectorId === sector.sectorId;
+          const labelVisible = sectorLabelVisible(sector, state, selected);
           const classes = [
             styles.mapSector,
             state?.active ? styles.mapSectorActive : "",
@@ -681,23 +685,33 @@ function Dust2SectorMap({
             .join(" ");
           return (
             <g key={sector.sectorId}>
-              <polygon
-                points={sector.polygon.map((point) => point.join(",")).join(" ")}
+              <path
+                d={sectorPath(sector)}
                 className={classes}
                 onClick={() => onSectorSelect(sector.sectorId)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onSectorSelect(sector.sectorId);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
               >
                 <title>{`${sector.displayNameZh} / ${sector.sectorId} / A${state?.attackCount ?? 0} D${state?.defenseCount ?? 0}`}</title>
-              </polygon>
-              <text x={center.x} y={center.y - 1.2} className={styles.mapSectorLabel}>
-                {sector.displayNameZh}
-              </text>
-              <text x={center.x} y={center.y + 3.1} className={styles.mapSectorCount}>
-                A{state?.attackCount ?? 0}/D{state?.defenseCount ?? 0}
-              </text>
+              </path>
+              {labelVisible ? (
+                <>
+                  <text x={center.x} y={center.y - 1.1} className={styles.mapSectorLabel}>
+                    {sector.visual?.labelShort ?? sector.displayNameZh}
+                  </text>
+                  <text x={center.x} y={center.y + 2.9} className={styles.mapSectorCount}>
+                    A{state?.attackCount ?? 0}/D{state?.defenseCount ?? 0}
+                  </text>
+                </>
+              ) : null}
               {state?.winConditionCheck ? (
-                <text x={center.x + 6} y={center.y - 5} className={styles.mapSectorBang}>
-                  !
-                </text>
+                <circle cx={center.x + 4.5} cy={center.y - 4.2} r="1.8" className={styles.mapSectorBang} />
               ) : null}
             </g>
           );
@@ -717,6 +731,25 @@ function Dust2SectorMap({
       ) : null}
     </div>
   );
+}
+
+function sectorPath(sector: NodeLabMapSector): string {
+  if (sector.visual?.svgPath) {
+    return sector.visual.svgPath;
+  }
+  return `M ${sector.polygon.map((point) => point.join(" ")).join(" L ")} Z`;
+}
+
+function sectorAnchor(sector: NodeLabMapSector): { x: number; y: number } {
+  const anchor = sector.visual?.labelAnchor;
+  return anchor ? { x: anchor[0], y: anchor[1] } : polygonCentroid(sector.polygon);
+}
+
+function sectorLabelVisible(sector: NodeLabMapSector, state: NodeLabSectorState | undefined, selected: boolean): boolean {
+  if (selected || state?.active || state?.winConditionCheck || state?.engagementOccurred) {
+    return true;
+  }
+  return sector.visual?.labelPriority === "primary";
 }
 
 function Dust2NodeMap({
@@ -877,6 +910,20 @@ function PhaseDetailPanel({
                 <strong>{shortAgent(action.agentId)}</strong> {action.actionType}
                 {" -> "}
                 {action.targetNodeId} / AP {action.apCost}
+                {action.apCostBreakdown ? (
+                  <em className={styles.apBreakdown}>
+                    route {action.apCostBreakdown.routeCost} / action {action.apCostBreakdown.actionCost} / utility {action.apCostBreakdown.utilityCost}
+                    {action.apCostBreakdown.loadoutModifier ? ` / loadout ${action.apCostBreakdown.loadoutModifier}` : ""}
+                    {action.apCostBreakdown.claimedCostFromLlm !== undefined ? ` / claimed ${action.apCostBreakdown.claimedCostFromLlm}` : ""}
+                  </em>
+                ) : null}
+                {action.fallbackReason ? <em className={styles.fallbackReason}>fallback: {action.fallbackReason}</em> : null}
+                {action.agentRole ? <em className={styles.roleContextLine}>role: {action.agentRole}</em> : null}
+                {action.roleResponsibilities && action.roleResponsibilities.length > 0 ? (
+                  <em className={styles.roleContextLine}>responsibility: {action.roleResponsibilities[0]}</em>
+                ) : null}
+                {action.teamThesisAnchor ? <em className={styles.roleContextLine}>thesis: {action.teamThesisAnchor}</em> : null}
+                {action.coachNote ? <em className={styles.roleContextLine}>coach: {action.coachNote}</em> : null}
                 <span>{action.businessIntent}</span>
               </li>
             ))}

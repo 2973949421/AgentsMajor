@@ -69,21 +69,40 @@ describe("Node Lab request normalization", () => {
     expect(source).toContain("详细节点");
     expect(source).toContain("Dust2Map");
     expect(source).toContain("sectorStates");
+    expect(source).toContain("/node-lab/dust2/dust2-radar-base.jpg");
+    expect(source).toContain("svgPath");
     expect(source).toContain("Round / Phase");
     expect(source).toContain("LLM");
+    expect(source).toContain("agentRole");
+    expect(source).toContain("roleResponsibilities");
+    expect(source).toContain("teamThesisAnchor");
+    expect(source).toContain("coachNote");
+    expect(source).toContain("roleContextLine");
     expect(source).toContain('providerMode: "real"');
+    expect(source).not.toContain("graph.sectorEdges.map");
     expect(source).not.toContain("<option value=\"deterministic\">");
     expect(source).not.toContain("<option value=\"fixture\">");
   });
 
   it("defines the Dust2 sector map as the default visual layer", () => {
     const sectorMap = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../data/materials/processed/maps/dust2/sector-map.json"), "utf8")) as {
-      sectors: Array<{ sectorId: string; nodeIds: string[] }>;
+      sectors: Array<{
+        sectorId: string;
+        nodeIds: string[];
+        visual: {
+          svgPath: string;
+          labelAnchor: [number, number];
+          labelPriority: string;
+          labelShort: string;
+        };
+      }>;
     };
 
     expect(sectorMap.sectors).toHaveLength(13);
     expect(sectorMap.sectors.map((sector) => sector.sectorId)).toContain("a_site");
     expect(sectorMap.sectors.map((sector) => sector.sectorId)).toContain("mid_top_mid");
     expect(sectorMap.sectors.flatMap((sector) => sector.nodeIds)).toHaveLength(39);
+    expect(sectorMap.sectors.every((sector) => sector.visual.svgPath.startsWith("M"))).toBe(true);
+    expect(sectorMap.sectors.every((sector) => sector.visual.labelAnchor.length === 2)).toBe(true);
   });
 });

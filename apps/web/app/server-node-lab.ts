@@ -192,6 +192,12 @@ export interface NodeLabPhaseDetail {
     apCost: number;
     side?: "attack" | "defense";
     teamId?: string;
+    agentRole?: string;
+    roleResponsibilities?: string[];
+    roleActionBias?: string[];
+    teamThesisAnchor?: string;
+    businessOperatingPrinciple?: string;
+    coachNote?: string;
     businessIntent: string;
   }>;
   localVerdicts: Array<{
@@ -701,6 +707,12 @@ function parseAgentActions(value: unknown): NodeLabPhaseDetail["agentActions"] {
       apCost: readNumber(record.apCost),
       ...(side ? { side } : {}),
       ...(typeof record.teamId === "string" ? { teamId: record.teamId } : {}),
+      ...(typeof record.agentRole === "string" ? { agentRole: record.agentRole } : {}),
+      ...(Array.isArray(record.roleResponsibilities) ? { roleResponsibilities: readStringArray(record.roleResponsibilities) } : {}),
+      ...(Array.isArray(record.roleActionBias) ? { roleActionBias: readStringArray(record.roleActionBias) } : {}),
+      ...(typeof record.teamThesisAnchor === "string" ? { teamThesisAnchor: record.teamThesisAnchor } : {}),
+      ...(typeof record.businessOperatingPrinciple === "string" ? { businessOperatingPrinciple: record.businessOperatingPrinciple } : {}),
+      ...(typeof record.coachNote === "string" ? { coachNote: record.coachNote } : {}),
       businessIntent: typeof record.businessIntent === "string" ? record.businessIntent : ""
     };
   });
