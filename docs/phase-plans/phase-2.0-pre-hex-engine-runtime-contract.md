@@ -798,3 +798,76 @@ N21 起必须采用清晰目录隔离：
 - LLM（大语言模型）不能自行声明“上楼 / 下楼 / 跳下”成功；它只能提出行动草案。
 - 代码必须检查当前位置、目标位置、AP（行动点数）、同层路径和跨层连接。
 - Combat（战斗裁定）后续可以读取 level、cover（掩体）、choke（狭道）、high_risk（高风险）和未来的 lineOfSight（视野）字段，但 level 本身不自动决定胜负。
+
+## 8. N28 Economy 接入契约补充
+
+N28 第一版把现有 Economy/Output（经济/输出）系统接入 HexGrid（蜂巢格）行动与战斗证据层，但它不是经济结算层，也不是回合提交层。
+
+已确认规则：
+
+- Hex runtime（蜂巢运行时）只消费现有 `TeamEconomyPlan（队伍经济计划）` 和 `AgentBuyDecision（选手购买决策）`。
+- N28 不重写经济规则，不修改奖励参数，不重新计算发枪。
+- 发枪结果在第一 phase（阶段）前已经完成；phase 内不消耗 AP（行动点数）。
+- 经济上下文可以进入 agent command request（智能体命令请求），让 LLM（大语言模型）知道自己的买型、输出预算、资源等级和可用动作。
+- 经济上下文可以进入 action validator（行动校验器），拒绝明显不符合资源条件的行动草案。
+- 经济上下文可以进入 combat resolver（战斗裁定器），作为 CS evidence（CS 证据）的一部分。
+- 经济不能直接写 winner（胜方）、roundWinType（回合胜利方式）、economyDelta（经济变化）或 DB fact（数据库事实）。
+
+第一版资源映射：
+
+- `full_eco / eco / save_play`：低资源，偏守位、拿信息、保枪和转点；不允许默认完整高配进点。
+- `force_buy / light_buy / pistol_armor_force / broken_buy`：强起/轻买资源，允许局部控图、抢信息和低配对抗。
+- `half_buy / bonus_round`：中等资源，允许中等复杂度行动，但必须体现资源取舍。
+- `rifle_buy / awp_buy / double_awp`：高资源，允许完整默认、控图、进点、回防和较完整道具配合。
+
+Combat（战斗）中的经济证据边界：
+
+- outputBudget（输出预算）和资源等级只影响局部 CS evidence 的一小部分。
+- dropReceived（收到发枪）可以作为队内协同证据。
+- 低经济不能被自动判负。
+- 高经济不能被自动判胜。
+- 经济优势必须通过行动、地图控制、协同和商业证据兑现。
+
+N29 才能处理 Hex Round Commit（蜂巢回合提交）和后续经济结算衔接。
+
+## 9. N29 Hex Round Commit（蜂巢单回合提交）契约补充
+
+N29 第一版把 HexGrid（蜂巢格）单回合从 runtime trace（运行轨迹）推进到 committed round（已提交回合）。它是单回合提交层，不是完整地图循环层，不替换旧 Phase18，也不恢复旧 Node/Sector（节点/区块）路线。
+
+已确认规则：
+
+- 显式 run mode（运行模式）为 `phase20_hex_round_experimental`。
+- 只支持 Dust2 official Hex map（正式蜂巢地图）第一版。
+- `HexRoundRunner（蜂巢回合推进器）` 只负责 phase loop（阶段循环）和 `HexRoundTrace（蜂巢回合轨迹）`，不写 DB（数据库）。
+- `HexWinConditionMaterializer（蜂巢胜负条件物化器）` 只读取 hard facts（硬事实）：
+  - attack/defense elimination（攻守全歼）。
+  - bomb defused（拆包）。
+  - bomb exploded（包爆）。
+  - defense timeout no plant（守方时间胜）。
+- LLM draft（大语言模型草案）不能写 winner（胜方）、roundWinType（回合胜利方式）、kills（击杀）、damage（伤害）、economyDelta（经济变化）或 DB fact（数据库事实）。
+- Combat（战斗）产生的 casualties（伤亡）只有来自 N27 resolver（裁定器）时，才允许作为可审计局部事实进入 trace；RoundReport（回合报告）不得从 LLM draft 伪造 killLedger（击杀记录）。
+- N29 开始可以结算 after-round economy（回合后经济），但必须复用现有 Economy/Output（经济/输出）规则，不得重写奖励参数。
+- `RoundReport.nodeTraceArtifactId` 和 `RoundReport.nodeTraceSource` 在 N29 第一版作为历史兼容字段使用，语义是 generic round trace reference（通用回合轨迹引用）。
+- Hex trace source（蜂巢轨迹来源）固定为 `hex_round_engine_committed`。
+- N29 不新增 DB 大 JSON 字段，不做字段重命名 migration（迁移）。
+
+提交层必须写入：
+
+- `Round（回合）`。
+- `RoundReport（回合报告）`。
+- `hex_round_trace` artifact（蜂巢回合轨迹产物）。
+- `hex_round_experimental_started`。
+- `hex_round_trace_artifact_created`。
+- `hex_round_experimental_committed`。
+- `round_report_created`。
+- `round_completed`。
+- round 后 economy states（经济状态）。
+- mapGame score/currentRoundNumber（地图比分/当前回合号）。
+
+失败边界：
+
+- 未显式启用 experimental mode（实验模式）时拒绝提交。
+- completed map（已完成地图）拒绝提交。
+- 已存在同 roundNumber（回合号）时拒绝覆盖。
+- 未产生 hard final win condition（硬最终胜负条件）时拒绝提交半成品。
+- provider（供应器）失败只能进入 action fallback（行动降级）和 audit（审计），不能直接伪造成机制成功。

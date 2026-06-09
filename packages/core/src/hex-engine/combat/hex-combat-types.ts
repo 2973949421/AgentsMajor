@@ -1,5 +1,6 @@
 import type { HexCell } from "@agent-major/shared";
 import type { HexValidatedAgentAction } from "../action/index.js";
+import type { HexEconomyCombatEvidence } from "../economy/index.js";
 import type { HexPhaseMemoryEvent, HexPhaseId, HexSide } from "../state/index.js";
 
 export type HexCombatTriggerReason = "same_region" | "shared_point" | "nearby_cells" | "known_enemy" | "active_pressure";
@@ -83,6 +84,14 @@ export interface HexCombatAudit {
   csWeight: 35;
   triggerReasons: HexCombatTriggerReason[];
   variance: HexCombatVarianceAudit;
+  economy: HexCombatEconomyAudit;
+}
+
+export interface HexCombatEconomyAudit {
+  economyEvidenceApplied: boolean;
+  attack: HexEconomyCombatEvidence;
+  defense: HexEconomyCombatEvidence;
+  reasons: string[];
 }
 
 export interface HexCombatResolutionCore {

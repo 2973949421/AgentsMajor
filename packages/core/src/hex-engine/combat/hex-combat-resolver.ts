@@ -1,5 +1,6 @@
 import type { HexMapAsset } from "@agent-major/shared";
 import type { HexValidatedAgentAction } from "../action/index.js";
+import { summarizeHexEconomyEvidence, type HexEconomyCombatEvidence, type HexRoundEconomyContext } from "../economy/index.js";
 import type { HexRoundMemory, HexSide } from "../state/index.js";
 import { materializeHexCombatMemoryEvents } from "./hex-combat-events.js";
 import type {
@@ -23,6 +24,7 @@ export interface ResolveHexCombatInput {
   memory: HexRoundMemory;
   contact: HexCombatContact;
   actions: HexValidatedAgentAction[];
+  economyContext?: HexRoundEconomyContext;
   varianceMode?: HexCombatVarianceMode;
   seed?: string;
 }
@@ -48,17 +50,27 @@ const varianceThreshold = 5;
 const maxVarianceDelta = 3;
 
 export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolution {
+  const attackEconomyEvidence = summarizeHexEconomyEvidence({
+    economyContext: input.economyContext,
+    agentIds: input.contact.attackAgentIds
+  });
+  const defenseEconomyEvidence = summarizeHexEconomyEvidence({
+    economyContext: input.economyContext,
+    agentIds: input.contact.defenseAgentIds
+  });
   const attackEvidence = scoreSide({
     side: "attack",
     contact: input.contact,
     memory: input.memory,
-    actions: input.actions
+    actions: input.actions,
+    economyEvidence: attackEconomyEvidence
   });
   const defenseEvidence = scoreSide({
     side: "defense",
     contact: input.contact,
     memory: input.memory,
-    actions: input.actions
+    actions: input.actions,
+    economyEvidence: defenseEconomyEvidence
   });
   const varianceInput: HexCombatVarianceInput = {
     attackScore: attackEvidence.totalScore,
@@ -83,7 +95,13 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
     businessWeight,
     csWeight,
     triggerReasons: [...input.contact.triggerReasons],
-    variance: variance.audit
+    variance: variance.audit,
+    economy: {
+      economyEvidenceApplied: Boolean(input.economyContext),
+      attack: attackEconomyEvidence,
+      defense: defenseEconomyEvidence,
+      reasons: [...attackEconomyEvidence.reasons, ...defenseEconomyEvidence.reasons]
+    }
   };
   const core: HexCombatResolutionCore = {
     contactId: input.contact.contactId,
@@ -148,6 +166,7 @@ function scoreSide(input: {
   contact: HexCombatContact;
   memory: HexRoundMemory;
   actions: HexValidatedAgentAction[];
+  economyEvidence: HexEconomyCombatEvidence;
 }): HexCombatSideEvidence {
   const participants = input.contact.participants.filter((participant) => participant.side === input.side);
   const contactRegionIds = new Set(input.contact.regionIds);
@@ -160,14 +179,14 @@ function scoreSide(input: {
       || participants.some((participant) => participant.agentId === action.agentId);
   });
   const businessScore = scoreBusinessEvidence(input.side, participants, sideActionsNearContact, input.memory);
-  const csScore = scoreCsEvidence(input.side, participants, input.contact);
+  const csScore = scoreCsEvidence(input.side, participants, input.contact, sideActionsNearContact, input.economyEvidence);
   return {
     businessScore,
     csScore,
     totalScore: roundScore(businessScore + csScore),
     reasons: [
       ...buildBusinessReasons(input.side, participants, sideActionsNearContact, input.memory),
-      ...buildCsReasons(input.side, participants, input.contact)
+      ...buildCsReasons(input.side, participants, input.contact, sideActionsNearContact, input.economyEvidence)
     ]
   };
 }
@@ -231,7 +250,13 @@ function buildBusinessReasons(
   return reasons;
 }
 
-function scoreCsEvidence(side: HexSide, participants: HexCombatParticipant[], contact: HexCombatContact): number {
+function scoreCsEvidence(
+  side: HexSide,
+  participants: HexCombatParticipant[],
+  contact: HexCombatContact,
+  sideActionsNearContact: HexValidatedAgentAction[],
+  economyEvidence: HexEconomyCombatEvidence
+): number {
   let score = 0;
   const opponentCount = contact.participants.filter((participant) => participant.side !== side).length;
   score += participants.length >= opponentCount ? 10 : 5;
@@ -244,10 +269,17 @@ function scoreCsEvidence(side: HexSide, participants: HexCombatParticipant[], co
   if (participants.some((participant) => isPressureAction(participant.action))) {
     score += 3;
   }
-  return Math.min(csWeight, score);
+  score += economyScoreAdjustment(sideActionsNearContact, economyEvidence);
+  return Math.min(csWeight, Math.max(0, score));
 }
 
-function buildCsReasons(side: HexSide, participants: HexCombatParticipant[], contact: HexCombatContact): string[] {
+function buildCsReasons(
+  side: HexSide,
+  participants: HexCombatParticipant[],
+  contact: HexCombatContact,
+  sideActionsNearContact: HexValidatedAgentAction[],
+  economyEvidence: HexEconomyCombatEvidence
+): string[] {
   const reasons: string[] = [];
   const opponentCount = contact.participants.filter((participant) => participant.side !== side).length;
   if (participants.length >= opponentCount) {
@@ -265,7 +297,28 @@ function buildCsReasons(side: HexSide, participants: HexCombatParticipant[], con
   if (participants.some((participant) => isPressureAction(participant.action))) {
     reasons.push(`${side}:active_action_pressure`);
   }
+  if (economyEvidence.reasons.length > 0) {
+    reasons.push(...economyEvidence.reasons.map((reason) => `${side}:${reason}`));
+  }
+  if (lowResourceFullExecuteAttempt(sideActionsNearContact, economyEvidence)) {
+    reasons.push(`${side}:economy:low_resource_full_execute_penalty`);
+  }
   return reasons;
+}
+
+function economyScoreAdjustment(sideActionsNearContact: HexValidatedAgentAction[], economyEvidence: HexEconomyCombatEvidence): number {
+  let adjustment = economyEvidence.scoreDelta;
+  if (lowResourceFullExecuteAttempt(sideActionsNearContact, economyEvidence)) {
+    adjustment -= 5;
+  }
+  return Math.max(-5, Math.min(5, adjustment));
+}
+
+function lowResourceFullExecuteAttempt(
+  sideActionsNearContact: HexValidatedAgentAction[],
+  economyEvidence: HexEconomyCombatEvidence
+): boolean {
+  return economyEvidence.resourceTiers.includes("low") && sideActionsNearContact.some((action) => action.actionType === "execute_site");
 }
 
 function buildScoreboard(

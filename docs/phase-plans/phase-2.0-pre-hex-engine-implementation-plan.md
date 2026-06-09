@@ -657,3 +657,56 @@ N27 是 HexGrid（蜂巢格）路线第一次把 N25 memory（记忆）和 N26 v
   - audit 必须记录 before/after score、varianceDelta、reason。
 - N27 不调用真实 LLM，不写 final winner，不写 roundWinType，不写 economyDelta，不写 DB，不推进 phase，不提交 round。
 - N27 必须继续通过 architecture boundary（架构边界）测试，不能引用旧 Node/Sector 路线。
+
+### N28：Economy 接入 Hex Round（经济接入蜂巢回合）
+
+N28 是 HexGrid（蜂巢格）路线把现有 Economy/Output（经济/输出）接入新引擎的阶段。它消费已有 `TeamEconomyPlan（队伍经济计划）`，输出 Hex 专用 economy context（经济上下文），但不重写经济规则、不结算 economyDelta（经济变化）、不提交 round（回合）。
+
+- 新增 `packages/core/src/hex-engine/economy/` 作为 Hex economy adapter（蜂巢经济适配层）。
+- `buildHexRoundEconomyContext()` 负责把现有 team/agent buy plan 转成 `HexRoundEconomyContext（蜂巢回合经济上下文）`。
+- 每个 agent context（智能体上下文）必须包含：
+  - economyPosture（经济姿态）
+  - buyType（购买类型）
+  - loadoutPackage（装备包）
+  - outputBudget（输出预算）
+  - dropSent / dropReceived（发枪支出 / 收到发枪）
+  - resourceTier（资源等级）
+  - utilityTier（道具等级）
+  - allowedActionTypes（经济允许动作）
+  - constraints（经济约束）
+- N26 `buildHexAgentCommandRequest()` 可以接收 economy context，并把紧凑经济摘要提供给 LLM（大语言模型）。
+- N26 `validateHexAgentActionDraft()` 可以接收 economy context，并拒绝明显违背经济资源的行动草案。
+- N27 `resolveHexCombat()` 可以接收 economy context，把经济作为局部 CS evidence（CS 证据）的一部分。
+- 低经济不能自动判负，高经济不能自动判胜。
+- 经济证据不能输出 winner（胜方）、roundWinType（回合胜利方式）、economyDelta（经济变化）或 DB fact（数据库事实）。
+- N28 不接 Web UI（网页界面）、不调用真实 LLM、不写 DB、不提交 Hex round。
+
+### N29：Hex Round Commit（蜂巢单回合提交）
+
+N29 是 HexGrid（蜂巢格）路线第一次把单回合正式提交到现有比赛存储的阶段。它只提交一个 Dust2 Hex round（蜂巢回合），不做完整地图循环，不接 Web UI（网页界面），不替换旧 Phase18。
+
+落地模块：
+
+- `packages/core/src/hex-engine/win-condition/`：`HexWinConditionMaterializer（蜂巢胜负条件物化器）`。
+- `packages/core/src/hex-engine/round/`：`HexRoundRunner（蜂巢回合推进器）` 与 `HexRoundTrace（蜂巢回合轨迹）`。
+- `packages/core/src/hex-engine/commit/`：`HexRoundExperimentalCommitter（蜂巢单回合实验提交器）`。
+- `scripts/phase20-hex-commit-round.mjs`：本地 fixture（夹具）提交 smoke（冒烟）入口。
+
+实现边界：
+
+- `runDust2HexRound()` 只生成 trace，不写 DB。
+- `materializeHexWinCondition()` 只根据 hard facts（硬事实）裁定 winner（胜方）。
+- `commitDust2HexRoundExperimental()` 负责事务、artifact（产物）、RoundReport（回合报告）、events（事件）、economy states（经济状态）和 map score（地图比分）。
+- `RoundReport.nodeTraceArtifactId/nodeTraceSource` 第一版继续作为兼容字段使用；`nodeTraceSource` 可为 `hex_round_engine_committed`。
+- LLM draft（大语言模型草案）禁止写 winner、roundWinType、kills、damage、economyDelta、DB fact。
+- Combat casualties（战斗伤亡）只有来自 N27 resolver（裁定器）时，才允许进入 trace 或可选 killLedger。
+
+验收：
+
+- shared enums（共享枚举）包含 `phase20_hex_round_experimental` 和 Hex round events。
+- fixture provider（夹具供应器）能生成 2-5 个 phase trace。
+- finalWinCondition（最终胜负条件）可追溯到 hard condition（硬条件）。
+- committer 只提交一回合，拒绝 completed map（已完成地图）和重复 round。
+- `hex_round_trace` artifact 写入成功，RoundReport 引用该 artifact。
+- economyDelta（经济变化）来自现有 Economy/Output（经济/输出）系统。
+- architecture boundary（架构边界）继续禁止旧 Node/Sector（节点/区块）污染 Hex 主线。

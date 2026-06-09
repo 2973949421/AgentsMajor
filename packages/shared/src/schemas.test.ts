@@ -423,4 +423,68 @@ describe("shared contracts", () => {
       })
     ).toMatchObject({ roundId: "round_001" });
   });
+
+  it("parses Hex experimental mode, events, and committed trace source", () => {
+    expect(
+      eventSchema.parse({
+        id: "evt_hex_round_started",
+        type: "hex_round_experimental_started",
+        category: "simulation",
+        tournamentId: "t_001",
+        matchId: "match_001",
+        mapGameId: "map_001",
+        roundId: "round_001",
+        payload: { schemaVersion: 1 },
+        globalSequence: 1,
+        scopeType: "round",
+        scopeId: "round_001",
+        sequenceInScope: 1,
+        createdAt: now
+      })
+    ).toMatchObject({ type: "hex_round_experimental_started" });
+
+    expect(
+      roundReportSchema.parse({
+        id: "report_hex_001",
+        tournamentId: "t_001",
+        matchId: "match_001",
+        mapGameId: "map_001",
+        roundId: "round_001",
+        roundNumber: 1,
+        mapName: "Dust2",
+        winnerTeamId: "team_a",
+        scoreBeforeRound: { teamA: 0, teamB: 0 },
+        scoreAfterRound: { teamA: 1, teamB: 0 },
+        judgeResult: {
+          winnerTeamId: "team_a",
+          loserTeamId: "team_b",
+          margin: "standard",
+          roundWinType: "defense_timeout_no_plant",
+          reason: "Hex hard condition",
+          mvpAgentId: "agent_a",
+          confidence: 0.72
+        },
+        agentOutputs: [],
+        keyEvents: [],
+        economyDelta: {
+          agents: [],
+          teamTotals: { teamA: 0, teamB: 0 }
+        },
+        tokenSubmission: {
+          activeAgentIds: [],
+          submittedOutputIds: [],
+          totalOutputBudget: 0,
+          outputGate: { applied: false, reason: "Hex trace reference" }
+        },
+        nodeTraceArtifactId: "art_hex_trace",
+        nodeTraceSource: "hex_round_engine_committed",
+        summary: "Hex committed round",
+        eventProjection: {
+          coreEventsLinkedByRoundReport: [],
+          broadcastEventsCreated: []
+        },
+        createdAt: now
+      })
+    ).toMatchObject({ nodeTraceSource: "hex_round_engine_committed" });
+  });
 });

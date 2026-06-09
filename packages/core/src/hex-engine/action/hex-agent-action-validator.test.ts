@@ -4,6 +4,8 @@ import { join } from "node:path";
 import type { HexCell, HexMapAsset } from "@agent-major/shared";
 import { describe, expect, it } from "vitest";
 
+import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
+import { buildHexRoundEconomyContext } from "../economy/index.js";
 import { initializeHexRoundMemory, type HexRoundMemory } from "../state/index.js";
 import { buildHexAgentCommandRequest, type HexAgentActionDraft } from "./hex-agent-command-boundary.js";
 import { validateHexAgentActionDraft } from "./hex-agent-action-validator.js";
@@ -23,6 +25,51 @@ describe("Hex agent action validator", () => {
     expect(validated.valid).toBe(true);
     expect(validated.apCost).toBeGreaterThanOrEqual(0);
     expect(validated.validationErrors).toEqual([]);
+  });
+
+  it("rejects economy-disallowed actions without bypassing path or AP validation", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeMemory(asset);
+    const economyContext = buildHexRoundEconomyContext({
+      memory,
+      teamEconomyPlans: {
+        t: buildPlan("t", "full_eco", "eco", ["t_0", "t_1", "t_2", "t_3", "t_4"]),
+        ct: buildPlan("ct", "rifle_buy", "fullBuy", ["ct_0", "ct_1", "ct_2", "ct_3", "ct_4"])
+      }
+    });
+    const request = buildHexAgentCommandRequest({ asset, memory, agentId: "t_0", economyContext });
+
+    const execute = validateHexAgentActionDraft({
+      asset,
+      memory,
+      economyContext,
+      draft: buildDraft(request, {
+        actionType: "execute_site",
+        targetCellId: request.agent.currentCellId
+      })
+    });
+    const utility = validateHexAgentActionDraft({
+      asset,
+      memory,
+      economyContext,
+      draft: buildDraft(request, {
+        actionType: "use_utility",
+        targetCellId: request.agent.currentCellId
+      })
+    });
+    const save = validateHexAgentActionDraft({
+      asset,
+      memory,
+      economyContext,
+      draft: buildDraft(request, {
+        actionType: "save",
+        targetCellId: request.agent.currentCellId
+      })
+    });
+
+    expect(execute.validationErrors).toEqual(expect.arrayContaining(["economy_disallows_action", "resource_tier_too_low"]));
+    expect(utility.validationErrors).toEqual(expect.arrayContaining(["economy_disallows_action", "utility_unavailable"]));
+    expect(save.valid).toBe(true);
   });
 
   it("rejects unknown, unplayable, and over-budget target cells", () => {
@@ -218,4 +265,37 @@ function findCellsWithFlag(asset: HexMapAsset, flag: HexCell["flags"][number]): 
     throw new Error(`Missing ${flag}`);
   }
   return cells;
+}
+
+function buildPlan(
+  teamId: string,
+  posture: TeamEconomyPlan["posture"],
+  buyType: TeamEconomyPlan["summaryBuyType"],
+  agentIds: string[]
+): TeamEconomyPlan {
+  return {
+    teamId,
+    side: teamId === "ct" ? "defense" : "attack",
+    phase: "gun_round",
+    lossCount: 0,
+    posture,
+    postureReason: "test plan",
+    summaryBuyType: buyType,
+    totalCash: buyType === "eco" ? 5000 : 25000,
+    dropDecisions: [],
+    decisions: agentIds.map((agentId) => ({
+      agentId,
+      teamId,
+      tokenBankBefore: buyType === "eco" ? 1000 : 6000,
+      tokenBankAfterDrop: buyType === "eco" ? 1000 : 6000,
+      buyType,
+      economyPosture: posture,
+      loadoutPackage: buyType === "eco" ? "pistol_round_pack" : "rifle_full_t_pack",
+      spend: buyType === "eco" ? 800 : 4500,
+      outputBudget: buyType === "eco" ? 360 : 1200,
+      dropSent: 0,
+      dropReceived: 0,
+      notes: []
+    }))
+  };
 }

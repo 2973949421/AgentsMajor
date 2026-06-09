@@ -6,6 +6,7 @@ import {
 } from "@agent-major/llm";
 import type { HexMapAsset } from "@agent-major/shared";
 import type { ArtifactStore } from "../../ports.js";
+import type { HexRoundEconomyContext } from "../economy/index.js";
 import type { HexRoundMemory } from "../state/index.js";
 import {
   buildHexAgentCommandRequest,
@@ -49,6 +50,7 @@ export interface RunHexAgentPhaseCommandHarnessInput {
   providerMode?: HexAgentCommandProviderMode;
   modelId?: string;
   maxLlmCalls?: number;
+  economyContext?: HexRoundEconomyContext;
   artifactStore?: ArtifactStore;
   artifactOwner?: HexAgentCommandArtifactOwner;
   callIdPrefix?: string;
@@ -137,7 +139,8 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
     const request = buildHexAgentCommandRequest({
       asset: input.asset,
       memory: input.memory,
-      agentId: agent.agentId
+      agentId: agent.agentId,
+      ...(input.economyContext ? { economyContext: input.economyContext } : {})
     });
     const requestArtifactId = await writeHarnessArtifact(input, {
       callId,
@@ -204,7 +207,8 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
       const validated = validateHexAgentActionDraft({
         asset: input.asset,
         memory: input.memory,
-        draft: normalized.draft
+        draft: normalized.draft,
+        ...(input.economyContext ? { economyContext: input.economyContext } : {})
       });
       actions.push(validated);
       if (!validated.valid) {

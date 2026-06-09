@@ -4,6 +4,8 @@ import { join } from "node:path";
 import type { HexCell, HexMapAsset } from "@agent-major/shared";
 import { describe, expect, it } from "vitest";
 
+import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
+import { buildHexRoundEconomyContext } from "../economy/index.js";
 import { initializeHexRoundMemory } from "../state/index.js";
 import { buildHexAgentCommandRequest, normalizeHexAgentActionDraft } from "./hex-agent-command-boundary.js";
 
@@ -72,6 +74,34 @@ describe("Hex agent command boundary", () => {
     expect(result.errors).toEqual([]);
     expect(result.draft?.targetCellId).toBe(request.reachableCells[0]!.cellId);
     expect(result.ignoredFields).toEqual(expect.arrayContaining(["winner", "kills"]));
+  });
+
+  it("adds compact economy context when provided", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset),
+      bombCarrierAgentId: "t_0"
+    });
+    const economyContext = buildHexRoundEconomyContext({
+      memory,
+      teamEconomyPlans: {
+        t: buildPlan("t", "rifle_buy", "fullBuy", ["t_0", "t_1", "t_2", "t_3", "t_4"]),
+        ct: buildPlan("ct", "eco", "eco", ["ct_0", "ct_1", "ct_2", "ct_3", "ct_4"])
+      }
+    });
+
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_0",
+      economyContext
+    });
+
+    expect(request.economy?.economyPosture).toBe("rifle_buy");
+    expect(request.economy?.resourceTier).toBe("high");
+    expect(request.economy?.economyAllowedActionTypes).toContain("execute_site");
+    expect(request.constraints.some((line) => line.includes("Economy context is already resolved"))).toBe(true);
   });
 
   it("rejects malformed drafts before validation", () => {
@@ -144,4 +174,37 @@ function findCellsWithFlag(asset: HexMapAsset, flag: HexCell["flags"][number]): 
     throw new Error(`Missing ${flag}`);
   }
   return cells;
+}
+
+function buildPlan(
+  teamId: string,
+  posture: TeamEconomyPlan["posture"],
+  buyType: TeamEconomyPlan["summaryBuyType"],
+  agentIds: string[]
+): TeamEconomyPlan {
+  return {
+    teamId,
+    side: teamId === "ct" ? "defense" : "attack",
+    phase: "gun_round",
+    lossCount: 0,
+    posture,
+    postureReason: "test plan",
+    summaryBuyType: buyType,
+    totalCash: 20000,
+    dropDecisions: [],
+    decisions: agentIds.map((agentId) => ({
+      agentId,
+      teamId,
+      tokenBankBefore: buyType === "eco" ? 1000 : 6000,
+      tokenBankAfterDrop: buyType === "eco" ? 1000 : 6000,
+      buyType,
+      economyPosture: posture,
+      loadoutPackage: buyType === "eco" ? "pistol_round_pack" : "rifle_full_t_pack",
+      spend: buyType === "eco" ? 800 : 4500,
+      outputBudget: buyType === "eco" ? 420 : 1200,
+      dropSent: 0,
+      dropReceived: 0,
+      notes: []
+    }))
+  };
 }

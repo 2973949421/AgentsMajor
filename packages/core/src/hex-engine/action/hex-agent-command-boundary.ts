@@ -1,4 +1,5 @@
 import type { HexCell, HexMapAsset } from "@agent-major/shared";
+import { getHexAgentEconomyContext, type HexRoundEconomyContext } from "../economy/index.js";
 import { buildHexPathGraph, calculateHexApCost } from "../path/index.js";
 import { buildHexAgentMemoryContext, type HexAgentMemoryPromptContext, type HexPhaseId, type HexRoundMemory, type HexSide } from "../state/index.js";
 
@@ -47,9 +48,24 @@ export interface HexAgentCommandRequest {
   lastSeenEnemies: HexAgentMemoryPromptContext["lastSeenEnemies"];
   reachableCells: HexReachableCellSummary[];
   allowedActionTypes: HexAgentActionType[];
+  economy?: HexAgentEconomyPromptContext;
   constraints: string[];
   actionResultSummary?: string;
   businessExecutionSummary?: string;
+}
+
+export interface HexAgentEconomyPromptContext {
+  economyPosture: string;
+  buyType: string;
+  loadoutPackage: string;
+  outputBudget: number;
+  dropSent: number;
+  dropReceived: number;
+  resourceTier: string;
+  utilityTier: string;
+  economyAllowedActionTypes: HexAgentActionType[];
+  economyConstraints: string[];
+  notes: string[];
 }
 
 export interface HexAgentActionDraft {
@@ -108,12 +124,19 @@ export function buildHexAgentCommandRequest(input: {
   memory: HexRoundMemory;
   agentId: string;
   allowedActionTypes?: readonly HexAgentActionType[];
+  economyContext?: HexRoundEconomyContext;
 }): HexAgentCommandRequest {
   const context = buildHexAgentMemoryContext({
     memory: input.memory,
     agentId: input.agentId
   });
   const reachableCells = buildReachableCellSummaries(input.asset, context.agent.currentCellId, context.agent.apRemaining);
+  const economy = input.economyContext
+    ? getHexAgentEconomyContext({
+        economyContext: input.economyContext,
+        agentId: input.agentId
+      })
+    : undefined;
   const request: HexAgentCommandRequest = {
     schemaVersion: 1,
     phaseId: input.memory.phaseId,
@@ -138,6 +161,27 @@ export function buildHexAgentCommandRequest(input: {
       "The code validates movement, AP, C4 legality, and final game facts."
     ]
   };
+  if (economy) {
+    request.economy = {
+      economyPosture: economy.economyPosture,
+      buyType: economy.buyType,
+      loadoutPackage: economy.loadoutPackage,
+      outputBudget: economy.outputBudget,
+      dropSent: economy.dropSent,
+      dropReceived: economy.dropReceived,
+      resourceTier: economy.resourceTier,
+      utilityTier: economy.utilityTier,
+      economyAllowedActionTypes: [...economy.allowedActionTypes],
+      economyConstraints: [...economy.constraints],
+      notes: [...economy.notes]
+    };
+    request.constraints.push(
+      "Economy context is already resolved before this phase; do not modify buy type, drops, output budget, or economy state.",
+      "Low resource agents must not claim a full execute_site without explicit future desperation support.",
+      "Utility actions must respect utilityTier and cannot invent unavailable utility.",
+      "Economy advantage must be converted into map control, coordination, or business evidence; it is not a winner field."
+    );
+  }
   if (context.actionResultSummary) {
     request.actionResultSummary = context.actionResultSummary;
   }

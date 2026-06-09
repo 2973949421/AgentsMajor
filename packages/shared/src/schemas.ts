@@ -1181,7 +1181,7 @@ export const eventProjectionSchema = z.object({
 });
 export type EventProjection = z.infer<typeof eventProjectionSchema>;
 
-export const nodeRoundTraceSources = ["node_round_engine_committed"] as const;
+export const nodeRoundTraceSources = ["node_round_engine_committed", "hex_round_engine_committed"] as const;
 export const nodeRoundTraceSourceSchema = z.enum(nodeRoundTraceSources);
 export type NodeRoundTraceSource = z.infer<typeof nodeRoundTraceSourceSchema>;
 

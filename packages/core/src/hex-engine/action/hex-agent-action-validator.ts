@@ -1,4 +1,5 @@
 import type { HexCell, HexMapAsset } from "@agent-major/shared";
+import { getHexAgentEconomyContext, type HexAgentEconomyContext, type HexRoundEconomyContext } from "../economy/index.js";
 import { validateHexMoveBudget } from "../path/index.js";
 import type { HexAgentPhaseMemory, HexRoundMemory, HexSide } from "../state/index.js";
 import type { HexAgentActionDraft, HexAgentActionType } from "./hex-agent-command-boundary.js";
@@ -19,7 +20,11 @@ export type HexAgentActionValidationError =
   | "plant_requires_bombsite"
   | "defuse_requires_defense"
   | "defuse_requires_planted_bomb"
-  | "defuse_requires_planted_cell";
+  | "defuse_requires_planted_cell"
+  | "economy_context_missing"
+  | "economy_disallows_action"
+  | "utility_unavailable"
+  | "resource_tier_too_low";
 
 export interface HexValidatedAgentAction {
   agentId: string;
@@ -43,6 +48,7 @@ export interface ValidateHexAgentActionDraftInput {
   asset: HexMapAsset;
   memory: HexRoundMemory;
   draft: HexAgentActionDraft;
+  economyContext?: HexRoundEconomyContext;
 }
 
 export function validateHexAgentActionDraft(input: ValidateHexAgentActionDraftInput): HexValidatedAgentAction {
@@ -139,6 +145,7 @@ function collectValidationErrors(
   if (input.draft.businessIntent.trim().length === 0) {
     errors.push("missing_business_intent");
   }
+  errors.push(...collectEconomyValidationErrors(input, agent));
   if (targetCell?.playable) {
     const budget = validateHexMoveBudget({
       asset: input.asset,
@@ -172,6 +179,38 @@ function collectValidationErrors(
     }
   }
   return uniqueErrors(errors);
+}
+
+function collectEconomyValidationErrors(
+  input: ValidateHexAgentActionDraftInput,
+  agent: HexAgentPhaseMemory | undefined
+): HexAgentActionValidationError[] {
+  if (!input.economyContext || !agent) {
+    return [];
+  }
+  const economy = getHexAgentEconomyContext({
+    economyContext: input.economyContext,
+    agentId: agent.agentId
+  });
+  if (!economy) {
+    return ["economy_context_missing"];
+  }
+
+  const errors: HexAgentActionValidationError[] = [];
+  if (!economy.allowedActionTypes.includes(input.draft.actionType)) {
+    errors.push("economy_disallows_action");
+  }
+  if (input.draft.actionType === "use_utility" && economy.utilityTier === "none") {
+    errors.push("utility_unavailable");
+  }
+  if (input.draft.actionType === "execute_site" && isLowResourceEconomy(economy)) {
+    errors.push("resource_tier_too_low");
+  }
+  return errors;
+}
+
+function isLowResourceEconomy(economy: HexAgentEconomyContext): boolean {
+  return economy.resourceTier === "low";
 }
 
 function buildFallbackAction(

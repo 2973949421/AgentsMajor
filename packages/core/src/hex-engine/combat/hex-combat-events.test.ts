@@ -119,6 +119,30 @@ describe("Hex combat memory events", () => {
           afterAttackScore: 60,
           afterDefenseScore: 52,
           varianceDelta: 0
+        },
+        economy: {
+          economyEvidenceApplied: false,
+          attack: {
+            agentIds: ["t_0"],
+            resourceTiers: [],
+            utilityTiers: [],
+            outputBudgetTotal: 0,
+            outputBudgetAverage: 0,
+            dropReceivedTotal: 0,
+            scoreDelta: 0,
+            reasons: []
+          },
+          defense: {
+            agentIds: ["ct_0"],
+            resourceTiers: [],
+            utilityTiers: [],
+            outputBudgetTotal: 0,
+            outputBudgetAverage: 0,
+            dropReceivedTotal: 0,
+            scoreDelta: 0,
+            reasons: []
+          },
+          reasons: []
         }
       }
     };

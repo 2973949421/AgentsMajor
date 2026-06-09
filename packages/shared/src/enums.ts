@@ -39,7 +39,8 @@ export const simulationRunModes = [
   "phase18_keep_generating_map",
   "phase18_full_bo3",
   "phase20_node_round_experimental",
-  "phase20_node_map_experimental"
+  "phase20_node_map_experimental",
+  "phase20_hex_round_experimental"
 ] as const;
 export type SimulationRunMode = (typeof simulationRunModes)[number];
 
@@ -212,6 +213,9 @@ export const eventTypes = [
   "node_map_experimental_summary_created",
   "node_map_experimental_completed",
   "node_map_experimental_failed",
+  "hex_round_experimental_started",
+  "hex_round_trace_artifact_created",
+  "hex_round_experimental_committed",
   "score_tension_diagnostic",
   "map_review_window_started",
   "map_review_window_confirmed"
