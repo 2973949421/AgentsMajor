@@ -5,6 +5,12 @@ import { describe, expect, it } from "vitest";
 
 import { normalizeHexMatchLabRunRequest } from "../app/server-hex-match-lab";
 
+const appRoot = resolve(import.meta.dirname, "../app");
+
+function readAppFile(path: string): string {
+  return readFileSync(resolve(appRoot, path), "utf8");
+}
+
 describe("Hex Match Lab", () => {
   it("normalizes run requests for fixture map validation", () => {
     const normalized = normalizeHexMatchLabRunRequest({
@@ -36,36 +42,58 @@ describe("Hex Match Lab", () => {
     });
   });
 
-  it("defines a dedicated Hex Match Lab web surface", () => {
-    const source = readFileSync(resolve(import.meta.dirname, "../app/hex-lab/match/hex-match-lab-client.tsx"), "utf8");
+  it("defines a full Hex Match Lab validation surface", () => {
+    const client = readAppFile("hex-lab/match/hex-match-lab-client.tsx");
+    const mapViewer = readAppFile("hex-lab/match/hex-match-map-viewer.tsx");
+    const playerPanel = readAppFile("hex-lab/match/hex-match-player-panel.tsx");
+    const timeline = readAppFile("hex-lab/match/hex-match-timeline.tsx");
+    const drawer = readAppFile("hex-lab/match/hex-match-audit-drawer.tsx");
 
-    expect(source).toContain("Hex Web 验收台");
-    expect(source).toContain("跑 Hex 单回合");
-    expect(source).toContain("跑 Hex 当前 Dust2 地图");
-    expect(source).toContain("刷新最新结果");
-    expect(source).toContain("打开 Hex 地图编辑器");
-    expect(source).toContain("地图级摘要");
-    expect(source).toContain("Round 时间线");
-    expect(source).toContain("Phase 进度");
-    expect(source).toContain("Agent actions");
-    expect(source).toContain("Combat verdicts");
-    expect(source).toContain("经济上下文");
-    expect(source).toContain("LLM cannot write final winner");
-    expect(source).not.toContain("sector-map.json");
-    expect(source).not.toContain("node-graph.json");
+    expect(client).toContain("Hex Match Lab 蜂巢比赛验收台");
+    expect(client).toContain("新建 Hex 验收比赛");
+    expect(client).toContain("安全重置为新地图");
+    expect(client).toContain("跑下一回合");
+    expect(client).toContain("一直跑到地图结束");
+    expect(client).toContain("停止");
+    expect(client).toContain("快速跑当前地图");
+    expect(client).toContain("前端不重新计算 winner");
+    expect(client).toContain("当前地图已 completed");
+
+    expect(mapViewer).toContain("Dust2 Hex 地图");
+    expect(mapViewer).toContain("action path preview");
+    expect(mapViewer).toContain("C4");
+    expect(mapViewer).toContain("交火");
+    expect(playerPanel).toContain("选手状态");
+    expect(playerPanel).toContain("AP");
+    expect(playerPanel).toContain("lastSeen");
+    expect(timeline).toContain("Round 进度条");
+    expect(timeline).toContain("Phase 回放条");
+    expect(drawer).toContain("LLM / Combat / Economy / Hard Winner 审计");
+    expect(drawer).toContain("最终 winner 只来自 hard condition");
+
+    expect(client).not.toContain("sector-map.json");
+    expect(client).not.toContain("node-graph.json");
   });
 
   it("routes Hex Match Lab through dedicated APIs instead of Node Lab", () => {
-    const runRoute = readFileSync(resolve(import.meta.dirname, "../app/api/hex-lab/match/run/route.ts"), "utf8");
-    const progressRoute = readFileSync(resolve(import.meta.dirname, "../app/api/hex-lab/match/progress/route.ts"), "utf8");
-    const server = readFileSync(resolve(import.meta.dirname, "../app/server-hex-match-lab.ts"), "utf8");
+    const runRoute = readAppFile("api/hex-lab/match/run/route.ts");
+    const progressRoute = readAppFile("api/hex-lab/match/progress/route.ts");
+    const mapsRoute = readAppFile("api/hex-lab/match/maps/route.ts");
+    const createRoute = readAppFile("api/hex-lab/match/create/route.ts");
+    const resetRoute = readAppFile("api/hex-lab/match/reset/route.ts");
+    const server = readAppFile("server-hex-match-lab.ts");
 
     expect(runRoute).toContain("startHexMatchLabRun");
     expect(progressRoute).toContain("readHexMatchLabRunProgress");
+    expect(mapsRoute).toContain("listHexMatchLabMapGames");
+    expect(createRoute).toContain("createHexMatchLabValidationMap");
+    expect(resetRoute).toContain("resetHexMatchLabValidationMap");
     expect(server).toContain("commitDust2HexRoundExperimental");
     expect(server).toContain("runDust2HexMapExperimental");
     expect(server).toContain("hex_map_summary");
     expect(server).toContain("hex_round_engine_committed");
+    expect(server).toContain("mapAssetView");
+    expect(server).toContain("buildPlayerCards");
     expect(server).not.toContain("runDust2NodeMapExperimental");
     expect(server).not.toContain("commitDust2NodeRoundExperimental");
     expect(server).not.toContain("loadMapSectorMap");
@@ -73,11 +101,12 @@ describe("Hex Match Lab", () => {
   });
 
   it("exposes Hex Lab links from the existing home page without editing replay components", () => {
-    const source = readFileSync(resolve(import.meta.dirname, "../app/page.tsx"), "utf8");
+    const source = readAppFile("page.tsx");
 
     expect(source).toContain("/hex-lab/match");
     expect(source).toContain("Hex Web 验收台");
     expect(source).toContain("/hex-lab/editor");
+    expect(source).toContain("Hex 地图编辑器");
     expect(source).toContain("LiveReplayPlayer");
   });
 });
