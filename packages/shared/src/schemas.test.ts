@@ -13,6 +13,7 @@ import {
   roundPhaseIdSchema,
   sideAssignmentCreatedPayloadSchema,
   sideAssignmentSchema,
+  simulationRunSchema,
   siteExecuteResolvedPayloadSchema,
   summarySchema,
   tacticalCollisionSchema,
@@ -426,6 +427,23 @@ describe("shared contracts", () => {
 
   it("parses Hex experimental mode, events, and committed trace source", () => {
     expect(
+      simulationRunSchema.parse({
+        id: "run_hex_map_001",
+        fixtureId: "fixture_hex_map",
+        status: "running",
+        requestedMode: "phase20_hex_map_experimental",
+        runtimeMatchId: "match_001",
+        runtimeMapGameId: "map_001",
+        baselineCompletedRounds: 0,
+        estimatedTotalRounds: 40,
+        expectedTotalCalls: 0,
+        latestCommittedRoundNumber: 0,
+        hasFreshReplay: false,
+        createdAt: now
+      })
+    ).toMatchObject({ requestedMode: "phase20_hex_map_experimental" });
+
+    expect(
       eventSchema.parse({
         id: "evt_hex_round_started",
         type: "hex_round_experimental_started",
@@ -442,6 +460,23 @@ describe("shared contracts", () => {
         createdAt: now
       })
     ).toMatchObject({ type: "hex_round_experimental_started" });
+
+    expect(
+      eventSchema.parse({
+        id: "evt_hex_map_completed",
+        type: "hex_map_experimental_completed",
+        category: "simulation",
+        tournamentId: "t_001",
+        matchId: "match_001",
+        mapGameId: "map_001",
+        payload: { schemaVersion: 1, status: "completed" },
+        globalSequence: 2,
+        scopeType: "map",
+        scopeId: "map_001",
+        sequenceInScope: 1,
+        createdAt: now
+      })
+    ).toMatchObject({ type: "hex_map_experimental_completed" });
 
     expect(
       roundReportSchema.parse({

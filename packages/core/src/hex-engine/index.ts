@@ -3,6 +3,7 @@ export * from "./combat/index.js";
 export * from "./commit/index.js";
 export * from "./economy/index.js";
 export * from "./map/index.js";
+export * from "./map-runner/index.js";
 export * from "./path/index.js";
 export * from "./round/index.js";
 export * from "./state/index.js";

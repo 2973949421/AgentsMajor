@@ -724,3 +724,31 @@ N29 已经能提交单个 Hex round（蜂巢回合）后，`HexRoundExperimental
 - `hex-round-experimental-committer.ts`：只负责显式实验模式校验、事务边界、调用 runner、校验 hard finalWinCondition（硬最终胜负条件）、保存 round/report/economy/map 和返回结果。
 
 N30 `Hex Dust2 Map（完整地图灰度）` 必须薄循环调用 `commitDust2HexRoundExperimental()`，不得重新实现单回合提交、RoundReport 桥接、event 写入或 economy state（经济状态）保存逻辑。
+
+### N30：Hex Dust2 Map（完整地图灰度）
+
+N30 是 Dust2 当前地图灰度层，不是新的回合引擎。它只负责连续调用 N29 单回合提交器，直到 mapGame（地图局）完成或达到明确上限。
+
+落地模块：
+
+- `hex-engine/map-runner/hex-map-experimental-runner.ts`：提供 `runDust2HexMapExperimental()`。
+- `scripts/phase20-hex-commit-map.mjs`：本地 CLI（命令行）入口。
+- `phase20_hex_map_experimental`：显式实验 mode（模式）。
+- `hex_map_summary` artifact（地图摘要产物）：记录每回合 trace id、winner、win type、fallback、combat 和 final hard condition。
+
+边界规则：
+
+- 每一回合必须由 `commitDust2HexRoundExperimental()` 提交。
+- N30 不得直接操作 phase memory（阶段记忆）、combat resolver（战斗裁定器）、winner（胜负）、RoundReport（回合报告）或 economy state（经济状态）。
+- N30 不做 Web UI（网页界面），不跑 BO3，不替换旧 Phase18，不删除旧 Node/Sector。
+- `maxRounds` 默认 40，硬上限 60；超过上限仍未完成必须标记 failed（失败），不能包装成 completed（完成）。
+- map summary 只保存轻量索引，完整过程必须追溯到每回合 `hex_round_trace` artifact。
+
+验收：
+
+- active Dust2 mapGame 可以通过 `runDust2HexMapExperimental()` 跑到 completed。
+- 每个 committed round 都有 Round、RoundReport、hex trace artifact、economy states after round。
+- map summary artifact 包含 initial/final score、round list、completionReason、fallbackSummary、writesDb=true、replacesLegacyRoundPath=false。
+- completed map 再运行必须拒绝。
+- `maxRounds` 超限必须产出 failed summary。
+- N30 完成后进入 Hex 结构封板，不继续叠新机制。
