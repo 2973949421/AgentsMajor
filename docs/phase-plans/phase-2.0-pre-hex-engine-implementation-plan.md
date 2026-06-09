@@ -268,6 +268,15 @@ N21 起执行以下硬边界：
 
 目的：让用户能手工画 Dust2，而不是让 LLM 或前端猜地图。
 
+第一版落地内容：
+
+- `/hex-lab/editor`：本地 HexMapEditor 页面。
+- `GET /api/hex-lab/editor/map?mapSlug=dust2`：读取 Dust2 Hex draft asset。
+- `POST /api/hex-lab/editor/map?mapSlug=dust2`：保存 Dust2 Hex draft asset。
+- 保存目标固定为 `data/materials/processed/maps/dust2/hex/dust2-hex-map.draft.json`。
+- 保存前必须通过 `hexMapAssetSchema` 和 `validateHexMapAsset`。
+- 第一版只支持 Dust2，不做多地图管理，不接 LLM，不运行比赛。
+
 验收：
 
 - 可勾选 cell。
@@ -275,6 +284,9 @@ N21 起执行以下硬边界：
 - 可命名 point。
 - 可保存 JSON。
 - 刷新后能重新加载。
+- 可设置 `spawn_t`、`spawn_ct`、`bombsite_a`、`bombsite_b`、`cover`、`choke`、`high_risk`、`route_hint`。
+- 保存后的 JSON 稳定排序，便于 git diff 和后续 N23 固化。
+- 直接 Web 测试、Hex schema 测试、Hex validator 测试、architecture boundary 测试必须通过。
 
 ### N23：Dust2 Hex Asset（Dust2 蜂巢资产）
 
@@ -526,3 +538,21 @@ N20 交付：
 7. 后续 N21 执行计划入口。
 
 N20 完成后，不直接写比赛逻辑；下一步进入 N21：HexGrid schema/type 与第一版 50x50 画布数据结构。
+
+## 13. N22 层级结构收口补丁
+
+本节属于 N22 HexMapEditor（蜂巢地图编辑器）收口补丁，同时是 N23 Dust2 Hex Asset（Dust2 蜂巢资产）前置硬约束，不新增 N 编号。
+
+执行要求：
+
+- `HexCell（蜂巢格）` 必须包含 `level`。
+- `HexMapAsset（蜂巢地图资产）` 必须包含 `levels`、`defaultLevel`、`verticalLinks`。
+- 当前一层草稿自动迁移为 `level = 0`。
+- 旧二维 cellId（例如 `h_10_20`）必须在编辑器读写链路中自动升级为 `h_10_20_l0`。
+- `/hex-lab/editor` 必须支持下层、地面、上层三层切换。
+- 编辑器画笔只修改当前层。
+- 跨层移动关系必须通过“跨层连接”工具显式创建。
+- N23 正式 Dust2 资产必须使用 `col / row / level`，不能再保存二维 cell。
+- N24 pathfinding（寻路）必须把同层邻接和 `verticalLinks（跨层连接）` 分开处理。
+
+第一版只支持 `level = -1 / 0 / 1`。如果未来地图需要更多层级，必须先更新 schema、validator、editor 和 runtime contract（运行契约），不能在 runtime（运行时）里临时放宽。

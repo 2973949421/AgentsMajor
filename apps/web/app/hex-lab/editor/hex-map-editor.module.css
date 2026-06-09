@@ -1,0 +1,741 @@
+.shell {
+  min-height: 100vh;
+  background: #0b1117;
+  color: #edf4fb;
+  padding: 24px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.eyebrow {
+  color: #9bb3c7;
+  font-size: 0.82rem;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  font-size: 1.8rem;
+  margin: 0;
+}
+
+.subtitle {
+  color: #b9c8d6;
+  max-width: 780px;
+  margin: 10px 0 0;
+  line-height: 1.6;
+}
+
+.headerActions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.linkButton,
+.primaryButton,
+.toolButton,
+.inlineControls button,
+.createBox button,
+.editStack button {
+  border: 1px solid #2b3a47;
+  background: #121b24;
+  color: #edf4fb;
+  border-radius: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.primaryButton {
+  background: #a8e6bf;
+  color: #07120d;
+  border-color: #a8e6bf;
+  font-weight: 700;
+}
+
+.primaryButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.variantPicker {
+  display: grid;
+  gap: 4px;
+  color: #9db2c5;
+  font-size: 0.76rem;
+  min-width: 160px;
+}
+
+.variantPicker select {
+  min-height: 36px;
+  border: 1px solid #2b3a47;
+  background: #121b24;
+  color: #edf4fb;
+  border-radius: 8px;
+  padding: 0 10px;
+}
+
+.statusBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  border: 1px solid #22313d;
+  background: #111820;
+  color: #b8c9d9;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.82rem;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(240px, 300px) minmax(520px, 1fr) minmax(260px, 340px);
+  gap: 16px;
+  align-items: start;
+}
+
+.panel,
+.mapPanel {
+  border: 1px solid #263846;
+  background: #111820;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.panel {
+  max-height: calc(100vh - 140px);
+  overflow: auto;
+}
+
+.panel section + section {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #21313e;
+}
+
+.panel h2 {
+  font-size: 0.95rem;
+  margin: 0 0 10px;
+}
+
+.toolGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.toolButtonActive {
+  background: #a8e6bf;
+  color: #07120d;
+  border-color: #a8e6bf;
+  font-weight: 700;
+}
+
+.currentOperation {
+  border: 1px solid #3c5363;
+  background: linear-gradient(180deg, rgba(22, 35, 46, 0.95), rgba(11, 17, 23, 0.95));
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.operationGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.operationRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #a9bdcf;
+}
+
+.operationRow strong {
+  color: #edf4fb;
+  text-align: right;
+}
+
+.operationTarget,
+.operationWarning {
+  display: grid;
+  gap: 4px;
+  border-radius: 8px;
+  padding: 9px 10px;
+  line-height: 1.45;
+}
+
+.operationTarget {
+  border: 1px solid rgba(168, 230, 191, 0.28);
+  background: rgba(168, 230, 191, 0.08);
+}
+
+.operationTarget span,
+.operationWarning {
+  color: #a9bdcf;
+  font-size: 0.82rem;
+}
+
+.operationTarget strong {
+  color: #a8e6bf;
+}
+
+.operationTarget small {
+  color: #bfd0df;
+}
+
+.operationWarning {
+  border: 1px solid rgba(255, 211, 106, 0.32);
+  background: rgba(255, 211, 106, 0.1);
+  color: #ffd36a;
+}
+
+.inlineControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.checkboxLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #c8d8e6;
+  font-size: 0.86rem;
+  margin-top: 10px;
+}
+
+.checkboxLine input {
+  width: auto;
+  min-height: auto;
+}
+
+.rangeLine {
+  display: grid;
+  grid-template-columns: 1fr 120px auto;
+  gap: 10px;
+  align-items: center;
+  color: #c8d8e6;
+  font-size: 0.84rem;
+  margin-top: 10px;
+}
+
+.rangeLine input {
+  width: 120px;
+  min-height: auto;
+  padding: 0;
+}
+
+.rangeLine input:disabled {
+  opacity: 0.45;
+}
+
+.panel input,
+.panel select {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid #2a3b49;
+  border-radius: 8px;
+  background: #0b1117;
+  color: #edf4fb;
+  padding: 0 10px;
+}
+
+.createBox,
+.editStack {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.entityList {
+  display: grid;
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+  margin: 10px 0;
+  padding-right: 3px;
+}
+
+.entityCard,
+.flagButton {
+  border: 1px solid #2a3b49;
+  background: #0c141c;
+  color: #edf4fb;
+  border-radius: 9px;
+  padding: 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.entityCard {
+  display: grid;
+  gap: 4px;
+}
+
+.entityCard:hover,
+.flagButton:hover {
+  border-color: #6f91aa;
+  background: #121f2a;
+}
+
+.entityCardActive,
+.flagButtonActive {
+  border-color: #a8e6bf;
+  background: rgba(168, 230, 191, 0.13);
+  box-shadow: inset 0 0 0 1px rgba(168, 230, 191, 0.18);
+}
+
+.entityTitle {
+  font-weight: 800;
+}
+
+.entityMeta {
+  color: #9db2c5;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.78rem;
+}
+
+.selectedTarget,
+.targetWarning {
+  border-radius: 8px;
+  padding: 9px 10px;
+  margin-top: 10px;
+  line-height: 1.5;
+  color: #c8d8e6;
+  background: #0b1117;
+  border: 1px solid #263846;
+  font-size: 0.84rem;
+}
+
+.selectedTarget code {
+  color: #ffd36a;
+}
+
+.selectedTarget p {
+  margin: 6px 0 0;
+  color: #a9bdcf;
+}
+
+.targetWarning {
+  color: #ffd36a;
+  border-color: rgba(255, 211, 106, 0.35);
+  background: rgba(255, 211, 106, 0.08);
+}
+
+.flagGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.eraserGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.flagButton {
+  display: grid;
+  gap: 3px;
+  min-height: 62px;
+}
+
+.flagButton span {
+  color: #9db2c5;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
+}
+
+.flagButton small {
+  color: #bdd1e0;
+  font-size: 0.73rem;
+}
+
+.targetMetric {
+  display: block;
+  color: #9fd9ff;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.78rem;
+  margin-top: 5px;
+}
+
+.requiredFlags {
+  border: 1px solid rgba(255, 211, 106, 0.28);
+  background: rgba(255, 211, 106, 0.07);
+  border-radius: 10px;
+  padding: 10px;
+  margin-top: 12px;
+}
+
+.requiredFlags h3 {
+  font-size: 0.88rem;
+  margin: 0 0 6px;
+  color: #ffe08a;
+}
+
+.requiredFlagRow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  border-top: 1px solid rgba(255, 211, 106, 0.16);
+  padding-top: 8px;
+  margin-top: 8px;
+}
+
+.requiredFlagRow strong {
+  color: #ffe08a;
+}
+
+.requiredFlagRow button {
+  border: 1px solid rgba(255, 211, 106, 0.35);
+  background: rgba(255, 211, 106, 0.1);
+  color: #fff1bd;
+  border-radius: 8px;
+  min-height: 32px;
+  cursor: pointer;
+}
+
+.mapToolbar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: #b8c9d9;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.82rem;
+  margin-bottom: 10px;
+}
+
+.mapStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.statCard {
+  border: 1px solid #263846;
+  border-radius: 9px;
+  background: #0b1117;
+  padding: 9px 10px;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.statCard span {
+  color: #9db2c5;
+  font-size: 0.76rem;
+}
+
+.statCard strong {
+  color: #edf4fb;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.92rem;
+  overflow-wrap: anywhere;
+}
+
+.infoBox {
+  border: 1px solid rgba(119, 166, 224, 0.24);
+  background: rgba(119, 166, 224, 0.08);
+  border-radius: 10px;
+  padding: 10px;
+  margin-top: 10px;
+  color: #bfd0df;
+  font-size: 0.83rem;
+  line-height: 1.55;
+}
+
+.infoBox p {
+  margin: 0;
+}
+
+.infoBox p + p {
+  margin-top: 8px;
+}
+
+.auditGuide {
+  display: grid;
+  gap: 9px;
+}
+
+.auditGuideItem {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 9px;
+  border: 1px solid #263846;
+  background: #0b1117;
+  border-radius: 10px;
+  padding: 9px 10px;
+  color: #bfd0df;
+}
+
+.auditGuideItem strong {
+  color: #edf4fb;
+}
+
+.auditGuideItem p {
+  margin: 4px 0 0;
+  color: #9db2c5;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.auditSwatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-top: 3px;
+  border-radius: 3px;
+}
+
+.regionSwatch {
+  background: rgba(255, 211, 106, 0.42);
+  border: 1px solid rgba(255, 236, 168, 0.95);
+}
+
+.pointSwatch {
+  background: rgba(210, 150, 255, 0.28);
+  border: 2px solid rgba(237, 202, 255, 0.98);
+}
+
+.flagSwatch {
+  background: rgba(116, 231, 255, 0.1);
+  border: 2px dashed rgba(116, 231, 255, 0.98);
+}
+
+.mapFrame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border: 1px solid #2a3c4a;
+  border-radius: 12px;
+  background: #05080b;
+}
+
+.mapCanvas {
+  position: absolute;
+  inset: 0;
+  transform-origin: center;
+}
+
+.radarImage,
+.hexSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.radarImage {
+  object-fit: contain;
+  opacity: 0.38;
+  filter: saturate(0.7) contrast(1.05) brightness(0.8);
+}
+
+.hexSvg {
+  touch-action: none;
+}
+
+.hexCell {
+  fill: rgba(255, 255, 255, 0.015);
+  stroke: rgba(173, 205, 225, 0.14);
+  stroke-width: 0.42;
+  cursor: crosshair;
+}
+
+.hexCell:hover {
+  fill: rgba(255, 255, 255, 0.18);
+  stroke: rgba(255, 255, 255, 0.7);
+}
+
+.hexCellPlayable {
+  fill: rgba(168, 230, 191, 0.24);
+  stroke: rgba(168, 230, 191, 0.52);
+}
+
+.hexCellRegion {
+  fill: rgba(119, 166, 224, 0.34);
+}
+
+.hexCellPoint {
+  stroke: rgba(255, 219, 112, 0.9);
+  stroke-width: 1.1;
+}
+
+.hexCellActiveRegion {
+  fill: rgba(255, 211, 106, 0.38);
+  stroke: rgba(255, 236, 168, 0.95);
+  stroke-width: 1.25;
+}
+
+.hexCellActivePoint {
+  fill: rgba(210, 150, 255, 0.28);
+  stroke: rgba(237, 202, 255, 0.98);
+  stroke-width: 1.75;
+}
+
+.hexCellActiveFlag {
+  stroke: rgba(116, 231, 255, 0.98);
+  stroke-width: 1.55;
+  stroke-dasharray: 2 1.2;
+  filter: drop-shadow(0 0 3px rgba(116, 231, 255, 0.55));
+}
+
+.hexCellSelected {
+  fill: rgba(255, 219, 112, 0.65);
+  stroke: #fff4b8;
+  stroke-width: 1.4;
+}
+
+.hexLabel {
+  fill: #07120d;
+  font-size: 5px;
+  font-weight: 800;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.verticalLinkGroup {
+  pointer-events: none;
+}
+
+.verticalLinkLine {
+  stroke: #d7a8ff;
+  stroke-width: 2.2;
+  stroke-dasharray: 5 3;
+  opacity: 0.9;
+}
+
+.verticalLinkEndpoint {
+  fill: #f1d7ff;
+  stroke: #5e2b84;
+  stroke-width: 1.2;
+}
+
+.verticalLinkArrow {
+  fill: #d7a8ff;
+}
+
+.verticalLinkLabel {
+  fill: #f4ddff;
+  font-size: 6px;
+  font-weight: 800;
+  paint-order: stroke;
+  stroke: #06080b;
+  stroke-width: 2px;
+  text-anchor: middle;
+}
+
+.validationOk,
+.validationBad {
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.validationOk {
+  background: rgba(168, 230, 191, 0.16);
+  color: #a8e6bf;
+}
+
+.validationBad {
+  background: rgba(255, 105, 97, 0.15);
+  color: #ffb1aa;
+}
+
+.issueList {
+  border: 1px solid #263846;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-top: 8px;
+}
+
+.issueList summary {
+  cursor: pointer;
+  color: #c9d8e5;
+}
+
+.issueList ul {
+  padding-left: 18px;
+}
+
+.issueList li {
+  margin: 8px 0;
+}
+
+.issueList p {
+  margin: 4px 0 0;
+  color: #b8c9d9;
+}
+
+.auditActionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  margin-top: 6px;
+  border: 1px solid rgba(168, 230, 191, 0.34);
+  background: rgba(168, 230, 191, 0.08);
+  color: #bff0ce;
+  border-radius: 7px;
+  padding: 0 8px;
+  cursor: pointer;
+}
+
+.auditActionButton:hover {
+  border-color: #a8e6bf;
+  background: rgba(168, 230, 191, 0.16);
+}
+
+.cellDetails,
+.boundaryList {
+  display: grid;
+  gap: 8px;
+  color: #c8d8e6;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.86rem;
+}
+
+.boundaryList {
+  padding-left: 18px;
+  font-family: inherit;
+}
+
+.muted {
+  color: #8196aa;
+}
+
+.helpText {
+  color: #9db2c5;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin: 8px 0 0;
+}
+
+@media (max-width: 1180px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    max-height: none;
+  }
+}

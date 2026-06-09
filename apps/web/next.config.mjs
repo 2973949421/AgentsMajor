@@ -8,6 +8,13 @@ const nextConfig = {
   outputFileTracingRoot: resolve(packageRoot, "../.."),
   experimental: {
     webpackBuildWorker: false
+  },
+  webpack(config) {
+    config.resolve.extensionAlias = {
+      ...(config.resolve.extensionAlias ?? {}),
+      ".js": [".ts", ".tsx", ".js"]
+    };
+    return config;
   }
 };
 

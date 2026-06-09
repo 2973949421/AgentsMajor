@@ -2,6 +2,8 @@ import { z } from "zod";
 
 const nonEmptyString = z.string().min(1);
 const hexGridCoordinateValueSchema = z.number().int().min(0).max(49);
+export const hexLevelSchema = z.union([z.literal(-1), z.literal(0), z.literal(1)]);
+export type HexLevel = z.infer<typeof hexLevelSchema>;
 
 export const hexCoordinateSchema = z.object({
   col: hexGridCoordinateValueSchema,
@@ -68,6 +70,7 @@ export const hexCellSchema = z.object({
   cellId: nonEmptyString,
   col: hexGridCoordinateValueSchema,
   row: hexGridCoordinateValueSchema,
+  level: hexLevelSchema,
   playable: z.boolean(),
   terrain: hexTerrainSchema,
   flags: z.array(hexCellFlagSchema).default([]),
@@ -106,6 +109,20 @@ export const hexRouteHintSchema = z.object({
 });
 export type HexRouteHint = z.infer<typeof hexRouteHintSchema>;
 
+export const hexVerticalLinkTypeSchema = z.enum(["stairs", "ramp", "ladder", "drop", "jump"]);
+export type HexVerticalLinkType = z.infer<typeof hexVerticalLinkTypeSchema>;
+
+export const hexVerticalLinkSchema = z.object({
+  linkId: nonEmptyString,
+  fromCellId: nonEmptyString,
+  toCellId: nonEmptyString,
+  linkType: hexVerticalLinkTypeSchema,
+  apCostModifier: z.number().min(0),
+  oneWay: z.boolean(),
+  notes: nonEmptyString.optional()
+});
+export type HexVerticalLink = z.infer<typeof hexVerticalLinkSchema>;
+
 export const hexMapGridSchema = z.object({
   width: z.literal(50),
   height: z.literal(50),
@@ -129,11 +146,13 @@ export const hexMapAssetSchema = z.object({
   displayName: nonEmptyString,
   grid: hexMapGridSchema,
   apModel: hexMapApModelSchema,
+  levels: z.array(hexLevelSchema).nonempty(),
+  defaultLevel: hexLevelSchema,
   cells: z.array(hexCellSchema).min(1),
   regions: z.array(hexRegionSchema),
   points: z.array(hexPointSchema),
   routeHints: z.array(hexRouteHintSchema).default([]),
+  verticalLinks: z.array(hexVerticalLinkSchema).default([]),
   notes: z.array(nonEmptyString).default([])
 });
 export type HexMapAsset = z.infer<typeof hexMapAssetSchema>;
-
