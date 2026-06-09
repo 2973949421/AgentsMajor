@@ -1,12 +1,14 @@
-# Dust2 Hex Draft Asset
+# Dust2 Hex Assets
 
-This directory contains the first HexGrid draft assets for Dust2.
+This directory contains the HexGrid map assets for Dust2.
 
-`dust2-hex-map.draft.json` is the user-authored working draft. It is useful for manual editing history and validation, but it is not the recommended runtime candidate yet.
+`dust2-hex-map.json` is the official N23-sealed Dust2 Hex map asset. Runtime code from N24 onward should read this file.
 
-`dust2-hex-map.agent-refined.json` is the current cleaned audit candidate for N23. It is based on the draft, with region/point indexes normalized, CT spawn split into an explicit region, disconnected cells removed, and dirty connector semantics reduced.
+`dust2-hex-map.draft.json` is the user-authored working draft. It remains editable in `/hex-lab/editor` and must not be treated as the runtime source of truth.
 
-The draft assets validate:
+`backups/` contains historical audit snapshots. Backup files are not runtime inputs.
+
+The official asset validates:
 
 - 50x50 grid metadata.
 - First-version AP model: `10 cells = 1 AP`.
@@ -14,5 +16,11 @@ The draft assets validate:
 - A/B bombsite flags.
 - Region and point references.
 - Route hint references.
+- Three levels: `-1`, `0`, and `1`.
+- Explicit vertical links between levels.
 
-The final Dust2 Hex map should be reviewed and saved from `/hex-lab/editor` during N22/N23.
+Semantic contract:
+
+- Region is spatial context.
+- Point is tactical target.
+- Flag is the hard-rule authority for spawn, bombsite, cover, choke, and route hints.

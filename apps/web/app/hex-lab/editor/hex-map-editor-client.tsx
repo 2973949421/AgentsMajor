@@ -9,7 +9,7 @@ type EraserTarget = "cell" | "region" | "point" | "flag" | "vertical_link";
 type HexLevel = -1 | 0 | 1;
 type HexTerrain = "floor" | "obstacle" | "wall" | "void";
 type HexVerticalLinkType = "stairs" | "ramp" | "ladder" | "drop" | "jump";
-type HexEditorMapVariant = "draft" | "agent_refined";
+type HexEditorMapVariant = "draft" | "official";
 type HexCellFlag =
   | "playable"
   | "spawn_t"
@@ -179,10 +179,10 @@ const defaultMapVariants: HexEditorMapVariantOption[] = [
     description: "你的主编辑草稿。"
   },
   {
-    variant: "agent_refined",
-    label: "Agent 完善副本",
-    editable: true,
-    description: "基于当前草稿生成的审计副本。"
+    variant: "official",
+    label: "正式地图",
+    editable: false,
+    description: "N23 封板后的正式 Dust2 Hex 地图。可加载审计，不能通过普通保存覆盖。"
   }
 ];
 
@@ -356,6 +356,10 @@ export function HexMapEditorClient() {
   }
 
   async function saveMap() {
+    if (!selectedVariantOption.editable) {
+      setStatusMessage("正式地图是只读资产。请切回当前草稿后保存。");
+      return;
+    }
     if (!asset) {
       return;
     }
@@ -751,7 +755,7 @@ export function HexMapEditorClient() {
           <button type="button" className={styles.linkButton} onClick={clearLocalDraft}>
             清除暂存
           </button>
-          <button type="button" className={styles.primaryButton} onClick={() => void saveMap()} disabled={!asset}>
+          <button type="button" className={styles.primaryButton} onClick={() => void saveMap()} disabled={!asset || !selectedVariantOption.editable}>
             保存 JSON
           </button>
         </div>
@@ -772,7 +776,7 @@ export function HexMapEditorClient() {
             <div className={styles.infoBox}>
               <p><strong>{selectedVariantOption.label}</strong></p>
               <p>{selectedVariantOption.description}</p>
-              <p>切换版本会重新读取对应 JSON。保存 JSON 只写回当前版本，不会覆盖其他版本。</p>
+              <p>切换版本会重新读取对应 JSON。保存 JSON 只写回当前草稿，不会覆盖正式地图。</p>
             </div>
           </section>
 
@@ -1267,7 +1271,7 @@ export function HexMapEditorClient() {
 
           <section>
             <h2>审计概览</h2>
-            <details className={styles.issueList} open={selectedVariant === "agent_refined"}>
+            <details className={styles.issueList} open={selectedVariant === "official"}>
               <summary>区域 Region（大范围归属，{asset?.regions.length ?? 0}）</summary>
               {asset?.regions.length ? (
                 <ul>
@@ -1291,7 +1295,7 @@ export function HexMapEditorClient() {
                 <span className={styles.muted}>暂无区域。</span>
               )}
             </details>
-            <details className={styles.issueList} open={selectedVariant === "agent_refined"}>
+            <details className={styles.issueList} open={selectedVariant === "official"}>
               <summary>点位 Point（小位置/掩体，{asset?.points.length ?? 0}）</summary>
               {asset?.points.length ? (
                 <ul>
@@ -1337,7 +1341,7 @@ export function HexMapEditorClient() {
                 ))}
               </ul>
             </details>
-            <details className={styles.issueList} open={selectedVariant === "agent_refined"}>
+            <details className={styles.issueList} open={selectedVariant === "official"}>
               <summary>参考路线 Route Hint（{asset?.routeHints.length ?? 0}）</summary>
               {asset?.routeHints.length ? (
                 <ul>

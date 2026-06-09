@@ -556,3 +556,104 @@ N20 完成后，不直接写比赛逻辑；下一步进入 N21：HexGrid schema/
 - N24 pathfinding（寻路）必须把同层邻接和 `verticalLinks（跨层连接）` 分开处理。
 
 第一版只支持 `level = -1 / 0 / 1`。如果未来地图需要更多层级，必须先更新 schema、validator、editor 和 runtime contract（运行契约），不能在 runtime（运行时）里临时放宽。
+
+## 14. N23-N24 连续落地补充
+
+本节记录 N23-N24 的最新执行口径，优先级高于上方早期简略描述。
+
+### N23：Dust2 Hex Asset（Dust2 蜂巢地图资产）正式封板
+
+- `data/materials/processed/maps/dust2/hex/dust2-hex-map.json` 是 N24+ 默认运行资产。
+- `dust2-hex-map.draft.json` 只作为 `/hex-lab/editor` 的编辑草稿。
+- 临时审计资产必须移入 `backups/`，不能作为 runtime（运行时）输入。
+- 正式资产必须满足：schema（结构）通过、validator（校验器）通过、semantic rules（语义规则）通过、playable cells（可比赛格）全连通。
+- Editor（编辑器）可以加载 draft（草稿）和 official（正式地图），但普通保存只能写 draft，不能覆盖 official。
+
+### N24：Hex Pathfinding + AP（蜂巢寻路与行动点）
+
+- 同层移动按 HexGrid（蜂巢格）奇数列偏移六邻接计算。
+- 跨层移动只能通过 `verticalLinks（跨层连接）`，不能因同坐标不同 level（层级）而隐式穿层。
+- `oneWay=true` 只允许单向通过；`oneWay=false` 允许双向通过。
+- 路径结果必须可审计：reachable（可达）、cellIds、verticalLinkIds、cellDistance、failureReason。
+- AP（行动点）成本计算为 `cellDistance / cellsPerAp + verticalLinkCost`，默认 phase budget（阶段预算）为 `baseApPerPhase = 3`。
+- N24 只做 pathfinding/AP，不接 LLM（大语言模型）、不做 combat（战斗裁定）、不提交 Hex round（蜂巢回合）。
+
+### N25：Agent Phase Memory（智能体阶段记忆）
+
+N25 是 N26 每 agent 每 phase 调用 LLM（大语言模型）的前置状态层，不是 LLM 层、combat（战斗）层或提交层。
+
+- 新增 `packages/core/src/hex-engine/state/` 作为 Hex runtime（蜂巢运行时）状态模块。
+- `initializeHexRoundMemory()` 负责从官方 Hex map asset（蜂巢地图资产）和 agent 初始站位生成 `HexRoundMemory（蜂巢回合记忆）`。
+- `advanceHexPhaseMemory()` 负责用 phase event（阶段事件）推进下一 phase 的 agent 事实状态。
+- `buildHexAgentMemoryContext()` 负责生成 N26 prompt request（提示请求）可消费的 compact context（压缩上下文）。
+- 移动事件必须复用 N24 `validateHexMoveBudget()`，超 AP、不可走、未知 cell、dead agent 移动都会进入 `rejectedEvents（拒绝事件）`。
+- `knownEnemies（已知敌人）` 只来自明确发现、同区域接触或交火接触；未确认后降级为 `lastSeenEnemies（最后目击敌人）`。
+- `lastSeenEnemies` 必须被标记为历史信息，不能作为当前真实敌人位置。
+- C4 carrier（携带者）、planted（已下包）、plantedCell（下包格）、defused（已拆包）只做状态继承，不直接写 winner（胜负）。
+- N25 不改 official Dust2 asset，不改 AP 汇率，不改旧 Phase18，不引用旧 Node/Sector。
+
+### N26：Agent 每 phase LLM Harness（智能体逐阶段调用骨架）
+
+N26 是 HexGrid（蜂巢格）路线第一次把 agent action（智能体行动）接到 LLM（大语言模型）的阶段，但它仍然不是 combat（战斗裁定）层、winner（胜负）层或 round commit（回合提交）层。
+
+- 新增 `packages/core/src/hex-engine/action/` 作为 agent command（智能体命令）模块。
+- `buildHexAgentCommandRequest()` 从 N25 `HexRoundMemory（蜂巢回合记忆）` 和 N24 pathfinding/AP（寻路/行动点）构造单个 agent 的 request（请求）。
+- request 中的 `reachableCells（可达蜂巢格）` 必须由代码计算，LLM 不能猜路径。
+- `normalizeHexAgentActionDraft()` 只接受单个 action draft（行动草案），并记录 winner/kills/economy/db 等禁用字段为 ignored fields（忽略字段）。
+- `validateHexAgentActionDraft()` 负责硬校验：
+  - agent / phase / currentCell 匹配。
+  - targetCell 存在、playable、可达且不超 AP。
+  - actionType 合法。
+  - businessIntent 必填。
+  - plant/defuse 满足 C4、包点、阵营和 planted state 前置条件。
+- `runHexAgentPhaseCommandHarness()` 负责按当前 phase 遍历 agent：
+  - alive 且 AP > 0 才调用 provider（供应器）。
+  - dead 或 AP 为 0 直接 fallback。
+  - maxLlmCalls 超限直接 fallback 并写 audit。
+  - provider error 不阻断 phase，必须 fallback。
+  - request/response 可写 artifact（产物）。
+- 第一版支持 `fixture（夹具）` provider 和 `real（真实）` env provider。
+- N26 不写 memory 状态推进，不写击杀，不写伤害，不写 winner，不写经济变化，不写 DB。
+- N26 输出 validated actions、accepted/rejected/fallback audit、ignored fields 和 request/response artifact。
+
+### N27：Hex Combat Harness（蜂巢战斗裁定骨架）
+
+N27 是 HexGrid（蜂巢格）路线第一次把 N25 memory（记忆）和 N26 validated actions（已校验行动）接入局部 combat resolver（战斗裁定器）的阶段。它仍然不是 winner（胜负）层、economy（经济）层或 round commit（回合提交）层。
+
+- 新增 `packages/core/src/hex-engine/combat/` 作为 combat（战斗）模块。
+- `buildHexCombatContacts()` 负责从 `HexRoundMemory（蜂巢回合记忆）`、official Hex map asset（官方蜂巢地图资产）和 `HexValidatedAgentAction[]` 中识别 contact（交火接触）。
+- contact 第一版来源：
+  - 同 region（区域）。
+  - 同 point（点位）。
+  - 近距离 cell。
+  - 已知敌人 `knownEnemies`。
+  - 主动对抗行动：`peek`、`seek_duel`、`execute_site`、`retake`、`defuse_bomb`、`plant_bomb`、`map_control`。
+- `lastSeenEnemies（最后目击敌人）` 不能单独形成确定 contact。
+- `dead（死亡）` agent 不参与 combat。
+- `resolveHexCombat()` 负责按 `65% business evidence（商业证据） + 35% CS evidence（CS 证据）` 生成局部裁定。
+- `businessScore（商业分）` 包含：
+  - businessIntent 是否存在。
+  - businessIntent 是否匹配 actionType。
+  - 同区/同点位协同。
+  - 攻方是否解释突破/质疑，守方是否解释防守回应。
+  - 上一 phase action/business summary 是否支撑当前行动。
+- `csScore（CS 分）` 包含：
+  - 人数和 trade（补枪）支持。
+  - cell 距离。
+  - AP/path validator（行动点/路径校验）是否支持。
+  - cover/choke/high_risk/bombsite 等 map flag。
+  - lifeStatus。
+  - 主动压力动作。
+- `materializeHexCombatMemoryEvents()` 只输出 N25 可消费的 memory events：
+  - `life_status_changed`
+  - `enemy_spotted`
+  - `enemy_lost`
+  - `action_result`
+- `applyHexCombatVariance()` 第一版支持 audited variance（可审计微随机）：
+  - 默认关闭。
+  - 显式 `audited` 模式必须传 seed。
+  - 只在分差 `<= 5` 时应用。
+  - 最大波动 `±3`。
+  - audit 必须记录 before/after score、varianceDelta、reason。
+- N27 不调用真实 LLM，不写 final winner，不写 roundWinType，不写 economyDelta，不写 DB，不推进 phase，不提交 round。
+- N27 必须继续通过 architecture boundary（架构边界）测试，不能引用旧 Node/Sector 路线。

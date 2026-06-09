@@ -15,13 +15,19 @@ describe("HexMapValidator", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("accepts the cleaned Dust2 agent-refined hex map asset", () => {
-    const asset = loadAgentRefinedDust2HexMap();
+  it("accepts the official Dust2 hex map asset", () => {
+    const asset = loadOfficialDust2HexMap();
     const result = validateHexMapAsset(asset);
 
     expect(result.errors).toEqual([]);
     expect(result.warnings).toEqual([]);
     expect(result.ok).toBe(true);
+  });
+
+  it("keeps official Dust2 playable cells connected", () => {
+    const asset = loadOfficialDust2HexMap();
+
+    expect(countReachablePlayableCells(asset)).toBe(asset.cells.filter((cell) => cell.playable).length);
   });
 
   it("rejects duplicate cell ids", () => {
@@ -284,8 +290,8 @@ function loadDraftDust2HexMap(): HexMapAsset {
   return JSON.parse(raw) as HexMapAsset;
 }
 
-function loadAgentRefinedDust2HexMap(): HexMapAsset {
-  const raw = readFileSync(join(process.cwd(), "data/materials/processed/maps/dust2/hex/dust2-hex-map.agent-refined.json"), "utf8");
+function loadOfficialDust2HexMap(): HexMapAsset {
+  const raw = readFileSync(join(process.cwd(), "data/materials/processed/maps/dust2/hex/dust2-hex-map.json"), "utf8");
   return JSON.parse(raw) as HexMapAsset;
 }
 
@@ -312,4 +318,60 @@ function findCellWithoutLevelTwin(asset: HexMapAsset, targetLevel: number) {
 
 function toTestCellId(col: number, row: number, level: number): string {
   return `h_${String(col).padStart(2, "0")}_${String(row).padStart(2, "0")}_l${level}`;
+}
+
+function countReachablePlayableCells(asset: HexMapAsset): number {
+  const playableCells = asset.cells.filter((cell) => cell.playable);
+  const cellsById = new Map(playableCells.map((cell) => [cell.cellId, cell]));
+  const cellsByCoordinate = new Map(playableCells.map((cell) => [`${cell.col}:${cell.row}:${cell.level}`, cell]));
+  const visited = new Set<string>();
+  const queue = [playableCells[0]?.cellId].filter((cellId): cellId is string => Boolean(cellId));
+
+  while (queue.length > 0) {
+    const cellId = queue.shift()!;
+    if (visited.has(cellId)) {
+      continue;
+    }
+    visited.add(cellId);
+    const cell = cellsById.get(cellId);
+    if (!cell) {
+      continue;
+    }
+    for (const [col, row] of getNeighborCoordinates(cell.col, cell.row)) {
+      const neighbor = cellsByCoordinate.get(`${col}:${row}:${cell.level}`);
+      if (neighbor && !visited.has(neighbor.cellId)) {
+        queue.push(neighbor.cellId);
+      }
+    }
+    for (const link of asset.verticalLinks) {
+      if (link.fromCellId === cellId && cellsById.has(link.toCellId) && !visited.has(link.toCellId)) {
+        queue.push(link.toCellId);
+      }
+      if (!link.oneWay && link.toCellId === cellId && cellsById.has(link.fromCellId) && !visited.has(link.fromCellId)) {
+        queue.push(link.fromCellId);
+      }
+    }
+  }
+
+  return visited.size;
+}
+
+function getNeighborCoordinates(col: number, row: number): Array<[number, number]> {
+  return col % 2 === 1
+    ? [
+        [col + 1, row],
+        [col + 1, row + 1],
+        [col, row - 1],
+        [col, row + 1],
+        [col - 1, row],
+        [col - 1, row + 1]
+      ]
+    : [
+        [col + 1, row - 1],
+        [col + 1, row],
+        [col, row - 1],
+        [col, row + 1],
+        [col - 1, row - 1],
+        [col - 1, row]
+      ];
 }

@@ -267,6 +267,28 @@ AP 外的额外 timing（时机）限制应尽量少：
 - `alive/wounded/dead（三态）` 更容易审计。
 - 后续可增加第四态，但不走逐点 HP 模拟。
 
+#### 2.6.1 N25 Agent Phase Memory（智能体阶段记忆）落地契约
+
+N25 第一版已经把状态继承收口为代码事实层，不调用 LLM（大语言模型），不做 combat（战斗裁定），不写 winner（胜负）。
+
+核心原则：
+
+- `HexRoundMemory（蜂巢回合记忆）` 是 phase 之间传递事实的唯一运行时载体。
+- `HexAgentPhaseMemory（智能体阶段记忆）` 记录 agent 当前 cell/region/point、生命状态、AP、已知敌人、lastSeen、C4 和行动摘要。
+- agent 移动必须通过 Hex pathfinding/AP（蜂巢寻路/行动点）校验，不能直接改写 cell。
+- AP 每个 phase 重置，默认仍为 `3`；dead（死亡）agent 的 AP 为 `0`。
+- dead agent 不能继续移动或执行行动。
+- C4 状态只做继承与记录；下包、拆包不会在 N25 直接裁定 round winner。
+
+敌人信息边界：
+
+- `knownEnemies（已知敌人）` 只能来自明确事件：`enemy_spotted（发现敌人）`、combat contact（交火接触）或 same region contact（同区域接触）。
+- 未再次确认的 known enemy 在下一 phase 降级为 `lastSeenEnemies（最后目击敌人）`。
+- `lastSeenEnemies` 是历史信息，不是当前真实位置。
+- 第一版 lastSeen 置信度从 `0.65` 起，每过一个未确认 phase 衰减 `0.2`。
+- 置信度小于等于 `0.25` 或超过 2 个 phase 未确认时，标记为 `stale（过期）`。
+- N26 以后给 LLM 的 prompt context（提示上下文）必须明确标记 lastSeen 是历史信息，不能让 LLM 当成当前视野事实。
+
 ### 2.7 Combat 裁定原则
 
 Combat Resolver（战斗裁定器）不是纯 CS 枪法模拟，也不是纯文本裁判。
@@ -312,6 +334,51 @@ Combat 输出不能直接写最终 round winner，但可以输出：
 - 角色职责兑现情况。
 - 下一 phase 信息变化。
 
+#### 2.7.1 N27 Hex Combat Harness（蜂巢战斗裁定骨架）落地契约
+
+N27 第一版把 combat（战斗）收口为局部裁定层。它消费 N25 `HexRoundMemory（蜂巢回合记忆）` 和 N26 `HexValidatedAgentAction（已校验行动）`，输出 `HexCombatResolution（蜂巢战斗裁定）` 与可写回 memory（记忆）的事件，但不推进 phase、不写 round winner（回合胜负）、不写 economyDelta（经济变化）、不写 DB fact（数据库事实）。
+
+交火接触由代码识别，第一版触发条件包括：
+
+- 攻守双方 alive（存活）agent 的当前或目标 cell 落在同一 region（区域）。
+- 攻守双方当前或目标 point（点位）重叠。
+- 攻守双方目标 cell 距离处于近距离阈值内。
+- 行动属于主动对抗类：`peek`、`seek_duel`、`execute_site`、`retake`、`defuse_bomb`、`plant_bomb`、`map_control`。
+- `knownEnemies（已知敌人）` 可以形成 contact（接触）。
+- `lastSeenEnemies（最后目击敌人）` 只能作为弱证据，不能单独形成确定 contact。
+- dead（死亡）agent 不参与 contact，也不能被再次击杀。
+
+第一版评分采用固定 `65 / 35`：
+
+- `businessScore（商业证据分）` 满分 65：
+  - businessIntent（商业意图）存在且非空。
+  - businessIntent 与 actionType（动作类型）有明确对应。
+  - 多个队友围绕同一 region/point 协同。
+  - 攻方能解释质疑/突破点，守方能解释防守回应。
+  - 上一 phase 的 actionResult/businessExecutionSummary 支撑当前行动。
+- `csScore（CS 证据分）` 满分 35：
+  - 人数 / trade（补枪）支持。
+  - cell 距离与位置优势。
+  - AP 路径支持且行动已通过 validator。
+  - cover/choke/high_risk/bombsite 等地图 flag（标记）。
+  - lifeStatus：alive 优于 wounded，dead 不参与。
+  - peek / execute / retake 等主动压力动作。
+
+输出边界：
+
+- 允许输出局部 `casualties（伤亡）`：`killed（击杀）` 或 `wounded（受伤）`。
+- 允许输出 `suppression（压制）`、`forcedBack（逼退）`、`regionControlHint（区域控制提示）`。
+- 允许输出 `life_status_changed`、`enemy_spotted`、`enemy_lost`、`action_result` 等 memory event（记忆事件）。
+- 禁止输出 `winner`、`roundWinType`、`economyDelta`、`dbFact`、`roundReport`。
+- N27 不直接调用 `advanceHexPhaseMemory()`，后续 runner（推进器）决定何时把 combat events 写回下一 phase。
+
+第一版结果阈值：
+
+- 分差 `>= 12`：优势方可以造成 kill（击杀）或强压制。
+- 分差 `6-11`：优势方造成 wounded（受伤）、forcedBack（逼退）或 controlHint（控制提示）。
+- 分差 `< 6`：默认 contested/suppression（争夺/压制），不轻易击杀。
+- wounded agent 在压力分差中更容易被击杀，但仍不使用逐点 HP（生命值）模拟。
+
 ### 2.8 Audited Variance（可审计微随机）
 
 已确认采用 audited variance（可审计微随机），但必须受严格限制。
@@ -334,6 +401,9 @@ Combat 输出不能直接写最终 round winner，但可以输出：
 - 若局部证据差距在阈值内，启用小幅 audited variance。
 - variance 只影响局部 combat 输出，不直接决定 round winner。
 - `randomSeed（随机种子）`、`varianceApplied（是否应用波动）`、`varianceDelta（波动幅度）` 必须写入报告。
+- N27 第一版的 audited variance 默认关闭；显式开启时必须提供 seed（种子）。
+- N27 只允许在分差 `<= 5` 时应用 variance。
+- N27 variance 最大波动为 `±3`，且不能推翻明显优势。
 
 禁止：
 
@@ -434,6 +504,80 @@ businessIntent 可以短，但不能缺失。
 - fallback reason。
 - validator result。
 - AP 校验结果。
+
+#### 2.11.1 N26 Agent Command Harness（智能体命令调用骨架）落地契约
+
+N26 第一版把“每个 agent 每个 phase 调用一次 LLM”落实为可测试的调用骨架，但仍不推进 combat（战斗）、winner（胜负）或 round commit（回合提交）。
+
+调用对象：
+
+- 每个 `alive（存活）` 且 `apRemaining > 0` 的 agent 会得到一次 command request（命令请求）。
+- `dead（死亡）` agent 不调用 LLM，直接生成 `hold_position` fallback。
+- AP 为 0 且无有效动作空间的 agent 不调用 LLM，直接生成 fallback。
+- `maxLlmCalls` 可限制本 phase 调用上限，超限 agent 必须有 `max_llm_calls_reached` audit（审计）。
+
+request 必须包含：
+
+- 当前 `phaseId / phaseIndex`。
+- agent 当前 `cell / region / point / AP / lifeStatus / C4`。
+- `knownEnemies` 和明确标记为历史信息的 `lastSeenEnemies`。
+- `reachableCells`，由 Hex pathfinding/AP 计算得出，不由 LLM 猜测。
+- `allowedActionTypes`。
+- `bombState`。
+- 上一 phase 的 action/business summary。
+- constraints（约束），明确 LLM 只能输出行动草案。
+
+LLM draft 允许字段：
+
+- `agentId`
+- `phaseId`
+- `currentCellId`
+- `targetCellId`
+- `actionType`
+- `businessIntent`
+- `tacticalIntent`
+- `riskNotes`
+- `confidence`
+
+LLM draft 禁止字段：
+
+- winner / winnerTeamId / roundWinType。
+- kills / killLedger / casualties / damage。
+- bombPlanted / bombDefused。
+- economyDelta。
+- dbFact / roundReport。
+- hiddenEnemyPosition。
+
+校验顺序：
+
+1. `normalizeHexAgentActionDraft()` 只做字段归一化和 forbidden field（禁用字段）记录。
+2. `validateHexAgentActionDraft()` 执行代码硬校验：
+   - agent 必须存在。
+   - phase/currentCell 必须匹配。
+   - targetCell 必须存在且 playable。
+   - targetCell 必须能在当前 AP 内通过 Hex pathfinding 到达。
+   - actionType 必须合法。
+   - businessIntent 必填。
+   - 下包/拆包必须满足 C4、包点、阵营和 planted state（下包状态）前置条件。
+3. 合法 draft 才进入 accepted action。
+4. 非法 draft 必须 fallback，不得局部改写后偷偷接受。
+
+N26 不写：
+
+- 击杀事实。
+- 伤害事实。
+- 最终胜负。
+- 经济变化。
+- memory 状态推进。
+- DB 事实。
+
+N26 只输出：
+
+- validated action（已校验行动）。
+- request/response artifact。
+- accepted/rejected/fallback audit。
+- ignored fields。
+- provider error 和外部受限原因。
 
 ### 2.12 前端与报告要求
 

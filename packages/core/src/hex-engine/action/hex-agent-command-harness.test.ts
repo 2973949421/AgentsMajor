@@ -1,0 +1,211 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import type { Artifact } from "@agent-major/shared";
+import type { HexCell, HexMapAsset } from "@agent-major/shared";
+import { describe, expect, it } from "vitest";
+
+import type { ArtifactStore, ArtifactWriteInput } from "../../ports.js";
+import { initializeHexRoundMemory, type HexRoundMemory } from "../state/index.js";
+import {
+  createEnvHexAgentCommandProvider,
+  createFixtureHexAgentCommandProvider,
+  runHexAgentPhaseCommandHarness,
+  type HexAgentCommandProvider
+} from "./hex-agent-command-harness.js";
+
+describe("Hex agent command harness", () => {
+  it("calls fixture provider once for each actionable agent", async () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeMemory(asset);
+
+    const result = await runHexAgentPhaseCommandHarness({
+      asset,
+      memory,
+      provider: createFixtureHexAgentCommandProvider(),
+      providerMode: "fixture"
+    });
+
+    expect(result.totalCallsAttempted).toBe(10);
+    expect(result.actions).toHaveLength(10);
+    expect(result.acceptedActions).toHaveLength(10);
+    expect(result.fallbackCount).toBe(0);
+    expect(result.audits.every((audit) => audit.called && audit.accepted)).toBe(true);
+  });
+
+  it("skips dead and AP-empty agents without calling provider", async () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeMemory(asset);
+    memory.agents = memory.agents.map((agent) => {
+      if (agent.agentId === "t_0") {
+        return { ...agent, lifeStatus: "dead" as const, apRemaining: 0 };
+      }
+      if (agent.agentId === "t_1") {
+        return { ...agent, apRemaining: 0 };
+      }
+      return agent;
+    });
+
+    const result = await runHexAgentPhaseCommandHarness({
+      asset,
+      memory,
+      provider: createFixtureHexAgentCommandProvider(),
+      providerMode: "fixture"
+    });
+
+    expect(result.totalCallsAttempted).toBe(8);
+    expect(result.fallbackActions.map((action) => action.agentId)).toEqual(expect.arrayContaining(["t_0", "t_1"]));
+    expect(result.audits.filter((audit) => !audit.called)).toHaveLength(2);
+  });
+
+  it("falls back after max calls are exhausted", async () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeMemory(asset);
+
+    const result = await runHexAgentPhaseCommandHarness({
+      asset,
+      memory,
+      provider: createFixtureHexAgentCommandProvider(),
+      providerMode: "fixture",
+      maxLlmCalls: 3
+    });
+
+    expect(result.totalCallsAttempted).toBe(3);
+    expect(result.acceptedActions).toHaveLength(3);
+    expect(result.fallbackActions).toHaveLength(7);
+    expect(result.audits.filter((audit) => audit.fallbackReason === "max_llm_calls_reached")).toHaveLength(7);
+  });
+
+  it("records rejected drafts and forbidden fields without accepting bad output", async () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeMemory(asset);
+    const provider: HexAgentCommandProvider = (request) => ({
+      providerMode: "fixture",
+      modelId: "bad_fixture",
+      rawDraft: {
+        agentId: request.agent.agentId,
+        phaseId: request.phaseId,
+        currentCellId: request.agent.currentCellId,
+        targetCellId: "missing",
+        actionType: "move",
+        businessIntent: "bad fixture still includes business intent",
+        winner: "t",
+        kills: ["ct_0"]
+      }
+    });
+
+    const result = await runHexAgentPhaseCommandHarness({
+      asset,
+      memory,
+      provider,
+      providerMode: "fixture",
+      maxLlmCalls: 1
+    });
+
+    expect(result.totalCallsAttempted).toBe(1);
+    expect(result.acceptedActions).toHaveLength(0);
+    expect(result.fallbackActions.length).toBeGreaterThan(0);
+    expect(result.rejectedDrafts[0]?.errors).toEqual(expect.arrayContaining(["unknown_target_cell"]));
+    expect(result.rejectedDrafts[0]?.ignoredFields).toEqual(expect.arrayContaining(["winner", "kills"]));
+  });
+
+  it("falls back on provider error and keeps request artifact audit", async () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeMemory(asset);
+    const artifactStore = new MemoryArtifactStore();
+
+    const result = await runHexAgentPhaseCommandHarness({
+      asset,
+      memory,
+      provider: () => {
+        throw new Error("provider_down");
+      },
+      providerMode: "fixture",
+      maxLlmCalls: 1,
+      artifactStore,
+      artifactOwner: {
+        ownerType: "hex_test",
+        ownerId: "hex_test_owner"
+      }
+    });
+
+    expect(result.totalCallsAttempted).toBe(1);
+    expect(result.audits[0]?.requestArtifactId).toBe("artifact_1");
+    expect(result.audits[0]?.errors[0]).toContain("provider_error:provider_down");
+    expect(artifactStore.writes).toHaveLength(1);
+  });
+
+  it("returns disabled real provider when env is missing", async () => {
+    const factory = createEnvHexAgentCommandProvider({});
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeMemory(asset);
+
+    const result = await runHexAgentPhaseCommandHarness({
+      asset,
+      memory,
+      provider: factory.provider,
+      providerMode: factory.providerMode,
+      modelId: factory.modelId,
+      maxLlmCalls: 1
+    });
+
+    expect(result.audits[0]?.errors[0]).toContain("real_llm_disabled");
+    expect(result.audits[0]?.providerMode).toBe("real");
+  });
+});
+
+class MemoryArtifactStore implements ArtifactStore {
+  readonly writes: ArtifactWriteInput[] = [];
+
+  async write(input: ArtifactWriteInput): Promise<Artifact> {
+    this.writes.push(input);
+    return {
+      id: `artifact_${this.writes.length}`
+    } as Artifact;
+  }
+
+  async readText(): Promise<string> {
+    return "";
+  }
+}
+
+function loadOfficialDust2HexMap(): HexMapAsset {
+  const raw = readFileSync(join(process.cwd(), "data/materials/processed/maps/dust2/hex/dust2-hex-map.json"), "utf8");
+  return JSON.parse(raw) as HexMapAsset;
+}
+
+function initializeMemory(asset: HexMapAsset): HexRoundMemory {
+  return initializeHexRoundMemory({
+    asset,
+    agents: createAgents(asset),
+    bombCarrierAgentId: "t_0"
+  });
+}
+
+function createAgents(asset: HexMapAsset) {
+  const tCells = findCellsWithFlag(asset, "spawn_t");
+  const ctCells = findCellsWithFlag(asset, "spawn_ct");
+  return [
+    ...Array.from({ length: 5 }, (_, index) => ({
+      agentId: `t_${index}`,
+      teamId: "t",
+      side: "attack" as const,
+      startCellId: tCells[index % tCells.length]!.cellId,
+      carryingC4: index === 0
+    })),
+    ...Array.from({ length: 5 }, (_, index) => ({
+      agentId: `ct_${index}`,
+      teamId: "ct",
+      side: "defense" as const,
+      startCellId: ctCells[index % ctCells.length]!.cellId
+    }))
+  ];
+}
+
+function findCellsWithFlag(asset: HexMapAsset, flag: HexCell["flags"][number]): HexCell[] {
+  const cells = asset.cells.filter((cell) => cell.playable && cell.flags.includes(flag));
+  if (cells.length === 0) {
+    throw new Error(`Missing ${flag}`);
+  }
+  return cells;
+}

@@ -1,6 +1,6 @@
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -41,21 +41,29 @@ describe("HexMapEditor local draft IO", () => {
     expect(saved.regions.map((region) => region.regionId)).toEqual(["a_site", "b_site", "ct_spawn", "t_spawn"]);
   });
 
-  it("saves map variants without overwriting the default draft", async () => {
+  it("loads official maps without allowing editor saves to overwrite them", async () => {
     const projectRoot = tempProjectRoot();
     const draftAsset = createValidDraft();
     draftAsset.displayName = "Default Draft";
-    const refinedAsset = createValidDraft();
-    refinedAsset.displayName = "Agent Refined Draft";
+    const officialAsset = createValidDraft();
+    officialAsset.displayName = "Official Map";
 
     await saveHexEditorMap(draftAsset, "dust2", projectRoot, "draft");
-    const refinedPayload = await saveHexEditorMap(refinedAsset, "dust2", projectRoot, "agent_refined");
-    const defaultSaved = JSON.parse(readFileSync(getHexEditorDraftPath(projectRoot, "draft"), "utf8")) as typeof draftAsset;
-    const refinedSaved = JSON.parse(readFileSync(getHexEditorDraftPath(projectRoot, "agent_refined"), "utf8")) as typeof refinedAsset;
+    const officialPath = getHexEditorDraftPath(projectRoot, "official");
+    await import("node:fs/promises").then(async ({ mkdir, writeFile }) => {
+      await mkdir(dirname(officialPath), { recursive: true });
+      await writeFile(officialPath, `${JSON.stringify(officialAsset, null, 2)}\n`, "utf8");
+    });
 
-    expect(refinedPayload.variant).toBe("agent_refined");
+    const defaultSaved = JSON.parse(readFileSync(getHexEditorDraftPath(projectRoot, "draft"), "utf8")) as typeof draftAsset;
+    const officialPayload = await loadHexEditorMap("dust2", projectRoot, "official");
+
+    expect(officialPayload.variant).toBe("official");
+    expect(officialPayload.asset.displayName).toBe("Official Map");
     expect(defaultSaved.displayName).toBe("Default Draft");
-    expect(refinedSaved.displayName).toBe("Agent Refined Draft");
+    await expect(saveHexEditorMap(officialAsset, "dust2", projectRoot, "official")).rejects.toMatchObject({
+      code: "official_map_read_only"
+    });
   });
 
   it("migrates legacy two-dimensional editor drafts to level 0", async () => {
@@ -184,7 +192,8 @@ describe("HexMapEditor local draft IO", () => {
     expect(source).toContain("mapStats");
     expect(source).toContain("路线提示是参考");
     expect(source).toContain("50x50 是最大画布");
-    expect(source).toContain("agent_refined");
+    expect(source).toContain("official");
+    expect(source).toContain("正式地图");
     expect(source).toContain("地图版本");
     expect(source).toContain("审计概览");
     expect(source).not.toContain("node-graph.json");

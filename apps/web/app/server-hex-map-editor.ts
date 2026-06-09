@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+﻿import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
 import { validateHexMapAsset, type HexMapValidationResult } from "../../../packages/core/src/hex-engine/map/hex-map-validator";
@@ -16,7 +16,7 @@ import { findProjectRoot } from "./server-project-root";
 const supportedMapSlug = "dust2";
 const hexAssetRelativePaths = {
   draft: "data/materials/processed/maps/dust2/hex/dust2-hex-map.draft.json",
-  agent_refined: "data/materials/processed/maps/dust2/hex/dust2-hex-map.agent-refined.json"
+  official: "data/materials/processed/maps/dust2/hex/dust2-hex-map.json"
 } as const;
 export type HexEditorMapVariant = keyof typeof hexAssetRelativePaths;
 export const hexEditorMapVariants: Array<{ variant: HexEditorMapVariant; label: string; editable: boolean; description: string }> = [
@@ -24,13 +24,13 @@ export const hexEditorMapVariants: Array<{ variant: HexEditorMapVariant; label: 
     variant: "draft",
     label: "当前草稿",
     editable: true,
-    description: "你的主编辑草稿。保存 JSON 默认写入这里。"
+    description: "你的主编辑草稿。普通保存只写入这里。"
   },
   {
-    variant: "agent_refined",
-    label: "Agent 完善副本",
-    editable: true,
-    description: "基于当前草稿生成的审计副本，补充 Dust2 区域、点位和参考路线。"
+    variant: "official",
+    label: "正式地图",
+    editable: false,
+    description: "N23 封板后的 Dust2 Hex 正式地图。可加载审计，不能通过普通保存覆盖。"
   }
 ];
 const regionTypes = new Set(["a_site", "b_site", "mid", "long", "tunnel", "spawn", "rotate", "connector", "other"]);
@@ -80,6 +80,9 @@ export async function saveHexEditorMap(
 ): Promise<HexEditorMapPayload> {
   assertSupportedMapSlug(mapSlug);
   const resolvedVariant = assertSupportedVariant(variant);
+  if (resolvedVariant !== "draft") {
+    throw new HexEditorMapError("official_map_read_only", "Official Hex map assets are read-only in the editor. Save changes to draft first.");
+  }
   const asset = parseHexEditorMapAsset(input);
   if (asset.mapSlug !== supportedMapSlug) {
     throw new HexEditorMapError("unsupported_map_slug", `Hex editor can only save ${supportedMapSlug}.`);
@@ -264,7 +267,7 @@ function assertSupportedMapSlug(mapSlug: string): void {
 }
 
 function assertSupportedVariant(variant: string): HexEditorMapVariant {
-  if (variant === "draft" || variant === "agent_refined") {
+  if (variant === "draft" || variant === "official") {
     return variant;
   }
   throw new HexEditorMapError("unsupported_map_variant", `Hex editor does not support map variant: ${variant}`);
@@ -384,3 +387,4 @@ function requireString(value: unknown, path: string): string {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+
