@@ -1,0 +1,261 @@
+import type { Agent, MapGame, Match, Round, RoundReport, Team } from "@agent-major/shared";
+import { describe, expect, it } from "vitest";
+
+import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
+import type { HexRoundTrace } from "../round/index.js";
+import { buildHexRoundReport } from "./hex-round-report-bridge.js";
+
+describe("Hex round report bridge", () => {
+  it("builds a legacy-compatible RoundReport from a Hex trace reference", () => {
+    const createdAt = "2026-05-01T00:00:00.000Z";
+    const teamA = team("team_a", "Falcon", createdAt);
+    const teamB = team("team_b", "Vitallmty", createdAt);
+    const agentA = agent("agent_a", teamA.id, "entry", createdAt);
+    const agentB = agent("agent_b", teamB.id, "support", createdAt);
+    const trace = minimalTrace(agentA, teamA.id, teamB.id);
+    const report = buildHexRoundReport({
+      id: "report_round_hex_1",
+      match: match(teamA.id, teamB.id, createdAt),
+      mapGame: mapGame(createdAt),
+      round: round(createdAt),
+      roundNumber: 1,
+      teamA,
+      teamB,
+      scoreBeforeRound: { teamA: 0, teamB: 0 },
+      scoreAfterRound: { teamA: 1, teamB: 0 },
+      winnerTeamId: teamA.id,
+      loserTeamId: teamB.id,
+      roundWinType: "attack_elimination",
+      finalWinCondition: trace.finalWinCondition,
+      winnerAgents: [agentA],
+      activeAgents: [agentA, agentB],
+      economyDelta: emptyEconomyDelta(),
+      teamEconomyPlans: {
+        [teamA.id]: economyPlan(teamA.id, "attack", agentA.id),
+        [teamB.id]: economyPlan(teamB.id, "defense", agentB.id)
+      },
+      hexTraceArtifactId: "artifact_hex_trace_1",
+      createdAt,
+      eventIds: [
+        "evt_round_hex_1_hex_started",
+        "evt_round_hex_1_hex_trace_artifact",
+        "evt_round_hex_1_hex_committed",
+        "evt_round_hex_1_round_report_created",
+        "evt_round_hex_1_round_completed"
+      ],
+      hexTrace: trace
+    });
+
+    expect(report.nodeTraceSource).toBe("hex_round_engine_committed");
+    expect(report.nodeTraceArtifactId).toBe("artifact_hex_trace_1");
+    expect(report.judgeResult.winnerTeamId).toBe(teamA.id);
+    expect(report.judgeResult.reason).toBe(trace.finalWinCondition.reason);
+    expect(report.agentOutputs).toHaveLength(2);
+    expect(report.keyEvents[0]?.actorAgentId).toBe(agentA.id);
+    expect(report.eventProjection.coreEventsLinkedByRoundReport.map((event) => event.type)).toEqual([
+      "hex_round_experimental_started",
+      "hex_round_trace_artifact_created",
+      "hex_round_experimental_committed",
+      "round_report_created",
+      "round_completed"
+    ]);
+  });
+});
+
+function team(id: string, displayName: string, createdAt: string): Team {
+  return {
+    id,
+    tournamentId: "tournament_hex",
+    displayName,
+    shortName: displayName.slice(0, 3).toUpperCase(),
+    seed: id === "team_a" ? 1 : 2,
+    createdAt
+  };
+}
+
+function match(teamAId: string, teamBId: string, createdAt: string): Match {
+  return {
+    id: "match_hex",
+    tournamentId: "tournament_hex",
+    roundName: "final",
+    teamAId,
+    teamBId,
+    status: "running",
+    bestOf: 3,
+    teamAMapsWon: 0,
+    teamBMapsWon: 0,
+    scheduledOrder: 1,
+    createdAt,
+    startedAt: createdAt
+  };
+}
+
+function mapGame(createdAt: string): MapGame {
+  return {
+    id: "map_dust2",
+    matchId: "match_hex",
+    mapName: "Dust2",
+    order: 1,
+    status: "running",
+    runControlState: "idle",
+    teamAScore: 0,
+    teamBScore: 0,
+    currentRoundNumber: 0,
+    createdAt,
+    startedAt: createdAt
+  };
+}
+
+function round(createdAt: string): Round {
+  return {
+    id: "round_hex_1",
+    mapGameId: "map_dust2",
+    roundNumber: 1,
+    status: "completed",
+    phase: "committing",
+    teamAActiveAgentIds: ["agent_a"],
+    teamBActiveAgentIds: ["agent_b"],
+    winnerTeamId: "team_a",
+    roundReportId: "report_round_hex_1",
+    startedAt: createdAt,
+    completedAt: createdAt
+  };
+}
+
+function agent(id: string, teamId: string, role: string, createdAt: string): Agent {
+  return {
+    id,
+    teamId,
+    driverModelId: "driver_hex",
+    role,
+    displayName: id,
+    baseProfile: {
+      personalitySummary: `${id} profile`,
+      tacticalSummary: `${id} follows Hex constraints`,
+      styleTags: ["hex"]
+    },
+    currentState: "ready",
+    createdAt
+  } as Agent;
+}
+
+function economyPlan(teamId: string, side: "attack" | "defense", agentId: string): TeamEconomyPlan {
+  return {
+    teamId,
+    side,
+    phase: "pistol_round",
+    lossCount: 1,
+    posture: "pistol_round",
+    postureReason: "test",
+    summaryBuyType: "eco",
+    totalCash: 800,
+    dropDecisions: [],
+    decisions: [
+      {
+        agentId,
+        teamId,
+        tokenBankBefore: 800,
+        tokenBankAfterDrop: 800,
+        buyType: "eco",
+        economyPosture: "pistol_round",
+        loadoutPackage: "pistol_round_pack",
+        spend: 650,
+        outputBudget: 650,
+        dropSent: 0,
+        dropReceived: 0,
+        notes: []
+      }
+    ]
+  };
+}
+
+function emptyEconomyDelta(): RoundReport["economyDelta"] {
+  return {
+    agents: [],
+    teamTotals: { teamA: 0, teamB: 0 },
+    teamNetDelta: { teamA: 0, teamB: 0 },
+    teamLossCounts: { teamA: 0, teamB: 1 },
+    teamEconomyPostures: { teamA: "pistol_round", teamB: "pistol_round" }
+  };
+}
+
+function minimalTrace(agentA: Agent, attackTeamId: string, defenseTeamId: string): HexRoundTrace {
+  return {
+    schemaVersion: 1,
+    source: "hex_round_engine_trace",
+    roundId: "round_hex_1",
+    roundNumber: 1,
+    mapSlug: "dust2",
+    attackTeamId,
+    defenseTeamId,
+    economyContext: { teams: [], agents: [], warnings: [] },
+    phases: [
+      {
+        phaseId: "first_contact",
+        phaseIndex: 1,
+        memoryBefore: {} as HexRoundTrace["phases"][number]["memoryBefore"],
+        commandResult: {
+          actions: [
+            {
+              agentId: agentA.id,
+              teamId: agentA.teamId,
+              side: "attack",
+              phaseId: "first_contact",
+              currentCellId: "h_1_1_l0",
+              targetCellId: "h_1_2_l0",
+              actionType: "seek_duel",
+              apCost: 0.1,
+              businessIntent: "Test business pressure through first contact.",
+              riskNotes: [],
+              confidence: 0.8,
+              valid: true,
+              validationErrors: []
+            }
+          ],
+          acceptedActions: [],
+          fallbackActions: [],
+          rejectedDrafts: [],
+          audits: [],
+          totalCallsAttempted: 1,
+          fallbackCount: 0
+        },
+        combatContacts: [],
+        combatResolutions: [],
+        memoryEvents: [],
+        memoryAfter: {} as HexRoundTrace["phases"][number]["memoryAfter"],
+        winCondition: {
+          isRoundOver: true,
+          winnerSide: "attack",
+          winnerTeamId: attackTeamId,
+          loserTeamId: defenseTeamId,
+          roundWinType: "attack_elimination",
+          judgeRoundWinType: "attack_elimination",
+          reason: "Hex hard condition: all defense agents are dead.",
+          evidence: ["defenseAlive=0"],
+          phaseId: "first_contact",
+          phaseIndex: 1
+        }
+      }
+    ],
+    finalWinCondition: {
+      isRoundOver: true,
+      winnerSide: "attack",
+      winnerTeamId: attackTeamId,
+      loserTeamId: defenseTeamId,
+      roundWinType: "attack_elimination",
+      judgeRoundWinType: "attack_elimination",
+      reason: "Hex hard condition: all defense agents are dead.",
+      evidence: ["defenseAlive=0"],
+      phaseId: "first_contact",
+      phaseIndex: 1
+    },
+    audit: {
+      providerMode: "fixture",
+      modelId: "fixture_hex_agent_command",
+      totalLlmCallsAttempted: 1,
+      fallbackCount: 0,
+      combatResolutionCount: 0,
+      rejectedEventCount: 0
+    }
+  };
+}
