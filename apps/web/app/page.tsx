@@ -42,14 +42,58 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       : { hidden: false, message: "" };
 
   return (
-    <LiveReplayPlayer
-      matchId={requestedMatchId}
-      replay={normalizedReplay ? toLiveReplayData(normalizedReplay) : null}
-      runnerPolicy={webRunnerPolicy}
-      initialRunProgress={currentRun}
-      initialRunHistory={currentRun?.recentRuns ?? runHistory}
-      initialReplayGuard={initialReplayGuard}
-    />
+    <>
+      <nav
+        style={{
+          position: "fixed",
+          top: 12,
+          right: 12,
+          zIndex: 20,
+          display: "flex",
+          gap: 8
+        }}
+        aria-label="实验入口"
+      >
+        <a
+          href="/hex-lab/match"
+          style={{
+            border: "1px solid rgba(159, 219, 188, 0.55)",
+            borderRadius: 8,
+            background: "rgba(13, 17, 21, 0.9)",
+            color: "#dff6ea",
+            padding: "8px 10px",
+            textDecoration: "none",
+            fontSize: 13,
+            fontWeight: 700
+          }}
+        >
+          Hex Web 验收台
+        </a>
+        <a
+          href="/hex-lab/editor"
+          style={{
+            border: "1px solid rgba(159, 219, 188, 0.35)",
+            borderRadius: 8,
+            background: "rgba(13, 17, 21, 0.78)",
+            color: "#cce2ff",
+            padding: "8px 10px",
+            textDecoration: "none",
+            fontSize: 13,
+            fontWeight: 700
+          }}
+        >
+          Hex 地图编辑器
+        </a>
+      </nav>
+      <LiveReplayPlayer
+        matchId={requestedMatchId}
+        replay={normalizedReplay ? toLiveReplayData(normalizedReplay) : null}
+        runnerPolicy={webRunnerPolicy}
+        initialRunProgress={currentRun}
+        initialRunHistory={currentRun?.recentRuns ?? runHistory}
+        initialReplayGuard={initialReplayGuard}
+      />
+    </>
   );
 }
 

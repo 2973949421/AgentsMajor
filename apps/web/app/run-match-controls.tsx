@@ -15,7 +15,9 @@ export type RunMode =
   | "phase18_keep_generating_map"
   | "phase18_full_bo3"
   | "phase20_node_round_experimental"
-  | "phase20_node_map_experimental";
+  | "phase20_node_map_experimental"
+  | "phase20_hex_round_experimental"
+  | "phase20_hex_map_experimental";
 type RunRetryMode = "full_round" | "resume_from_stage";
 type AnyRunMode = RunMode | "phase17_showcase_match";
 type ResetScope = "round" | "map" | "match";
@@ -1097,6 +1099,12 @@ function formatExpectedCalls(progress: WebRunProgress): string {
   if (progress.mode === "phase20_node_map_experimental") {
     return "节点化实验地图，不调用旧 Phase18 LLM stage";
   }
+  if (progress.mode === "phase20_hex_round_experimental") {
+    return "Hex 实验单回合，不调用旧 Phase18 LLM stage";
+  }
+  if (progress.mode === "phase20_hex_map_experimental") {
+    return "Hex 实验地图，不调用旧 Phase18 LLM stage";
+  }
   return progress.llmSummary.expectedTotalCalls > 0 ? `约 ${progress.llmSummary.expectedTotalCalls} 次` : "按需调用";
 }
 
@@ -1107,7 +1115,9 @@ function isPhase18Mode(mode: AnyRunMode): mode is RunMode {
     mode === "phase18_keep_generating_map" ||
     mode === "phase18_full_bo3" ||
     mode === "phase20_node_round_experimental" ||
-    mode === "phase20_node_map_experimental"
+    mode === "phase20_node_map_experimental" ||
+    mode === "phase20_hex_round_experimental" ||
+    mode === "phase20_hex_map_experimental"
   );
 }
 
@@ -1142,6 +1152,10 @@ function runStartMessage(mode: RunMode): string {
       return "开始执行节点化实验单回合；本模式不会接入一直生成。";
     case "phase20_node_map_experimental":
       return "开始执行节点化实验地图；本模式只运行当前 Dust2 地图。";
+    case "phase20_hex_round_experimental":
+      return "开始执行 Hex 实验单回合；本模式不替换旧 Phase18 主线。";
+    case "phase20_hex_map_experimental":
+      return "开始执行 Hex 实验地图；本模式只运行当前 Dust2 地图。";
     default:
       return "开始执行 Phase 1.8 整场 BO3 真实 LLM 生成...";
   }
