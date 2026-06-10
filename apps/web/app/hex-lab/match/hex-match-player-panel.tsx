@@ -21,7 +21,7 @@ export function HexMatchPlayerPanel(props: HexMatchPlayerPanelProps) {
     <section className={`${styles.teamColumn} ${props.side === "attack" ? styles.attackColumn : styles.defenseColumn}`}>
       <div className={styles.teamHeader}>
         <div>
-          <span>{props.side === "attack" ? "T / attack" : "CT / defense"}</span>
+          <span>{props.side === "attack" ? "T / ATTACK" : "CT / DEFENSE"}</span>
           <h2>{props.title}</h2>
         </div>
         <strong>{orderedPlayers.length}/5</strong>
@@ -41,19 +41,17 @@ export function HexMatchPlayerPanel(props: HexMatchPlayerPanelProps) {
                 <strong>{player.displayName ?? shortId(player.agentId)}</strong>
                 <em>{statusLabel(player.lifeStatus)}</em>
               </span>
+              <span className={styles.playerRole}>{player.roleLabel}</span>
               <span className={styles.playerLocation}>
                 {player.currentRegionName ?? player.currentRegionId ?? "未分区"}
                 {player.currentPointNames.length > 0 ? ` / ${player.currentPointNames.join(", ")}` : ""}
               </span>
-              <span className={styles.playerMeta}>
-                L{player.level ?? "?"} / {player.currentCellId}
-              </span>
-              <span className={styles.playerMeta}>
-                AP {player.apSpent.toFixed(1)} / {player.apBudget.toFixed(1)}，剩余 {player.apRemaining.toFixed(1)}
-              </span>
-              <span className={styles.playerMeta}>
-                {player.buyType ?? "buy?"} / {player.resourceTier ?? "resource?"} / {player.utilityTier ?? "utility?"}
-                {player.dropReceived ? ` / drop +${player.dropReceived}` : ""}
+              <span className={styles.playerGrid}>
+                <b>KDA</b><span>{player.kda}</span>
+                <b>ECO</b><span>{player.buyType ?? "?"} / {player.resourceTier ?? "?"}</span>
+                <b>AP</b><span>{player.apSpent.toFixed(1)} / {player.apBudget.toFixed(1)}，剩余 {player.apRemaining.toFixed(1)}</span>
+                <b>位置</b><span>L{player.level ?? "?"} / {player.currentCellId}</span>
+                <b>本局花费</b><span>{player.spend ?? 0}</span>
               </span>
               <span className={styles.playerAction}>
                 {player.actionType ?? "无 action"}
@@ -61,6 +59,7 @@ export function HexMatchPlayerPanel(props: HexMatchPlayerPanelProps) {
               </span>
               <span className={styles.playerBadges}>
                 {player.carryingC4 ? <b>C4</b> : null}
+                {player.dropReceived ? <b>drop +{player.dropReceived}</b> : null}
                 {player.lastSeenEnemyCount > 0 ? <b>lastSeen {player.lastSeenEnemyCount}</b> : null}
                 {player.validAction === false ? <b>fallback</b> : null}
               </span>
@@ -69,7 +68,7 @@ export function HexMatchPlayerPanel(props: HexMatchPlayerPanelProps) {
             </button>
           );
         })}
-        {orderedPlayers.length === 0 ? <p className={styles.emptyInline}>选择一个 round / phase 后查看选手状态。</p> : null}
+        {orderedPlayers.length === 0 ? <p className={styles.emptyInline}>选择 round / phase 后查看选手状态。</p> : null}
       </div>
     </section>
   );

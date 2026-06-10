@@ -15,9 +15,10 @@ describe("Hex agent action validator", () => {
     const asset = loadOfficialDust2HexMap();
     const memory = initializeMemory(asset);
     const request = buildHexAgentCommandRequest({ asset, memory, agentId: "t_0" });
+    const target = request.reachableCells.find((cell) => cell.cellId !== request.agent.currentCellId)!;
     const draft = buildDraft(request, {
       actionType: "move",
-      targetCellId: request.reachableCells[0]!.cellId
+      targetCellId: target.cellId
     });
 
     const validated = validateHexAgentActionDraft({ asset, memory, draft });
@@ -25,6 +26,33 @@ describe("Hex agent action validator", () => {
     expect(validated.valid).toBe(true);
     expect(validated.apCost).toBeGreaterThanOrEqual(0);
     expect(validated.validationErrors).toEqual([]);
+  });
+
+  it("rejects move actions that do not change position while allowing explicit holds", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeMemory(asset);
+    const request = buildHexAgentCommandRequest({ asset, memory, agentId: "t_0" });
+
+    const move = validateHexAgentActionDraft({
+      asset,
+      memory,
+      draft: buildDraft(request, {
+        actionType: "move",
+        targetCellId: request.agent.currentCellId
+      })
+    });
+    const hold = validateHexAgentActionDraft({
+      asset,
+      memory,
+      draft: buildDraft(request, {
+        actionType: "hold_position",
+        targetCellId: request.agent.currentCellId
+      })
+    });
+
+    expect(move.validationErrors).toContain("move_requires_position_change");
+    expect(move.valid).toBe(false);
+    expect(hold.valid).toBe(true);
   });
 
   it("rejects economy-disallowed actions without bypassing path or AP validation", () => {

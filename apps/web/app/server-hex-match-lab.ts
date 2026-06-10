@@ -6,6 +6,7 @@ import {
   commitDust2HexRoundExperimental,
   loadOfficialDust2HexMap,
   runDust2HexMapExperimental,
+  type HexAgentCommandProgressEvent,
   type HexMapExperimentalSummary,
   type HexRoundTrace
 } from "@agent-major/core";
@@ -104,6 +105,40 @@ export interface HexMatchLabRunProgressStatus {
   callsAttempted: number;
 }
 
+export interface HexMatchLabLiveRunStatus {
+  runId: string;
+  status: HexMatchLabRunStatus;
+  mapGameId?: string | undefined;
+  currentStep: string;
+  latestEvent?: string | undefined;
+  latestError?: string | undefined;
+  startedAt: string;
+  completedAt?: string | undefined;
+  elapsedMs: number;
+  callsAttempted: number;
+  expectedCalls: number;
+  slots: HexMatchLabLiveCallSlot[];
+  progress?: HexMatchLabProgress | undefined;
+}
+
+export interface HexMatchLabLiveCallSlot {
+  phaseId: string;
+  phaseIndex: number;
+  agentId: string;
+  callId: string;
+  callIndex: number;
+  expectedCalls: number;
+  status: string;
+  requestArtifactId?: string | undefined;
+  responseArtifactId?: string | undefined;
+  repairedFields: string[];
+  errors: string[];
+  fallbackReason?: string | undefined;
+  providerMode?: string | undefined;
+  modelId?: string | undefined;
+  updatedAt: string;
+}
+
 export interface HexMatchLabProgress {
   status: HexMatchLabRunStatus;
   runStatus: HexMatchLabRunProgressStatus;
@@ -120,7 +155,7 @@ export interface HexMatchLabProgress {
   writesDb: true;
   replacesLegacyRoundPath: false;
   llmCannotWriteFinalWinner: true;
-  mapAssetView: HexMatchLabMapAssetView;
+  mapAssetView?: HexMatchLabMapAssetView | undefined;
   mapOptions: HexMatchLabMapOption[];
   mapSummary?: HexMatchLabMapSummary | undefined;
   roundSummaries: HexMatchLabRoundSummary[];
@@ -192,6 +227,8 @@ export interface HexMatchLabPhaseSummary {
 export interface HexMatchLabPlayerCard {
   agentId: string;
   displayName?: string | undefined;
+  roleLabel: string;
+  kda: string;
   teamId: string;
   side: string;
   lifeStatus: string;
@@ -218,6 +255,7 @@ export interface HexMatchLabPlayerCard {
   utilityTier?: string | undefined;
   outputBudget?: number | undefined;
   dropReceived?: number | undefined;
+  spend?: number | undefined;
 }
 
 export interface HexMatchLabActionSummary {
@@ -264,6 +302,7 @@ export interface HexMatchLabEconomySummary {
     resourceTier?: string | undefined;
     utilityTier?: string | undefined;
     outputBudget?: number | undefined;
+    spend?: number | undefined;
     dropSent?: number | undefined;
     dropReceived?: number | undefined;
   }>;
@@ -309,9 +348,29 @@ interface ReadProgressInput {
   mapGameId?: string | null;
   summaryArtifactId?: string | null;
   roundTraceArtifactId?: string | null;
+  includeMapAsset?: boolean | null;
 }
 
 type Row = Record<string, unknown>;
+type AgentIdentity = {
+  displayName: string;
+  roleLabel: string;
+};
+
+type LiveRunRecord = Omit<HexMatchLabLiveRunStatus, "elapsedMs"> & {
+  startedAtMs: number;
+};
+
+const liveRuns = getLiveRunStore();
+
+function getLiveRunStore(): Map<string, LiveRunRecord> {
+  const key = "__agentMajorHexMatchLiveRuns";
+  const globalScope = globalThis as typeof globalThis & {
+    [key]?: Map<string, LiveRunRecord>;
+  };
+  globalScope[key] ??= new Map<string, LiveRunRecord>();
+  return globalScope[key]!;
+}
 
 export function normalizeHexMatchLabRunRequest(value: unknown): HexMatchLabRunRequest {
   const record = parseRecord(value) ?? {};
@@ -440,7 +499,7 @@ async function readHexMatchLabProgress(input: ReadProgressInput & {
   repositories: SqliteRepositoryBundle;
   providerMode: HexMatchLabProviderMode;
 }): Promise<HexMatchLabProgress> {
-  const mapAssetView = buildMapAssetView(loadOfficialDust2HexMap());
+  const mapAssetView = input.includeMapAsset ? buildMapAssetView(loadOfficialDust2HexMap()) : undefined;
   const mapOptions = listDust2MapOptions(input.repositories);
   const mapGameId = input.mapGameId
     ?? findMapGameIdBySummaryArtifact(input.repositories, input.summaryArtifactId ?? undefined)
@@ -469,9 +528,9 @@ async function readHexMatchLabProgress(input: ReadProgressInput & {
   const selectedTraceArtifactId = input.roundTraceArtifactId
     ?? roundSummaries.at(-1)?.hexTraceArtifactId
     ?? mapSummary?.summary.rounds.at(-1)?.hexTraceArtifactId;
-  const agentNames = readAgentDisplayNames(input.repositories, mapGame.matchId);
+  const agentIdentities = readAgentIdentities(input.repositories, mapGame.matchId);
   const selectedTrace = selectedTraceArtifactId
-    ? await readRoundTraceDetail(input.repositories, input.projectRoot, selectedTraceArtifactId, roundSummaries, agentNames)
+    ? await readRoundTraceDetail(input.repositories, input.projectRoot, selectedTraceArtifactId, roundSummaries, agentIdentities)
     : undefined;
   const callsAttempted = selectedTrace?.audit.totalLlmCallsAttempted ?? 0;
   const latestError = toCompletedMapHint(mapGame.status);
@@ -501,7 +560,7 @@ async function readHexMatchLabProgress(input: ReadProgressInput & {
     writesDb: true,
     replacesLegacyRoundPath: false,
     llmCannotWriteFinalWinner: true,
-    mapAssetView,
+    ...(mapAssetView ? { mapAssetView } : {}),
     mapOptions,
     ...(mapSummary
       ? {
@@ -524,7 +583,7 @@ async function readHexMatchLabProgress(input: ReadProgressInput & {
 
 function emptyProgress(
   providerMode: HexMatchLabProviderMode,
-  mapAssetView: HexMatchLabMapAssetView,
+  mapAssetView: HexMatchLabMapAssetView | undefined,
   mapOptions: HexMatchLabMapOption[],
   latestError: string
 ): HexMatchLabProgress {
@@ -543,7 +602,7 @@ function emptyProgress(
     writesDb: true,
     replacesLegacyRoundPath: false,
     llmCannotWriteFinalWinner: true,
-    mapAssetView,
+    ...(mapAssetView ? { mapAssetView } : {}),
     mapOptions,
     roundSummaries: []
   };
@@ -715,13 +774,13 @@ async function readRoundTraceDetail(
   projectRoot: string,
   artifactId: string,
   summaries: HexMatchLabRoundSummary[],
-  agentNames: Map<string, string>
+  agentIdentities: Map<string, AgentIdentity>
 ): Promise<HexMatchLabRoundTraceDetail | undefined> {
   try {
     const raw = JSON.parse(await readArtifactText(repositories, projectRoot, artifactId)) as unknown;
     const trace = unwrapHexRoundTrace(raw);
     const fallbackSummary = summaries.find((round) => round.hexTraceArtifactId === artifactId);
-    return summarizeTrace(artifactId, trace, fallbackSummary, loadOfficialDust2HexMap(), agentNames);
+    return summarizeTrace(artifactId, trace, fallbackSummary, loadOfficialDust2HexMap(), agentIdentities);
   } catch {
     return undefined;
   }
@@ -837,7 +896,7 @@ function summarizeTrace(
   trace: HexRoundTrace,
   fallbackSummary: HexMatchLabRoundSummary | undefined,
   asset: HexMapAsset,
-  agentNames: Map<string, string>
+  agentIdentities: Map<string, AgentIdentity>
 ): HexMatchLabRoundTraceDetail {
   const roundSummary: HexMatchLabRoundSummary = fallbackSummary ?? {
     roundNumber: trace.roundNumber,
@@ -848,7 +907,7 @@ function summarizeTrace(
     finalHardCondition: summarizeHardCondition(trace.finalWinCondition)
   };
   const economySummary = summarizeEconomy(trace.economyContext);
-  const phaseSummaries = trace.phases.map((phase) => summarizePhase(phase, asset, economySummary, agentNames));
+  const phaseSummaries = trace.phases.map((phase) => summarizePhase(phase, asset, economySummary, agentIdentities));
   return {
     ...roundSummary,
     hexTraceArtifactId: artifactId,
@@ -863,7 +922,7 @@ function summarizePhase(
   phase: HexRoundTrace["phases"][number],
   asset: HexMapAsset,
   economySummary: HexMatchLabEconomySummary[],
-  agentNames: Map<string, string>
+  agentIdentities: Map<string, AgentIdentity>
 ): HexMatchLabPhaseSummary {
   const agentsAfter = phase.memoryAfter.agents;
   const aliveAttackCount = agentsAfter.filter((agent) => agent.side === "attack" && agent.lifeStatus !== "dead").length;
@@ -927,7 +986,7 @@ function summarizePhase(
       actions,
       asset,
       economySummary,
-      agentNames
+      agentIdentities
     }),
     llmAudit,
     memoryBeforeSummary: summarizeMemory(phase.memoryBefore),
@@ -952,6 +1011,146 @@ function summarizeTraceAudit(trace: HexRoundTrace): HexMatchLabLlmAuditSummary {
     repairedFields: uniqueStrings(phaseAudits.flatMap((audit) => audit.repairedFields ?? [])),
     fallbackReasons: uniqueStrings(phaseAudits.map((audit) => audit.fallbackReason)),
     providerErrors: uniqueStrings(phaseAudits.flatMap((audit) => audit.errors).filter((error) => error.startsWith("provider_error")))
+  };
+}
+
+export function readHexMatchLabMapAssetView(): HexMatchLabMapAssetView {
+  return buildMapAssetView(loadOfficialDust2HexMap());
+}
+
+export async function startHexMatchLabLiveRun(request: HexMatchLabRunRequest): Promise<HexMatchLabLiveRunStatus> {
+  const runId = `hex_live_${Date.now()}_${randomUUID().slice(0, 8)}`;
+  const startedAt = new Date().toISOString();
+  const record: LiveRunRecord = {
+    runId,
+    status: "running",
+    mapGameId: request.mapGameId,
+    currentStep: "启动 Hex real LLM 验收运行",
+    startedAt,
+    startedAtMs: Date.now(),
+    callsAttempted: 0,
+    expectedCalls: 0,
+    slots: []
+  };
+  liveRuns.set(runId, record);
+  void runHexMatchLabLiveRun(runId, request);
+  return materializeLiveRunStatus(record);
+}
+
+export function readHexMatchLabLiveRun(runId: string): HexMatchLabLiveRunStatus | undefined {
+  const record = liveRuns.get(runId);
+  return record ? materializeLiveRunStatus(record) : undefined;
+}
+
+async function runHexMatchLabLiveRun(runId: string, request: HexMatchLabRunRequest): Promise<void> {
+  const record = liveRuns.get(runId);
+  if (!record) return;
+  const projectRoot = findProjectRoot(process.cwd());
+  const repositories = createSqliteRepositories(resolve(projectRoot, defaultSqlitePath));
+  try {
+    const mapGameId = request.mapGameId ?? findLatestDust2MapGameId(repositories, { activeOnly: true });
+    if (!mapGameId) {
+      throw new Error("没有找到可运行的 active Dust2 mapGame。请先新建 Hex 验收比赛，或传入 mapGameId。");
+    }
+    record.mapGameId = mapGameId;
+    record.currentStep = request.scope === "round" ? "提交下一回合" : "提交当前地图";
+    const artifactStore = new ServerLocalArtifactStore(projectRoot, repositories.artifacts);
+    const env = loadRootLocalEnv(projectRoot, process.env);
+    const progressSink = async (event: HexAgentCommandProgressEvent) => {
+      appendLiveProgressEvent(runId, event);
+    };
+    if (request.scope === "round") {
+      await commitDust2HexRoundExperimental({
+        repositories,
+        artifactStore,
+        mapGameId,
+        enableExperimentalMode: true,
+        providerMode: request.providerMode,
+        maxLlmCallsPerPhase: request.maxLlmCallsPerPhase,
+        env,
+        progressSink
+      });
+    } else {
+      await runDust2HexMapExperimental({
+        repositories,
+        artifactStore,
+        mapGameId,
+        enableExperimentalMode: true,
+        providerMode: request.providerMode,
+        maxRounds: request.maxRounds,
+        maxLlmCallsPerPhase: request.maxLlmCallsPerPhase,
+        env
+      });
+    }
+    record.progress = await readHexMatchLabProgress({
+      mapGameId,
+      projectRoot,
+      repositories,
+      providerMode: request.providerMode
+    });
+    record.status = "completed";
+    record.currentStep = request.scope === "round" ? "下一回合提交完成" : "地图运行完成";
+    record.completedAt = new Date().toISOString();
+  } catch (error) {
+    const productError = toProductError(error);
+    record.status = "failed";
+    record.currentStep = "运行失败";
+    record.latestError = productError.message;
+    record.completedAt = new Date().toISOString();
+  } finally {
+    repositories.close();
+  }
+}
+
+function appendLiveProgressEvent(runId: string, event: HexAgentCommandProgressEvent): void {
+  const record = liveRuns.get(runId);
+  if (!record) return;
+  const now = new Date().toISOString();
+  const existing = record.slots.find((slot) => slot.callId === event.callId);
+  const nextSlot: HexMatchLabLiveCallSlot = {
+    phaseId: event.phaseId,
+    phaseIndex: event.phaseIndex,
+    agentId: event.agentId,
+    callId: event.callId,
+    callIndex: event.callIndex,
+    expectedCalls: event.expectedCalls,
+    status: event.status,
+    requestArtifactId: event.requestArtifactId ?? existing?.requestArtifactId,
+    responseArtifactId: event.responseArtifactId ?? existing?.responseArtifactId,
+    repairedFields: uniqueStrings([...(existing?.repairedFields ?? []), ...(event.repairedFields ?? [])]),
+    errors: uniqueStrings([...(existing?.errors ?? []), ...(event.errors ?? [])]),
+    fallbackReason: event.fallbackReason ?? existing?.fallbackReason,
+    providerMode: event.providerMode ?? existing?.providerMode,
+    modelId: event.modelId ?? existing?.modelId,
+    updatedAt: now
+  };
+  record.slots = existing
+    ? record.slots.map((slot) => slot.callId === event.callId ? nextSlot : slot)
+    : [...record.slots, nextSlot];
+  record.expectedCalls = Math.max(record.expectedCalls, event.expectedCalls);
+  record.callsAttempted = record.slots.filter((slot) =>
+    ["running", "request_artifact_written", "response_artifact_written", "accepted", "repaired", "rejected", "fallback", "provider_error"].includes(slot.status)
+  ).length;
+  record.currentStep = `${event.phaseId} / ${event.agentId} / ${event.status}`;
+  record.latestEvent = event.message ?? `${event.agentId}: ${event.status}`;
+}
+
+function materializeLiveRunStatus(record: LiveRunRecord): HexMatchLabLiveRunStatus {
+  const elapsedMs = (record.completedAt ? Date.parse(record.completedAt) : Date.now()) - record.startedAtMs;
+  return {
+    runId: record.runId,
+    status: record.status,
+    mapGameId: record.mapGameId,
+    currentStep: record.currentStep,
+    latestEvent: record.latestEvent,
+    latestError: record.latestError,
+    startedAt: record.startedAt,
+    completedAt: record.completedAt,
+    elapsedMs: Math.max(0, elapsedMs),
+    callsAttempted: record.callsAttempted,
+    expectedCalls: record.expectedCalls,
+    slots: [...record.slots].sort((a, b) => a.phaseIndex - b.phaseIndex || a.callIndex - b.callIndex || a.agentId.localeCompare(b.agentId)),
+    progress: record.progress
   };
 }
 
@@ -980,7 +1179,7 @@ function buildPlayerCards(input: {
   actions: HexMatchLabActionSummary[];
   asset: HexMapAsset;
   economySummary: HexMatchLabEconomySummary[];
-  agentNames: Map<string, string>;
+  agentIdentities: Map<string, AgentIdentity>;
 }): HexMatchLabPlayerCard[] {
   const cells = new Map(input.asset.cells.map((cell) => [cell.cellId, cell]));
   const regions = new Map(input.asset.regions.map((region) => [region.regionId, region]));
@@ -994,7 +1193,9 @@ function buildPlayerCards(input: {
     const action = actionByAgent.get(agent.agentId);
     return {
       agentId: agent.agentId,
-      displayName: input.agentNames.get(agent.agentId),
+      displayName: input.agentIdentities.get(agent.agentId)?.displayName,
+      roleLabel: input.agentIdentities.get(agent.agentId)?.roleLabel ?? "role unknown",
+      kda: "0/0/0",
       teamId: agent.teamId,
       side: agent.side,
       lifeStatus: agent.lifeStatus,
@@ -1020,7 +1221,8 @@ function buildPlayerCards(input: {
       resourceTier: economy?.resourceTier,
       utilityTier: economy?.utilityTier,
       outputBudget: economy?.outputBudget,
-      dropReceived: economy?.dropReceived
+      dropReceived: economy?.dropReceived,
+      spend: economy?.spend
     };
   });
 }
@@ -1049,20 +1251,83 @@ function summarizeEconomy(economy: HexRoundTrace["economyContext"]): HexMatchLab
       resourceTier: agent.resourceTier,
       utilityTier: agent.utilityTier,
       outputBudget: agent.outputBudget,
+      spend: agent.spend,
       dropSent: agent.dropSent,
       dropReceived: agent.dropReceived
     }))
   }));
 }
 
-function readAgentDisplayNames(repositories: SqliteRepositoryBundle, matchId: string): Map<string, string> {
+function readAgentIdentities(repositories: SqliteRepositoryBundle, matchId: string): Map<string, AgentIdentity> {
   const rows = repositories.sqlite.prepare(
-    `SELECT a.id, a.display_name AS displayName
+    `SELECT
+       a.id,
+       a.display_name AS displayName,
+       a.role AS role,
+       a.secondary_roles_json AS secondaryRolesJson,
+       a.role_profile_json AS roleProfileJson,
+       a.base_profile_json AS baseProfileJson
      FROM agents a
      JOIN matches m ON a.team_id IN (m.team_a_id, m.team_b_id)
      WHERE m.id = ?`
   ).all(matchId) as Row[];
-  return new Map(rows.map((row) => [String(row.id), String(row.displayName ?? row.id)]));
+  return new Map(rows.map((row) => {
+    const agentId = String(row.id);
+    return [agentId, {
+      displayName: String(row.displayName ?? agentId),
+      roleLabel: deriveRoleLabel(row)
+    }] as const;
+  }));
+}
+
+function deriveRoleLabel(row: Row): string {
+  return normalizeRoleLabel(row.role)
+    ?? normalizeRoleLabelFromJson(row.secondaryRolesJson)
+    ?? normalizeRoleLabelFromJson(row.roleProfileJson)
+    ?? normalizeRoleLabelFromJson(row.baseProfileJson)
+    ?? "role unknown";
+}
+
+function normalizeRoleLabelFromJson(value: unknown): string | undefined {
+  const text = readString(value);
+  if (!text) return undefined;
+  try {
+    return findRoleLabelInValue(JSON.parse(text));
+  } catch {
+    return normalizeRoleLabel(text);
+  }
+}
+
+function findRoleLabelInValue(value: unknown): string | undefined {
+  const direct = normalizeRoleLabel(value);
+  if (direct) return direct;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const role = findRoleLabelInValue(item);
+      if (role) return role;
+    }
+  }
+  const record = parseRecord(value);
+  if (record) {
+    for (const item of Object.values(record)) {
+      const role = findRoleLabelInValue(item);
+      if (role) return role;
+    }
+  }
+  return undefined;
+}
+
+function normalizeRoleLabel(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const text = value.toLowerCase();
+  if (text.includes("igl") || text.includes("leader") || text.includes("caller")) return "IGL";
+  if (text.includes("awp") || text.includes("sniper")) return "AWPer";
+  if (text.includes("entry") || text.includes("opener")) return "entry";
+  if (text.includes("support") || text.includes("utility")) return "support";
+  if (text.includes("anchor") || text.includes("site hold")) return "anchor";
+  if (text.includes("star")) return "star rifler";
+  if (text.includes("rif")) return "rifler";
+  return undefined;
 }
 
 function summarizeHardCondition(value: unknown): HexMatchLabHardConditionSummary | undefined {

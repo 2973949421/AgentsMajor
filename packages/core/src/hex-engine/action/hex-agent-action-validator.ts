@@ -14,6 +14,7 @@ export type HexAgentActionValidationError =
   | "unplayable_target_cell"
   | "invalid_action_type"
   | "missing_business_intent"
+  | "move_requires_position_change"
   | "move_unreachable"
   | "move_over_budget"
   | "plant_requires_c4"
@@ -144,6 +145,9 @@ function collectValidationErrors(
   }
   if (input.draft.businessIntent.trim().length === 0) {
     errors.push("missing_business_intent");
+  }
+  if (input.draft.actionType === "move" && input.draft.targetCellId === agent.currentCellId) {
+    errors.push("move_requires_position_change");
   }
   errors.push(...collectEconomyValidationErrors(input, agent));
   if (targetCell?.playable) {

@@ -7,6 +7,7 @@ import {
 } from "../../economy/economy-output-service.js";
 import { evaluateMapState } from "../../match/map-rules.js";
 import type { ArtifactStore } from "../../ports.js";
+import type { HexAgentCommandProgressSink } from "../action/index.js";
 import { runDust2HexRound, type HexRoundTrace } from "../round/index.js";
 import { loadDust2HexRoundCommitContext } from "./hex-round-commit-context.js";
 import { buildHexRoundReport } from "./hex-round-report-bridge.js";
@@ -28,6 +29,7 @@ export interface CommitDust2HexRoundExperimentalInput {
   enableExperimentalMode: true;
   providerMode?: "fixture" | "real";
   maxLlmCallsPerPhase?: number;
+  progressSink?: HexAgentCommandProgressSink;
   env?: Record<string, string | undefined>;
 }
 
@@ -91,6 +93,7 @@ async function commitDust2HexRoundExperimentalInner(
       matchId: context.match.id,
       mapGameId: context.mapGame.id
     },
+    ...(input.progressSink ? { progressSink: input.progressSink } : {}),
     env: input.env ?? process.env
   });
   const finalWinCondition = hexTrace.finalWinCondition;

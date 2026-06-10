@@ -30,7 +30,8 @@ import {
   type HexValidatedAgentAction,
   type HexAgentCommandProvider,
   type HexAgentCommandProviderMode,
-  type HexAgentPhaseCommandHarnessResult
+  type HexAgentPhaseCommandHarnessResult,
+  type HexAgentCommandProgressSink
 } from "../action/index.js";
 import {
   materializeHexWinCondition,
@@ -62,6 +63,7 @@ export interface RunDust2HexRoundInput {
     matchId?: string;
     mapGameId?: string;
   };
+  progressSink?: HexAgentCommandProgressSink;
   env?: Record<string, string | undefined>;
 }
 
@@ -145,6 +147,7 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
             }
           }
         : {}),
+      ...(input.progressSink ? { progressSink: input.progressSink } : {}),
       callIdPrefix: `hex_${input.roundId}_${phaseIndex}`
     });
     const acceptedActions = commandResult.acceptedActions;

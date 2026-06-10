@@ -34,6 +34,23 @@ export interface HexReachableCellSummary {
   apCost: number;
 }
 
+export interface HexAgentPhaseObjective {
+  phaseId: HexPhaseId;
+  side: HexSide;
+  objective: string;
+  pressure: string;
+  preferredActionTypes: HexAgentActionType[];
+}
+
+export interface HexAgentRouteCandidate {
+  targetCellId: string;
+  label: string;
+  apCost: number;
+  regionId?: string;
+  pointIds: string[];
+  flags: string[];
+}
+
 export interface HexAgentCommandRequest {
   schemaVersion: 1;
   phaseId: HexPhaseId;
@@ -47,6 +64,9 @@ export interface HexAgentCommandRequest {
   knownEnemies: HexAgentMemoryPromptContext["knownEnemies"];
   lastSeenEnemies: HexAgentMemoryPromptContext["lastSeenEnemies"];
   reachableCells: HexReachableCellSummary[];
+  phaseObjective: HexAgentPhaseObjective;
+  targetCandidates: HexAgentRouteCandidate[];
+  routeCandidates: HexAgentRouteCandidate[];
   allowedActionTypes: HexAgentActionType[];
   economy?: HexAgentEconomyPromptContext;
   constraints: string[];
@@ -58,6 +78,7 @@ export interface HexAgentEconomyPromptContext {
   economyPosture: string;
   buyType: string;
   loadoutPackage: string;
+  spend: number;
   outputBudget: number;
   dropSent: number;
   dropReceived: number;
@@ -132,6 +153,8 @@ export function buildHexAgentCommandRequest(input: {
     agentId: input.agentId
   });
   const reachableCells = buildReachableCellSummaries(input.asset, context.agent.currentCellId, context.agent.apRemaining);
+  const phaseObjective = buildPhaseObjective(input.memory.phaseId, context.agent.side);
+  const routeCandidates = buildRouteCandidates(reachableCells, context.agent.currentCellId, phaseObjective.preferredActionTypes);
   const economy = input.economyContext
     ? getHexAgentEconomyContext({
         economyContext: input.economyContext,
@@ -151,13 +174,19 @@ export function buildHexAgentCommandRequest(input: {
     knownEnemies: context.knownEnemies,
     lastSeenEnemies: context.lastSeenEnemies,
     reachableCells,
+    phaseObjective,
+    targetCandidates: routeCandidates,
+    routeCandidates,
     allowedActionTypes: [...(input.allowedActionTypes ?? hexAgentActionTypes)],
     constraints: [
       "Only output one Hex agent action draft for the requested agent.",
       "Do not output winner, roundWinType, kills, damage, bomb results, economy deltas, database facts, or hidden enemy positions.",
       "targetCellId must come from reachableCells.",
+      "Prefer targetCandidates when they are present; they are legal, phase-relevant route choices.",
+      "A move action must change position. Use hold_position, watch_angle, or save when staying on the current cell is intentional.",
       "currentCellId must match the agent currentCellId.",
       "businessIntent is required and must explain the business-plan purpose of the CS action.",
+      "businessIntent must connect the phaseObjective, role responsibility, and selected target.",
       "lastSeenEnemies are historical hints, not current enemy truth.",
       "The code validates movement, AP, C4 legality, and final game facts."
     ]
@@ -167,6 +196,7 @@ export function buildHexAgentCommandRequest(input: {
       economyPosture: economy.economyPosture,
       buyType: economy.buyType,
       loadoutPackage: economy.loadoutPackage,
+      spend: economy.spend,
       outputBudget: economy.outputBudget,
       dropSent: economy.dropSent,
       dropReceived: economy.dropReceived,
@@ -190,6 +220,102 @@ export function buildHexAgentCommandRequest(input: {
     request.businessExecutionSummary = context.businessExecutionSummary;
   }
   return request;
+}
+
+function buildPhaseObjective(phaseId: HexPhaseId, side: HexSide): HexAgentPhaseObjective {
+  const attack = side === "attack";
+  const byPhase: Record<HexPhaseId, { attack: string; defense: string; pressure: string; preferredActionTypes: HexAgentActionType[] }> = {
+    default_opening: {
+      attack: "Leave spawn with a concrete default route, take early map control, and prepare a later site decision.",
+      defense: "Leave spawn into a defensible coverage position, establish early information, and avoid overstacking one cell.",
+      pressure: "Pure waiting wastes the opening phase; choose a useful route or a clearly justified angle.",
+      preferredActionTypes: ["move", "map_control", "gather_info", "watch_angle"]
+    },
+    first_contact: {
+      attack: "Create first contact pressure through mid, long, short, or tunnels instead of drifting near spawn.",
+      defense: "Hold or contest likely contact lanes and convert information into a rotate or crossfire.",
+      pressure: "This phase should either approach contact, gather actionable info, or secure a key lane.",
+      preferredActionTypes: ["map_control", "gather_info", "peek", "watch_angle", "prepare_trade"]
+    },
+    mid_round_decision: {
+      attack: "Choose a site direction or split pressure and move toward a bombsite-capable path.",
+      defense: "React to known pressure, maintain site coverage, and rotate if the current position no longer covers a threat.",
+      pressure: "A round that does not choose a site by mid round risks timeout with no plant.",
+      preferredActionTypes: ["rotate", "map_control", "execute_site", "prepare_trade", "use_utility"]
+    },
+    execute_or_retake: {
+      attack: "Execute, trade, plant pressure, or commit to a site path with visible AP-backed movement.",
+      defense: "Anchor the threatened site or start a retake/rotate based on known pressure.",
+      pressure: "If the bomb is not planted, attack must make a meaningful site move or explain a high-value delay.",
+      preferredActionTypes: ["execute_site", "plant_bomb", "prepare_trade", "seek_duel", "retake", "rotate"]
+    },
+    post_plant_or_clutch: {
+      attack: "If planted, protect the bomb; if not planted, force the final site attempt or justify a save with facts.",
+      defense: "If planted, retake or defuse; if not planted, deny the last plant route and preserve crossfires.",
+      pressure: "The final phase resolves hard conditions; no-plant attack defaults toward a defense timeout.",
+      preferredActionTypes: ["plant_bomb", "defuse_bomb", "retake", "save", "watch_angle", "seek_duel"]
+    }
+  };
+  const selected = byPhase[phaseId];
+  return {
+    phaseId,
+    side,
+    objective: attack ? selected.attack : selected.defense,
+    pressure: selected.pressure,
+    preferredActionTypes: selected.preferredActionTypes
+  };
+}
+
+function buildRouteCandidates(
+  reachableCells: HexReachableCellSummary[],
+  currentCellId: string,
+  preferredActionTypes: readonly HexAgentActionType[]
+): HexAgentRouteCandidate[] {
+  const nonCurrent = reachableCells.filter((cell) => cell.cellId !== currentCellId && cell.apCost > 0);
+  const scored = nonCurrent
+    .map((cell) => ({
+      cell,
+      score: scoreRouteCandidate(cell, preferredActionTypes)
+    }))
+    .sort((left, right) => right.score - left.score || left.cell.apCost - right.cell.apCost || left.cell.cellId.localeCompare(right.cell.cellId));
+  return scored.slice(0, 10).map(({ cell }) => ({
+    targetCellId: cell.cellId,
+    label: buildRouteCandidateLabel(cell),
+    apCost: cell.apCost,
+    ...(cell.regionId ? { regionId: cell.regionId } : {}),
+    pointIds: [...cell.pointIds],
+    flags: [...cell.flags]
+  }));
+}
+
+function scoreRouteCandidate(cell: HexReachableCellSummary, preferredActionTypes: readonly HexAgentActionType[]): number {
+  let score = Math.min(12, cell.apCost * 8);
+  if (cell.regionId) {
+    score += 2;
+  }
+  if (cell.pointIds.length > 0) {
+    score += 3;
+  }
+  if (cell.flags.some((flag) => flag === "bombsite_a" || flag === "bombsite_b")) {
+    score += preferredActionTypes.includes("plant_bomb") || preferredActionTypes.includes("execute_site") ? 8 : 4;
+  }
+  if (cell.flags.includes("choke")) {
+    score += preferredActionTypes.includes("map_control") || preferredActionTypes.includes("peek") ? 4 : 1;
+  }
+  if (cell.flags.includes("cover")) {
+    score += preferredActionTypes.includes("watch_angle") ? 3 : 1;
+  }
+  return score;
+}
+
+function buildRouteCandidateLabel(cell: HexReachableCellSummary): string {
+  const parts = [
+    cell.regionId ? `region:${cell.regionId}` : "region:unknown",
+    cell.pointIds.length > 0 ? `points:${cell.pointIds.join(",")}` : "points:none",
+    cell.flags.length > 0 ? `flags:${cell.flags.join(",")}` : "flags:none",
+    `ap:${cell.apCost.toFixed(2)}`
+  ];
+  return parts.join(" | ");
 }
 
 export function normalizeHexAgentActionDraft(input: NormalizeHexAgentActionDraftInput): NormalizeHexAgentActionDraftResult {

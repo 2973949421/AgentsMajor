@@ -96,7 +96,7 @@ export function HexMatchTimeline(props: HexMatchTimelineProps) {
                 </button>
               );
             })}
-            {props.phases.length === 0 ? <p className={styles.emptyInline}>选择一个 round 后查看 phase。</p> : null}
+            {props.phases.length === 0 ? <p className={styles.emptyInline}>选择 round 后查看 phase。</p> : null}
           </div>
         </div>
       </div>

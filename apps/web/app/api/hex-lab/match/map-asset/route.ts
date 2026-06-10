@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server.js";
 
-import { readHexMatchLabRunProgress } from "../../../../server-hex-match-lab";
+import { readHexMatchLabMapAssetView } from "../../../../server-hex-match-lab";
 import { sanitizeRunError } from "../../../../server-run-progress";
 import { validateWebRunnerAccess } from "../../../../server-web-runner-policy";
 
@@ -17,13 +17,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const progress = await readHexMatchLabRunProgress({
-      mapGameId: url.searchParams.get("mapGameId"),
-      summaryArtifactId: url.searchParams.get("summaryArtifactId"),
-      roundTraceArtifactId: url.searchParams.get("roundTraceArtifactId"),
-      includeMapAsset: url.searchParams.get("includeMapAsset") === "true"
-    });
-    return NextResponse.json({ progress });
+    return NextResponse.json({ mapAssetView: readHexMatchLabMapAssetView() });
   } catch (error) {
     return NextResponse.json({ error: sanitizeRunError(error) }, { status: 500 });
   }

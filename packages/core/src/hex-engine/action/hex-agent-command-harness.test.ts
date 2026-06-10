@@ -109,6 +109,53 @@ describe("Hex agent command harness", () => {
     expect(result.rejectedDrafts[0]?.ignoredFields).toEqual(expect.arrayContaining(["winner", "kills"]));
   });
 
+  it("emits per-agent progress events for request, response, repair, and acceptance", async () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeMemory(asset);
+    const artifactStore = new MemoryArtifactStore();
+    const events: string[] = [];
+    const provider: HexAgentCommandProvider = (request) => ({
+      providerMode: "fixture",
+      modelId: "progress_fixture",
+      rawDraft: {
+        agentId: request.agent.agentId,
+        phaseId: "wrong_phase",
+        currentCellId: "wrong_cell",
+        targetCellId: request.targetCandidates[0]?.targetCellId ?? request.agent.currentCellId,
+        actionType: "move",
+        businessIntent: "progress fixture advances to a candidate target and records repaired context fields."
+      }
+    });
+
+    const result = await runHexAgentPhaseCommandHarness({
+      asset,
+      memory,
+      provider,
+      providerMode: "fixture",
+      maxLlmCalls: 1,
+      artifactStore,
+      artifactOwner: {
+        ownerType: "hex_test",
+        ownerId: "hex_test_owner"
+      },
+      progressSink: (event) => {
+        events.push(`${event.agentId}:${event.status}`);
+      }
+    });
+
+    expect(result.acceptedActions).toHaveLength(1);
+    expect(events).toEqual(
+      expect.arrayContaining([
+        "t_0:queued",
+        "t_0:running",
+        "t_0:request_artifact_written",
+        "t_0:response_artifact_written",
+        "t_0:repaired",
+        "t_0:accepted"
+      ])
+    );
+  });
+
   it("falls back on provider error and keeps request artifact audit", async () => {
     const asset = loadOfficialDust2HexMap();
     const memory = initializeMemory(asset);

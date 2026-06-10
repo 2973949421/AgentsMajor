@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 import type {
+  HexMatchLabLiveRunStatus,
+  HexMatchLabMapAssetView,
   HexMatchLabMapOption,
   HexMatchLabProgress,
   HexMatchLabRoundSummary
@@ -26,6 +28,7 @@ const providerMode = "real" as const;
 
 export function HexMatchLabClient() {
   const [progress, setProgress] = useState<HexMatchLabProgress | null>(null);
+  const [mapAsset, setMapAsset] = useState<HexMatchLabMapAssetView | undefined>();
   const [maps, setMaps] = useState<HexMatchLabMapOption[]>([]);
   const [mapGameId, setMapGameId] = useState("");
   const [maxRounds, setMaxRounds] = useState(40);
@@ -42,6 +45,7 @@ export function HexMatchLabClient() {
   const [showCombat, setShowCombat] = useState(true);
   const [busyLabel, setBusyLabel] = useState<string | null>(null);
   const [runStep, setRunStep] = useState("等待操作");
+  const [liveRun, setLiveRun] = useState<HexMatchLabLiveRunStatus | undefined>();
   const [elapsedMs, setElapsedMs] = useState(0);
   const [playbackRunning, setPlaybackRunning] = useState(false);
   const [error, setError] = useState<{ message: string; details?: string } | null>(null);
@@ -75,10 +79,10 @@ export function HexMatchLabClient() {
   const phaseProgressPct = phases.length > 0 && selectedPhasePosition >= 0
     ? ((selectedPhasePosition + 1) / phases.length) * 100
     : 0;
-  const llmAudit = selectedPhase?.llmAudit ?? selectedTrace?.audit;
+  const llmAudit = liveRun ?? selectedPhase?.llmAudit ?? selectedTrace?.audit;
 
   useEffect(() => {
-    void Promise.all([refreshMaps(), refreshProgress()]);
+    void Promise.all([loadMapAsset(), refreshMaps(), refreshProgress()]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -128,10 +132,19 @@ export function HexMatchLabClient() {
     };
   }, [consoleDrag]);
 
+  async function loadMapAsset() {
+    try {
+      const response = await fetch(withAdminToken("/api/hex-lab/match/map-asset"), { cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Hex map asset request failed.");
+      setMapAsset(payload.mapAssetView);
+    } catch (cause) {
+      setError(toFriendlyError(cause));
+    }
+  }
+
   async function refreshMaps() {
-    const params = new URLSearchParams();
-    if (adminToken.trim()) params.set("adminToken", adminToken.trim());
-    const response = await fetch(`/api/hex-lab/match/maps?${params.toString()}`, { cache: "no-store" });
+    const response = await fetch(withAdminToken("/api/hex-lab/match/maps"), { cache: "no-store" });
     const payload = await response.json();
     if (response.ok) setMaps(payload.maps ?? []);
   }
@@ -143,7 +156,7 @@ export function HexMatchLabClient() {
       const params = new URLSearchParams();
       if (nextMapGameId.trim()) params.set("mapGameId", nextMapGameId.trim());
       if (nextRoundTraceArtifactId) params.set("roundTraceArtifactId", nextRoundTraceArtifactId);
-      if (adminToken.trim()) params.set("adminToken", adminToken.trim());
+      appendAdminToken(params);
       const response = await fetch(`/api/hex-lab/match/progress?${params.toString()}`, { cache: "no-store" });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "Hex Match Lab progress request failed.");
@@ -155,7 +168,7 @@ export function HexMatchLabClient() {
     }
   }
 
-  async function runNextRound() {
+  async function runNextRoundLive(): Promise<boolean> {
     if (completedMap) {
       setError({
         message: "当前地图已完成，不能继续提交回合。",
@@ -164,28 +177,24 @@ export function HexMatchLabClient() {
       return false;
     }
     setBusyLabel("真实 LLM 提交中");
-    setRunStep("等待 real LLM action -> validator -> fallback/reject -> combat -> hard condition -> artifact");
+    setRunStep("逐个 agent 调用 LLM：queued -> running -> request -> response -> repair/reject/fallback -> commit");
     setElapsedMs(0);
     runStartedAt.current = Date.now();
     setError(null);
     try {
-      const response = await fetch("/api/hex-lab/match/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          scope: "round",
-          providerMode,
-          maxRounds,
-          maxLlmCallsPerPhase,
-          mapGameId: mapGameId.trim() || undefined,
-          adminToken: adminToken.trim() || undefined
-        })
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "Hex Match Lab run request failed.");
-      applyProgress(payload.progress);
+      const run = await startLiveRun("round");
+      const finalRun = await waitForLiveRun(run.runId);
+      if (finalRun.progress) {
+        applyProgress(finalRun.progress);
+      } else {
+        await refreshProgress(undefined, finalRun.mapGameId ?? mapGameId);
+      }
       await refreshMaps();
-      return !payload.progress?.completedMap;
+      if (finalRun.status === "failed") {
+        setError({ message: finalRun.latestError ?? "Hex live run failed." });
+        return false;
+      }
+      return !finalRun.progress?.completedMap;
     } catch (cause) {
       setError(toFriendlyError(cause));
       return false;
@@ -208,7 +217,7 @@ export function HexMatchLabClient() {
         break;
       }
       setRunStep(`正在提交连续运行第 ${index + 1} 个回合`);
-      const shouldContinue = await runNextRound();
+      const shouldContinue = await runNextRoundLive();
       if (!shouldContinue) {
         setRunStep("地图已完成或运行失败。");
         break;
@@ -218,24 +227,42 @@ export function HexMatchLabClient() {
     runStartedAt.current = null;
   }
 
-  function stopLoop() {
-    stopRequested.current = true;
-    setPlaybackRunning(false);
-    setRunStep("收到停止请求：不会再提交下一回合；trace 播放已暂停。");
-  }
-
-  function startConsoleDrag(event: ReactPointerEvent<HTMLButtonElement>) {
-    event.preventDefault();
-    setConsoleDrag({
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: consolePosition.x,
-      originY: consolePosition.y
+  async function startLiveRun(scope: "round" | "map"): Promise<HexMatchLabLiveRunStatus> {
+    const response = await fetch("/api/hex-lab/match/live-run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        scope,
+        providerMode,
+        maxRounds,
+        maxLlmCallsPerPhase,
+        mapGameId: mapGameId.trim() || undefined,
+        adminToken: adminToken.trim() || undefined
+      })
     });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error ?? "Hex live run start failed.");
+    setLiveRun(payload.run);
+    return payload.run;
   }
 
-  async function createMap() {
-    setBusyLabel("新建验收地图");
+  async function waitForLiveRun(runId: string): Promise<HexMatchLabLiveRunStatus> {
+    for (;;) {
+      await delay(650);
+      const params = new URLSearchParams({ runId });
+      appendAdminToken(params);
+      const response = await fetch(`/api/hex-lab/match/live-run?${params.toString()}`, { cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Hex live run poll failed.");
+      setLiveRun(payload.run);
+      if (payload.run.status !== "running") {
+        return payload.run;
+      }
+    }
+  }
+
+  async function createValidationMap() {
+    setBusyLabel("新建比赛");
     setError(null);
     try {
       const response = await fetch("/api/hex-lab/match/create", {
@@ -248,9 +275,11 @@ export function HexMatchLabClient() {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "Create Hex validation map failed.");
-      setMapGameId(payload.map.mapGameId);
-      applyProgress(payload.progress);
+      setMapGameId(payload.map?.mapGameId ?? "");
+      setSelectedRoundArtifactId(undefined);
+      setSelectedPhaseIndex(0);
       await refreshMaps();
+      await refreshProgress(undefined, payload.map?.mapGameId ?? "");
     } catch (cause) {
       setError(toFriendlyError(cause));
     } finally {
@@ -258,23 +287,25 @@ export function HexMatchLabClient() {
     }
   }
 
-  async function resetMap() {
-    setBusyLabel("安全重置中");
+  async function resetAsNewMap() {
+    setBusyLabel("安全重置");
     setError(null);
     try {
       const response = await fetch("/api/hex-lab/match/reset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          mapGameId: mapGameId.trim() || undefined,
+          mapGameId: mapGameId.trim() || progress?.mapGameId,
           adminToken: adminToken.trim() || undefined
         })
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "Reset Hex validation map failed.");
-      setMapGameId(payload.map.mapGameId);
-      applyProgress(payload.progress);
+      setMapGameId(payload.map?.mapGameId ?? "");
+      setSelectedRoundArtifactId(undefined);
+      setSelectedPhaseIndex(0);
       await refreshMaps();
+      await refreshProgress(undefined, payload.map?.mapGameId ?? "");
     } catch (cause) {
       setError(toFriendlyError(cause));
     } finally {
@@ -282,222 +313,235 @@ export function HexMatchLabClient() {
     }
   }
 
+  function applyProgress(nextProgress: HexMatchLabProgress | undefined, preferredRoundTraceArtifactId?: string | undefined) {
+    if (!nextProgress) return;
+    setProgress(nextProgress);
+    if (nextProgress.mapGameId) setMapGameId(nextProgress.mapGameId);
+    const nextRound = preferredRoundTraceArtifactId
+      ? nextProgress.roundSummaries.find((round) => round.hexTraceArtifactId === preferredRoundTraceArtifactId)
+      : nextProgress.roundSummaries.at(-1);
+    setSelectedRoundArtifactId(nextProgress.selectedTrace?.hexTraceArtifactId ?? nextRound?.hexTraceArtifactId);
+    const nextPhase = nextProgress.selectedTrace?.phaseSummaries.at(0);
+    setSelectedPhaseIndex(nextPhase?.phaseIndex ?? 0);
+    setSelectedAgentId(undefined);
+  }
+
   async function selectRound(round: HexMatchLabRoundSummary) {
-    if (!round.hexTraceArtifactId) return;
     setSelectedRoundArtifactId(round.hexTraceArtifactId);
     setSelectedPhaseIndex(0);
-    await refreshProgress(round.hexTraceArtifactId);
+    if (round.hexTraceArtifactId) await refreshProgress(round.hexTraceArtifactId);
   }
 
-  function goToRound(offset: number) {
-    if (selectedRoundIndex < 0) return;
-    const next = rounds[Math.max(0, Math.min(rounds.length - 1, selectedRoundIndex + offset))];
-    if (next) void selectRound(next);
+  function withAdminToken(path: string): string {
+    const params = new URLSearchParams();
+    appendAdminToken(params);
+    const query = params.toString();
+    return query ? `${path}?${query}` : path;
   }
 
-  function goToPhase(offset: number) {
-    if (selectedPhasePosition < 0) return;
-    const next = phases[Math.max(0, Math.min(phases.length - 1, selectedPhasePosition + offset))];
-    if (next) setSelectedPhaseIndex(next.phaseIndex);
+  function appendAdminToken(params: URLSearchParams) {
+    if (adminToken.trim()) params.set("adminToken", adminToken.trim());
   }
 
-  function applyProgress(next: HexMatchLabProgress | null, nextRoundTraceArtifactId?: string) {
-    setProgress(next);
-    if (!next) return;
-    if (next.mapGameId) setMapGameId(next.mapGameId);
-    if (nextRoundTraceArtifactId) {
-      setSelectedRoundArtifactId(nextRoundTraceArtifactId);
-    } else if (next.selectedTrace?.hexTraceArtifactId) {
-      setSelectedRoundArtifactId(next.selectedTrace.hexTraceArtifactId);
-    }
-    setSelectedPhaseIndex(0);
-    if (!selectedAgentId && next.selectedTrace?.phaseSummaries[0]?.players[0]?.agentId) {
-      setSelectedAgentId(next.selectedTrace.phaseSummaries[0].players[0].agentId);
-    }
+  function handleConsolePointerDown(event: ReactPointerEvent<HTMLElement>) {
+    const target = event.target as HTMLElement;
+    if (target.closest("button, input, select, a")) return;
+    setConsoleDrag({
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: consolePosition.x,
+      originY: consolePosition.y
+    });
   }
+
+  const players = selectedPhase?.players ?? [];
+  const score = progress?.score;
 
   return (
-    <main className={styles.shell}>
-      <header className={styles.scoreboard}>
+    <main className={styles.matchShell}>
+      <header className={styles.statusBar}>
         <div>
-          <span>N31 收口补丁 B</span>
-          <h1>Hex Match Lab 真实 LLM 验收台</h1>
-          <p>中央地图、左右选手、底部回放。LLM 只写行动草案，最终 winner 来自 hard condition。</p>
+          <span>Hex Match Lab 真实 LLM 验收台</span>
+          <h1>{progress?.mapName ?? "Dust2"} · {score ? `${score.teamA} : ${score.teamB}` : "0 : 0"}</h1>
         </div>
-        <div className={styles.scoreCards}>
-          <Metric label="mapGame" value={progress?.mapGameId ?? "未选择"} compact />
-          <Metric label="比分" value={formatScore(progress?.score)} />
-          <Metric label="回合" value={String(progress?.mapSummary?.roundsCommitted ?? rounds.length)} />
-          <Metric label="状态" value={progress?.mapStatus ?? "未加载"} />
-          <Metric label="provider" value="real LLM" />
+        <div className={styles.statusChips}>
+          <span>experimental</span>
+          <span>writesDb=true</span>
+          <span>provider=real</span>
+          <span>LLM 不能写 final winner</span>
+          <span>{progress?.mapStatus ?? "no map"}</span>
         </div>
       </header>
 
-      {error ? <ErrorBanner error={error} /> : null}
-      {progress?.latestError && !error ? <ErrorBanner error={{ message: progress.latestError }} /> : null}
+      {error ? (
+        <section className={styles.errorBanner}>
+          <strong>{error.message}</strong>
+          <p>不会影响旧 Phase18。你可以新建 Hex 验收比赛、选择 active mapGame，或展开技术细节排查。</p>
+          {error.details ? <details><summary>technical details</summary><pre>{error.details}</pre></details> : null}
+        </section>
+      ) : null}
 
       <section className={styles.board}>
         <HexMatchPlayerPanel
           title="进攻方"
           side="attack"
-          players={selectedPhase?.players ?? []}
+          players={players}
           selectedAgentId={selectedAgentId}
-          onSelectAgent={(agentId) => {
-            setSelectedAgentId(agentId);
-            setDrawerOpen(true);
-            setDrawerTab("llm");
-          }}
+          onSelectAgent={setSelectedAgentId}
         />
 
-        <section className={styles.centerStage}>
-          <div className={styles.layerBar}>
-            <div className={styles.segmented}>
+        <div className={styles.centerStage}>
+          <div className={styles.mapToolbar}>
+            <div className={styles.levelTabs}>
               {[-1, 0, 1].map((level) => (
-                <button key={level} type="button" className={selectedLevel === level ? styles.segmentActive : styles.segment} onClick={() => setSelectedLevel(level)}>
+                <button key={level} type="button" className={selectedLevel === level ? styles.levelActive : styles.levelTab} onClick={() => setSelectedLevel(level)}>
                   level {level}
                 </button>
               ))}
             </div>
-            <div className={styles.layerToggles}>
-              <Toggle checked={showRegions} label="区域" onChange={setShowRegions} />
-              <Toggle checked={showPoints} label="点位" onChange={setShowPoints} />
-              <Toggle checked={showFlags} label="标记" onChange={setShowFlags} />
-              <Toggle checked={showPaths} label="路径/AP" onChange={setShowPaths} />
-              <Toggle checked={showCombat} label="交火" onChange={setShowCombat} />
-            </div>
+            <label><input type="checkbox" checked={showRegions} onChange={(event) => setShowRegions(event.target.checked)} /> 区域</label>
+            <label><input type="checkbox" checked={showPoints} onChange={(event) => setShowPoints(event.target.checked)} /> 点位</label>
+            <label><input type="checkbox" checked={showFlags} onChange={(event) => setShowFlags(event.target.checked)} /> 标记</label>
+            <label><input type="checkbox" checked={showPaths} onChange={(event) => setShowPaths(event.target.checked)} /> 路径/AP</label>
+            <label><input type="checkbox" checked={showCombat} onChange={(event) => setShowCombat(event.target.checked)} /> 交火</label>
           </div>
 
-          {progress ? (
-            <HexMatchMapViewer
-              map={progress.mapAssetView}
-              phase={selectedPhase}
-              level={selectedLevel}
-              selectedAgentId={selectedAgentId}
-              showRegions={showRegions}
-              showPoints={showPoints}
-              showFlags={showFlags}
-              showPaths={showPaths}
-              showCombat={showCombat}
-              onSelectAgent={(agentId) => {
-                setSelectedAgentId(agentId);
-                setDrawerOpen(true);
-                setDrawerTab("llm");
-              }}
-            />
-          ) : (
-            <section className={styles.mapPanel}><p className={styles.emptyInline}>正在加载 Hex Match Lab。</p></section>
-          )}
-        </section>
+          <HexMatchMapViewer
+            map={mapAsset}
+            phase={selectedPhase}
+            level={selectedLevel}
+            selectedAgentId={selectedAgentId}
+            showRegions={showRegions}
+            showPoints={showPoints}
+            showFlags={showFlags}
+            showPaths={showPaths}
+            showCombat={showCombat}
+            onSelectAgent={setSelectedAgentId}
+          />
+
+          <HexMatchTimeline
+            rounds={rounds}
+            phases={phases}
+            selectedRoundArtifactId={selectedRoundArtifactId}
+            selectedPhaseIndex={selectedPhaseIndex}
+            roundProgressPct={roundProgressPct}
+            phaseProgressPct={phaseProgressPct}
+            playbackRunning={playbackRunning}
+            onSelectRound={selectRound}
+            onSelectPhase={setSelectedPhaseIndex}
+            onPreviousRound={() => {
+              const previous = rounds[selectedRoundIndex - 1];
+              if (previous) void selectRound(previous);
+            }}
+            onNextRound={() => {
+              const next = rounds[selectedRoundIndex + 1];
+              if (next) void selectRound(next);
+            }}
+            onPreviousPhase={() => {
+              const previous = phases[selectedPhasePosition - 1];
+              if (previous) setSelectedPhaseIndex(previous.phaseIndex);
+            }}
+            onNextPhase={() => {
+              const next = phases[selectedPhasePosition + 1];
+              if (next) setSelectedPhaseIndex(next.phaseIndex);
+            }}
+            onTogglePlayback={() => setPlaybackRunning((value) => !value)}
+          />
+        </div>
 
         <HexMatchPlayerPanel
           title="防守方"
           side="defense"
-          players={selectedPhase?.players ?? []}
+          players={players}
           selectedAgentId={selectedAgentId}
-          onSelectAgent={(agentId) => {
-            setSelectedAgentId(agentId);
-            setDrawerOpen(true);
-            setDrawerTab("llm");
-          }}
+          onSelectAgent={setSelectedAgentId}
         />
       </section>
 
+      <section className={styles.bottomAudit}>
+        <div className={styles.auditSummary}>
+          <h2>审计入口</h2>
+          <p>accepted {selectedPhase?.acceptedActionCount ?? 0} / rejected {selectedPhase?.rejectedDraftCount ?? 0} / fallback {selectedPhase?.fallbackActionCount ?? 0}</p>
+          <p>calls {selectedPhase?.callsAttempted ?? liveRun?.callsAttempted ?? 0} / expected {selectedPhase?.llmAudit.expectedCalls ?? liveRun?.expectedCalls ?? 0}</p>
+        </div>
+        {(["llm", "combat", "economy", "winner"] as const).map((tab) => (
+          <button key={tab} type="button" onClick={() => { setDrawerTab(tab); setDrawerOpen(true); }}>
+            {auditLabel(tab)}
+          </button>
+        ))}
+      </section>
+
       {consoleHidden ? (
-        <button
-          type="button"
-          className={styles.consoleRestoreButton}
-          style={{ left: consolePosition.x, top: consolePosition.y }}
-          onClick={() => setConsoleHidden(false)}
-        >
+        <button type="button" className={styles.consoleReveal} onClick={() => setConsoleHidden(false)}>
           显示控制台
         </button>
       ) : (
-      <aside className={styles.floatingConsole} style={{ left: consolePosition.x, top: consolePosition.y }}>
-        <div className={styles.consoleHeader}>
-          <button type="button" className={styles.dragHandle} onPointerDown={startConsoleDrag}>拖拽</button>
-          <strong>控制台</strong>
-          <span>{busyLabel ?? "idle"}</span>
-          <button type="button" className={styles.consoleIconButton} onClick={() => setConsoleHidden(true)}>隐藏</button>
-        </div>
-        <label>
-          <span>历史 / 当前 mapGame</span>
-          <select
-            value={mapGameId}
-            onChange={(event) => {
-              setMapGameId(event.target.value);
-              void refreshProgress(undefined, event.target.value);
-            }}
-          >
-            <option value="">自动选择最新 Dust2</option>
-            {maps.map((map) => (
-              <option key={map.mapGameId} value={map.mapGameId}>
-                {map.mapStatus} - {map.score.teamA}:{map.score.teamB} - R{map.currentRoundNumber} - {map.mapGameId}
-              </option>
+        <aside
+          className={styles.floatingConsole}
+          style={{ left: consolePosition.x, top: consolePosition.y }}
+          onPointerDown={handleConsolePointerDown}
+        >
+          <div className={styles.consoleHeader}>
+            <div>
+              <h2>控制台</h2>
+              <span>{busyLabel ?? progress?.runStatus.currentStep ?? "idle"}</span>
+            </div>
+            <button type="button" onClick={() => setConsoleHidden(true)}>隐藏</button>
+          </div>
+
+          <label>
+            历史 / 当前 mapGame
+            <select value={mapGameId} onChange={(event) => { setMapGameId(event.target.value); void refreshProgress(undefined, event.target.value); }}>
+              <option value="">自动选择最新 Dust2</option>
+              {maps.map((map) => (
+                <option key={map.mapGameId} value={map.mapGameId}>
+                  {map.mapStatus} - {map.score.teamA}:{map.score.teamB} - R{map.currentRoundNumber} - {map.mapGameId}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            max rounds
+            <input type="number" value={maxRounds} min={1} max={60} onChange={(event) => setMaxRounds(Number(event.target.value))} />
+          </label>
+          <label>
+            max LLM / phase
+            <input type="number" value={maxLlmCallsPerPhase} min={0} max={50} onChange={(event) => setMaxLlmCallsPerPhase(Number(event.target.value))} />
+          </label>
+          <label>
+            admin token（可选）
+            <input value={adminToken} onChange={(event) => setAdminToken(event.target.value)} placeholder="本地无 token 可留空" />
+          </label>
+
+          <button type="button" onClick={createValidationMap}>新建 Hex 验收比赛</button>
+          <button type="button" onClick={resetAsNewMap}>安全重置为新地图</button>
+          <button type="button" onClick={() => void runNextRoundLive()} disabled={!canRunRound || Boolean(busyLabel)}>跑下一回合（real）</button>
+          <button type="button" onClick={() => void runUntilMapEnd()} disabled={!canRunRound || Boolean(busyLabel)}>一直跑到地图结束</button>
+          <button type="button" onClick={() => { stopRequested.current = true; setRunStep("已请求停止：不会提交下一回合。"); }}>停止</button>
+          <button type="button" onClick={() => void refreshProgress()}>刷新</button>
+          <a href="/hex-lab/editor">打开 Hex 地图编辑器</a>
+
+          <div className={styles.runStatusBox}>
+            <strong>{liveRun?.status ?? progress?.runStatus.status ?? "idle"}</strong>
+            <span>{liveRun?.currentStep ?? runStep}</span>
+            <span>elapsed {formatMs(liveRun?.elapsedMs ?? elapsedMs)}</span>
+            <span>calls {liveRun?.callsAttempted ?? 0} / {liveRun?.expectedCalls ?? 0}</span>
+          </div>
+
+          <div className={styles.liveCallList}>
+            {(liveRun?.slots ?? []).slice(-12).map((slot) => (
+              <div key={slot.callId} className={styles.liveCallRow}>
+                <b>{slot.callIndex}/{slot.expectedCalls}</b>
+                <span>{slot.agentId}</span>
+                <em>{slot.status}</em>
+                <small>{slot.requestArtifactId ? "req" : ""} {slot.responseArtifactId ? "res" : ""} {slot.errors.join(", ")}</small>
+              </div>
             ))}
-          </select>
-        </label>
-        <div className={styles.controlGrid}>
-          <button type="button" onClick={createMap} disabled={Boolean(busyLabel)}>新建比赛</button>
-          <button type="button" onClick={resetMap} disabled={Boolean(busyLabel)}>安全重置</button>
-          <button type="button" onClick={runNextRound} disabled={Boolean(busyLabel) || !canRunRound}>跑下一回合</button>
-          <button type="button" onClick={runUntilMapEnd} disabled={Boolean(busyLabel) || !canRunRound}>一直跑</button>
-          <button type="button" onClick={stopLoop} disabled={!busyLabel && !playbackRunning}>停止</button>
-          <button type="button" onClick={() => { void refreshMaps(); void refreshProgress(); }} disabled={Boolean(busyLabel)}>刷新</button>
-        </div>
-        <div className={styles.controlInputs}>
-          <label>
-            <span>max rounds</span>
-            <input type="number" min={1} max={60} value={maxRounds} onChange={(event) => setMaxRounds(Number(event.target.value))} />
-          </label>
-          <label>
-            <span>max LLM / phase</span>
-            <input type="number" min={0} max={50} value={maxLlmCallsPerPhase} onChange={(event) => setMaxLlmCallsPerPhase(Number(event.target.value))} />
-          </label>
-        </div>
-        <label>
-          <span>admin token（可选）</span>
-          <input value={adminToken} onChange={(event) => setAdminToken(event.target.value)} placeholder="本地无 token 可留空" type="password" />
-        </label>
-        <a className={styles.editorLink} href="/hex-lab/editor">打开 Hex 地图编辑器</a>
-        <div className={styles.runStatusBox}>
-          <strong>运行状态</strong>
-          <p>{busyLabel ? "running" : (progress?.runStatus.status ?? "idle")} - {runStep}</p>
-          <p>calls attempted: {llmAudit?.totalLlmCallsAttempted ?? progress?.runStatus.callsAttempted ?? 0}</p>
-          <p>accepted/rejected/fallback: {llmAudit?.acceptedDrafts ?? 0}/{llmAudit?.rejectedDrafts ?? 0}/{llmAudit?.fallbackCount ?? 0}</p>
-          <p>elapsed: {Math.round(elapsedMs / 1000)}s</p>
-          {completedMap ? <p className={styles.warningText}>当前地图已 completed，请新建或安全重置。</p> : null}
-        </div>
-      </aside>
+          </div>
+
+          {completedMap ? <p className={styles.consoleNote}>当前地图已完成。请新建或安全重置为新地图后继续。</p> : null}
+        </aside>
       )}
-
-      <section className={styles.auditStrip}>
-        <button type="button" onClick={() => { setDrawerOpen(true); setDrawerTab("llm"); }}>LLM 调用</button>
-        <button type="button" onClick={() => { setDrawerOpen(true); setDrawerTab("combat"); }}>战斗裁定</button>
-        <button type="button" onClick={() => { setDrawerOpen(true); setDrawerTab("economy"); }}>经济证据</button>
-        <button type="button" onClick={() => { setDrawerOpen(true); setDrawerTab("winner"); }}>硬胜负</button>
-        <div>
-          accepted {selectedPhase?.acceptedActionCount ?? 0} / rejected {selectedPhase?.rejectedDraftCount ?? 0} / fallback {selectedPhase?.fallbackActionCount ?? 0}
-          <br />
-          hard condition: {selectedPhase?.winCondition?.reason ?? selectedTrace?.finalHardCondition?.reason ?? "暂无"}
-        </div>
-      </section>
-
-      <HexMatchTimeline
-        rounds={rounds}
-        phases={phases}
-        selectedRoundArtifactId={selectedRound?.hexTraceArtifactId}
-        selectedPhaseIndex={selectedPhaseIndex}
-        roundProgressPct={roundProgressPct}
-        phaseProgressPct={phaseProgressPct}
-        playbackRunning={playbackRunning}
-        onSelectRound={selectRound}
-        onSelectPhase={setSelectedPhaseIndex}
-        onPreviousRound={() => goToRound(-1)}
-        onNextRound={() => goToRound(1)}
-        onPreviousPhase={() => goToPhase(-1)}
-        onNextPhase={() => goToPhase(1)}
-        onTogglePlayback={() => setPlaybackRunning((value) => !value)}
-      />
 
       <HexMatchAuditDrawer
         open={drawerOpen}
@@ -511,64 +555,44 @@ export function HexMatchLabClient() {
   );
 }
 
-function Metric({ label, value, compact = false }: { label: string; value: string; compact?: boolean }) {
-  return (
-    <article className={compact ? styles.metricCompact : styles.metric}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </article>
-  );
+function auditLabel(tab: AuditTab): string {
+  if (tab === "llm") return "LLM 调用";
+  if (tab === "combat") return "战斗裁定";
+  if (tab === "economy") return "经济证据";
+  if (tab === "winner") return "硬胜负";
+  return "原始 JSON";
 }
 
-function Toggle({ checked, label, onChange }: { checked: boolean; label: string; onChange: (value: boolean) => void }) {
-  return (
-    <label className={styles.togglePill}>
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
-      <span>{label}</span>
-    </label>
-  );
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function formatMs(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
 }
 
 function clampConsolePosition(x: number, y: number): { x: number; y: number } {
   if (typeof window === "undefined") return { x, y };
-  const maxX = Math.max(8, window.innerWidth - 88);
-  const maxY = Math.max(8, window.innerHeight - 52);
   return {
-    x: Math.min(Math.max(8, x), maxX),
-    y: Math.min(Math.max(8, y), maxY)
+    x: Math.max(8, Math.min(window.innerWidth - 360, x)),
+    y: Math.max(8, Math.min(window.innerHeight - 160, y))
   };
 }
 
-function ErrorBanner({ error }: { error: { message: string; details?: string } }) {
-  return (
-    <section className={styles.errorBanner}>
-      <strong>{error.message.split("\n\n")[0]}</strong>
-      <span>不会影响旧 Phase18。你可以新建 Hex 验收比赛、选择 active mapGame，或展开技术细节排查。</span>
-      <details>
-        <summary>technical details</summary>
-        <pre>{error.details ?? error.message}</pre>
-      </details>
-    </section>
-  );
-}
-
 function toFriendlyError(cause: unknown): { message: string; details?: string } {
-  const message = cause instanceof Error ? cause.message : String(cause);
-  if (/completed map|地图已完成/i.test(message)) {
-    return { message: "当前地图已完成，不能继续提交回合。", details: message };
+  const details = cause instanceof Error ? cause.message : String(cause);
+  if (/completed map|当前地图已完成/i.test(details)) {
+    return {
+      message: "当前地图已完成，不能继续提交回合。",
+      details
+    };
   }
-  if (/no.*active.*dust2|没有可运行|没有找到/i.test(message)) {
-    return { message: "没有可运行的 Dust2 Hex 地图。", details: message };
+  if (/provider|external|api key|network/i.test(details)) {
+    return {
+      message: "真实 LLM provider 受限或失败。请查看 LLM 审计或切换到新的验收地图重试。",
+      details
+    };
   }
-  if (/provider|external|eacces|api key|network/i.test(message)) {
-    return { message: "真实 LLM provider 受限或失败。", details: message };
-  }
-  if (/max.*round/i.test(message)) {
-    return { message: "已达到最大回合上限，地图未完成。", details: message };
-  }
-  return { message, details: message };
-}
-
-function formatScore(score: HexMatchLabProgress["score"] | undefined): string {
-  return score ? `${score.teamA} - ${score.teamB}` : "暂无";
+  return { message: details, details };
 }

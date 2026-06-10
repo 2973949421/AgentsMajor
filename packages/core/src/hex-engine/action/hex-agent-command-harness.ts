@@ -34,6 +34,38 @@ export interface HexAgentCommandProviderResult {
 export type HexAgentCommandProvider =
   (request: HexAgentCommandRequest) => Promise<unknown | HexAgentCommandProviderResult> | unknown | HexAgentCommandProviderResult;
 
+export type HexAgentCommandProgressStatus =
+  | "queued"
+  | "skipped"
+  | "running"
+  | "request_artifact_written"
+  | "response_artifact_written"
+  | "accepted"
+  | "repaired"
+  | "rejected"
+  | "fallback"
+  | "provider_error";
+
+export interface HexAgentCommandProgressEvent {
+  phaseId: HexRoundMemory["phaseId"];
+  phaseIndex: number;
+  agentId: string;
+  callId: string;
+  callIndex: number;
+  expectedCalls: number;
+  status: HexAgentCommandProgressStatus;
+  message?: string | undefined;
+  requestArtifactId?: string | undefined;
+  responseArtifactId?: string | undefined;
+  repairedFields?: string[] | undefined;
+  errors?: string[] | undefined;
+  fallbackReason?: string | undefined;
+  providerMode?: HexAgentCommandProviderMode | undefined;
+  modelId?: string | undefined;
+}
+
+export type HexAgentCommandProgressSink = (event: HexAgentCommandProgressEvent) => void | Promise<void>;
+
 export interface HexAgentCommandArtifactOwner {
   ownerType: string;
   ownerId: string;
@@ -54,6 +86,7 @@ export interface RunHexAgentPhaseCommandHarnessInput {
   artifactStore?: ArtifactStore;
   artifactOwner?: HexAgentCommandArtifactOwner;
   callIdPrefix?: string;
+  progressSink?: HexAgentCommandProgressSink;
 }
 
 export interface HexAgentCommandAudit {
@@ -94,14 +127,25 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
   const rejectedDrafts: HexAgentPhaseCommandHarnessResult["rejectedDrafts"] = [];
   const maxLlmCalls = input.maxLlmCalls ?? Number.POSITIVE_INFINITY;
   let callsAttempted = 0;
+  const expectedCalls = input.memory.agents.filter((agent) => agent.lifeStatus !== "dead" && agent.apRemaining > 0).length;
 
   for (const agent of input.memory.agents) {
     const callId = buildCallId(input, agent.agentId);
+    const callIndex = Math.min(callsAttempted + 1, expectedCalls);
     if (agent.lifeStatus === "dead" || agent.apRemaining <= 0) {
       const fallback = buildHexAgentFallbackAction({
         memory: input.memory,
         agent,
         reason: agent.lifeStatus === "dead" ? "dead_agent_skipped" : "ap_empty_agent_skipped"
+      });
+      await emitProgress(input, {
+        agentId: agent.agentId,
+        callId,
+        callIndex,
+        expectedCalls,
+        status: "skipped",
+        fallbackReason: fallback.fallbackReason ?? "agent_skipped",
+        errors: [fallback.fallbackReason ?? "agent_skipped"]
       });
       actions.push(fallback);
       audits.push({
@@ -124,6 +168,15 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
         agent,
         reason: "max_llm_calls_reached"
       });
+      await emitProgress(input, {
+        agentId: agent.agentId,
+        callId,
+        callIndex,
+        expectedCalls,
+        status: "fallback",
+        fallbackReason: "max_llm_calls_reached",
+        errors: ["max_llm_calls_reached"]
+      });
       actions.push(fallback);
       audits.push({
         agentId: agent.agentId,
@@ -145,6 +198,24 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
       agentId: agent.agentId,
       ...(input.economyContext ? { economyContext: input.economyContext } : {})
     });
+    await emitProgress(input, {
+      agentId: agent.agentId,
+      callId,
+      callIndex,
+      expectedCalls,
+      status: "queued",
+      providerMode: input.providerMode,
+      ...(input.modelId ? { modelId: input.modelId } : {})
+    });
+    await emitProgress(input, {
+      agentId: agent.agentId,
+      callId,
+      callIndex,
+      expectedCalls,
+      status: "running",
+      providerMode: input.providerMode,
+      ...(input.modelId ? { modelId: input.modelId } : {})
+    });
     const requestArtifactId = await writeHarnessArtifact(input, {
       callId,
       agentId: agent.agentId,
@@ -156,6 +227,18 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
         request
       }
     });
+    if (requestArtifactId) {
+      await emitProgress(input, {
+        agentId: agent.agentId,
+        callId,
+        callIndex,
+        expectedCalls,
+        status: "request_artifact_written",
+        requestArtifactId,
+        providerMode: input.providerMode,
+        ...(input.modelId ? { modelId: input.modelId } : {})
+      });
+    }
 
     callsAttempted += 1;
     try {
@@ -179,6 +262,19 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
           normalized
         }
       });
+      if (responseArtifactId) {
+        await emitProgress(input, {
+          agentId: agent.agentId,
+          callId,
+          callIndex,
+          expectedCalls,
+          status: "response_artifact_written",
+          requestArtifactId,
+          responseArtifactId,
+          providerMode: providerResult.providerMode ?? input.providerMode,
+          ...(providerResult.modelId ?? input.modelId ? { modelId: providerResult.modelId ?? input.modelId } : {})
+        });
+      }
 
       if (!normalized.draft) {
         const fallback = buildHexAgentFallbackAction({
@@ -205,6 +301,34 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
           providerResult,
           input
         }));
+        await emitProgress(input, {
+          agentId: agent.agentId,
+          callId,
+          callIndex,
+          expectedCalls,
+          status: "rejected",
+          requestArtifactId,
+          responseArtifactId,
+          repairedFields: normalized.repairedFields,
+          errors: normalized.errors,
+          fallbackReason: fallback.fallbackReason,
+          providerMode: providerResult.providerMode ?? input.providerMode,
+          ...(providerResult.modelId ?? input.modelId ? { modelId: providerResult.modelId ?? input.modelId } : {})
+        });
+        await emitProgress(input, {
+          agentId: agent.agentId,
+          callId,
+          callIndex,
+          expectedCalls,
+          status: "fallback",
+          requestArtifactId,
+          responseArtifactId,
+          repairedFields: normalized.repairedFields,
+          errors: normalized.errors,
+          fallbackReason: fallback.fallbackReason,
+          providerMode: providerResult.providerMode ?? input.providerMode,
+          ...(providerResult.modelId ?? input.modelId ? { modelId: providerResult.modelId ?? input.modelId } : {})
+        });
         continue;
       }
 
@@ -235,6 +359,50 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
           providerResult,
         input
       }));
+      if (normalized.repairedFields.length > 0) {
+        await emitProgress(input, {
+          agentId: agent.agentId,
+          callId,
+          callIndex,
+          expectedCalls,
+          status: "repaired",
+          requestArtifactId,
+          responseArtifactId,
+          repairedFields: normalized.repairedFields,
+          providerMode: providerResult.providerMode ?? input.providerMode,
+          ...(providerResult.modelId ?? input.modelId ? { modelId: providerResult.modelId ?? input.modelId } : {})
+        });
+      }
+      await emitProgress(input, {
+        agentId: agent.agentId,
+        callId,
+        callIndex,
+        expectedCalls,
+        status: validated.valid ? "accepted" : "rejected",
+        requestArtifactId,
+        responseArtifactId,
+        repairedFields: normalized.repairedFields,
+        errors: validated.validationErrors,
+        fallbackReason: validated.fallbackReason,
+        providerMode: providerResult.providerMode ?? input.providerMode,
+        ...(providerResult.modelId ?? input.modelId ? { modelId: providerResult.modelId ?? input.modelId } : {})
+      });
+      if (!validated.valid) {
+        await emitProgress(input, {
+          agentId: agent.agentId,
+          callId,
+          callIndex,
+          expectedCalls,
+          status: "fallback",
+          requestArtifactId,
+          responseArtifactId,
+          repairedFields: normalized.repairedFields,
+          errors: validated.validationErrors,
+          fallbackReason: validated.fallbackReason,
+          providerMode: providerResult.providerMode ?? input.providerMode,
+          ...(providerResult.modelId ?? input.modelId ? { modelId: providerResult.modelId ?? input.modelId } : {})
+        });
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const fallback = buildHexAgentFallbackAction({
@@ -265,6 +433,30 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
         audit.fallbackReason = fallback.fallbackReason;
       }
       audits.push(audit);
+      await emitProgress(input, {
+        agentId: agent.agentId,
+        callId,
+        callIndex,
+        expectedCalls,
+        status: "provider_error",
+        requestArtifactId,
+        errors: [`provider_error:${message}`],
+        fallbackReason: fallback.fallbackReason,
+        providerMode: input.providerMode ?? "fixture",
+        ...(input.modelId ? { modelId: input.modelId } : {})
+      });
+      await emitProgress(input, {
+        agentId: agent.agentId,
+        callId,
+        callIndex,
+        expectedCalls,
+        status: "fallback",
+        requestArtifactId,
+        errors: [`provider_error:${message}`],
+        fallbackReason: fallback.fallbackReason,
+        providerMode: input.providerMode ?? "fixture",
+        ...(input.modelId ? { modelId: input.modelId } : {})
+      });
     }
   }
 
@@ -279,6 +471,20 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
     totalCallsAttempted: callsAttempted,
     fallbackCount: fallbackActions.length
   };
+}
+
+async function emitProgress(
+  input: RunHexAgentPhaseCommandHarnessInput,
+  event: Omit<HexAgentCommandProgressEvent, "phaseId" | "phaseIndex">
+): Promise<void> {
+  if (!input.progressSink) {
+    return;
+  }
+  await input.progressSink({
+    phaseId: input.memory.phaseId,
+    phaseIndex: input.memory.phaseIndex,
+    ...event
+  });
 }
 
 export function createFixtureHexAgentCommandProvider(): HexAgentCommandProvider {

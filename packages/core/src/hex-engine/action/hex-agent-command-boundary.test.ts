@@ -40,8 +40,12 @@ describe("Hex agent command boundary", () => {
 
     expect(request.agent.agentId).toBe("t_0");
     expect(request.reachableCells.length).toBeGreaterThan(0);
+    expect(request.phaseObjective.objective).toContain("Leave spawn");
+    expect(request.targetCandidates.length).toBeGreaterThan(0);
+    expect(request.targetCandidates.every((candidate) => candidate.targetCellId !== request.agent.currentCellId)).toBe(true);
     expect(request.lastSeenEnemies[0]?.note).toBe("historical_last_seen_not_current_truth");
     expect(request.constraints.some((line) => line.includes("Do not output winner"))).toBe(true);
+    expect(request.constraints.some((line) => line.includes("move action must change position"))).toBe(true);
   });
 
   it("normalizes a valid draft and records forbidden fields as ignored", () => {

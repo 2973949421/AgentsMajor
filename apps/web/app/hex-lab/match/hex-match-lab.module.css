@@ -5,6 +5,55 @@
   padding: 16px;
 }
 
+.matchShell {
+  min-height: 100vh;
+  background: #070b0f;
+  color: #edf4fb;
+  padding: 14px;
+}
+
+.statusBar {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(360px, auto);
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.statusBar h1,
+.statusBar span {
+  margin: 0;
+}
+
+.statusBar h1 {
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.statusBar > div > span {
+  color: #87acd1;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.statusChips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.statusChips span {
+  border: 1px solid #29415a;
+  background: #111b26;
+  color: #bcd6ef;
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .scoreboard {
   display: grid;
   grid-template-columns: minmax(320px, 1fr) minmax(560px, 1.4fr);
@@ -77,7 +126,7 @@
 
 .board {
   display: grid;
-  grid-template-columns: 260px minmax(620px, 1fr) 260px;
+  grid-template-columns: minmax(250px, 0.8fr) minmax(760px, 2.6fr) minmax(250px, 0.8fr);
   gap: 12px;
   align-items: start;
 }
@@ -203,6 +252,35 @@
   font-weight: 700;
 }
 
+.playerRole {
+  display: inline-block;
+  margin-top: 5px;
+  border: 1px solid #2e4a61;
+  border-radius: 999px;
+  padding: 2px 7px;
+  color: #a7dcbc;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.playerGrid {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 3px 7px;
+  margin-top: 8px;
+  color: #aebfd0;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.playerGrid b {
+  color: #7f96ac;
+}
+
+.playerGrid span {
+  overflow-wrap: anywhere;
+}
+
 .playerMeta,
 .playerAction {
   display: block;
@@ -294,6 +372,49 @@
   overflow: hidden;
 }
 
+.mapToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  align-items: center;
+}
+
+.mapToolbar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #35536d;
+  background: #0b1117;
+  color: #c7d7e7;
+  border-radius: 7px;
+  padding: 8px 10px;
+  font-weight: 800;
+}
+
+.levelTabs {
+  display: flex;
+  gap: 6px;
+  margin-right: auto;
+}
+
+.levelTab,
+.levelActive {
+  border: 1px solid #35536d;
+  background: #0b1117;
+  color: #c7d7e7;
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.levelActive {
+  background: #a7dcbc;
+  color: #08120d;
+  border-color: #b8edce;
+}
+
 .mapTitleRow p {
   margin: 6px 0 0;
   color: #9fb1c3;
@@ -303,8 +424,8 @@
 .hexMapSvg {
   display: block;
   width: 100%;
-  max-height: 72vh;
-  aspect-ratio: 1 / 1;
+  height: min(78vh, 880px);
+  min-height: 620px;
   margin-top: 10px;
   border: 1px solid #243342;
   border-radius: 8px;
@@ -328,6 +449,9 @@
 .hexRegionSpawn { fill: rgba(183, 143, 72, 0.36); }
 .hexRegionRotate { fill: rgba(103, 154, 112, 0.34); }
 .hexRegionOther { fill: rgba(98, 113, 128, 0.3); }
+.hexRegionSite { fill: rgba(190, 86, 68, 0.36); }
+.hexRegionRoute { fill: rgba(103, 154, 112, 0.34); }
+.hexRegionNeutral { fill: rgba(98, 113, 128, 0.3); }
 
 .mapRegionLabel {
   fill: rgba(239, 246, 255, 0.92);
@@ -367,10 +491,39 @@
   stroke-dasharray: 2 1.4;
 }
 
+.mapPath,
+.mapPathRejected {
+  fill: none;
+  stroke: #f2cf73;
+  stroke-width: 1.1;
+  stroke-linecap: round;
+  opacity: 0.9;
+}
+
+.mapPathRejected {
+  stroke: #ff7777;
+  stroke-dasharray: 2 1.4;
+}
+
 .combatPulse {
   fill: rgba(244, 90, 90, 0.25);
   stroke: #ff7777;
   stroke-width: 0.8;
+}
+
+.mapCombat {
+  fill: rgba(244, 90, 90, 0.2);
+  stroke: #ff7777;
+  stroke-width: 1;
+}
+
+.mapBomb {
+  fill: #ffd768;
+  font-size: 5px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: #1b1300;
+  stroke-width: 1.4;
 }
 
 .combatLabel {
@@ -420,6 +573,41 @@
   stroke-width: 1.1;
 }
 
+.mapAgent,
+.mapAgentSelected {
+  cursor: pointer;
+}
+
+.mapAgentAttack {
+  fill: #f19b54;
+  stroke: #071016;
+  stroke-width: 0.9;
+}
+
+.mapAgentDefense {
+  fill: #5da6ff;
+  stroke: #071016;
+  stroke-width: 0.9;
+}
+
+.mapAgentSelected .mapAgentAttack,
+.mapAgentSelected .mapAgentDefense {
+  stroke: #ffffff;
+  stroke-width: 1.6;
+}
+
+.mapAgentText {
+  fill: #ffffff;
+  font-size: 3.1px;
+  font-weight: 900;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: #071016;
+  stroke-width: 1;
+}
+
 .lastSeenDot {
   fill: rgba(255, 106, 106, 0.45);
   stroke: #ff8c8c;
@@ -457,6 +645,21 @@
   width: min(360px, calc(100vw - 36px));
   padding: 12px;
   box-shadow: 0 16px 38px rgba(0, 0, 0, 0.45);
+  touch-action: none;
+}
+
+.consoleReveal {
+  position: fixed;
+  left: 14px;
+  top: 92px;
+  z-index: 24;
+  border: 1px solid #35536d;
+  background: #172333;
+  color: #d7e9ff;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-weight: 900;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.42);
 }
 
 .consoleHeader {
@@ -580,11 +783,53 @@
   overflow-wrap: anywhere;
 }
 
+.runStatusBox span,
+.runStatusBox strong {
+  overflow-wrap: anywhere;
+}
+
+.liveCallList {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+  max-height: 190px;
+  overflow: auto;
+}
+
+.liveCallRow {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 84px;
+  gap: 6px;
+  border: 1px solid #26394d;
+  background: #0a1118;
+  border-radius: 6px;
+  padding: 6px;
+  color: #bdd0e2;
+  font-size: 11px;
+}
+
+.liveCallRow span,
+.liveCallRow small {
+  overflow-wrap: anywhere;
+}
+
+.liveCallRow em {
+  color: #a7dcbc;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.liveCallRow small {
+  grid-column: 1 / -1;
+  color: #ffcf86;
+}
+
 .warningText {
   color: #ffd48a;
 }
 
-.auditStrip {
+.auditStrip,
+.bottomAudit {
   display: grid;
   grid-template-columns: repeat(4, 150px) minmax(240px, 1fr);
   gap: 8px;
@@ -593,20 +838,34 @@
   margin-top: 12px;
 }
 
-.auditStrip button {
+.auditStrip button,
+.bottomAudit button {
   background: #142033;
   color: #d5e8ff;
   padding: 10px;
   font-weight: 900;
+  border: 1px solid #35536d;
+  border-radius: 7px;
+  cursor: pointer;
 }
 
-.auditStrip div {
+.auditStrip div,
+.auditSummary {
   border: 1px solid #2a3d4f;
   background: #0c1218;
   border-radius: 7px;
   padding: 8px 10px;
   color: #b8c9d9;
   overflow-wrap: anywhere;
+}
+
+.auditSummary h2,
+.auditSummary p {
+  margin: 0;
+}
+
+.auditSummary p {
+  margin-top: 4px;
 }
 
 .timelinePanel {

@@ -45,21 +45,25 @@ describe("Hex Match Lab", () => {
     const css = readAppFile("hex-lab/match/hex-match-lab.module.css");
 
     expect(client).toContain("Hex Match Lab 真实 LLM 验收台");
-    expect(client).toContain("中央地图、左右选手、底部回放");
-    expect(client).toContain("新建比赛");
-    expect(client).toContain("安全重置");
-    expect(client).toContain("跑下一回合");
-    expect(client).toContain("一直跑");
     expect(client).toContain("进攻方");
     expect(client).toContain("防守方");
+    expect(client).toContain("新建比赛");
+    expect(client).toContain("安全重置");
+    expect(client).toContain("跑下一回合（real）");
+    expect(client).toContain("一直跑");
     expect(client).toContain("停止");
+    expect(client).toContain("/api/hex-lab/match/live-run");
+    expect(client).toContain("/api/hex-lab/match/map-asset");
     expect(client).toContain("当前地图已完成，不能继续提交回合。");
     expect(client).not.toContain("<select value={providerMode}");
 
     expect(mapViewer).toContain("Dust2 Hex 地图");
-    expect(mapViewer).toContain("路径线来自 trace");
+    expect(mapViewer).toContain("viewBox={bounds.viewBox}");
     expect(mapViewer).toContain("C4");
-    expect(mapViewer).toContain("交火");
+    expect(mapViewer).toContain("mapCombat");
+    expect(playerPanel).toContain("roleLabel");
+    expect(playerPanel).toContain("KDA");
+    expect(playerPanel).toContain("本局花费");
     expect(playerPanel).toContain("AP");
     expect(timeline).toContain("Round / Phase 回放控制");
     expect(timeline).toContain("播放 trace");
@@ -71,6 +75,8 @@ describe("Hex Match Lab", () => {
     expect(css).toContain(".teamColumn");
     expect(css).toContain(".centerStage");
     expect(css).toContain(".floatingConsole");
+    expect(css).toContain(".consoleReveal");
+    expect(css).toContain(".liveCallRow");
     expect(css).toContain(".timelinePanel");
 
     for (const source of [client, mapViewer, playerPanel, timeline, drawer]) {
@@ -86,9 +92,14 @@ describe("Hex Match Lab", () => {
     const mapsRoute = readAppFile("api/hex-lab/match/maps/route.ts");
     const createRoute = readAppFile("api/hex-lab/match/create/route.ts");
     const resetRoute = readAppFile("api/hex-lab/match/reset/route.ts");
+    const liveRunRoute = readAppFile("api/hex-lab/match/live-run/route.ts");
+    const mapAssetRoute = readAppFile("api/hex-lab/match/map-asset/route.ts");
     const server = readAppFile("server-hex-match-lab.ts");
 
     expect(runRoute).toContain("startHexMatchLabRun");
+    expect(liveRunRoute).toContain("startHexMatchLabLiveRun");
+    expect(liveRunRoute).toContain("readHexMatchLabLiveRun");
+    expect(mapAssetRoute).toContain("readHexMatchLabMapAssetView");
     expect(progressRoute).toContain("readHexMatchLabRunProgress");
     expect(mapsRoute).toContain("listHexMatchLabMapGames");
     expect(createRoute).toContain("createHexMatchLabValidationMap");

@@ -69,7 +69,7 @@ function LlmAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; phase
       <MetricLine label="fallback reasons" value={audit.fallbackReasons.join("; ") || "无"} />
       <MetricLine label="provider errors" value={audit.providerErrors.join("; ") || "无"} />
       <p className={styles.guardText}>
-        如果 real LLM 被 rejected，这里会显示具体原因。模型输出不会直接进入事实层；winner、kill、damage、economyDelta 都由代码裁定。
+        模型只输出行动草案。winner、kill、damage、economyDelta 和 DB fact 都不会从 LLM 直接进入事实层。
       </p>
     </div>
   );
@@ -106,7 +106,7 @@ function EconomyAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined })
           <ul>
             {team.agents.map((agent) => (
               <li key={agent.agentId}>
-                {agent.agentId}: {agent.buyType} - {agent.resourceTier}/{agent.utilityTier} - output {agent.outputBudget} - drop +{agent.dropReceived ?? 0}
+                {agent.agentId}: {agent.buyType} - {agent.resourceTier}/{agent.utilityTier} - spend {agent.spend ?? 0} - output {agent.outputBudget} - drop +{agent.dropReceived ?? 0}
               </li>
             ))}
           </ul>
@@ -119,38 +119,40 @@ function EconomyAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined })
 
 function WinnerAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; phase: HexMatchLabPhaseSummary | undefined }) {
   const condition = props.phase?.winCondition ?? props.trace?.finalHardCondition;
-  if (!condition) return <p className={styles.emptyInline}>暂无 hard condition。</p>;
+  if (!condition) return <p className={styles.emptyInline}>暂无 hard winner。</p>;
   return (
     <div className={styles.auditStack}>
-      <MetricLine label="isRoundOver" value={String(condition.isRoundOver)} />
-      <MetricLine label="winnerSide" value={condition.winnerSide ?? "unknown"} />
-      <MetricLine label="winnerTeamId" value={condition.winnerTeamId ?? "unknown"} />
-      <MetricLine label="roundWinType" value={condition.roundWinType ?? condition.judgeRoundWinType ?? "unknown"} />
-      <MetricLine label="reason" value={condition.reason ?? "missing"} />
-      <p className={styles.guardText}>最终 winner 只来自 hard condition；本页面不重新计算 winner，LLM draft 也不能写 winner。</p>
+      <MetricLine label="round over" value={condition.isRoundOver ? "yes" : "continue"} />
+      <MetricLine label="winner side" value={condition.winnerSide ?? "none"} />
+      <MetricLine label="winner team" value={condition.winnerTeamId ?? "none"} />
+      <MetricLine label="win type" value={condition.roundWinType ?? condition.judgeRoundWinType ?? "none"} />
+      <MetricLine label="reason" value={condition.reason ?? "未记录"} />
+      <p className={styles.guardText}>最终 winner 只来自 hard condition。前端不重新计算 winner，LLM 也不能写最终胜负。</p>
     </div>
   );
 }
 
 function RawAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; phase: HexMatchLabPhaseSummary | undefined }) {
   return (
-    <pre className={styles.rawJson}>{JSON.stringify({ trace: props.trace, phase: props.phase }, null, 2)}</pre>
+    <pre className={styles.rawJson}>
+      {JSON.stringify({ selectedPhase: props.phase, selectedTrace: props.trace }, null, 2)}
+    </pre>
   );
 }
 
-function MetricLine({ label, value }: { label: string; value: string }) {
+function MetricLine({ label, value }: { label: string; value: string | number }) {
   return (
-    <p className={styles.metricLine}>
+    <div className={styles.metricLine}>
       <span>{label}</span>
       <strong>{value}</strong>
-    </p>
+    </div>
   );
 }
 
 function tabLabel(tab: AuditTab): string {
-  if (tab === "llm") return "LLM";
-  if (tab === "combat") return "战斗";
-  if (tab === "economy") return "经济";
+  if (tab === "llm") return "LLM 调用";
+  if (tab === "combat") return "战斗裁定";
+  if (tab === "economy") return "经济证据";
   if (tab === "winner") return "硬胜负";
-  return "Raw";
+  return "原始 JSON";
 }
