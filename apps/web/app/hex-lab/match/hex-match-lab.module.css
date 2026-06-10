@@ -453,8 +453,6 @@
 
 .floatingConsole {
   position: fixed;
-  left: 18px;
-  bottom: 18px;
   z-index: 20;
   width: min(360px, calc(100vw - 36px));
   padding: 12px;
@@ -463,11 +461,40 @@
 
 .consoleHeader {
   margin-bottom: 10px;
+  align-items: center;
 }
 
 .consoleHeader span {
   color: #a7dcbc;
   font-size: 12px;
+}
+
+.dragHandle,
+.consoleIconButton,
+.consoleRestoreButton {
+  border: 1px solid #35536d;
+  background: #172333;
+  color: #d7e9ff;
+  border-radius: 7px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.dragHandle {
+  padding: 5px 8px;
+  touch-action: none;
+  user-select: none;
+}
+
+.consoleIconButton {
+  padding: 5px 8px;
+}
+
+.consoleRestoreButton {
+  position: fixed;
+  z-index: 21;
+  padding: 9px 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.42);
 }
 
 .floatingConsole label {
@@ -876,9 +903,7 @@
   }
 
   .floatingConsole {
-    position: static;
-    width: auto;
-    margin-top: 12px;
+    width: min(340px, calc(100vw - 18px));
   }
 
   .timelinePanel {

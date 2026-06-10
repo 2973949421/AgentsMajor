@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 import type {
   HexMatchLabMapOption,
@@ -15,6 +15,12 @@ import { HexMatchTimeline } from "./hex-match-timeline";
 import styles from "./hex-match-lab.module.css";
 
 type AuditTab = "llm" | "combat" | "economy" | "winner" | "raw";
+type ConsoleDragState = {
+  startX: number;
+  startY: number;
+  originX: number;
+  originY: number;
+};
 
 const providerMode = "real" as const;
 
@@ -41,6 +47,9 @@ export function HexMatchLabClient() {
   const [error, setError] = useState<{ message: string; details?: string } | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState<AuditTab>("llm");
+  const [consoleHidden, setConsoleHidden] = useState(false);
+  const [consolePosition, setConsolePosition] = useState({ x: 24, y: 96 });
+  const [consoleDrag, setConsoleDrag] = useState<ConsoleDragState | null>(null);
   const stopRequested = useRef(false);
   const runStartedAt = useRef<number | null>(null);
 
@@ -99,6 +108,25 @@ export function HexMatchLabClient() {
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playbackRunning, selectedPhaseIndex, selectedRoundArtifactId, rounds.length, phases.length]);
+
+  useEffect(() => {
+    if (!consoleDrag) return;
+    const drag = consoleDrag;
+    function handlePointerMove(event: PointerEvent) {
+      const nextX = drag.originX + event.clientX - drag.startX;
+      const nextY = drag.originY + event.clientY - drag.startY;
+      setConsolePosition(clampConsolePosition(nextX, nextY));
+    }
+    function handlePointerUp() {
+      setConsoleDrag(null);
+    }
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp, { once: true });
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [consoleDrag]);
 
   async function refreshMaps() {
     const params = new URLSearchParams();
@@ -194,6 +222,16 @@ export function HexMatchLabClient() {
     stopRequested.current = true;
     setPlaybackRunning(false);
     setRunStep("收到停止请求：不会再提交下一回合；trace 播放已暂停。");
+  }
+
+  function startConsoleDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    setConsoleDrag({
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: consolePosition.x,
+      originY: consolePosition.y
+    });
   }
 
   async function createMap() {
@@ -364,10 +402,22 @@ export function HexMatchLabClient() {
         />
       </section>
 
-      <aside className={styles.floatingConsole}>
+      {consoleHidden ? (
+        <button
+          type="button"
+          className={styles.consoleRestoreButton}
+          style={{ left: consolePosition.x, top: consolePosition.y }}
+          onClick={() => setConsoleHidden(false)}
+        >
+          显示控制台
+        </button>
+      ) : (
+      <aside className={styles.floatingConsole} style={{ left: consolePosition.x, top: consolePosition.y }}>
         <div className={styles.consoleHeader}>
+          <button type="button" className={styles.dragHandle} onPointerDown={startConsoleDrag}>拖拽</button>
           <strong>控制台</strong>
           <span>{busyLabel ?? "idle"}</span>
+          <button type="button" className={styles.consoleIconButton} onClick={() => setConsoleHidden(true)}>隐藏</button>
         </div>
         <label>
           <span>历史 / 当前 mapGame</span>
@@ -418,6 +468,7 @@ export function HexMatchLabClient() {
           {completedMap ? <p className={styles.warningText}>当前地图已 completed，请新建或安全重置。</p> : null}
         </div>
       </aside>
+      )}
 
       <section className={styles.auditStrip}>
         <button type="button" onClick={() => { setDrawerOpen(true); setDrawerTab("llm"); }}>LLM 调用</button>
@@ -476,6 +527,16 @@ function Toggle({ checked, label, onChange }: { checked: boolean; label: string;
       <span>{label}</span>
     </label>
   );
+}
+
+function clampConsolePosition(x: number, y: number): { x: number; y: number } {
+  if (typeof window === "undefined") return { x, y };
+  const maxX = Math.max(8, window.innerWidth - 88);
+  const maxY = Math.max(8, window.innerHeight - 52);
+  return {
+    x: Math.min(Math.max(8, x), maxX),
+    y: Math.min(Math.max(8, y), maxY)
+  };
 }
 
 function ErrorBanner({ error }: { error: { message: string; details?: string } }) {
