@@ -5,20 +5,30 @@ import type { HexMatchLabPlayerCard } from "../../server-hex-match-lab";
 import styles from "./hex-match-lab.module.css";
 
 interface HexMatchPlayerPanelProps {
+  title: string;
+  side: "attack" | "defense";
   players: HexMatchLabPlayerCard[];
   selectedAgentId?: string | undefined;
   onSelectAgent: (agentId: string) => void;
 }
 
 export function HexMatchPlayerPanel(props: HexMatchPlayerPanelProps) {
+  const orderedPlayers = props.players
+    .filter((player) => player.side === props.side)
+    .sort((left, right) => (left.displayName ?? left.agentId).localeCompare(right.displayName ?? right.agentId));
+
   return (
-    <section className={styles.sidePanel}>
-      <div className={styles.sectionTitleRow}>
-        <h2>选手状态</h2>
-        <span>{props.players.length}/10</span>
+    <section className={`${styles.teamColumn} ${props.side === "attack" ? styles.attackColumn : styles.defenseColumn}`}>
+      <div className={styles.teamHeader}>
+        <div>
+          <span>{props.side === "attack" ? "T / attack" : "CT / defense"}</span>
+          <h2>{props.title}</h2>
+        </div>
+        <strong>{orderedPlayers.length}/5</strong>
       </div>
-      <div className={styles.playerGrid}>
-        {props.players.map((player) => {
+
+      <div className={styles.playerStack}>
+        {orderedPlayers.map((player) => {
           const selected = props.selectedAgentId === player.agentId;
           return (
             <button
@@ -28,30 +38,50 @@ export function HexMatchPlayerPanel(props: HexMatchPlayerPanelProps) {
               onClick={() => props.onSelectAgent(player.agentId)}
             >
               <span className={styles.playerHeader}>
-                <strong>{player.displayName ?? player.agentId}</strong>
-                <em>{player.side}</em>
+                <strong>{player.displayName ?? shortId(player.agentId)}</strong>
+                <em>{statusLabel(player.lifeStatus)}</em>
+              </span>
+              <span className={styles.playerLocation}>
+                {player.currentRegionName ?? player.currentRegionId ?? "未分区"}
+                {player.currentPointNames.length > 0 ? ` / ${player.currentPointNames.join(", ")}` : ""}
               </span>
               <span className={styles.playerMeta}>
-                {player.lifeStatus} - AP {player.apSpent.toFixed(1)}/{player.apBudget.toFixed(1)} - 剩余 {player.apRemaining.toFixed(1)}
+                L{player.level ?? "?"} / {player.currentCellId}
               </span>
               <span className={styles.playerMeta}>
-                {player.currentRegionName ?? player.currentRegionId ?? "未分区"} - L{player.level ?? "?"} - {player.currentCellId}
+                AP {player.apSpent.toFixed(1)} / {player.apBudget.toFixed(1)}，剩余 {player.apRemaining.toFixed(1)}
               </span>
               <span className={styles.playerMeta}>
-                {player.buyType ?? "buy?"} - {player.resourceTier ?? "resource?"}/{player.utilityTier ?? "utility?"}
-                {player.dropReceived ? ` - drop +${player.dropReceived}` : ""}
+                {player.buyType ?? "buy?"} / {player.resourceTier ?? "resource?"} / {player.utilityTier ?? "utility?"}
+                {player.dropReceived ? ` / drop +${player.dropReceived}` : ""}
               </span>
               <span className={styles.playerAction}>
-                {player.actionType ?? "无 action"} {player.targetCellId ? `-> ${player.targetCellId}` : ""}
+                {player.actionType ?? "无 action"}
+                {player.targetCellId ? ` -> ${player.targetCellId}` : ""}
               </span>
-              {player.carryingC4 ? <span className={styles.playerBadge}>C4</span> : null}
+              <span className={styles.playerBadges}>
+                {player.carryingC4 ? <b>C4</b> : null}
+                {player.lastSeenEnemyCount > 0 ? <b>lastSeen {player.lastSeenEnemyCount}</b> : null}
+                {player.validAction === false ? <b>fallback</b> : null}
+              </span>
               {player.fallbackReason ? <span className={styles.playerWarn}>{player.fallbackReason}</span> : null}
-              {player.lastSeenEnemyCount > 0 ? <span className={styles.playerIntel}>lastSeen {player.lastSeenEnemyCount}</span> : null}
+              {player.validationErrors.length > 0 ? <span className={styles.playerWarn}>{player.validationErrors.join("; ")}</span> : null}
             </button>
           );
         })}
-        {props.players.length === 0 ? <p className={styles.emptyInline}>选择一个回合和 phase 后查看 10 个选手状态。</p> : null}
+        {orderedPlayers.length === 0 ? <p className={styles.emptyInline}>选择一个 round / phase 后查看选手状态。</p> : null}
       </div>
     </section>
   );
+}
+
+function shortId(agentId: string): string {
+  return agentId.replace(/^agent_/, "").slice(-8);
+}
+
+function statusLabel(status: string): string {
+  if (status === "alive") return "存活";
+  if (status === "wounded") return "受伤";
+  if (status === "dead") return "阵亡";
+  return status;
 }

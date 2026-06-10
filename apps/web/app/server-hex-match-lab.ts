@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+﻿import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 
@@ -281,6 +281,7 @@ export interface HexMatchLabLlmAuditSummary {
   rejectedEventCount: number;
   requestArtifactIds: string[];
   responseArtifactIds: string[];
+  repairedFields: string[];
   fallbackReasons: string[];
   providerErrors: string[];
 }
@@ -948,6 +949,7 @@ function summarizeTraceAudit(trace: HexRoundTrace): HexMatchLabLlmAuditSummary {
     rejectedEventCount: trace.audit.rejectedEventCount,
     requestArtifactIds: uniqueStrings(phaseAudits.map((audit) => audit.requestArtifactId)),
     responseArtifactIds: uniqueStrings(phaseAudits.map((audit) => audit.responseArtifactId)),
+    repairedFields: uniqueStrings(phaseAudits.flatMap((audit) => audit.repairedFields ?? [])),
     fallbackReasons: uniqueStrings(phaseAudits.map((audit) => audit.fallbackReason)),
     providerErrors: uniqueStrings(phaseAudits.flatMap((audit) => audit.errors).filter((error) => error.startsWith("provider_error")))
   };
@@ -967,6 +969,7 @@ function summarizePhaseAudit(phase: HexRoundTrace["phases"][number]): HexMatchLa
     rejectedEventCount: phase.memoryAfter.rejectedEvents.length,
     requestArtifactIds: uniqueStrings(audits.map((audit) => audit.requestArtifactId)),
     responseArtifactIds: uniqueStrings(audits.map((audit) => audit.responseArtifactId)),
+    repairedFields: uniqueStrings(audits.flatMap((audit) => audit.repairedFields ?? [])),
     fallbackReasons: uniqueStrings(audits.map((audit) => audit.fallbackReason)),
     providerErrors: uniqueStrings(audits.flatMap((audit) => audit.errors).filter((error) => error.startsWith("provider_error")))
   };
@@ -1090,7 +1093,7 @@ function toProductError(error: unknown): { message: string; technicalDetails: st
       technicalDetails
     };
   }
-  if (/no.*active.*dust2|没有找到可运行/i.test(technicalDetails)) {
+  if (/no.*active.*dust2|没有找到可运行|没有可运行/i.test(technicalDetails)) {
     return {
       message: `没有可运行的 Dust2 Hex 地图。请先新建 Hex 验收比赛。\n\n技术细节：${technicalDetails}`,
       technicalDetails

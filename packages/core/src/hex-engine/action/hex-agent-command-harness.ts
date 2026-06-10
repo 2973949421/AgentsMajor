@@ -64,6 +64,7 @@ export interface HexAgentCommandAudit {
   fallback: boolean;
   fallbackReason?: string;
   ignoredFields: string[];
+  repairedFields: string[];
   errors: string[];
   requestArtifactId?: string;
   responseArtifactId?: string;
@@ -111,6 +112,7 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
         fallback: true,
         fallbackReason: fallback.fallbackReason ?? "agent_skipped",
         ignoredFields: [],
+        repairedFields: [],
         errors: [fallback.fallbackReason ?? "agent_skipped"]
       });
       continue;
@@ -131,6 +133,7 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
         fallback: true,
         fallbackReason: "max_llm_calls_reached",
         ignoredFields: [],
+        repairedFields: [],
         errors: ["max_llm_calls_reached"]
       });
       continue;
@@ -196,6 +199,7 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
           action: fallback,
           errors: normalized.errors,
           ignoredFields: normalized.ignoredFields,
+          repairedFields: normalized.repairedFields,
           requestArtifactId,
           responseArtifactId,
           providerResult,
@@ -223,11 +227,12 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
         callId,
         called: true,
         action: validated,
-        errors: validated.validationErrors,
-        ignoredFields: normalized.ignoredFields,
-        requestArtifactId,
-        responseArtifactId,
-        providerResult,
+          errors: validated.validationErrors,
+          ignoredFields: normalized.ignoredFields,
+          repairedFields: normalized.repairedFields,
+          requestArtifactId,
+          responseArtifactId,
+          providerResult,
         input
       }));
     } catch (error) {
@@ -250,6 +255,7 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
         accepted: false,
         fallback: true,
         ignoredFields: [],
+        repairedFields: [],
         errors: [`provider_error:${message}`],
         ...(requestArtifactId ? { requestArtifactId } : {}),
         providerMode: input.providerMode ?? "fixture",
@@ -420,6 +426,7 @@ function buildAudit(input: {
   action: HexValidatedAgentAction;
   errors: readonly string[];
   ignoredFields: readonly string[];
+  repairedFields: readonly string[];
   requestArtifactId: string | undefined;
   responseArtifactId: string | undefined;
   providerResult: HexAgentCommandProviderResult;
@@ -432,6 +439,7 @@ function buildAudit(input: {
     accepted: input.action.valid,
     fallback: !input.action.valid,
     ignoredFields: [...input.ignoredFields],
+    repairedFields: [...input.repairedFields],
     errors: input.errors.map(String),
     providerMode: input.providerResult.providerMode ?? input.input.providerMode ?? "fixture"
   };

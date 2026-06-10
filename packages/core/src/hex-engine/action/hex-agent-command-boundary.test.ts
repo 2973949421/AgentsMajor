@@ -72,8 +72,40 @@ describe("Hex agent command boundary", () => {
     });
 
     expect(result.errors).toEqual([]);
+    expect(result.repairedFields).toEqual([]);
     expect(result.draft?.targetCellId).toBe(request.reachableCells[0]!.cellId);
     expect(result.ignoredFields).toEqual(expect.arrayContaining(["winner", "kills"]));
+  });
+
+  it("repairs request-owned phase and current cell fields without relaxing action facts", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset),
+      bombCarrierAgentId: "t_0"
+    });
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_0"
+    });
+
+    const result = normalizeHexAgentActionDraft({
+      request,
+      rawDraft: {
+        agentId: "t_0",
+        phaseId: "model_repeated_the_wrong_phase",
+        currentCellId: "model_repeated_the_wrong_cell",
+        targetCellId: request.reachableCells[0]!.cellId,
+        actionType: "move",
+        businessIntent: "t_0 uses a repaired context draft to keep the business plan moving."
+      }
+    });
+
+    expect(result.errors).toEqual([]);
+    expect(result.repairedFields).toEqual(expect.arrayContaining(["repaired_phaseId", "repaired_currentCellId"]));
+    expect(result.draft?.phaseId).toBe(request.phaseId);
+    expect(result.draft?.currentCellId).toBe(request.agent.currentCellId);
   });
 
   it("adds compact economy context when provided", () => {
@@ -104,7 +136,7 @@ describe("Hex agent command boundary", () => {
     expect(request.constraints.some((line) => line.includes("Economy context is already resolved"))).toBe(true);
   });
 
-  it("rejects malformed drafts before validation", () => {
+  it("still rejects malformed action facts before validation", () => {
     const asset = loadOfficialDust2HexMap();
     const memory = initializeHexRoundMemory({
       asset,
@@ -133,13 +165,12 @@ describe("Hex agent command boundary", () => {
     expect(result.errors).toEqual(
       expect.arrayContaining([
         "draft:invalid_agentId",
-        "draft:invalid_phaseId",
-        "draft:invalid_currentCellId",
         "draft:missing_targetCellId",
         "draft:invalid_actionType",
         "draft:missing_businessIntent"
       ])
     );
+    expect(result.repairedFields).toEqual(expect.arrayContaining(["repaired_phaseId", "repaired_currentCellId"]));
   });
 });
 

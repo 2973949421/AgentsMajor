@@ -8,10 +8,10 @@ import type {
 
 import styles from "./hex-match-lab.module.css";
 
-const hexRadius = 6.2;
+const hexRadius = 5.8;
 const stepX = hexRadius * 1.5;
 const stepY = Math.sqrt(3) * hexRadius;
-const viewBoxPadding = 10;
+const viewBoxPadding = 16;
 const viewBoxWidth = stepX * 49 + hexRadius * 2 + viewBoxPadding * 2;
 const viewBoxHeight = stepY * 50 + stepY / 2 + viewBoxPadding * 2;
 
@@ -35,66 +35,66 @@ export function HexMatchMapViewer(props: HexMatchMapViewerProps) {
   const regionById = new Map(props.map.regions.map((region) => [region.regionId, region]));
   const pointById = new Map(props.map.points.map((point) => [point.pointId, point]));
   const players = phase?.players.filter((player) => cellById.get(player.currentCellId)?.level === props.level) ?? [];
-  const bombCellId = phase?.bombState.plantedCellId
-    ?? phase?.players.find((player) => player.carryingC4)?.currentCellId;
+  const bombCellId = phase?.bombState.plantedCellId ?? phase?.players.find((player) => player.carryingC4)?.currentCellId;
   const bombCell = bombCellId ? cellById.get(bombCellId) : undefined;
+  const labelCells = buildRegionLabelCells(cells);
 
   return (
     <section className={styles.mapPanel} aria-label="Dust2 Hex 地图主视图">
-      <div className={styles.mapHeader}>
+      <div className={styles.mapTitleRow}>
         <div>
           <h2>Dust2 Hex 地图</h2>
           <p>只读验收视图：显示官方 Hex 资产、选手位置、C4、交火和行动路径预览。</p>
         </div>
         <span>level {props.level}</span>
       </div>
+
       <svg className={styles.hexMapSvg} viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`} role="img" aria-label="Dust2 Hex map">
         <defs>
           <filter id="hexTextShadow">
-            <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#02060a" floodOpacity="0.9" />
+            <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#02060a" floodOpacity="0.95" />
           </filter>
         </defs>
+
         {cells.map((cell) => {
           const region = cell.regionId ? regionById.get(cell.regionId) : undefined;
           return (
             <polygon
               key={cell.cellId}
               points={hexPolygon(cell.col, cell.row)}
-              className={`${styles.hexCell} ${regionClass(region?.regionType)}`}
-              data-cell-id={cell.cellId}
+              className={`${styles.hexCell ?? ""} ${regionClass(region?.regionType)}`}
             >
               <title>{cellTitle(cell, region?.nameCn, cell.pointIds.map((pointId) => pointById.get(pointId)?.nameCn ?? pointId))}</title>
             </polygon>
           );
         })}
+
         {props.showRegions
-          ? cells.map((cell) => {
-              const region = cell.regionId ? regionById.get(cell.regionId) : undefined;
-              if (!region || !isRegionLabelCell(cell, cells)) {
-                return null;
-              }
+          ? [...labelCells.entries()].map(([regionId, cell]) => {
+              const region = regionById.get(regionId);
+              if (!region) return null;
               const pos = cellCenter(cell.col, cell.row);
               return (
-                <text key={`region_${cell.cellId}`} x={pos.x} y={pos.y + 2} className={styles.mapRegionLabel} filter="url(#hexTextShadow)">
+                <text key={`region_${regionId}`} x={pos.x} y={pos.y + 2} className={styles.mapRegionLabel} filter="url(#hexTextShadow)">
                   {region.nameCn}
                 </text>
               );
             })
           : null}
+
         {props.showPoints
           ? cells.flatMap((cell) => cell.pointIds.slice(0, 1).map((pointId) => {
               const point = pointById.get(pointId);
-              if (!point) {
-                return null;
-              }
+              if (!point) return null;
               const pos = cellCenter(cell.col, cell.row);
               return (
-                <circle key={`point_${cell.cellId}_${pointId}`} cx={pos.x} cy={pos.y} r="2.2" className={styles.mapPoint}>
+                <circle key={`point_${cell.cellId}_${pointId}`} cx={pos.x} cy={pos.y} r="2.1" className={styles.mapPoint}>
                   <title>{point.nameCn}</title>
                 </circle>
               );
             }))
           : null}
+
         {props.showFlags
           ? cells.filter((cell) => cell.flags.some((flag) => flag !== "playable")).map((cell) => {
               const pos = cellCenter(cell.col, cell.row);
@@ -105,13 +105,12 @@ export function HexMatchMapViewer(props: HexMatchMapViewerProps) {
               );
             })
           : null}
+
         {props.showPaths && phase
           ? phase.actions.map((action) => {
               const from = action.currentCellId ? cellById.get(action.currentCellId) : undefined;
               const to = action.targetCellId ? cellById.get(action.targetCellId) : undefined;
-              if (!from || !to || from.level !== props.level || to.level !== props.level || from.cellId === to.cellId) {
-                return null;
-              }
+              if (!from || !to || from.level !== props.level || to.level !== props.level || from.cellId === to.cellId) return null;
               const a = cellCenter(from.col, from.row);
               const b = cellCenter(to.col, to.row);
               return (
@@ -126,14 +125,14 @@ export function HexMatchMapViewer(props: HexMatchMapViewerProps) {
               );
             })
           : null}
+
         {props.showCombat && phase
           ? phase.combats.map((combat, index) => {
-              const participant = combat.participants.map((agentId) => phase.players.find((player) => player.agentId === agentId))
+              const participant = combat.participants
+                .map((agentId) => phase.players.find((player) => player.agentId === agentId))
                 .find((player): player is HexMatchLabPlayerCard => Boolean(player && cellById.get(player.currentCellId)?.level === props.level));
               const cell = participant ? cellById.get(participant.currentCellId) : undefined;
-              if (!cell) {
-                return null;
-              }
+              if (!cell) return null;
               const pos = cellCenter(cell.col, cell.row);
               return (
                 <g key={`combat_${combat.contactId}_${index}`}>
@@ -143,17 +142,17 @@ export function HexMatchMapViewer(props: HexMatchMapViewerProps) {
               );
             })
           : null}
+
         {bombCell && bombCell.level === props.level ? (
           <g>
             <circle cx={cellCenter(bombCell.col, bombCell.row).x} cy={cellCenter(bombCell.col, bombCell.row).y} r="7" className={styles.bombMarker} />
             <text x={cellCenter(bombCell.col, bombCell.row).x} y={cellCenter(bombCell.col, bombCell.row).y + 4} className={styles.bombText}>C4</text>
           </g>
         ) : null}
+
         {players.map((player) => {
           const cell = cellById.get(player.currentCellId);
-          if (!cell) {
-            return null;
-          }
+          if (!cell) return null;
           const pos = cellCenter(cell.col, cell.row);
           const selected = props.selectedAgentId === player.agentId;
           return (
@@ -162,9 +161,7 @@ export function HexMatchMapViewer(props: HexMatchMapViewerProps) {
               className={styles.agentMarkerGroup}
               onClick={() => props.onSelectAgent(player.agentId)}
               onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  props.onSelectAgent(player.agentId);
-                }
+                if (event.key === "Enter" || event.key === " ") props.onSelectAgent(player.agentId);
               }}
               role="button"
               tabIndex={0}
@@ -172,8 +169,8 @@ export function HexMatchMapViewer(props: HexMatchMapViewerProps) {
               <circle
                 cx={pos.x}
                 cy={pos.y}
-                r={selected ? 7.5 : 6}
-                className={`${styles.agentMarker} ${player.side === "attack" ? styles.agentAttack : styles.agentDefense} ${selected ? styles.agentSelected : ""}`}
+                r={selected ? 7.7 : 6.1}
+                className={`${styles.agentMarker ?? ""} ${player.side === "attack" ? styles.agentAttack ?? "" : styles.agentDefense ?? ""} ${selected ? styles.agentSelected ?? "" : ""}`}
               />
               <text x={pos.x} y={pos.y + 3} className={styles.agentText} filter="url(#hexTextShadow)">
                 {shortAgentName(player)}
@@ -183,12 +180,13 @@ export function HexMatchMapViewer(props: HexMatchMapViewerProps) {
           );
         })}
       </svg>
+
       <div className={styles.mapLegend}>
-        <span className={styles.legendAttack}>T / attack</span>
-        <span className={styles.legendDefense}>CT / defense</span>
+        <span className={styles.legendAttack}>T 选手</span>
+        <span className={styles.legendDefense}>CT 选手</span>
         <span className={styles.legendBomb}>C4</span>
         <span className={styles.legendCombat}>交火</span>
-        <span>线段是 action path preview，不是前端重新计算路径。</span>
+        <span>路径线来自 trace，不由前端重新计算。</span>
       </div>
     </section>
   );
@@ -243,11 +241,18 @@ function cellTitle(cell: HexMatchLabMapAssetView["cells"][number], regionName: s
   ].filter(Boolean).join("\n");
 }
 
-function isRegionLabelCell(cell: HexMatchLabMapAssetView["cells"][number], cells: HexMatchLabMapAssetView["cells"]): boolean {
-  if (!cell.regionId) {
-    return false;
+function buildRegionLabelCells(cells: HexMatchLabMapAssetView["cells"]): Map<string, HexMatchLabMapAssetView["cells"][number]> {
+  const grouped = new Map<string, HexMatchLabMapAssetView["cells"]>();
+  for (const cell of cells) {
+    if (!cell.regionId) continue;
+    const list = grouped.get(cell.regionId) ?? [];
+    list.push(cell);
+    grouped.set(cell.regionId, list);
   }
-  const same = cells.filter((candidate) => candidate.regionId === cell.regionId);
-  const middle = same[Math.floor(same.length / 2)];
-  return middle?.cellId === cell.cellId;
+  const labels = new Map<string, HexMatchLabMapAssetView["cells"][number]>();
+  for (const [regionId, list] of grouped.entries()) {
+    const sorted = [...list].sort((left, right) => left.row - right.row || left.col - right.col);
+    labels.set(regionId, sorted[Math.floor(sorted.length / 2)]!);
+  }
+  return labels;
 }

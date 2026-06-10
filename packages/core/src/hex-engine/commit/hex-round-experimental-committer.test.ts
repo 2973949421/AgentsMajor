@@ -43,12 +43,19 @@ describe("Hex round experimental committer", () => {
     const storedArtifactText = await artifactStore.readText(result.hexTraceArtifact.id);
     const storedEvents = await repositories.events.listByRound(result.round.id);
     const economyStates = await repositories.economyStates.listByRound(result.round.id);
+    const firstAudit = result.hexTrace.phases[0]?.commandResult.audits[0];
+    const requestArtifactText = firstAudit?.requestArtifactId ? await artifactStore.readText(firstAudit.requestArtifactId) : "";
+    const responseArtifactText = firstAudit?.responseArtifactId ? await artifactStore.readText(firstAudit.responseArtifactId) : "";
 
     expect(storedReport?.nodeTraceArtifactId).toBe(result.hexTraceArtifact.id);
     expect(storedReport?.nodeTraceSource).toBe("hex_round_engine_committed");
     expect(storedMap?.currentRoundNumber).toBe(1);
     expect((storedMap?.teamAScore ?? 0) + (storedMap?.teamBScore ?? 0)).toBe(1);
     expect(storedArtifactText).toContain("hex_round_engine_committed");
+    expect(firstAudit?.requestArtifactId).toBeTruthy();
+    expect(firstAudit?.responseArtifactId).toBeTruthy();
+    expect(requestArtifactText).toContain("Hex");
+    expect(responseArtifactText).toContain("rawDraft");
     expect(economyStates).toHaveLength(10);
     expect(storedEvents.map((event) => event.type)).toEqual(
       expect.arrayContaining([

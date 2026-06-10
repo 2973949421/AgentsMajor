@@ -63,6 +63,19 @@ async function commitDust2HexRoundExperimentalInner(
     mapGameId: input.mapGameId,
     createdAt
   });
+  const runningRound = buildRunningRound({
+    roundId: context.roundId,
+    mapGameId: context.mapGame.id,
+    roundNumber: context.roundNumber,
+    teamEconomyPlans: context.teamEconomyPlans,
+    teamAId: context.teamA.id,
+    teamBId: context.teamB.id,
+    activeAIds: context.activeA.map((agent) => agent.id),
+    activeBIds: context.activeB.map((agent) => agent.id),
+    createdAt
+  });
+  await input.repositories.rounds.save(runningRound);
+
   const hexTrace = await runDust2HexRound({
     roundId: context.roundId,
     roundNumber: context.roundNumber,
@@ -72,6 +85,12 @@ async function commitDust2HexRoundExperimentalInner(
     teamEconomyPlans: context.teamEconomyPlans,
     providerMode: input.providerMode ?? "fixture",
     maxLlmCallsPerPhase: input.maxLlmCallsPerPhase ?? 10,
+    artifactStore: input.artifactStore,
+    artifactOwner: {
+      tournamentId: context.match.tournamentId,
+      matchId: context.match.id,
+      mapGameId: context.mapGame.id
+    },
     env: input.env ?? process.env
   });
   const finalWinCondition = hexTrace.finalWinCondition;
@@ -95,19 +114,6 @@ async function commitDust2HexRoundExperimentalInner(
     activeA: context.activeA,
     activeB: context.activeB
   });
-
-  const runningRound = buildRunningRound({
-    roundId: context.roundId,
-    mapGameId: context.mapGame.id,
-    roundNumber: context.roundNumber,
-    teamEconomyPlans: context.teamEconomyPlans,
-    teamAId: context.teamA.id,
-    teamBId: context.teamB.id,
-    activeAIds: context.activeA.map((agent) => agent.id),
-    activeBIds: context.activeB.map((agent) => agent.id),
-    createdAt
-  });
-  await input.repositories.rounds.save(runningRound);
 
   const eventIds = buildHexRoundCommitEventIds(context.roundId);
   const eventBase = {

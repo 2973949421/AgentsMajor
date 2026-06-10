@@ -89,6 +89,7 @@ export interface NormalizeHexAgentActionDraftResult {
   draft?: HexAgentActionDraft;
   errors: string[];
   ignoredFields: string[];
+  repairedFields: string[];
 }
 
 const allowedDraftFields = new Set([
@@ -199,7 +200,8 @@ export function normalizeHexAgentActionDraft(input: NormalizeHexAgentActionDraft
   if (!isRecord(rawDraft)) {
     return {
       errors: ["draft:not_object"],
-      ignoredFields
+      ignoredFields,
+      repairedFields: []
     };
   }
 
@@ -214,14 +216,15 @@ export function normalizeHexAgentActionDraft(input: NormalizeHexAgentActionDraft
     errors.push("draft:invalid_agentId");
   }
 
-  const phaseId = readString(rawDraft.phaseId);
-  if (phaseId !== input.request.phaseId) {
-    errors.push("draft:invalid_phaseId");
+  const repairedFields: string[] = [];
+  const phaseId = input.request.phaseId;
+  if (readString(rawDraft.phaseId) !== input.request.phaseId) {
+    repairedFields.push("repaired_phaseId");
   }
 
-  const currentCellId = readString(rawDraft.currentCellId);
-  if (currentCellId !== input.request.agent.currentCellId) {
-    errors.push("draft:invalid_currentCellId");
+  const currentCellId = input.request.agent.currentCellId;
+  if (readString(rawDraft.currentCellId) !== input.request.agent.currentCellId) {
+    repairedFields.push("repaired_currentCellId");
   }
 
   const targetCellId = readString(rawDraft.targetCellId);
@@ -242,13 +245,14 @@ export function normalizeHexAgentActionDraft(input: NormalizeHexAgentActionDraft
   if (errors.length > 0) {
     return {
       errors,
-      ignoredFields
+      ignoredFields,
+      repairedFields
     };
   }
 
   const draft: HexAgentActionDraft = {
     agentId,
-    phaseId: input.request.phaseId,
+    phaseId,
     currentCellId,
     targetCellId,
     actionType: actionType as HexAgentActionType,
@@ -269,7 +273,8 @@ export function normalizeHexAgentActionDraft(input: NormalizeHexAgentActionDraft
   return {
     draft,
     errors,
-    ignoredFields
+    ignoredFields,
+    repairedFields
   };
 }
 

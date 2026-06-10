@@ -19,18 +19,17 @@ interface HexMatchAuditDrawerProps {
 }
 
 export function HexMatchAuditDrawer(props: HexMatchAuditDrawerProps) {
-  if (!props.open) {
-    return null;
-  }
+  if (!props.open) return null;
   return (
     <aside className={styles.auditDrawer} aria-label="Hex 审计详情">
       <div className={styles.drawerHeader}>
         <div>
-          <p className={styles.eyebrow}>详情抽屉</p>
+          <span>Audit drawer</span>
           <h2>LLM / Combat / Economy / Hard Winner 审计</h2>
         </div>
         <button type="button" onClick={props.onClose}>关闭</button>
       </div>
+
       <div className={styles.drawerTabs}>
         {(["llm", "combat", "economy", "winner", "raw"] as const).map((tab) => (
           <button
@@ -43,6 +42,7 @@ export function HexMatchAuditDrawer(props: HexMatchAuditDrawerProps) {
           </button>
         ))}
       </div>
+
       <div className={styles.drawerBody}>
         {props.tab === "llm" ? <LlmAudit trace={props.trace} phase={props.phase} /> : null}
         {props.tab === "combat" ? <CombatAudit phase={props.phase} /> : null}
@@ -65,10 +65,11 @@ function LlmAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; phase
       <MetricLine label="accepted / rejected / fallback" value={`${audit.acceptedDrafts} / ${audit.rejectedDrafts} / ${audit.fallbackCount}`} />
       <MetricLine label="request artifacts" value={audit.requestArtifactIds.join(", ") || "当前 trace 未记录"} />
       <MetricLine label="response artifacts" value={audit.responseArtifactIds.join(", ") || "当前 trace 未记录"} />
+      <MetricLine label="repaired fields" value={audit.repairedFields.join(", ") || "无"} />
       <MetricLine label="fallback reasons" value={audit.fallbackReasons.join("; ") || "无"} />
       <MetricLine label="provider errors" value={audit.providerErrors.join("; ") || "无"} />
       <p className={styles.guardText}>
-        如果 real LLM 被 rejected，例如 draft:invalid_phaseId，这里会显示 rejected/fallback。模型输出不会直接进入事实层。
+        如果 real LLM 被 rejected，这里会显示具体原因。模型输出不会直接进入事实层；winner、kill、damage、economyDelta 都由代码裁定。
       </p>
     </div>
   );

@@ -213,6 +213,29 @@ N31 不做：
 - 直播级观赛 UI。
 - 任何旧 Node Lab 改造。
 
+## 3.11 N31 收口补丁 B：Real LLM 行动可验收修复
+
+N31 收口补丁 B 继续属于 Web 验收台，不进入 N32，也不调整比赛规则。
+
+本补丁解决两个直接影响人工验收的问题：
+
+- 比赛 UI 必须参考旧 Phase18 可取结构，形成“中央地图 + 左右选手 + 底部细节 + 悬浮控制台”的主视图，而不是把所有信息平铺成表格。
+- real LLM（真实大语言模型）行动草案不能因为 `phaseId`、`currentCellId` 这类代码已知字段复述错误而全量 fallback（降级）。这些字段允许由代码安全修正并写入 audit（审计）；真正决定行动事实的 `targetCellId`、`actionType`、`businessIntent`、AP/path、C4 权限仍必须严格校验。
+
+补丁 B 的硬边界：
+
+- 不让 LLM 写 winner、kill、damage、economyDelta、DB fact。
+- 不让前端重新计算 winner、AP、path 或 combat。
+- 不伪造 HP、枪械、伤害、投掷物落点或敌人真实位置。
+- request/response artifact id 必须进入 LLM audit，方便后续 N33 做真实 LLM 稳定验收。
+- 如果选手没有移动，页面必须解释是 target 缺失、actionType 非法、businessIntent 缺失、AP/path 拒绝，还是 fallback，而不是前端假装移动。
+
+补丁 B 完成后，N31 的 Web 验收台应能回答三个问题：
+
+1. 当前 phase 中 10 名选手分别在哪里、做了什么、为什么 accepted/rejected/fallback。
+2. LLM 调用了多少次，哪些请求/响应有 artifact，可否审计。
+3. 最终 winner 来自哪条 hard condition，而不是来自 LLM 文本。
+
 ## 4. N32：Hex 结构封板
 
 N32 在 N31 Web 可验收后执行。
