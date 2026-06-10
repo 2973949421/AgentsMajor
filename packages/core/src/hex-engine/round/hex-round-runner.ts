@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 import type { HexCell, HexMapAsset } from "@agent-major/shared";
 import type { ArtifactStore } from "../../ports.js";
@@ -239,8 +239,23 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
 }
 
 export function loadOfficialDust2HexMap(): HexMapAsset {
-  const raw = readFileSync(join(process.cwd(), "data/materials/processed/maps/dust2/hex/dust2-hex-map.json"), "utf8");
+  const raw = readFileSync(join(findWorkspaceRoot(process.cwd()), "data/materials/processed/maps/dust2/hex/dust2-hex-map.json"), "utf8");
   return JSON.parse(raw) as HexMapAsset;
+}
+
+function findWorkspaceRoot(startDirectory: string): string {
+  let current = resolve(startDirectory);
+  for (let depth = 0; depth < 10; depth += 1) {
+    if (existsSync(join(current, "pnpm-workspace.yaml"))) {
+      return current;
+    }
+    const parent = resolve(current, "..");
+    if (parent === current) {
+      return resolve(startDirectory);
+    }
+    current = parent;
+  }
+  return resolve(startDirectory);
 }
 
 function resolveProvider(input: RunDust2HexRoundInput): {
