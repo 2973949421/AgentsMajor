@@ -51,7 +51,10 @@ describe("Hex round report bridge", () => {
     expect(report.judgeResult.winnerTeamId).toBe(teamA.id);
     expect(report.judgeResult.reason).toBe(trace.finalWinCondition.reason);
     expect(report.agentOutputs).toHaveLength(2);
-    expect(report.agentOutputs[0]?.actionDetail.riskRead).toBe("No Hex action risk note.");
+    const firstOutput = report.agentOutputs[0];
+    expect(firstOutput).toBeDefined();
+    expect(firstOutput!.actionDetail).toBeDefined();
+    expect(firstOutput!.actionDetail!.riskRead).toBe("No Hex action risk note.");
     expect(roundReportSchema.parse(report)).toEqual(report);
     expect(report.keyEvents[0]?.actorAgentId).toBe(agentA.id);
     expect(report.eventProjection.coreEventsLinkedByRoundReport.map((event) => event.type)).toEqual([
