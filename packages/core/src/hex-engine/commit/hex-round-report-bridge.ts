@@ -144,12 +144,12 @@ function buildAgentOutputs(agents: Agent[], trace: HexRoundTrace): AgentOutput[]
       driverModelId: agent.driverModelId,
       action: actionText,
       actionDetail: {
-        roundObjective: action?.businessIntent ?? "Maintain Hex experimental role.",
+        roundObjective: nonEmptyText(action?.businessIntent, "Maintain Hex experimental role."),
         executionPlan: actionText,
         coordinationPlan: "Follow HexGrid movement, AP, economy, and memory constraints.",
         roleResponsibilityUsage: `${agent.role} action constrained by Hex validator.`,
-        riskRead: action?.riskNotes.join("; ") ?? "No Hex action risk note.",
-        contingencyPlan: action?.fallbackReason ?? "Fallback to validated Hex trace state.",
+        riskRead: nonEmptyText(action?.riskNotes.join("; "), "No Hex action risk note."),
+        contingencyPlan: nonEmptyText(action?.fallbackReason, "Fallback to validated Hex trace state."),
         expectedContribution: "Contribute to Hex hard win condition evaluation.",
         confidence: action?.confidence ?? 0.72,
         fingerprint: `hex:${trace.roundId}:${agent.id}:${action?.actionType ?? "none"}`
@@ -158,6 +158,11 @@ function buildAgentOutputs(agents: Agent[], trace: HexRoundTrace): AgentOutput[]
       rawFingerprint: `hex:${trace.roundId}:${agent.id}:${action?.phaseId ?? "none"}:${action?.targetCellId ?? "none"}`
     };
   });
+}
+
+function nonEmptyText(value: string | undefined, fallback: string): string {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : fallback;
 }
 
 function buildKeyEvents(input: {

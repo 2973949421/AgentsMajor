@@ -1,4 +1,4 @@
-import type { Agent, MapGame, Match, Round, RoundReport, Team } from "@agent-major/shared";
+import { roundReportSchema, type Agent, type MapGame, type Match, type Round, type RoundReport, type Team } from "@agent-major/shared";
 import { describe, expect, it } from "vitest";
 
 import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
@@ -51,6 +51,8 @@ describe("Hex round report bridge", () => {
     expect(report.judgeResult.winnerTeamId).toBe(teamA.id);
     expect(report.judgeResult.reason).toBe(trace.finalWinCondition.reason);
     expect(report.agentOutputs).toHaveLength(2);
+    expect(report.agentOutputs[0]?.actionDetail.riskRead).toBe("No Hex action risk note.");
+    expect(roundReportSchema.parse(report)).toEqual(report);
     expect(report.keyEvents[0]?.actorAgentId).toBe(agentA.id);
     expect(report.eventProjection.coreEventsLinkedByRoundReport.map((event) => event.type)).toEqual([
       "hex_round_experimental_started",
