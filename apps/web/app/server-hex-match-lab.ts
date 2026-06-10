@@ -318,7 +318,7 @@ export function normalizeHexMatchLabRunRequest(value: unknown): HexMatchLabRunRe
   return {
     scope: record.scope === "map" ? "map" : "round",
     ...(mapGameId ? { mapGameId } : {}),
-    providerMode: record.providerMode === "real" ? "real" : "fixture",
+    providerMode: record.providerMode === "fixture" ? "fixture" : "real",
     maxRounds: clampInteger(record.maxRounds, 40, 1, 60),
     maxLlmCallsPerPhase: clampInteger(record.maxLlmCallsPerPhase, 10, 0, 50)
   };
@@ -383,7 +383,7 @@ export async function readHexMatchLabRunProgress(input: ReadProgressInput = {}):
       ...input,
       projectRoot,
       repositories,
-      providerMode: "fixture"
+      providerMode: "real"
     });
   } finally {
     repositories.close();
@@ -717,12 +717,19 @@ async function readRoundTraceDetail(
   agentNames: Map<string, string>
 ): Promise<HexMatchLabRoundTraceDetail | undefined> {
   try {
-    const trace = JSON.parse(await readArtifactText(repositories, projectRoot, artifactId)) as HexRoundTrace;
+    const raw = JSON.parse(await readArtifactText(repositories, projectRoot, artifactId)) as unknown;
+    const trace = unwrapHexRoundTrace(raw);
     const fallbackSummary = summaries.find((round) => round.hexTraceArtifactId === artifactId);
     return summarizeTrace(artifactId, trace, fallbackSummary, loadOfficialDust2HexMap(), agentNames);
   } catch {
     return undefined;
   }
+}
+
+function unwrapHexRoundTrace(value: unknown): HexRoundTrace {
+  const record = parseRecord(value);
+  const nested = record ? parseRecord(record.trace) : undefined;
+  return (nested ?? record ?? value) as HexRoundTrace;
 }
 
 async function readArtifactText(repositories: SqliteRepositoryBundle, projectRoot: string, artifactId: string): Promise<string> {
@@ -1091,7 +1098,7 @@ function toProductError(error: unknown): { message: string; technicalDetails: st
   }
   if (/provider_error|external|eacces|api key|network/i.test(technicalDetails)) {
     return {
-      message: `真实 LLM provider 受限或失败。请查看 LLM 审计，或切回 fixture 验收结构。\n\n技术细节：${technicalDetails}`,
+      message: `真实 LLM provider 受限或失败。请查看 LLM 审计；本页面不会把失败包装成成功。\n\n技术细节：${technicalDetails}`,
       technicalDetails
     };
   }

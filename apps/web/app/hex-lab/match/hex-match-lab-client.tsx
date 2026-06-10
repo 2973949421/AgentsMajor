@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   HexMatchLabMapOption,
   HexMatchLabProgress,
-  HexMatchLabProviderMode,
   HexMatchLabRoundSummary
 } from "../../server-hex-match-lab";
 
@@ -17,10 +16,11 @@ import styles from "./hex-match-lab.module.css";
 
 type AuditTab = "llm" | "combat" | "economy" | "winner" | "raw";
 
+const providerMode = "real" as const;
+
 export function HexMatchLabClient() {
   const [progress, setProgress] = useState<HexMatchLabProgress | null>(null);
   const [maps, setMaps] = useState<HexMatchLabMapOption[]>([]);
-  const [providerMode, setProviderMode] = useState<HexMatchLabProviderMode>("fixture");
   const [maxRounds, setMaxRounds] = useState(40);
   const [maxLlmCallsPerPhase, setMaxLlmCallsPerPhase] = useState(10);
   const [mapGameId, setMapGameId] = useState("");
@@ -36,6 +36,8 @@ export function HexMatchLabClient() {
   const [showCombat, setShowCombat] = useState(true);
   const [busyLabel, setBusyLabel] = useState<string | null>(null);
   const [runStep, setRunStep] = useState("等待操作");
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [playbackRunning, setPlaybackRunning] = useState(false);
   const [error, setError] = useState<{ message: string; details?: string } | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState<AuditTab>("llm");
@@ -44,21 +46,64 @@ export function HexMatchLabClient() {
 
   const selectedTrace = progress?.selectedTrace;
   const rounds = progress?.roundSummaries ?? [];
+  const phases = selectedTrace?.phaseSummaries ?? [];
   const selectedPhase =
-    selectedTrace?.phaseSummaries.find((phase) => phase.phaseIndex === selectedPhaseIndex)
-    ?? selectedTrace?.phaseSummaries[0];
+    phases.find((phase) => phase.phaseIndex === selectedPhaseIndex)
+    ?? phases[0];
   const selectedRound = useMemo(
     () => rounds.find((round) => round.hexTraceArtifactId === selectedRoundArtifactId) ?? rounds.at(-1),
     [rounds, selectedRoundArtifactId]
   );
+  const selectedRoundIndex = selectedRound
+    ? rounds.findIndex((round) => round.hexTraceArtifactId === selectedRound.hexTraceArtifactId)
+    : -1;
+  const selectedPhasePosition = selectedPhase
+    ? phases.findIndex((phase) => phase.phaseIndex === selectedPhase.phaseIndex)
+    : -1;
   const canRunRound = Boolean(progress?.canRunRound);
   const completedMap = Boolean(progress?.completedMap);
-  const elapsedMs = runStartedAt.current ? Date.now() - runStartedAt.current : progress?.runStatus.elapsedMs;
+  const roundProgressPct = rounds.length > 0 && selectedRoundIndex >= 0
+    ? ((selectedRoundIndex + 1) / rounds.length) * 100
+    : 0;
+  const phaseProgressPct = phases.length > 0 && selectedPhasePosition >= 0
+    ? ((selectedPhasePosition + 1) / phases.length) * 100
+    : 0;
 
   useEffect(() => {
     void Promise.all([refreshMaps(), refreshProgress()]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!busyLabel || !runStartedAt.current) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setElapsedMs(Date.now() - (runStartedAt.current ?? Date.now()));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [busyLabel]);
+
+  useEffect(() => {
+    if (!playbackRunning) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      if (selectedPhasePosition >= 0 && selectedPhasePosition < phases.length - 1) {
+        const nextPhase = phases[selectedPhasePosition + 1];
+        if (nextPhase) setSelectedPhaseIndex(nextPhase.phaseIndex);
+        return;
+      }
+      if (selectedRoundIndex >= 0 && selectedRoundIndex < rounds.length - 1) {
+        const nextRound = rounds[selectedRoundIndex + 1];
+        if (nextRound) void selectRound(nextRound);
+        return;
+      }
+      setPlaybackRunning(false);
+    }, 1200);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playbackRunning, selectedPhaseIndex, selectedRoundArtifactId, rounds.length, phases.length]);
 
   async function refreshMaps() {
     const params = new URLSearchParams();
@@ -97,8 +142,10 @@ export function HexMatchLabClient() {
       });
       return false;
     }
-    setBusyLabel("提交下一回合");
-    setRunStep("正在提交下一回合：action -> combat -> hard condition -> artifact");
+    setBusyLabel("真实 LLM 提交中");
+    setRunStep("正在等待真实 LLM：action -> validator -> fallback/reject -> combat -> hard condition -> artifact");
+    setElapsedMs(0);
+    runStartedAt.current = Date.now();
     setError(null);
     try {
       const response = await fetch("/api/hex-lab/match/run", {
@@ -124,56 +171,22 @@ export function HexMatchLabClient() {
     } finally {
       setBusyLabel(null);
       setRunStep("等待操作");
-    }
-  }
-
-  async function runFastMap() {
-    if (completedMap) {
-      setError({
-        message: "当前地图已完成，不能继续运行整图。",
-        details: "请新建 Hex 验收比赛，或选择一个 active mapGame。"
-      });
-      return;
-    }
-    setBusyLabel("快速运行整图");
-    setRunStep("正在调用 N30 map runner；该模式不可逐回合停止。");
-    setError(null);
-    try {
-      const response = await fetch("/api/hex-lab/match/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          scope: "map",
-          providerMode,
-          maxRounds,
-          maxLlmCallsPerPhase,
-          mapGameId: mapGameId.trim() || undefined,
-          adminToken: adminToken.trim() || undefined
-        })
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "Hex Match Lab map request failed.");
-      applyProgress(payload.progress);
-      await refreshMaps();
-    } catch (cause) {
-      setError(toFriendlyError(cause));
-    } finally {
-      setBusyLabel(null);
-      setRunStep("等待操作");
+      runStartedAt.current = null;
     }
   }
 
   async function runUntilMapEnd() {
     stopRequested.current = false;
-    runStartedAt.current = Date.now();
     setBusyLabel("持续运行中");
-    setRunStep("准备逐回合提交");
+    setRunStep("准备逐回合提交；每回合完成后刷新 trace，可随时停止下一轮");
+    setElapsedMs(0);
+    runStartedAt.current = Date.now();
     for (let index = 0; index < maxRounds; index += 1) {
       if (stopRequested.current) {
-        setRunStep("已停止：不会再提交下一回合");
+        setRunStep("已停止：当前回合完成后不会再提交下一回合");
         break;
       }
-      setRunStep(`正在提交第 ${index + 1} 个连续回合`);
+      setRunStep(`正在提交连续运行第 ${index + 1} 个回合`);
       const shouldContinue = await runNextRound();
       if (!shouldContinue) {
         setRunStep("地图已完成或运行失败");
@@ -186,7 +199,8 @@ export function HexMatchLabClient() {
 
   function stopLoop() {
     stopRequested.current = true;
-    setRunStep("收到停止请求：当前回合完成后不再继续");
+    setPlaybackRunning(false);
+    setRunStep("收到停止请求：不会再提交下一回合；播放也已暂停");
   }
 
   async function createMap() {
@@ -244,6 +258,18 @@ export function HexMatchLabClient() {
     await refreshProgress(round.hexTraceArtifactId);
   }
 
+  function goToRound(offset: number) {
+    if (selectedRoundIndex < 0) return;
+    const next = rounds[Math.max(0, Math.min(rounds.length - 1, selectedRoundIndex + offset))];
+    if (next) void selectRound(next);
+  }
+
+  function goToPhase(offset: number) {
+    if (selectedPhasePosition < 0) return;
+    const next = phases[Math.max(0, Math.min(phases.length - 1, selectedPhasePosition + offset))];
+    if (next) setSelectedPhaseIndex(next.phaseIndex);
+  }
+
   function applyProgress(next: HexMatchLabProgress | null, nextRoundTraceArtifactId?: string) {
     setProgress(next);
     if (!next) return;
@@ -264,9 +290,9 @@ export function HexMatchLabClient() {
       <header className={styles.topBar}>
         <div>
           <p className={styles.eyebrow}>Phase 2.0-pre / N31 收口补丁</p>
-          <h1>Hex Match Lab 蜂巢比赛验收台</h1>
+          <h1>Hex Match Lab 真实 LLM 验收台</h1>
           <p className={styles.subtitle}>
-            独立验收 HexGrid 蜂巢回合引擎；LLM 只给行动草案，最终 winner 来自 hard condition。
+            当前主入口只保留真实 LLM。非真实模式仅作为自动测试内部能力；LLM 只给行动草案，最终 winner 来自 hard condition。
           </p>
         </div>
         <div className={styles.statusCards}>
@@ -274,7 +300,7 @@ export function HexMatchLabClient() {
           <Metric label="比分" value={formatScore(progress?.score)} />
           <Metric label="回合" value={String(progress?.mapSummary?.roundsCommitted ?? rounds.length)} />
           <Metric label="状态" value={progress?.mapStatus ?? "未加载"} />
-          <Metric label="provider" value={providerMode} />
+          <Metric label="provider" value="real LLM" />
         </div>
       </header>
 
@@ -284,6 +310,7 @@ export function HexMatchLabClient() {
         <span>replacesLegacyRoundPath=false</span>
         <span>LLM cannot write final winner</span>
         <span>前端不重新计算 winner</span>
+        <span>trace 播放不是实时 phase 执行</span>
       </section>
 
       {error ? <ErrorBanner error={error} /> : null}
@@ -312,13 +339,10 @@ export function HexMatchLabClient() {
               ))}
             </select>
           </label>
-          <label>
-            <span>provider mode</span>
-            <select value={providerMode} onChange={(event) => setProviderMode(event.target.value as HexMatchLabProviderMode)}>
-              <option value="fixture">fixture（默认验收）</option>
-              <option value="real">real（N33 稳定专项）</option>
-            </select>
-          </label>
+          <div className={styles.realProviderBox}>
+            <strong>真实 LLM 模式</strong>
+            <span>本页所有运行请求固定 providerMode=real。若模型输出不合法，会显示 rejected/fallback 原因。</span>
+          </div>
           <div className={styles.inputRow}>
             <label>
               <span>max rounds</span>
@@ -337,11 +361,10 @@ export function HexMatchLabClient() {
           <div className={styles.buttonStack}>
             <button type="button" onClick={createMap} disabled={Boolean(busyLabel)}>新建 Hex 验收比赛</button>
             <button type="button" onClick={resetMap} disabled={Boolean(busyLabel)}>安全重置为新地图</button>
-            <button type="button" onClick={runNextRound} disabled={Boolean(busyLabel) || !canRunRound}>跑下一回合</button>
-            <button type="button" onClick={runUntilMapEnd} disabled={Boolean(busyLabel) || !canRunRound}>一直跑到地图结束</button>
-            <button type="button" onClick={stopLoop} disabled={!busyLabel}>停止</button>
-            <button type="button" onClick={runFastMap} disabled={Boolean(busyLabel) || !canRunRound}>快速跑当前地图</button>
-            <button type="button" onClick={() => { void refreshMaps(); void refreshProgress(); }} disabled={Boolean(busyLabel)}>刷新</button>
+            <button type="button" onClick={runNextRound} disabled={Boolean(busyLabel) || !canRunRound}>跑下一回合（real）</button>
+            <button type="button" onClick={runUntilMapEnd} disabled={Boolean(busyLabel) || !canRunRound}>一直跑到地图结束（逐回合）</button>
+            <button type="button" onClick={stopLoop} disabled={!busyLabel && !playbackRunning}>停止运行 / 暂停播放</button>
+            <button type="button" onClick={() => { void refreshMaps(); void refreshProgress(); }} disabled={Boolean(busyLabel)}>刷新最新结果</button>
             <a className={styles.secondaryLink} href="/hex-lab/editor">打开 Hex 地图编辑器</a>
           </div>
 
@@ -349,7 +372,8 @@ export function HexMatchLabClient() {
             <strong>运行状态</strong>
             <p>{busyLabel ? "running" : (progress?.runStatus.status ?? "idle")} - {runStep}</p>
             <p>calls attempted: {selectedPhase?.llmAudit.totalLlmCallsAttempted ?? progress?.runStatus.callsAttempted ?? 0}</p>
-            <p>elapsed: {elapsedMs ? `${Math.round(elapsedMs / 1000)}s` : "0s"}</p>
+            <p>elapsed: {Math.round(elapsedMs / 1000)}s</p>
+            <p>playback: {playbackRunning ? "playing" : "paused"} / R{selectedRound?.roundNumber ?? "-"} / phase {selectedPhase ? selectedPhase.phaseIndex + 1 : "-"}</p>
             {completedMap ? <p className={styles.warningText}>当前地图已 completed，请新建或安全重置。</p> : null}
           </div>
         </aside>
@@ -425,11 +449,19 @@ export function HexMatchLabClient() {
 
       <HexMatchTimeline
         rounds={rounds}
-        phases={selectedTrace?.phaseSummaries ?? []}
+        phases={phases}
         selectedRoundArtifactId={selectedRound?.hexTraceArtifactId}
         selectedPhaseIndex={selectedPhaseIndex}
+        roundProgressPct={roundProgressPct}
+        phaseProgressPct={phaseProgressPct}
+        playbackRunning={playbackRunning}
         onSelectRound={selectRound}
         onSelectPhase={setSelectedPhaseIndex}
+        onPreviousRound={() => goToRound(-1)}
+        onNextRound={() => goToRound(1)}
+        onPreviousPhase={() => goToPhase(-1)}
+        onNextPhase={() => goToPhase(1)}
+        onTogglePlayback={() => setPlaybackRunning((value) => !value)}
       />
 
       <HexMatchAuditDrawer
@@ -483,7 +515,7 @@ function toFriendlyError(cause: unknown): { message: string; details?: string } 
       details: message
     };
   }
-  if (/no.*active.*dust2|没有可运行/i.test(message)) {
+  if (/no.*active.*dust2|没有可运行|没有找到/i.test(message)) {
     return {
       message: "没有可运行的 Dust2 Hex 地图。",
       details: message

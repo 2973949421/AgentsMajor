@@ -246,6 +246,26 @@
   line-height: 1.45;
 }
 
+.realProviderBox {
+  margin-top: 12px;
+  border: 1px solid #335f78;
+  background: #0c1820;
+  border-radius: 8px;
+  padding: 10px;
+  display: grid;
+  gap: 5px;
+}
+
+.realProviderBox strong {
+  color: #d7f1ff;
+}
+
+.realProviderBox span {
+  color: #a9c2d4;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .mainStage {
   display: grid;
   gap: 12px;
@@ -509,6 +529,65 @@
   display: grid;
   gap: 12px;
   padding: 12px;
+}
+
+.playbackHeader {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(360px, auto);
+  gap: 12px;
+  align-items: start;
+}
+
+.playbackHeader h2,
+.playbackHeader p {
+  margin: 0;
+}
+
+.playbackHeader p {
+  margin-top: 6px;
+  color: #9fb2c4;
+  line-height: 1.45;
+}
+
+.playbackControls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.playbackControls button {
+  border: 1px solid #35536d;
+  background: #142033;
+  color: #d5e8ff;
+  border-radius: 7px;
+  padding: 8px 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.progressLine {
+  display: grid;
+  grid-template-columns: 150px minmax(120px, 1fr) 58px;
+  gap: 10px;
+  align-items: center;
+  color: #b8c9d9;
+  font-size: 13px;
+}
+
+.progressTrack {
+  height: 9px;
+  overflow: hidden;
+  border: 1px solid #263543;
+  background: #080d12;
+  border-radius: 999px;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #8ec5ff, #a7dcbc);
+  border-radius: 999px;
+  transition: width 160ms ease;
 }
 
 .timelineBlock {
@@ -817,7 +896,8 @@
 @media (max-width: 1180px) {
   .topBar,
   .matchGrid,
-  .mapToolbar {
+  .mapToolbar,
+  .playbackHeader {
     grid-template-columns: 1fr;
   }
 
@@ -828,6 +908,10 @@
   }
 
   .layerToggles {
+    justify-content: flex-start;
+  }
+
+  .playbackControls {
     justify-content: flex-start;
   }
 }

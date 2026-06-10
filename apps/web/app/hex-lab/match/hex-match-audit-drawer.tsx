@@ -67,6 +67,9 @@ function LlmAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; phase
       <MetricLine label="response artifacts" value={audit.responseArtifactIds.join(", ") || "当前 trace 未记录"} />
       <MetricLine label="fallback reasons" value={audit.fallbackReasons.join("; ") || "无"} />
       <MetricLine label="provider errors" value={audit.providerErrors.join("; ") || "无"} />
+      <p className={styles.guardText}>
+        如果 real LLM 被 rejected，例如 draft:invalid_phaseId，这里会显示 rejected/fallback。模型输出不会直接进入事实层。
+      </p>
     </div>
   );
 }

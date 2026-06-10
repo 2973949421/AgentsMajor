@@ -188,7 +188,7 @@ export function HexMatchMapViewer(props: HexMatchMapViewerProps) {
         <span className={styles.legendDefense}>CT / defense</span>
         <span className={styles.legendBomb}>C4</span>
         <span className={styles.legendCombat}>交火</span>
-        <span>线段是 action path preview，不是前端重新计算路径结果。</span>
+        <span>线段是 action path preview，不是前端重新计算路径。</span>
       </div>
     </section>
   );
