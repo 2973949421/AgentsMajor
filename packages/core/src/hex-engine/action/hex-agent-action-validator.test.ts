@@ -168,6 +168,19 @@ describe("Hex agent action validator", () => {
       memory: plantMemory,
       draft: buildDraft(request, { actionType: "plant_bomb", targetCellId: bombsite.cellId })
     });
+    const lowEconomyContext = buildHexRoundEconomyContext({
+      memory: plantMemory,
+      teamEconomyPlans: {
+        t: buildPlan("t", "full_eco", "eco", ["t_0", "t_1", "t_2", "t_3", "t_4"]),
+        ct: buildPlan("ct", "rifle_buy", "fullBuy", ["ct_0", "ct_1", "ct_2", "ct_3", "ct_4"])
+      }
+    });
+    const legalPlantUnderLowEconomy = validateHexAgentActionDraft({
+      asset,
+      memory: plantMemory,
+      economyContext: lowEconomyContext,
+      draft: buildDraft(request, { actionType: "plant_bomb", targetCellId: bombsite.cellId })
+    });
     const invalidPlant = validateHexAgentActionDraft({
       asset,
       memory: plantMemory,
@@ -196,6 +209,8 @@ describe("Hex agent action validator", () => {
     });
 
     expect(legalPlant.valid).toBe(true);
+    expect(legalPlantUnderLowEconomy.valid).toBe(true);
+    expect(legalPlantUnderLowEconomy.validationErrors).not.toContain("economy_disallows_action");
     expect(invalidPlant.validationErrors).toContain("plant_requires_bombsite");
     expect(legalDefuse.valid).toBe(true);
     expect(tDefuse.validationErrors).toContain("defuse_requires_defense");

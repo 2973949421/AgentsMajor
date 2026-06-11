@@ -65,6 +65,8 @@ export interface HexAgentCommandRequest {
   lastSeenEnemies: HexAgentMemoryPromptContext["lastSeenEnemies"];
   reachableCells: HexReachableCellSummary[];
   phaseObjective: HexAgentPhaseObjective;
+  occupiedCellIds: string[];
+  reservedCellIds: string[];
   targetCandidates: HexAgentRouteCandidate[];
   routeCandidates: HexAgentRouteCandidate[];
   allowedActionTypes: HexAgentActionType[];
@@ -147,6 +149,8 @@ export function buildHexAgentCommandRequest(input: {
   agentId: string;
   allowedActionTypes?: readonly HexAgentActionType[];
   economyContext?: HexRoundEconomyContext;
+  occupiedCellIds?: readonly string[];
+  reservedCellIds?: readonly string[];
 }): HexAgentCommandRequest {
   const context = buildHexAgentMemoryContext({
     memory: input.memory,
@@ -154,7 +158,9 @@ export function buildHexAgentCommandRequest(input: {
   });
   const reachableCells = buildReachableCellSummaries(input.asset, context.agent.currentCellId, context.agent.apRemaining);
   const phaseObjective = buildPhaseObjective(input.memory.phaseId, context.agent.side);
-  const routeCandidates = buildRouteCandidates(reachableCells, context.agent.currentCellId, phaseObjective.preferredActionTypes);
+  const blockedCellIds = new Set([...(input.occupiedCellIds ?? []), ...(input.reservedCellIds ?? [])]);
+  blockedCellIds.delete(context.agent.currentCellId);
+  const routeCandidates = buildRouteCandidates(reachableCells, context.agent.currentCellId, phaseObjective.preferredActionTypes, blockedCellIds);
   const economy = input.economyContext
     ? getHexAgentEconomyContext({
         economyContext: input.economyContext,
@@ -175,6 +181,8 @@ export function buildHexAgentCommandRequest(input: {
     lastSeenEnemies: context.lastSeenEnemies,
     reachableCells,
     phaseObjective,
+    occupiedCellIds: [...(input.occupiedCellIds ?? [])],
+    reservedCellIds: [...(input.reservedCellIds ?? [])],
     targetCandidates: routeCandidates,
     routeCandidates,
     allowedActionTypes: [...(input.allowedActionTypes ?? hexAgentActionTypes)],
@@ -183,6 +191,7 @@ export function buildHexAgentCommandRequest(input: {
       "Do not output winner, roundWinType, kills, damage, bomb results, economy deltas, database facts, or hidden enemy positions.",
       "targetCellId must come from reachableCells.",
       "Prefer targetCandidates when they are present; they are legal, phase-relevant route choices.",
+      "Do not choose occupiedCellIds or reservedCellIds unless the cell is your own currentCellId for an intentional hold.",
       "A move action must change position. Use hold_position, watch_angle, or save when staying on the current cell is intentional.",
       "currentCellId must match the agent currentCellId.",
       "businessIntent is required and must explain the business-plan purpose of the CS action.",
@@ -269,13 +278,14 @@ function buildPhaseObjective(phaseId: HexPhaseId, side: HexSide): HexAgentPhaseO
 function buildRouteCandidates(
   reachableCells: HexReachableCellSummary[],
   currentCellId: string,
-  preferredActionTypes: readonly HexAgentActionType[]
+  preferredActionTypes: readonly HexAgentActionType[],
+  blockedCellIds: ReadonlySet<string> = new Set()
 ): HexAgentRouteCandidate[] {
   const nonCurrent = reachableCells.filter((cell) => cell.cellId !== currentCellId && cell.apCost > 0);
   const scored = nonCurrent
     .map((cell) => ({
       cell,
-      score: scoreRouteCandidate(cell, preferredActionTypes)
+      score: scoreRouteCandidate(cell, preferredActionTypes, blockedCellIds)
     }))
     .sort((left, right) => right.score - left.score || left.cell.apCost - right.cell.apCost || left.cell.cellId.localeCompare(right.cell.cellId));
   return scored.slice(0, 10).map(({ cell }) => ({
@@ -288,8 +298,15 @@ function buildRouteCandidates(
   }));
 }
 
-function scoreRouteCandidate(cell: HexReachableCellSummary, preferredActionTypes: readonly HexAgentActionType[]): number {
+function scoreRouteCandidate(
+  cell: HexReachableCellSummary,
+  preferredActionTypes: readonly HexAgentActionType[],
+  blockedCellIds: ReadonlySet<string>
+): number {
   let score = Math.min(12, cell.apCost * 8);
+  if (blockedCellIds.has(cell.cellId)) {
+    score -= 100;
+  }
   if (cell.regionId) {
     score += 2;
   }

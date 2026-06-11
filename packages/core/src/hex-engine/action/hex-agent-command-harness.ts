@@ -17,6 +17,7 @@ import {
 import {
   buildHexAgentFallbackAction,
   validateHexAgentActionDraft,
+  type HexAgentActionValidationError,
   type HexValidatedAgentAction
 } from "./hex-agent-action-validator.js";
 
@@ -128,6 +129,13 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
   const maxLlmCalls = input.maxLlmCalls ?? Number.POSITIVE_INFINITY;
   let callsAttempted = 0;
   const expectedCalls = input.memory.agents.filter((agent) => agent.lifeStatus !== "dead" && agent.apRemaining > 0).length;
+  const occupiedCellOwners = new Map<string, string>();
+  const reservedCellOwners = new Map<string, string>();
+  for (const agent of input.memory.agents) {
+    if (agent.lifeStatus !== "dead") {
+      occupiedCellOwners.set(agent.currentCellId, agent.agentId);
+    }
+  }
 
   for (const agent of input.memory.agents) {
     const callId = buildCallId(input, agent.agentId);
@@ -196,6 +204,8 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
       asset: input.asset,
       memory: input.memory,
       agentId: agent.agentId,
+      occupiedCellIds: [...occupiedCellOwners.keys()],
+      reservedCellIds: [...reservedCellOwners.keys()],
       ...(input.economyContext ? { economyContext: input.economyContext } : {})
     });
     await emitProgress(input, {
@@ -332,12 +342,15 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
         continue;
       }
 
-      const validated = validateHexAgentActionDraft({
+      let validated = validateHexAgentActionDraft({
         asset: input.asset,
         memory: input.memory,
         draft: normalized.draft,
         ...(input.economyContext ? { economyContext: input.economyContext } : {})
       });
+      if (validated.valid && isTargetCellOccupiedByOther(validated, occupiedCellOwners, reservedCellOwners)) {
+        validated = buildOccupiedCellFallback(input.memory, agent);
+      }
       actions.push(validated);
       if (!validated.valid) {
         rejectedDrafts.push({
@@ -402,6 +415,8 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
           providerMode: providerResult.providerMode ?? input.providerMode,
           ...(providerResult.modelId ?? input.modelId ? { modelId: providerResult.modelId ?? input.modelId } : {})
         });
+      } else {
+        reservedCellOwners.set(validated.targetCellId, validated.agentId);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -470,6 +485,31 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
     audits,
     totalCallsAttempted: callsAttempted,
     fallbackCount: fallbackActions.length
+  };
+}
+
+function isTargetCellOccupiedByOther(
+  action: HexValidatedAgentAction,
+  occupiedCellOwners: ReadonlyMap<string, string>,
+  reservedCellOwners: ReadonlyMap<string, string>
+): boolean {
+  const occupiedBy = occupiedCellOwners.get(action.targetCellId);
+  if (occupiedBy && occupiedBy !== action.agentId) {
+    return true;
+  }
+  const reservedBy = reservedCellOwners.get(action.targetCellId);
+  return Boolean(reservedBy && reservedBy !== action.agentId);
+}
+
+function buildOccupiedCellFallback(memory: HexRoundMemory, agent: HexRoundMemory["agents"][number]): HexValidatedAgentAction {
+  const validationErrors: HexAgentActionValidationError[] = ["target_cell_occupied"];
+  return {
+    ...buildHexAgentFallbackAction({
+      memory,
+      agent,
+      reason: "target_cell_occupied"
+    }),
+    validationErrors
   };
 }
 

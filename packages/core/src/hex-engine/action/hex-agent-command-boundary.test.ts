@@ -140,6 +140,28 @@ describe("Hex agent command boundary", () => {
     expect(request.constraints.some((line) => line.includes("Economy context is already resolved"))).toBe(true);
   });
 
+  it("includes occupied and reserved cells while deprioritizing blocked target candidates", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset),
+      bombCarrierAgentId: "t_0"
+    });
+    const occupiedCellId = memory.agents[1]!.currentCellId;
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_0",
+      occupiedCellIds: [occupiedCellId],
+      reservedCellIds: ["h_99_99_l0"]
+    });
+
+    expect(request.occupiedCellIds).toContain(occupiedCellId);
+    expect(request.reservedCellIds).toContain("h_99_99_l0");
+    expect(request.constraints.some((line) => line.includes("occupiedCellIds"))).toBe(true);
+    expect(request.targetCandidates[0]?.targetCellId).not.toBe(occupiedCellId);
+  });
+
   it("still rejects malformed action facts before validation", () => {
     const asset = loadOfficialDust2HexMap();
     const memory = initializeHexRoundMemory({

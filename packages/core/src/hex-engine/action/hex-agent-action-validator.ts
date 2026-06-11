@@ -22,6 +22,7 @@ export type HexAgentActionValidationError =
   | "defuse_requires_defense"
   | "defuse_requires_planted_bomb"
   | "defuse_requires_planted_cell"
+  | "target_cell_occupied"
   | "economy_context_missing"
   | "economy_disallows_action"
   | "utility_unavailable"
@@ -201,6 +202,9 @@ function collectEconomyValidationErrors(
   }
 
   const errors: HexAgentActionValidationError[] = [];
+  if (isObjectiveAction(input.draft.actionType)) {
+    return errors;
+  }
   if (!economy.allowedActionTypes.includes(input.draft.actionType)) {
     errors.push("economy_disallows_action");
   }
@@ -211,6 +215,10 @@ function collectEconomyValidationErrors(
     errors.push("resource_tier_too_low");
   }
   return errors;
+}
+
+function isObjectiveAction(actionType: HexAgentActionType): boolean {
+  return actionType === "plant_bomb" || actionType === "defuse_bomb";
 }
 
 function isLowResourceEconomy(economy: HexAgentEconomyContext): boolean {

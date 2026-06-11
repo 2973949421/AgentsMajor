@@ -182,6 +182,37 @@ describe("Hex agent command harness", () => {
     expect(artifactStore.writes).toHaveLength(1);
   });
 
+  it("rejects accepted drafts that target another alive agent's occupied cell", async () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeMemory(asset);
+    const occupiedCellId = memory.agents.find((agent) => agent.agentId === "t_0")!.currentCellId;
+    const provider: HexAgentCommandProvider = (request) => ({
+      providerMode: "fixture",
+      modelId: "collision_fixture",
+      rawDraft: {
+        agentId: request.agent.agentId,
+        phaseId: request.phaseId,
+        currentCellId: request.agent.currentCellId,
+        targetCellId: request.agent.agentId === "t_1" ? occupiedCellId : request.agent.currentCellId,
+        actionType: request.agent.agentId === "t_1" ? "move" : "hold_position",
+        businessIntent: "collision fixture checks that alive agents cannot stack on the same Hex cell."
+      }
+    });
+
+    const result = await runHexAgentPhaseCommandHarness({
+      asset,
+      memory,
+      provider,
+      providerMode: "fixture",
+      maxLlmCalls: 2
+    });
+
+    const rejected = result.actions.find((action) => action.agentId === "t_1");
+    expect(rejected?.valid).toBe(false);
+    expect(rejected?.validationErrors).toContain("target_cell_occupied");
+    expect(rejected?.fallbackReason).toBe("target_cell_occupied");
+  });
+
   it("returns disabled real provider when env is missing", async () => {
     const factory = createEnvHexAgentCommandProvider({});
     const asset = loadOfficialDust2HexMap();

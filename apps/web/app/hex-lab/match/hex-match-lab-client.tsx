@@ -17,12 +17,7 @@ import { HexMatchTimeline } from "./hex-match-timeline";
 import styles from "./hex-match-lab.module.css";
 
 type AuditTab = "llm" | "combat" | "economy" | "winner" | "raw";
-type ConsoleDragState = {
-  startX: number;
-  startY: number;
-  originX: number;
-  originY: number;
-};
+type ConsoleDragState = { startX: number; startY: number; originX: number; originY: number };
 
 const providerMode = "real" as const;
 
@@ -35,7 +30,7 @@ export function HexMatchLabClient() {
   const [maxLlmCallsPerPhase, setMaxLlmCallsPerPhase] = useState(10);
   const [adminToken, setAdminToken] = useState("");
   const [selectedRoundArtifactId, setSelectedRoundArtifactId] = useState<string | undefined>();
-  const [selectedPhaseIndex, setSelectedPhaseIndex] = useState(0);
+  const [selectedPhaseIndex, setSelectedPhaseIndex] = useState(-1);
   const [selectedLevel, setSelectedLevel] = useState(0);
   const [selectedAgentId, setSelectedAgentId] = useState<string | undefined>();
   const [showRegions, setShowRegions] = useState(true);
@@ -52,7 +47,7 @@ export function HexMatchLabClient() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState<AuditTab>("llm");
   const [consoleHidden, setConsoleHidden] = useState(false);
-  const [consolePosition, setConsolePosition] = useState({ x: 24, y: 96 });
+  const [consolePosition, setConsolePosition] = useState({ x: 18, y: 86 });
   const [consoleDrag, setConsoleDrag] = useState<ConsoleDragState | null>(null);
   const stopRequested = useRef(false);
   const runStartedAt = useRef<number | null>(null);
@@ -73,13 +68,10 @@ export function HexMatchLabClient() {
     : -1;
   const completedMap = Boolean(progress?.completedMap);
   const canRunRound = Boolean(progress?.canRunRound);
-  const roundProgressPct = rounds.length > 0 && selectedRoundIndex >= 0
-    ? ((selectedRoundIndex + 1) / rounds.length) * 100
-    : 0;
-  const phaseProgressPct = phases.length > 0 && selectedPhasePosition >= 0
-    ? ((selectedPhasePosition + 1) / phases.length) * 100
-    : 0;
-  const llmAudit = liveRun ?? selectedPhase?.llmAudit ?? selectedTrace?.audit;
+  const roundProgressPct = rounds.length > 0 && selectedRoundIndex >= 0 ? ((selectedRoundIndex + 1) / rounds.length) * 100 : 0;
+  const phaseProgressPct = phases.length > 0 && selectedPhasePosition >= 0 ? ((selectedPhasePosition + 1) / phases.length) * 100 : 0;
+  const players = selectedPhase?.players ?? [];
+  const score = progress?.score;
 
   useEffect(() => {
     void Promise.all([loadMapAsset(), refreshMaps(), refreshProgress()]);
@@ -117,9 +109,7 @@ export function HexMatchLabClient() {
     if (!consoleDrag) return;
     const drag = consoleDrag;
     function handlePointerMove(event: PointerEvent) {
-      const nextX = drag.originX + event.clientX - drag.startX;
-      const nextY = drag.originY + event.clientY - drag.startY;
-      setConsolePosition(clampConsolePosition(nextX, nextY));
+      setConsolePosition(clampConsolePosition(drag.originX + event.clientX - drag.startX, drag.originY + event.clientY - drag.startY));
     }
     function handlePointerUp() {
       setConsoleDrag(null);
@@ -172,7 +162,7 @@ export function HexMatchLabClient() {
     if (completedMap) {
       setError({
         message: "当前地图已完成，不能继续提交回合。",
-        details: "请新建 Hex 验收比赛，或选择一个 active mapGame。不会影响旧 Phase18。"
+        details: "请新建 Hex 验收比赛，或选择一张 active mapGame。不会影响旧 Phase18。"
       });
       return false;
     }
@@ -184,11 +174,8 @@ export function HexMatchLabClient() {
     try {
       const run = await startLiveRun("round");
       const finalRun = await waitForLiveRun(run.runId);
-      if (finalRun.progress) {
-        applyProgress(finalRun.progress);
-      } else {
-        await refreshProgress(undefined, finalRun.mapGameId ?? mapGameId);
-      }
+      if (finalRun.progress) applyProgress(finalRun.progress);
+      else await refreshProgress(undefined, finalRun.mapGameId ?? mapGameId);
       await refreshMaps();
       if (finalRun.status === "failed") {
         setError({ message: finalRun.latestError ?? "Hex live run failed." });
@@ -255,9 +242,7 @@ export function HexMatchLabClient() {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "Hex live run poll failed.");
       setLiveRun(payload.run);
-      if (payload.run.status !== "running") {
-        return payload.run;
-      }
+      if (payload.run.status !== "running") return payload.run;
     }
   }
 
@@ -268,16 +253,13 @@ export function HexMatchLabClient() {
       const response = await fetch("/api/hex-lab/match/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          baseMapGameId: mapGameId.trim() || undefined,
-          adminToken: adminToken.trim() || undefined
-        })
+        body: JSON.stringify({ baseMapGameId: mapGameId.trim() || undefined, adminToken: adminToken.trim() || undefined })
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "Create Hex validation map failed.");
       setMapGameId(payload.map?.mapGameId ?? "");
       setSelectedRoundArtifactId(undefined);
-      setSelectedPhaseIndex(0);
+      setSelectedPhaseIndex(-1);
       await refreshMaps();
       await refreshProgress(undefined, payload.map?.mapGameId ?? "");
     } catch (cause) {
@@ -294,16 +276,13 @@ export function HexMatchLabClient() {
       const response = await fetch("/api/hex-lab/match/reset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mapGameId: mapGameId.trim() || progress?.mapGameId,
-          adminToken: adminToken.trim() || undefined
-        })
+        body: JSON.stringify({ mapGameId: mapGameId.trim() || progress?.mapGameId, adminToken: adminToken.trim() || undefined })
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "Reset Hex validation map failed.");
       setMapGameId(payload.map?.mapGameId ?? "");
       setSelectedRoundArtifactId(undefined);
-      setSelectedPhaseIndex(0);
+      setSelectedPhaseIndex(-1);
       await refreshMaps();
       await refreshProgress(undefined, payload.map?.mapGameId ?? "");
     } catch (cause) {
@@ -322,13 +301,13 @@ export function HexMatchLabClient() {
       : nextProgress.roundSummaries.at(-1);
     setSelectedRoundArtifactId(nextProgress.selectedTrace?.hexTraceArtifactId ?? nextRound?.hexTraceArtifactId);
     const nextPhase = nextProgress.selectedTrace?.phaseSummaries.at(0);
-    setSelectedPhaseIndex(nextPhase?.phaseIndex ?? 0);
+    setSelectedPhaseIndex(nextPhase?.phaseIndex ?? -1);
     setSelectedAgentId(undefined);
   }
 
   async function selectRound(round: HexMatchLabRoundSummary) {
     setSelectedRoundArtifactId(round.hexTraceArtifactId);
-    setSelectedPhaseIndex(0);
+    setSelectedPhaseIndex(-1);
     if (round.hexTraceArtifactId) await refreshProgress(round.hexTraceArtifactId);
   }
 
@@ -346,16 +325,8 @@ export function HexMatchLabClient() {
   function handleConsolePointerDown(event: ReactPointerEvent<HTMLElement>) {
     const target = event.target as HTMLElement;
     if (target.closest("button, input, select, a")) return;
-    setConsoleDrag({
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: consolePosition.x,
-      originY: consolePosition.y
-    });
+    setConsoleDrag({ startX: event.clientX, startY: event.clientY, originX: consolePosition.x, originY: consolePosition.y });
   }
-
-  const players = selectedPhase?.players ?? [];
-  const score = progress?.score;
 
   return (
     <main className={styles.matchShell}>
@@ -382,13 +353,7 @@ export function HexMatchLabClient() {
       ) : null}
 
       <section className={styles.board}>
-        <HexMatchPlayerPanel
-          title="进攻方"
-          side="attack"
-          players={players}
-          selectedAgentId={selectedAgentId}
-          onSelectAgent={setSelectedAgentId}
-        />
+        <HexMatchPlayerPanel title="进攻方" side="attack" players={players} selectedAgentId={selectedAgentId} onSelectAgent={setSelectedAgentId} />
 
         <div className={styles.centerStage}>
           <div className={styles.mapToolbar}>
@@ -429,33 +394,15 @@ export function HexMatchLabClient() {
             playbackRunning={playbackRunning}
             onSelectRound={selectRound}
             onSelectPhase={setSelectedPhaseIndex}
-            onPreviousRound={() => {
-              const previous = rounds[selectedRoundIndex - 1];
-              if (previous) void selectRound(previous);
-            }}
-            onNextRound={() => {
-              const next = rounds[selectedRoundIndex + 1];
-              if (next) void selectRound(next);
-            }}
-            onPreviousPhase={() => {
-              const previous = phases[selectedPhasePosition - 1];
-              if (previous) setSelectedPhaseIndex(previous.phaseIndex);
-            }}
-            onNextPhase={() => {
-              const next = phases[selectedPhasePosition + 1];
-              if (next) setSelectedPhaseIndex(next.phaseIndex);
-            }}
+            onPreviousRound={() => { const previous = rounds[selectedRoundIndex - 1]; if (previous) void selectRound(previous); }}
+            onNextRound={() => { const next = rounds[selectedRoundIndex + 1]; if (next) void selectRound(next); }}
+            onPreviousPhase={() => { const previous = phases[selectedPhasePosition - 1]; if (previous) setSelectedPhaseIndex(previous.phaseIndex); }}
+            onNextPhase={() => { const next = phases[selectedPhasePosition + 1]; if (next) setSelectedPhaseIndex(next.phaseIndex); }}
             onTogglePlayback={() => setPlaybackRunning((value) => !value)}
           />
         </div>
 
-        <HexMatchPlayerPanel
-          title="防守方"
-          side="defense"
-          players={players}
-          selectedAgentId={selectedAgentId}
-          onSelectAgent={setSelectedAgentId}
-        />
+        <HexMatchPlayerPanel title="防守方" side="defense" players={players} selectedAgentId={selectedAgentId} onSelectAgent={setSelectedAgentId} />
       </section>
 
       <section className={styles.bottomAudit}>
@@ -476,11 +423,7 @@ export function HexMatchLabClient() {
           显示控制台
         </button>
       ) : (
-        <aside
-          className={styles.floatingConsole}
-          style={{ left: consolePosition.x, top: consolePosition.y }}
-          onPointerDown={handleConsolePointerDown}
-        >
+        <aside className={styles.floatingConsole} style={{ left: consolePosition.x, top: consolePosition.y }} onPointerDown={handleConsolePointerDown}>
           <div className={styles.consoleHeader}>
             <div>
               <h2>控制台</h2>
@@ -500,26 +443,30 @@ export function HexMatchLabClient() {
               ))}
             </select>
           </label>
-          <label>
-            max rounds
-            <input type="number" value={maxRounds} min={1} max={60} onChange={(event) => setMaxRounds(Number(event.target.value))} />
-          </label>
-          <label>
-            max LLM / phase
-            <input type="number" value={maxLlmCallsPerPhase} min={0} max={50} onChange={(event) => setMaxLlmCallsPerPhase(Number(event.target.value))} />
-          </label>
+          <div className={styles.controlInputs}>
+            <label>
+              max rounds
+              <input type="number" value={maxRounds} min={1} max={60} onChange={(event) => setMaxRounds(Number(event.target.value))} />
+            </label>
+            <label>
+              max LLM / phase
+              <input type="number" value={maxLlmCallsPerPhase} min={0} max={50} onChange={(event) => setMaxLlmCallsPerPhase(Number(event.target.value))} />
+            </label>
+          </div>
           <label>
             admin token（可选）
             <input value={adminToken} onChange={(event) => setAdminToken(event.target.value)} placeholder="本地无 token 可留空" />
           </label>
 
-          <button type="button" onClick={createValidationMap}>新建 Hex 验收比赛</button>
-          <button type="button" onClick={resetAsNewMap}>安全重置为新地图</button>
-          <button type="button" onClick={() => void runNextRoundLive()} disabled={!canRunRound || Boolean(busyLabel)}>跑下一回合（real）</button>
-          <button type="button" onClick={() => void runUntilMapEnd()} disabled={!canRunRound || Boolean(busyLabel)}>一直跑到地图结束</button>
-          <button type="button" onClick={() => { stopRequested.current = true; setRunStep("已请求停止：不会提交下一回合。"); }}>停止</button>
-          <button type="button" onClick={() => void refreshProgress()}>刷新</button>
-          <a href="/hex-lab/editor">打开 Hex 地图编辑器</a>
+          <div className={styles.controlGrid}>
+            <button type="button" onClick={createValidationMap}>新建验收比赛</button>
+            <button type="button" onClick={resetAsNewMap}>安全重置</button>
+            <button type="button" onClick={() => void runNextRoundLive()} disabled={!canRunRound || Boolean(busyLabel)}>跑下一回合（real）</button>
+            <button type="button" onClick={() => void runUntilMapEnd()} disabled={!canRunRound || Boolean(busyLabel)}>一直跑到结束</button>
+            <button type="button" onClick={() => { stopRequested.current = true; setRunStep("已请求停止：不会提交下一回合。"); }}>停止</button>
+            <button type="button" onClick={() => void refreshProgress()}>刷新</button>
+          </div>
+          <a className={styles.editorLink} href="/hex-lab/editor">打开 Hex 地图编辑器</a>
 
           <div className={styles.runStatusBox}>
             <strong>{liveRun?.status ?? progress?.runStatus.status ?? "idle"}</strong>
@@ -583,16 +530,10 @@ function clampConsolePosition(x: number, y: number): { x: number; y: number } {
 function toFriendlyError(cause: unknown): { message: string; details?: string } {
   const details = cause instanceof Error ? cause.message : String(cause);
   if (/completed map|当前地图已完成/i.test(details)) {
-    return {
-      message: "当前地图已完成，不能继续提交回合。",
-      details
-    };
+    return { message: "当前地图已完成，不能继续提交回合。", details };
   }
   if (/provider|external|api key|network/i.test(details)) {
-    return {
-      message: "真实 LLM provider 受限或失败。请查看 LLM 审计或切换到新的验收地图重试。",
-      details
-    };
+    return { message: "真实 LLM provider 受限或失败。请查看 LLM 审计或新建验收地图后重试。", details };
   }
   return { message: details, details };
 }

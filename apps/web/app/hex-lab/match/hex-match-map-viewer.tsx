@@ -189,10 +189,11 @@ function hexPolygon(col: number, row: number): string {
 function buildViewBox(cells: HexMatchLabMapAssetView["cells"]): { viewBox: string } {
   if (cells.length === 0) return { viewBox: "0 0 100 100" };
   const centers = cells.map((cell) => cellCenter(cell.col, cell.row));
-  const minX = Math.min(...centers.map((center) => center.x)) - hexRadius * 3;
-  const minY = Math.min(...centers.map((center) => center.y)) - hexRadius * 3;
-  const maxX = Math.max(...centers.map((center) => center.x)) + hexRadius * 3;
-  const maxY = Math.max(...centers.map((center) => center.y)) + hexRadius * 3;
+  const padding = hexRadius * 1.4;
+  const minX = Math.min(...centers.map((center) => center.x)) - padding;
+  const minY = Math.min(...centers.map((center) => center.y)) - padding;
+  const maxX = Math.max(...centers.map((center) => center.x)) + padding;
+  const maxY = Math.max(...centers.map((center) => center.y)) + padding;
   return { viewBox: `${minX.toFixed(1)} ${minY.toFixed(1)} ${(maxX - minX).toFixed(1)} ${(maxY - minY).toFixed(1)}` };
 }
 

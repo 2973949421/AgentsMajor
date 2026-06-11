@@ -39,17 +39,19 @@ export function HexMatchPlayerPanel(props: HexMatchPlayerPanelProps) {
             >
               <span className={styles.playerHeader}>
                 <strong>{player.displayName ?? shortId(player.agentId)}</strong>
-                <em>{statusLabel(player.lifeStatus)}</em>
+                <span className={styles.playerHeaderBadges}>
+                  <b>{player.roleLabel}</b>
+                  <em>{statusLabel(player.lifeStatus)}</em>
+                </span>
               </span>
-              <span className={styles.playerRole}>{player.roleLabel}</span>
               <span className={styles.playerLocation}>
                 {player.currentRegionName ?? player.currentRegionId ?? "未分区"}
-                {player.currentPointNames.length > 0 ? ` / ${player.currentPointNames.join(", ")}` : ""}
+                {player.currentPointNames.length > 0 ? ` / ${player.currentPointNames.slice(0, 2).join(", ")}` : ""}
               </span>
               <span className={styles.playerGrid}>
                 <b>KDA</b><span>{player.kda}</span>
                 <b>ECO</b><span>{player.buyType ?? "?"} / {player.resourceTier ?? "?"}</span>
-                <b>AP</b><span>{player.apSpent.toFixed(1)} / {player.apBudget.toFixed(1)}，剩余 {player.apRemaining.toFixed(1)}</span>
+                <b>AP</b><span>{player.apSpent.toFixed(1)} / {player.apBudget.toFixed(1)}，余 {player.apRemaining.toFixed(1)}</span>
                 <b>位置</b><span>L{player.level ?? "?"} / {player.currentCellId}</span>
                 <b>本局花费</b><span>{player.spend ?? 0}</span>
               </span>

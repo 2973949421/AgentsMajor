@@ -31,7 +31,7 @@ export function HexMatchTimeline(props: HexMatchTimelineProps) {
         <div>
           <span>Trace playback</span>
           <h2>Round / Phase 回放控制</h2>
-          <p>这里播放已经提交的 hex trace，不重新执行 LLM，也不重新计算 winner。</p>
+          <p>这里只播放已经提交的 Hex trace，不重新执行 LLM，也不重新计算 winner。</p>
         </div>
         <div className={styles.playbackControls}>
           <button type="button" onClick={props.onPreviousRound}>上一回合</button>
@@ -89,7 +89,7 @@ export function HexMatchTimeline(props: HexMatchTimelineProps) {
                   className={active ? styles.phaseActive : styles.phaseCard}
                   onClick={() => props.onSelectPhase(phase.phaseIndex)}
                 >
-                  <span>{phase.phaseIndex + 1}</span>
+                  <span>{phase.phaseLabel ?? `P${phase.phaseIndex + 1}`}</span>
                   <strong>{phase.phaseId}</strong>
                   <small>A{phase.aliveAttackCount}/D{phase.aliveDefenseCount} - calls {phase.callsAttempted}</small>
                   <small>accepted {phase.acceptedActionCount} / rejected {phase.rejectedDraftCount} / fallback {phase.fallbackActionCount}</small>

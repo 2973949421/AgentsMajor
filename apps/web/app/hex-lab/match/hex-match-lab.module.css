@@ -1185,3 +1185,222 @@
     max-height: none;
   }
 }
+
+/* N31 收口补丁 D：比赛验收台布局收口。 */
+.matchShell {
+  padding: 10px;
+}
+
+.statusBar {
+  margin-bottom: 8px;
+}
+
+.statusBar h1 {
+  font-size: 22px;
+}
+
+.board {
+  grid-template-columns: minmax(190px, 0.52fr) minmax(860px, 3.8fr) minmax(190px, 0.52fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.centerStage {
+  padding: 8px;
+  gap: 8px;
+}
+
+.teamColumn {
+  padding: 8px;
+  position: sticky;
+  top: 8px;
+  max-height: calc(100vh - 16px);
+  overflow: hidden;
+}
+
+.teamHeader h2 {
+  font-size: 22px;
+}
+
+.playerStack {
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.playerCard,
+.playerCardActive {
+  min-height: 0;
+  padding: 7px 8px;
+}
+
+.playerHeader {
+  align-items: center;
+}
+
+.playerHeader strong {
+  font-size: 15px;
+  line-height: 1.05;
+}
+
+.playerHeaderBadges {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.playerHeaderBadges b,
+.playerRole {
+  border: 1px solid #2e4a61;
+  border-radius: 999px;
+  padding: 2px 6px;
+  color: #a7dcbc;
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.playerHeaderBadges em {
+  color: #a7dcbc;
+  font-size: 11px;
+  font-style: normal;
+}
+
+.playerLocation {
+  margin-top: 5px;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.playerGrid {
+  grid-template-columns: minmax(50px, auto) minmax(0, 1fr);
+  gap: 2px 5px;
+  margin-top: 5px;
+  font-size: 10px;
+  line-height: 1.18;
+}
+
+.playerAction {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playerBadges {
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.playerBadges b {
+  padding: 2px 5px;
+  font-size: 10px;
+}
+
+.playerWarn {
+  margin-top: 3px;
+  font-size: 10px;
+  line-height: 1.2;
+  max-height: 24px;
+  overflow: hidden;
+}
+
+.mapToolbar {
+  gap: 5px;
+}
+
+.mapToolbar label,
+.levelTab,
+.levelActive {
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.mapPanel {
+  padding: 8px;
+}
+
+.mapTitleRow h2 {
+  font-size: 26px;
+}
+
+.mapTitleRow p {
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.hexMapSvg {
+  height: min(76vh, 900px);
+  min-height: 650px;
+  margin-top: 8px;
+}
+
+.timelinePanel {
+  margin-top: 8px;
+  margin-bottom: 170px;
+  padding: 9px;
+  gap: 8px;
+}
+
+.playbackHeader {
+  grid-template-columns: minmax(220px, 1fr) minmax(300px, auto);
+}
+
+.playbackHeader h2 {
+  font-size: 18px;
+}
+
+.playbackHeader p {
+  font-size: 12px;
+}
+
+.roundCard,
+.roundActive,
+.phaseCard,
+.phaseActive {
+  min-width: 122px;
+  padding: 7px;
+}
+
+.bottomAudit {
+  margin-top: 8px;
+}
+
+@media (min-width: 1720px) {
+  .board {
+    grid-template-columns: minmax(210px, 0.48fr) minmax(1050px, 4.4fr) minmax(210px, 0.48fr);
+  }
+
+  .hexMapSvg {
+    height: min(78vh, 980px);
+  }
+}
+
+@media (max-width: 1460px) {
+  .board {
+    grid-template-columns: minmax(180px, 0.55fr) minmax(720px, 2.9fr) minmax(180px, 0.55fr);
+  }
+
+  .playerGrid {
+    grid-template-columns: minmax(46px, auto) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1180px) {
+  .board {
+    grid-template-columns: 1fr;
+  }
+
+  .teamColumn {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .playerStack {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

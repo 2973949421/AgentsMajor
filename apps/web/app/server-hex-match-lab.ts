@@ -200,6 +200,8 @@ export interface HexMatchLabRoundTraceDetail extends HexMatchLabRoundSummary {
 export interface HexMatchLabPhaseSummary {
   phaseId: string;
   phaseIndex: number;
+  phaseLabel?: string | undefined;
+  isSetupPhase?: boolean | undefined;
   callsAttempted: number;
   acceptedActionCount: number;
   rejectedDraftCount: number;
@@ -907,7 +909,11 @@ function summarizeTrace(
     finalHardCondition: summarizeHardCondition(trace.finalWinCondition)
   };
   const economySummary = summarizeEconomy(trace.economyContext);
-  const phaseSummaries = trace.phases.map((phase) => summarizePhase(phase, asset, economySummary, agentIdentities));
+  const firstPhase = trace.phases[0];
+  const phaseSummaries = [
+    ...(firstPhase ? [summarizeSetupPhase(firstPhase, asset, economySummary, agentIdentities)] : []),
+    ...trace.phases.map((phase) => summarizePhase(phase, asset, economySummary, agentIdentities))
+  ];
   return {
     ...roundSummary,
     hexTraceArtifactId: artifactId,
@@ -915,6 +921,63 @@ function summarizeTrace(
     phaseSummaries,
     audit: summarizeTraceAudit(trace),
     economySummary
+  };
+}
+
+function summarizeSetupPhase(
+  phase: HexRoundTrace["phases"][number],
+  asset: HexMapAsset,
+  economySummary: HexMatchLabEconomySummary[],
+  agentIdentities: Map<string, AgentIdentity>
+): HexMatchLabPhaseSummary {
+  const agents = phase.memoryBefore.agents;
+  const aliveAttackCount = agents.filter((agent) => agent.side === "attack" && agent.lifeStatus !== "dead").length;
+  const aliveDefenseCount = agents.filter((agent) => agent.side === "defense" && agent.lifeStatus !== "dead").length;
+  return {
+    phaseId: "buy_setup",
+    phaseIndex: -1,
+    phaseLabel: "P0 准备阶段",
+    isSetupPhase: true,
+    callsAttempted: 0,
+    acceptedActionCount: 0,
+    rejectedDraftCount: 0,
+    fallbackActionCount: 0,
+    combatContactCount: 0,
+    combatResolutionCount: 0,
+    memoryEventCount: 0,
+    rejectedEventCount: 0,
+    aliveAttackCount,
+    aliveDefenseCount,
+    bombState: {
+      planted: phase.memoryBefore.bombState.planted,
+      plantedCellId: phase.memoryBefore.bombState.plantedCellId,
+      carrierAgentId: phase.memoryBefore.bombState.carrierAgentId
+    },
+    actions: [],
+    combats: [],
+    players: buildPlayerCards({
+      agents,
+      actions: [],
+      asset,
+      economySummary,
+      agentIdentities
+    }),
+    llmAudit: {
+      expectedCalls: 0,
+      totalLlmCallsAttempted: 0,
+      acceptedDrafts: 0,
+      rejectedDrafts: 0,
+      fallbackCount: 0,
+      combatResolutionCount: 0,
+      rejectedEventCount: 0,
+      requestArtifactIds: [],
+      responseArtifactIds: [],
+      repairedFields: [],
+      fallbackReasons: [],
+      providerErrors: []
+    },
+    memoryBeforeSummary: summarizeMemory(phase.memoryBefore),
+    memoryAfterSummary: summarizeMemory(phase.memoryBefore)
   };
 }
 
