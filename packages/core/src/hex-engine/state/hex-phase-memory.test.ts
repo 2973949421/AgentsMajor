@@ -206,6 +206,58 @@ describe("Hex phase memory", () => {
     expect(defused.bombState.defused).toBe(true);
   });
 
+  it("drops C4 when the carrier dies and lets another T pick it up on the same cell", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeMemory(asset);
+    const carrierCellId = requireAgent(memory, "t_0").currentCellId;
+
+    const dropped = advanceHexPhaseMemory({
+      asset,
+      previousMemory: memory,
+      nextPhaseId: "first_contact",
+      events: [
+        {
+          type: "life_status_changed",
+          agentId: "t_0",
+          lifeStatus: "dead"
+        }
+      ]
+    });
+
+    const pickupReady: HexRoundMemory = {
+      ...dropped,
+      agents: dropped.agents.map((agent) =>
+        agent.agentId === "t_1"
+          ? {
+              ...agent,
+              currentCellId: carrierCellId,
+              currentPointIds: [...(asset.cells.find((cell) => cell.cellId === carrierCellId)?.pointIds ?? [])]
+            }
+          : agent
+      )
+    };
+    const pickedUp = advanceHexPhaseMemory({
+      asset,
+      previousMemory: pickupReady,
+      nextPhaseId: "mid_round_decision",
+      events: [
+        {
+          type: "bomb_picked_up",
+          agentId: "t_1",
+          cellId: carrierCellId
+        }
+      ]
+    });
+
+    expect(dropped.bombState.carrierAgentId).toBeUndefined();
+    expect(dropped.bombState.droppedCellId).toBe(carrierCellId);
+    expect(dropped.bombState.lastCarrierAgentId).toBe("t_0");
+    expect(requireAgent(dropped, "t_0").carryingC4).toBe(false);
+    expect(pickedUp.bombState.carrierAgentId).toBe("t_1");
+    expect(pickedUp.bombState.droppedCellId).toBeUndefined();
+    expect(requireAgent(pickedUp, "t_1").carryingC4).toBe(true);
+  });
+
   it("rejects planting outside a bombsite or without C4", () => {
     const asset = loadOfficialDust2HexMap();
     const memory = initializeMemory(asset);

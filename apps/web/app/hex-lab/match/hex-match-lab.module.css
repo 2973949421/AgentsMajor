@@ -504,14 +504,24 @@
 .mapPathRejected {
   fill: none;
   stroke: #f2cf73;
-  stroke-width: 1.1;
+  stroke-width: 1.35;
   stroke-linecap: round;
+  stroke-linejoin: round;
   opacity: 0.9;
 }
 
 .mapPathRejected {
   stroke: #ff7777;
   stroke-dasharray: 2 1.4;
+}
+
+.mapPathIntent {
+  fill: none;
+  stroke: rgba(242, 207, 115, 0.48);
+  stroke-width: 0.95;
+  stroke-linecap: round;
+  stroke-dasharray: 2.8 2.2;
+  opacity: 0.68;
 }
 
 .combatPulse {
@@ -532,6 +542,15 @@
   font-weight: 900;
   paint-order: stroke;
   stroke: #1b1300;
+  stroke-width: 1.4;
+}
+
+.mapBombDropped {
+  fill: #ff9a6a;
+  font-size: 4.6px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: #200900;
   stroke-width: 1.4;
 }
 
@@ -583,26 +602,50 @@
 }
 
 .mapAgent,
-.mapAgentSelected {
+.mapAgentSelected,
+.mapAgentGhost,
+.mapAgentGhostSelected {
   cursor: pointer;
+}
+
+.mapAgentHalo {
+  fill: rgba(255, 255, 255, 0.16);
+  stroke: #f6fbff;
+  stroke-width: 0.9;
 }
 
 .mapAgentAttack {
   fill: #f19b54;
-  stroke: #071016;
-  stroke-width: 0.9;
+  stroke: #f8fbff;
+  stroke-width: 0.95;
 }
 
 .mapAgentDefense {
   fill: #5da6ff;
-  stroke: #071016;
-  stroke-width: 0.9;
+  stroke: #f8fbff;
+  stroke-width: 0.95;
 }
 
 .mapAgentSelected .mapAgentAttack,
 .mapAgentSelected .mapAgentDefense {
   stroke: #ffffff;
   stroke-width: 1.6;
+}
+
+.mapAgentGhost {
+  opacity: 0.34;
+}
+
+.mapAgentGhostSelected {
+  opacity: 0.62;
+}
+
+.mapAgentGhost .mapAgentAttack,
+.mapAgentGhost .mapAgentDefense,
+.mapAgentGhostSelected .mapAgentAttack,
+.mapAgentGhostSelected .mapAgentDefense {
+  stroke: #dbe7f2;
+  stroke-dasharray: 1.2 1;
 }
 
 .mapAgentText {

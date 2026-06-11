@@ -52,6 +52,8 @@ export interface HexAgentPhaseMemory {
 
 export interface HexBombState {
   carrierAgentId?: string;
+  droppedCellId?: string;
+  lastCarrierAgentId?: string;
   planted: boolean;
   plantedCellId?: string;
   plantedAtPhaseIndex?: number;
@@ -91,6 +93,8 @@ export type HexPhaseMemoryEvent =
   | HexEnemyLostMemoryEvent
   | HexLifeStatusChangedMemoryEvent
   | HexBombCarrierChangedMemoryEvent
+  | HexBombDroppedMemoryEvent
+  | HexBombPickedUpMemoryEvent
   | HexBombPlantedMemoryEvent
   | HexBombDefusedMemoryEvent
   | HexPhaseClosedMemoryEvent;
@@ -135,6 +139,18 @@ export interface HexBombCarrierChangedMemoryEvent {
   carrierAgentId?: string;
 }
 
+export interface HexBombDroppedMemoryEvent {
+  type: "bomb_dropped";
+  agentId: string;
+  cellId: string;
+}
+
+export interface HexBombPickedUpMemoryEvent {
+  type: "bomb_picked_up";
+  agentId: string;
+  cellId: string;
+}
+
 export interface HexBombPlantedMemoryEvent {
   type: "bomb_planted";
   agentId: string;
@@ -172,7 +188,8 @@ export type HexMemoryRejectionReason =
   | "move_over_budget"
   | "move_no_path"
   | "invalid_bombsite"
-  | "agent_not_carrying_c4";
+  | "agent_not_carrying_c4"
+  | "invalid_bomb_pickup";
 
 export interface HexRejectedPhaseMemoryEvent {
   event: HexPhaseMemoryEvent;
@@ -245,6 +262,7 @@ export function initializeHexRoundMemory(input: InitializeHexRoundMemoryInput): 
     bombState: carrierAgentId
       ? {
           carrierAgentId,
+          lastCarrierAgentId: carrierAgentId,
           planted: false,
           defused: false
         }
@@ -258,9 +276,20 @@ export function initializeHexRoundMemory(input: InitializeHexRoundMemoryInput): 
 }
 
 export function advanceHexPhaseMemory(input: AdvanceHexPhaseMemoryInput): HexRoundMemory {
-  const cellsById = buildCellsById(input.asset);
-  const nextMemory = prepareHexPhaseStartMemory(input);
+  return applyHexPhaseMemoryEvents({
+    asset: input.asset,
+    memory: prepareHexPhaseStartMemory(input),
+    events: input.events
+  });
+}
 
+export function applyHexPhaseMemoryEvents(input: {
+  asset: HexMapAsset;
+  memory: HexRoundMemory;
+  events: HexPhaseMemoryEvent[];
+}): HexRoundMemory {
+  const cellsById = buildCellsById(input.asset);
+  const nextMemory = cloneRoundMemory(input.memory);
   for (const event of input.events) {
     applyEvent({
       asset: input.asset,
@@ -271,6 +300,10 @@ export function advanceHexPhaseMemory(input: AdvanceHexPhaseMemoryInput): HexRou
   }
 
   return nextMemory;
+}
+
+function cloneRoundMemory(memory: HexRoundMemory): HexRoundMemory {
+  return JSON.parse(JSON.stringify(memory)) as HexRoundMemory;
 }
 
 export function prepareHexPhaseStartMemory(input: PrepareHexPhaseStartMemoryInput): HexRoundMemory {
@@ -358,6 +391,12 @@ function applyEvent(input: {
     case "bomb_carrier_changed":
       applyBombCarrierChangedEvent(input.memory, input.event);
       return;
+    case "bomb_dropped":
+      applyBombDroppedEvent(input.memory, input.cellsById, input.event);
+      return;
+    case "bomb_picked_up":
+      applyBombPickedUpEvent(input.memory, input.cellsById, input.event);
+      return;
     case "bomb_planted":
       applyBombPlantedEvent(input.memory, input.cellsById, input.event);
       return;
@@ -421,6 +460,7 @@ function applyMoveEvent(input: {
   agent.apSpent = roundAp(agent.apSpent + budget.apCost);
   agent.apRemaining = Math.max(0, roundAp(agent.apBudget - agent.apSpent));
   input.memory.phaseEvents.push(input.event);
+  maybeAutoPickupDroppedBomb(input.memory, agent);
 }
 
 function applyActionResultEvent(memory: HexRoundMemory, event: HexActionResultMemoryEvent): void {
@@ -481,7 +521,14 @@ function applyLifeStatusChangedEvent(memory: HexRoundMemory, event: HexLifeStatu
     agent.apRemaining = 0;
     if (agent.carryingC4) {
       agent.carryingC4 = false;
+      memory.bombState.droppedCellId = agent.currentCellId;
+      memory.bombState.lastCarrierAgentId = agent.agentId;
       delete memory.bombState.carrierAgentId;
+      memory.phaseEvents.push({
+        type: "bomb_dropped",
+        agentId: agent.agentId,
+        cellId: agent.currentCellId
+      });
     }
   }
   memory.phaseEvents.push(event);
@@ -493,9 +540,47 @@ function applyBombCarrierChangedEvent(memory: HexRoundMemory, event: HexBombCarr
   }
   if (event.carrierAgentId) {
     memory.bombState.carrierAgentId = event.carrierAgentId;
+    memory.bombState.lastCarrierAgentId = event.carrierAgentId;
+    delete memory.bombState.droppedCellId;
   } else {
     delete memory.bombState.carrierAgentId;
   }
+  memory.phaseEvents.push(event);
+}
+
+function applyBombDroppedEvent(memory: HexRoundMemory, cellsById: Map<string, HexCell>, event: HexBombDroppedMemoryEvent): void {
+  const cell = cellsById.get(event.cellId);
+  if (!cell?.playable) {
+    reject(memory, event, "unknown_cell", `Invalid dropped C4 cell ${event.cellId}`);
+    return;
+  }
+  const agent = findMutableAgent(memory, event.agentId);
+  if (agent) {
+    agent.carryingC4 = false;
+  }
+  memory.bombState.droppedCellId = event.cellId;
+  memory.bombState.lastCarrierAgentId = event.agentId;
+  delete memory.bombState.carrierAgentId;
+  memory.phaseEvents.push(event);
+}
+
+function applyBombPickedUpEvent(memory: HexRoundMemory, cellsById: Map<string, HexCell>, event: HexBombPickedUpMemoryEvent): void {
+  const agent = findMutableAgent(memory, event.agentId);
+  if (!agent) {
+    reject(memory, event, "unknown_agent", `Unknown pickup agent ${event.agentId}`);
+    return;
+  }
+  const cell = cellsById.get(event.cellId);
+  if (!cell?.playable || agent.currentCellId !== event.cellId || memory.bombState.droppedCellId !== event.cellId || agent.side !== "attack" || agent.lifeStatus === "dead") {
+    reject(memory, event, "invalid_bomb_pickup", `Agent ${event.agentId} cannot pick up C4 at ${event.cellId}`);
+    return;
+  }
+  for (const candidate of memory.agents) {
+    candidate.carryingC4 = candidate.agentId === agent.agentId;
+  }
+  memory.bombState.carrierAgentId = agent.agentId;
+  memory.bombState.lastCarrierAgentId = agent.agentId;
+  delete memory.bombState.droppedCellId;
   memory.phaseEvents.push(event);
 }
 
@@ -522,8 +607,35 @@ function applyBombPlantedEvent(memory: HexRoundMemory, cellsById: Map<string, He
   memory.bombState.planted = true;
   memory.bombState.plantedCellId = event.cellId;
   memory.bombState.plantedAtPhaseIndex = memory.phaseIndex;
+  memory.bombState.lastCarrierAgentId = agent.agentId;
   delete memory.bombState.carrierAgentId;
+  delete memory.bombState.droppedCellId;
   memory.phaseEvents.push(event);
+}
+
+function maybeAutoPickupDroppedBomb(memory: HexRoundMemory, agent: HexAgentPhaseMemory): void {
+  if (
+    memory.bombState.planted
+    || memory.bombState.carrierAgentId
+    || !memory.bombState.droppedCellId
+    || agent.side !== "attack"
+    || agent.lifeStatus === "dead"
+    || agent.currentCellId !== memory.bombState.droppedCellId
+  ) {
+    return;
+  }
+  for (const candidate of memory.agents) {
+    candidate.carryingC4 = candidate.agentId === agent.agentId;
+  }
+  memory.bombState.carrierAgentId = agent.agentId;
+  memory.bombState.lastCarrierAgentId = agent.agentId;
+  const cellId = memory.bombState.droppedCellId;
+  delete memory.bombState.droppedCellId;
+  memory.phaseEvents.push({
+    type: "bomb_picked_up",
+    agentId: agent.agentId,
+    cellId
+  });
 }
 
 function resetAgentForNextPhase(agent: HexAgentPhaseMemory, nextPhaseIndex: number): HexAgentPhaseMemory {

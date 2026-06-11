@@ -103,6 +103,15 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
       reasons: [...attackEconomyEvidence.reasons, ...defenseEconomyEvidence.reasons]
     }
   };
+  if (input.contact.triggerReasons.includes("site_contest") || input.contact.triggerReasons.includes("plant_pressure")) {
+    audit.sitePressure = true;
+  }
+  if (input.contact.triggerReasons.includes("plant_pressure") && advantage === "defense") {
+    audit.plantDenied = true;
+  }
+  if (input.contact.participants.length > 1 && input.contact.triggerReasons.some((reason) => reason === "same_region" || reason === "shared_point" || reason === "nearby_cells")) {
+    audit.tradeOpportunity = true;
+  }
   const core: HexCombatResolutionCore = {
     contactId: input.contact.contactId,
     phaseId: input.contact.phaseId,

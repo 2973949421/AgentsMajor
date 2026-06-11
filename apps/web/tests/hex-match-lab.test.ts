@@ -60,6 +60,11 @@ describe("Hex Match Lab", () => {
     expect(mapViewer).toContain("Dust2 Hex 地图");
     expect(mapViewer).toContain("viewBox={bounds.viewBox}");
     expect(mapViewer).toContain("C4");
+    expect(mapViewer).toContain("DROP");
+    expect(mapViewer).toContain("pathCellIds");
+    expect(mapViewer).toContain("polyline");
+    expect(mapViewer).toContain("mapPathIntent");
+    expect(mapViewer).toContain("mapAgentGhost");
     expect(mapViewer).toContain("mapCombat");
     expect(playerPanel).toContain("roleLabel");
     expect(playerPanel).toContain("KDA");
@@ -74,6 +79,9 @@ describe("Hex Match Lab", () => {
     expect(css).toContain(".board");
     expect(css).toContain(".teamColumn");
     expect(css).toContain(".centerStage");
+    expect(css).toContain(".mapBombDropped");
+    expect(css).toContain(".mapAgentGhost");
+    expect(css).toContain(".mapPathIntent");
     expect(css).toContain(".floatingConsole");
     expect(css).toContain(".consoleReveal");
     expect(css).toContain(".liveCallRow");
@@ -111,6 +119,9 @@ describe("Hex Match Lab", () => {
     expect(server).toContain("mapAssetView");
     expect(server).toContain("buildPlayerCards");
     expect(server).toContain("repairedFields");
+    expect(server).toContain("pathCellIds");
+    expect(server).toContain("droppedCellId");
+    expect(server).toContain("sitePressure");
     expect(server).not.toContain("runDust2NodeMapExperimental");
     expect(server).not.toContain("commitDust2NodeRoundExperimental");
     expect(server).not.toContain("loadMapSectorMap");

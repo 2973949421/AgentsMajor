@@ -279,6 +279,29 @@ N31 收口补丁 F 继续属于 Web 验收台与真实 LLM 可验收链路修复
 - 不让前端重新计算 winner。
 - 不删除旧 Node/Sector。
 
+## 3.14 N31 收口补丁 E：真实对抗可信度与路径/C4 验收修复
+
+N31 收口补丁 E 仍属于 Web 验收台收口，不新增 N 编号，不进入 N32。它解决的是“能跑但不像真实对抗”的验收问题。
+
+本补丁固定以下契约：
+
+- accepted action trace 必须携带真实路径事实：`pathCellIds`、`verticalLinkIds`、`apCost`。Web 只能用这些字段画真实路径；旧 trace 缺少 `pathCellIds` 时，只能显示淡色“意图线”，不得标成路径/AP。
+- C4 状态必须连续：`carrierAgentId`、`droppedCellId`、`plantedCellId`、`defused` 不能互相吞掉。C4 carrier 死亡时产生 dropped C4；T 方 alive agent 到 dropped cell 后可以 pickup；Web 必须区分 carried / dropped / planted。
+- `plant_bomb / defuse_bomb` 进入 phase 内 objective window：先处理 movement，再处理 combat，最后由仍存活且满足 C4、包点、AP、阵营条件的 objective actor 写入下包/拆包事件。
+- `move` 到合法包点且 businessIntent 明确包含 plant/下包意图时，可以修正为 `plant_bomb`，但必须写入 `repaired_move_to_plant_intent`，并且不能绕过 C4、bombsite、alive、AP 校验。
+- site contest、choke contest、dropped bomb contest、plant pressure 进入 combat contact/audit，用于解释局部对抗，不得直接写 round winner。
+- target cell 被友军占用或预占时，优先尝试同 point / 邻近可达空格修正，并写入 `repaired_target_cell_occupied`；无法修正才 fallback。
+- Web marker 必须避免误导：当前 level 外的 alive player 以 ghost marker + level badge 显示；KDA 只能来自 selected round/phase 之前的 combat casualties 汇总，不伪造 HP、伤害或枪械。
+
+补丁 E 成功后，人工验收应能回答：
+
+1. 选手是否沿真实蜂巢路径移动，而不是穿墙直线。
+2. C4 为什么被携带、掉落、拾起、下包或未下包。
+3. 某次下包为什么成功或失败。
+4. 某个 site/contact 为什么产生 combat verdict。
+5. 地图上看似少人的情况是否只是跨 level 显示问题。
+6. KDA 是否能追溯到 combat casualties。
+
 ## 4. N32：Hex 结构封板
 
 N32 在 N31 Web 可验收后执行。

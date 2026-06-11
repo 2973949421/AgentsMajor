@@ -38,9 +38,23 @@ export function HexMatchMapViewer(props: HexMatchMapViewerProps) {
   const cellById = new Map(props.map.cells.map((cell) => [cell.cellId, cell]));
   const regionById = new Map(props.map.regions.map((region) => [region.regionId, region]));
   const pointById = new Map(props.map.points.map((point) => [point.pointId, point]));
-  const players = props.phase?.players.filter((player) => cellById.get(player.currentCellId)?.level === props.level) ?? [];
-  const bombCellId = props.phase?.bombState.plantedCellId ?? props.phase?.players.find((player) => player.carryingC4)?.currentCellId;
+  const allPlayers = props.phase?.players ?? [];
+  const players = allPlayers.filter((player) => cellById.get(player.currentCellId)?.level === props.level);
+  const ghostPlayers = allPlayers.filter((player) => {
+    const cell = cellById.get(player.currentCellId);
+    return cell && cell.level !== props.level;
+  });
+  const bombCellId = props.phase?.bombState.plantedCellId
+    ?? props.phase?.bombState.droppedCellId
+    ?? allPlayers.find((player) => player.carryingC4)?.currentCellId;
   const bombCell = bombCellId ? cellById.get(bombCellId) : undefined;
+  const bombKind = props.phase?.bombState.plantedCellId
+    ? "planted"
+    : props.phase?.bombState.droppedCellId
+      ? "dropped"
+      : bombCellId
+        ? "carried"
+        : undefined;
   const bounds = buildViewBox(cells);
   const labelCells = buildRegionLabelCells(cells);
 
@@ -112,22 +126,39 @@ export function HexMatchMapViewer(props: HexMatchMapViewerProps) {
           : null}
 
         {props.showPaths && props.phase
-          ? props.phase.actions.map((action) => {
+          ? props.phase.actions.flatMap((action) => {
               const from = action.currentCellId ? cellById.get(action.currentCellId) : undefined;
               const to = action.targetCellId ? cellById.get(action.targetCellId) : undefined;
-              if (!from || !to || from.level !== props.level || to.level !== props.level || from.cellId === to.cellId) return null;
+              const pathSegments = buildPathSegments(action.pathCellIds, cellById, props.level);
+              if (pathSegments.length > 0) {
+                return pathSegments.map((segment, segmentIndex) => (
+                  <polyline
+                    key={`path_${action.agentId}_${action.targetCellId}_${segmentIndex}`}
+                    points={segment.map((cell) => {
+                      const pos = cellCenter(cell.col, cell.row);
+                      return `${pos.x},${pos.y}`;
+                    }).join(" ")}
+                    className={action.valid ? styles.mapPath : styles.mapPathRejected}
+                  >
+                    <title>真实路径：{action.pathCellIds.join(" -> ")}</title>
+                  </polyline>
+                ));
+              }
+              if (!from || !to || from.level !== props.level || to.level !== props.level || from.cellId === to.cellId) return [];
               const a = cellCenter(from.col, from.row);
               const b = cellCenter(to.col, to.row);
-              return (
+              return [(
                 <line
                   key={`path_${action.agentId}_${action.currentCellId}_${action.targetCellId}`}
                   x1={a.x}
                   y1={a.y}
                   x2={b.x}
                   y2={b.y}
-                  className={action.valid ? styles.mapPath : styles.mapPathRejected}
-                />
-              );
+                  className={styles.mapPathIntent}
+                >
+                  <title>旧 trace 仅有意图线，没有 pathCellIds。</title>
+                </line>
+              )];
             })
           : null}
 
@@ -146,10 +177,31 @@ export function HexMatchMapViewer(props: HexMatchMapViewerProps) {
           : null}
 
         {bombCell && bombCell.level === props.level ? (
-          <text x={cellCenter(bombCell.col, bombCell.row).x} y={cellCenter(bombCell.col, bombCell.row).y - 8} className={styles.mapBomb} filter="url(#hexTextShadow)">
-            C4
+          <text
+            x={cellCenter(bombCell.col, bombCell.row).x}
+            y={cellCenter(bombCell.col, bombCell.row).y - 8}
+            className={bombKind === "dropped" ? styles.mapBombDropped : styles.mapBomb}
+            filter="url(#hexTextShadow)"
+          >
+            {bombKind === "dropped" ? "DROP" : "C4"}
           </text>
         ) : null}
+
+        {ghostPlayers.map((player, index) => {
+          const cell = cellById.get(player.currentCellId);
+          if (!cell) return null;
+          const pos = cellCenter(cell.col, cell.row);
+          const selected = props.selectedAgentId === player.agentId;
+          return (
+            <g key={`ghost_${player.agentId}`} className={selected ? styles.mapAgentGhostSelected : styles.mapAgentGhost} onClick={() => props.onSelectAgent(player.agentId)}>
+              <circle cx={pos.x + offset(index).x} cy={pos.y + offset(index).y} r={selected ? 7.4 : 6.1} className={player.side === "attack" ? styles.mapAgentAttack : styles.mapAgentDefense} />
+              <text x={pos.x + offset(index).x} y={pos.y + offset(index).y + 1.8} className={styles.mapAgentText}>
+                L{cell.level}
+              </text>
+              <title>{player.displayName ?? player.agentId} - 当前在 level {cell.level}</title>
+            </g>
+          );
+        })}
 
         {players.map((player, index) => {
           const cell = cellById.get(player.currentCellId);
@@ -158,7 +210,8 @@ export function HexMatchMapViewer(props: HexMatchMapViewerProps) {
           const selected = props.selectedAgentId === player.agentId;
           return (
             <g key={player.agentId} className={selected ? styles.mapAgentSelected : styles.mapAgent} onClick={() => props.onSelectAgent(player.agentId)}>
-              <circle cx={pos.x + offset(index).x} cy={pos.y + offset(index).y} r={selected ? 6.8 : 5.4} className={player.side === "attack" ? styles.mapAgentAttack : styles.mapAgentDefense} />
+              <circle cx={pos.x + offset(index).x} cy={pos.y + offset(index).y} r={selected ? 9 : 7.2} className={styles.mapAgentHalo} />
+              <circle cx={pos.x + offset(index).x} cy={pos.y + offset(index).y} r={selected ? 7.2 : 5.8} className={player.side === "attack" ? styles.mapAgentAttack : styles.mapAgentDefense} />
               <text x={pos.x + offset(index).x} y={pos.y + offset(index).y + 1.8} className={styles.mapAgentText}>
                 {agentInitial(player.displayName ?? player.agentId)}
               </text>
@@ -195,6 +248,26 @@ function buildViewBox(cells: HexMatchLabMapAssetView["cells"]): { viewBox: strin
   const maxX = Math.max(...centers.map((center) => center.x)) + padding;
   const maxY = Math.max(...centers.map((center) => center.y)) + padding;
   return { viewBox: `${minX.toFixed(1)} ${minY.toFixed(1)} ${(maxX - minX).toFixed(1)} ${(maxY - minY).toFixed(1)}` };
+}
+
+function buildPathSegments(
+  pathCellIds: string[],
+  cellById: Map<string, HexMatchLabMapAssetView["cells"][number]>,
+  level: number
+): HexMatchLabMapAssetView["cells"][] {
+  const segments: HexMatchLabMapAssetView["cells"][] = [];
+  let current: HexMatchLabMapAssetView["cells"] = [];
+  for (const cellId of pathCellIds) {
+    const cell = cellById.get(cellId);
+    if (!cell || cell.level !== level) {
+      if (current.length > 1) segments.push(current);
+      current = [];
+      continue;
+    }
+    current = [...current, cell];
+  }
+  if (current.length > 1) segments.push(current);
+  return segments;
 }
 
 function buildRegionLabelCells(cells: HexMatchLabMapAssetView["cells"]): Map<string, HexMatchLabMapAssetView["cells"][number]> {

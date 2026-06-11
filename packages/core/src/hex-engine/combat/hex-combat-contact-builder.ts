@@ -109,6 +109,18 @@ function buildPairContact(input: {
   if (knownEnemyContact) {
     triggerReasons.push("known_enemy");
   }
+  if (hasSiteContest(input.attackParticipant, input.defenseParticipant)) {
+    triggerReasons.push("site_contest");
+  }
+  if (hasChokeContest(input.attackParticipant, input.defenseParticipant)) {
+    triggerReasons.push("choke_contest");
+  }
+  if (hasDroppedBombContest(input.memory, input.attackParticipant, input.defenseParticipant)) {
+    triggerReasons.push("dropped_bomb_contest");
+  }
+  if (hasPlantPressure(input.attackParticipant, input.defenseParticipant)) {
+    triggerReasons.push("plant_pressure");
+  }
 
   const hasPrimaryTrigger = triggerReasons.length > 0;
   if (hasPrimaryTrigger && (isActiveCombatAction(input.attackParticipant.action) || isActiveCombatAction(input.defenseParticipant.action))) {
@@ -142,6 +154,30 @@ function isActiveCombatAction(action: HexValidatedAgentAction): boolean {
 function hasKnownEnemyContact(memory: HexRoundMemory, observerAgentId: string, enemyAgentId: string): boolean {
   const observer = memory.agents.find((agent) => agent.agentId === observerAgentId);
   return observer?.knownEnemies.some((enemy) => enemy.enemyAgentId === enemyAgentId) ?? false;
+}
+
+function hasSiteContest(attackParticipant: HexCombatParticipant, defenseParticipant: HexCombatParticipant): boolean {
+  return hasBombsiteFlag(attackParticipant.targetFlags) && hasBombsiteFlag(defenseParticipant.targetFlags);
+}
+
+function hasChokeContest(attackParticipant: HexCombatParticipant, defenseParticipant: HexCombatParticipant): boolean {
+  return attackParticipant.targetFlags.includes("choke") || defenseParticipant.targetFlags.includes("choke");
+}
+
+function hasDroppedBombContest(memory: HexRoundMemory, attackParticipant: HexCombatParticipant, defenseParticipant: HexCombatParticipant): boolean {
+  const droppedCellId = memory.bombState.droppedCellId;
+  if (!droppedCellId) {
+    return false;
+  }
+  return [attackParticipant.currentCellId, attackParticipant.targetCellId, defenseParticipant.currentCellId, defenseParticipant.targetCellId].includes(droppedCellId);
+}
+
+function hasPlantPressure(attackParticipant: HexCombatParticipant, defenseParticipant: HexCombatParticipant): boolean {
+  return attackParticipant.action.actionType === "plant_bomb" && hasBombsiteFlag(defenseParticipant.targetFlags);
+}
+
+function hasBombsiteFlag(flags: readonly string[]): boolean {
+  return flags.includes("bombsite_a") || flags.includes("bombsite_b");
 }
 
 function calculatePairDistance(asset: HexMapAsset, attackCellId: string, defenseCellId: string): number | undefined {

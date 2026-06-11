@@ -216,6 +216,8 @@ export interface HexMatchLabPhaseSummary {
     planted: boolean;
     plantedCellId?: string | undefined;
     carrierAgentId?: string | undefined;
+    droppedCellId?: string | undefined;
+    lastCarrierAgentId?: string | undefined;
   };
   winCondition?: HexMatchLabHardConditionSummary | undefined;
   actions: HexMatchLabActionSummary[];
@@ -267,6 +269,9 @@ export interface HexMatchLabActionSummary {
   actionType: string;
   currentCellId?: string | undefined;
   targetCellId?: string | undefined;
+  pathCellIds: string[];
+  verticalLinkIds: string[];
+  pathSource?: string | undefined;
   apCost?: number | undefined;
   valid: boolean;
   fallbackReason?: string | undefined;
@@ -290,6 +295,9 @@ export interface HexMatchLabCombatSummary {
   csScoreDefense?: number | undefined;
   economyEvidenceApplied?: boolean | undefined;
   varianceApplied?: boolean | undefined;
+  sitePressure?: boolean | undefined;
+  plantDenied?: boolean | undefined;
+  tradeOpportunity?: boolean | undefined;
 }
 
 export interface HexMatchLabEconomySummary {
@@ -957,7 +965,9 @@ function summarizeSetupPhase(
     bombState: {
       planted: phase.memoryBefore.bombState.planted,
       plantedCellId: phase.memoryBefore.bombState.plantedCellId,
-      carrierAgentId: phase.memoryBefore.bombState.carrierAgentId
+      carrierAgentId: phase.memoryBefore.bombState.carrierAgentId,
+      droppedCellId: phase.memoryBefore.bombState.droppedCellId,
+      lastCarrierAgentId: phase.memoryBefore.bombState.lastCarrierAgentId
     },
     actions: [],
     combats: [],
@@ -1007,6 +1017,9 @@ function summarizePhase(
       actionType: action.actionType,
       currentCellId: action.currentCellId,
       targetCellId: action.targetCellId,
+      pathCellIds: [...(action.pathCellIds ?? [])],
+      verticalLinkIds: [...(action.verticalLinkIds ?? [])],
+      pathSource: action.pathSource,
       apCost: action.apCost,
       valid: action.valid,
       fallbackReason: action.fallbackReason,
@@ -1033,7 +1046,9 @@ function summarizePhase(
     bombState: {
       planted: phase.memoryAfter.bombState.planted,
       plantedCellId: phase.memoryAfter.bombState.plantedCellId,
-      carrierAgentId: phase.memoryAfter.bombState.carrierAgentId
+      carrierAgentId: phase.memoryAfter.bombState.carrierAgentId,
+      droppedCellId: phase.memoryAfter.bombState.droppedCellId,
+      lastCarrierAgentId: phase.memoryAfter.bombState.lastCarrierAgentId
     },
     winCondition: summarizeHardCondition(phase.winCondition),
     actions,
@@ -1050,7 +1065,10 @@ function summarizePhase(
       csScoreAttack: resolution.scores.attack.csScore,
       csScoreDefense: resolution.scores.defense.csScore,
       economyEvidenceApplied: resolution.audit.economy.economyEvidenceApplied,
-      varianceApplied: Boolean(parseRecord(resolution.audit.variance)?.varianceApplied)
+      varianceApplied: Boolean(parseRecord(resolution.audit.variance)?.varianceApplied),
+      sitePressure: resolution.audit.sitePressure,
+      plantDenied: resolution.audit.plantDenied,
+      tradeOpportunity: resolution.audit.tradeOpportunity
     })),
     players: buildPlayerCards({
       agents: phase.memoryAfter.agents,

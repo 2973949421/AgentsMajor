@@ -25,6 +25,9 @@ describe("Hex agent action validator", () => {
 
     expect(validated.valid).toBe(true);
     expect(validated.apCost).toBeGreaterThanOrEqual(0);
+    expect(validated.pathCellIds.at(0)).toBe(request.agent.currentCellId);
+    expect(validated.pathCellIds.at(-1)).toBe(target.cellId);
+    expect(validated.pathSource).toBe("pathfinding");
     expect(validated.validationErrors).toEqual([]);
   });
 
@@ -186,6 +189,15 @@ describe("Hex agent action validator", () => {
       memory: plantMemory,
       draft: buildDraft(request, { actionType: "plant_bomb", targetCellId: spawn.cellId })
     });
+    const repairedMoveToPlant = validateHexAgentActionDraft({
+      asset,
+      memory: plantMemory,
+      draft: buildDraft(request, {
+        actionType: "move",
+        targetCellId: bombsite.cellId,
+        businessIntent: "Carry the C4 into the site and plant the bomb for the team plan."
+      })
+    });
 
     const defenseMemory: HexRoundMemory = {
       ...placeAgent(plantMemory, asset, "ct_0", bombsite.cellId),
@@ -211,6 +223,9 @@ describe("Hex agent action validator", () => {
     expect(legalPlant.valid).toBe(true);
     expect(legalPlantUnderLowEconomy.valid).toBe(true);
     expect(legalPlantUnderLowEconomy.validationErrors).not.toContain("economy_disallows_action");
+    expect(repairedMoveToPlant.valid).toBe(true);
+    expect(repairedMoveToPlant.actionType).toBe("plant_bomb");
+    expect(repairedMoveToPlant.repairReasons).toContain("repaired_move_to_plant_intent");
     expect(invalidPlant.validationErrors).toContain("plant_requires_bombsite");
     expect(legalDefuse.valid).toBe(true);
     expect(tDefuse.validationErrors).toContain("defuse_requires_defense");

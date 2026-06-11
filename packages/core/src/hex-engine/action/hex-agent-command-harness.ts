@@ -362,7 +362,16 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
         ...(input.economyContext ? { economyContext: input.economyContext } : {})
       });
       if (validated.valid && isTargetCellOccupiedByFriendly(validated, occupiedCellOwners, reservedCellOwners)) {
-        validated = buildOccupiedCellFallback(input.memory, agent);
+        validated = tryRepairOccupiedTarget({
+          asset: input.asset,
+          memory: input.memory,
+          original: validated,
+          draft: normalized.draft,
+          request,
+          ...(input.economyContext ? { economyContext: input.economyContext } : {}),
+          occupiedCellOwners,
+          reservedCellOwners
+        }) ?? buildOccupiedCellFallback(input.memory, agent);
       }
       actions.push(validated);
       if (!validated.valid) {
@@ -534,6 +543,62 @@ function buildOccupiedCellFallback(memory: HexRoundMemory, agent: HexRoundMemory
     }),
     validationErrors
   };
+}
+
+function tryRepairOccupiedTarget(input: {
+  asset: HexMapAsset;
+  memory: HexRoundMemory;
+  original: HexValidatedAgentAction;
+  draft: HexAgentActionDraft;
+  request: HexAgentCommandRequest;
+  economyContext?: HexRoundEconomyContext;
+  occupiedCellOwners: ReadonlyMap<string, HexCellOccupant>;
+  reservedCellOwners: ReadonlyMap<string, HexCellOccupant>;
+}): HexValidatedAgentAction | undefined {
+  const candidates = input.request.targetCandidates.length > 0 ? input.request.targetCandidates : input.request.routeCandidates;
+  for (const candidate of candidates) {
+    if (candidate.targetCellId === input.original.targetCellId) {
+      continue;
+    }
+    if (isFriendlyCellBlocked(candidate.targetCellId, input.original.agentId, input.original.teamId, input.occupiedCellOwners, input.reservedCellOwners)) {
+      continue;
+    }
+    if (input.original.actionType === "move" && candidate.targetCellId === input.original.currentCellId) {
+      continue;
+    }
+    const repaired = validateHexAgentActionDraft({
+      asset: input.asset,
+      memory: input.memory,
+      draft: {
+        ...input.draft,
+        targetCellId: candidate.targetCellId
+      },
+      ...(input.economyContext ? { economyContext: input.economyContext } : {})
+    });
+    if (repaired.valid && !isTargetCellOccupiedByFriendly(repaired, input.occupiedCellOwners, input.reservedCellOwners)) {
+      return {
+        ...repaired,
+        repairReasons: [...(repaired.repairReasons ?? []), "repaired_target_cell_occupied"],
+        riskNotes: [...repaired.riskNotes, "repaired_target_cell_occupied"]
+      };
+    }
+  }
+  return undefined;
+}
+
+function isFriendlyCellBlocked(
+  cellId: string,
+  agentId: string,
+  teamId: string,
+  occupiedCellOwners: ReadonlyMap<string, HexCellOccupant>,
+  reservedCellOwners: ReadonlyMap<string, HexCellOccupant>
+): boolean {
+  const occupiedBy = occupiedCellOwners.get(cellId);
+  if (occupiedBy && occupiedBy.agentId !== agentId && occupiedBy.teamId === teamId) {
+    return true;
+  }
+  const reservedBy = reservedCellOwners.get(cellId);
+  return Boolean(reservedBy && reservedBy.agentId !== agentId && reservedBy.teamId === teamId);
 }
 
 async function emitProgress(
@@ -708,7 +773,7 @@ function buildAudit(input: {
     accepted: input.action.valid,
     fallback: !input.action.valid,
     ignoredFields: [...input.ignoredFields],
-    repairedFields: [...input.repairedFields],
+    repairedFields: [...input.repairedFields, ...(input.action.repairReasons ?? [])],
     errors: input.errors.map(String),
     providerMode: input.providerResult.providerMode ?? input.input.providerMode ?? "fixture"
   };

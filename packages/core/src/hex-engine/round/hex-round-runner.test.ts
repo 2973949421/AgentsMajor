@@ -1,3 +1,7 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import type { HexCell, HexMapAsset } from "@agent-major/shared";
 import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
 import { describe, expect, it } from "vitest";
 
@@ -22,6 +26,7 @@ describe("Hex round runner", () => {
     expect(trace.audit.providerMode).toBe("fixture");
     expect(trace.audit.totalLlmCallsAttempted).toBeGreaterThan(0);
     expect(trace.phases.every((phase) => phase.commandResult.actions.length === 10)).toBe(true);
+    expect(trace.phases.flatMap((phase) => phase.commandResult.actions).every((action) => action.pathCellIds.length > 0)).toBe(true);
   });
 
   it("falls back on provider errors without letting forbidden drafts become facts", async () => {
@@ -92,6 +97,45 @@ describe("Hex round runner", () => {
     expect(buildRoundTacticalPlan(1).attackVariant).not.toBe(buildRoundTacticalPlan(2).attackVariant);
     expect(buildRoundTacticalPlan(1).c4SitePreference).not.toBe(buildRoundTacticalPlan(2).c4SitePreference);
   });
+
+  it("applies a surviving plant action after movement and combat resolution", async () => {
+    const asset = loadOfficialDust2HexMap();
+    const bombsite = findCellWithFlag(asset, "bombsite_a");
+    const trace = await runDust2HexRound({
+      roundId: "round_hex_fixture_objective_window",
+      roundNumber: 3,
+      attackTeamId: "team_t",
+      defenseTeamId: "team_ct",
+      activeAgents: createAgents().map((agent) =>
+        agent.agentId === "t_0"
+          ? { ...agent, carryingC4: true, startCellId: bombsite.cellId }
+          : { ...agent, carryingC4: false }
+      ),
+      teamEconomyPlans: buildEconomyPlans(),
+      provider: (request) => ({
+        providerMode: "fixture",
+        modelId: "plant_window_fixture",
+        rawDraft: {
+          agentId: request.agent.agentId,
+          phaseId: request.phaseId,
+          currentCellId: request.agent.currentCellId,
+          targetCellId: request.agent.agentId === "t_0" ? bombsite.cellId : request.agent.currentCellId,
+          actionType: request.agent.agentId === "t_0" ? "plant_bomb" : "hold_position",
+          businessIntent: request.agent.agentId === "t_0"
+            ? "Plant the C4 on the A bombsite after reaching the objective window."
+            : "Hold current position and preserve the round setup."
+        }
+      }),
+      providerMode: "fixture",
+      maxLlmCallsPerPhase: 10
+    });
+
+    const firstPhase = trace.phases[0];
+    expect(firstPhase?.commandResult.actions.find((action) => action.agentId === "t_0")?.actionType).toBe("plant_bomb");
+    expect(firstPhase?.memoryEvents.some((event) => event.type === "bomb_planted")).toBe(true);
+    expect(firstPhase?.memoryAfter.bombState.planted).toBe(true);
+    expect(firstPhase?.memoryAfter.bombState.plantedCellId).toBe(bombsite.cellId);
+  });
 });
 
 function createAgents() {
@@ -143,4 +187,17 @@ function buildPlan(teamId: string, side: "attack" | "defense"): TeamEconomyPlan 
       notes: []
     }))
   };
+}
+
+function loadOfficialDust2HexMap(): HexMapAsset {
+  const raw = readFileSync(join(process.cwd(), "data/materials/processed/maps/dust2/hex/dust2-hex-map.json"), "utf8");
+  return JSON.parse(raw) as HexMapAsset;
+}
+
+function findCellWithFlag(asset: HexMapAsset, flag: HexCell["flags"][number]): HexCell {
+  const cell = asset.cells.find((candidate) => candidate.playable && candidate.flags.includes(flag));
+  if (!cell) {
+    throw new Error(`Missing ${flag}`);
+  }
+  return cell;
 }

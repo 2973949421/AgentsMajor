@@ -871,3 +871,31 @@ N29 第一版把 HexGrid（蜂巢格）单回合从 runtime trace（运行轨迹
 - 已存在同 roundNumber（回合号）时拒绝覆盖。
 - 未产生 hard final win condition（硬最终胜负条件）时拒绝提交半成品。
 - provider（供应器）失败只能进入 action fallback（行动降级）和 audit（审计），不能直接伪造成机制成功。
+
+## 10. N31 Hex Web 验收事实链补充
+
+N31 的 `/hex-lab/match` 是人工验收台，不是新的规则引擎。它只能展示 Hex trace（蜂巢轨迹）中的事实，不能在前端重新计算 winner、AP、path、combat 或 C4 结果。
+
+N31 收口补丁 E 后，以下字段成为 Web 验收事实链：
+
+- accepted move / plant / defuse action 必须保留 `currentCellId`、`targetCellId`、`pathCellIds`、`verticalLinkIds`、`apCost`。
+- `pathCellIds` 是唯一可标为“真实路径”的前端路径来源；旧 trace 缺失该字段时只能显示为“意图线”。
+- C4 状态必须区分：
+  - `carrierAgentId`：正在携带。
+  - `droppedCellId`：掉落在格子上。
+  - `plantedCellId`：已经下包。
+  - `defused`：已经拆包。
+- C4 carrier 死亡时必须产生 dropped C4，不得让 C4 从状态里消失。
+- 同 cell pickup 可以让 T 方 alive agent 接管 dropped C4；远距离 pickup 必须通过合法行动和路径。
+- `plant_bomb / defuse_bomb` 的实际结果由 phase 内 objective window 写入，仍必须通过 alive、side、C4、bombsite、path/AP 硬条件。
+- Combat contact 可以因为 site contest、choke contest、dropped bomb contest、plant pressure 形成局部对抗审计，但不能直接写 round winner。
+- Web marker 必须清楚区分当前 level 玩家和其他 level ghost 玩家，避免“side panel 5/5 但地图看起来少人”的误判。
+- KDA 只来自 selected round/phase 之前的 combat casualties 累计，不得伪造 HP、伤害、枪械或击杀。
+
+人工验收失败边界：
+
+- 地图用起点到终点直线冒充真实路径。
+- C4 carrier 死亡后 C4 不可见。
+- 合法下包/拆包被没有具体原因地吞掉。
+- 前端隐藏 fallback/rejected 来制造成功感。
+- 前端把局部 combat advantage 包装成 final winner。

@@ -3,7 +3,16 @@ import type { HexValidatedAgentAction } from "../action/index.js";
 import type { HexEconomyCombatEvidence } from "../economy/index.js";
 import type { HexPhaseMemoryEvent, HexPhaseId, HexSide } from "../state/index.js";
 
-export type HexCombatTriggerReason = "same_region" | "shared_point" | "nearby_cells" | "known_enemy" | "active_pressure";
+export type HexCombatTriggerReason =
+  | "same_region"
+  | "shared_point"
+  | "nearby_cells"
+  | "known_enemy"
+  | "active_pressure"
+  | "site_contest"
+  | "choke_contest"
+  | "dropped_bomb_contest"
+  | "plant_pressure";
 export type HexCombatAdvantage = "attack" | "defense" | "contested";
 export type HexCombatVerdict = "kill" | "wound_or_forced_back" | "contested_suppression";
 export type HexCombatControlHint = "attack" | "defense" | "contested" | "neutral";
@@ -85,6 +94,9 @@ export interface HexCombatAudit {
   triggerReasons: HexCombatTriggerReason[];
   variance: HexCombatVarianceAudit;
   economy: HexCombatEconomyAudit;
+  sitePressure?: boolean;
+  plantDenied?: boolean;
+  tradeOpportunity?: boolean;
 }
 
 export interface HexCombatEconomyAudit {

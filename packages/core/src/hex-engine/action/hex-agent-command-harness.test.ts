@@ -182,7 +182,7 @@ describe("Hex agent command harness", () => {
     expect(artifactStore.writes).toHaveLength(1);
   });
 
-  it("rejects accepted drafts that target another alive agent's occupied cell", async () => {
+  it("repairs drafts that target another alive agent's occupied cell when a nearby candidate is safe", async () => {
     const asset = loadOfficialDust2HexMap();
     const memory = initializeMemory(asset);
     const occupiedCellId = memory.agents.find((agent) => agent.agentId === "t_0")!.currentCellId;
@@ -207,10 +207,11 @@ describe("Hex agent command harness", () => {
       maxLlmCalls: 2
     });
 
-    const rejected = result.actions.find((action) => action.agentId === "t_1");
-    expect(rejected?.valid).toBe(false);
-    expect(rejected?.validationErrors).toContain("target_cell_occupied");
-    expect(rejected?.fallbackReason).toBe("target_cell_occupied");
+    const repaired = result.actions.find((action) => action.agentId === "t_1");
+    expect(repaired?.valid).toBe(true);
+    expect(repaired?.targetCellId).not.toBe(occupiedCellId);
+    expect(repaired?.repairReasons).toContain("repaired_target_cell_occupied");
+    expect(repaired?.validationErrors).not.toContain("target_cell_occupied");
   });
 
   it("does not treat an enemy occupied cell as a friendly stacking rejection", async () => {

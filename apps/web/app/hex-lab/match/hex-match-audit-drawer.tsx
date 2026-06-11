@@ -86,6 +86,11 @@ function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
           <p>participants: {combat.participants.join(", ")}</p>
           <p>casualties: {combat.casualties.join(", ") || "none"}</p>
           <p>suppression: {combat.suppressions.join(", ") || "none"}</p>
+          <p>
+            site pressure: {combat.sitePressure ? "yes" : "no"};
+            plant denied: {combat.plantDenied ? "yes" : "no"};
+            trade: {combat.tradeOpportunity ? "yes" : "no"}
+          </p>
           <p>business A/D {combat.businessScoreAttack ?? 0}/{combat.businessScoreDefense ?? 0}; CS A/D {combat.csScoreAttack ?? 0}/{combat.csScoreDefense ?? 0}</p>
           <p>economy evidence: {combat.economyEvidenceApplied ? "applied" : "not applied"}; variance: {combat.varianceApplied ? "applied" : "off"}</p>
         </article>
