@@ -51,6 +51,18 @@ export interface HexAgentRouteCandidate {
   flags: string[];
 }
 
+export interface HexRoundTacticalPlan {
+  roundNumber: number;
+  attackVariant: string;
+  defenseVariant: string;
+  attackFocusRegions: string[];
+  defenseFocusRegions: string[];
+  attackFocusPoints: string[];
+  defenseFocusPoints: string[];
+  c4SitePreference: "a" | "b";
+  instruction: string;
+}
+
 export interface HexAgentCommandRequest {
   schemaVersion: 1;
   phaseId: HexPhaseId;
@@ -65,6 +77,8 @@ export interface HexAgentCommandRequest {
   lastSeenEnemies: HexAgentMemoryPromptContext["lastSeenEnemies"];
   reachableCells: HexReachableCellSummary[];
   phaseObjective: HexAgentPhaseObjective;
+  tacticalPlan?: HexRoundTacticalPlan;
+  objectiveHints: string[];
   occupiedCellIds: string[];
   reservedCellIds: string[];
   targetCandidates: HexAgentRouteCandidate[];
@@ -151,6 +165,7 @@ export function buildHexAgentCommandRequest(input: {
   economyContext?: HexRoundEconomyContext;
   occupiedCellIds?: readonly string[];
   reservedCellIds?: readonly string[];
+  tacticalPlan?: HexRoundTacticalPlan;
 }): HexAgentCommandRequest {
   const context = buildHexAgentMemoryContext({
     memory: input.memory,
@@ -160,7 +175,15 @@ export function buildHexAgentCommandRequest(input: {
   const phaseObjective = buildPhaseObjective(input.memory.phaseId, context.agent.side);
   const blockedCellIds = new Set([...(input.occupiedCellIds ?? []), ...(input.reservedCellIds ?? [])]);
   blockedCellIds.delete(context.agent.currentCellId);
-  const routeCandidates = buildRouteCandidates(reachableCells, context.agent.currentCellId, phaseObjective.preferredActionTypes, blockedCellIds);
+  const objectiveHints = buildObjectiveHints(input.asset, context, input.tacticalPlan);
+  const routeCandidates = buildRouteCandidates(
+    reachableCells,
+    context.agent.currentCellId,
+    phaseObjective.preferredActionTypes,
+    blockedCellIds,
+    context.agent.side === "attack" ? input.tacticalPlan?.attackFocusRegions : input.tacticalPlan?.defenseFocusRegions,
+    context.agent.side === "attack" ? input.tacticalPlan?.attackFocusPoints : input.tacticalPlan?.defenseFocusPoints
+  );
   const economy = input.economyContext
     ? getHexAgentEconomyContext({
         economyContext: input.economyContext,
@@ -181,6 +204,8 @@ export function buildHexAgentCommandRequest(input: {
     lastSeenEnemies: context.lastSeenEnemies,
     reachableCells,
     phaseObjective,
+    ...(input.tacticalPlan ? { tacticalPlan: input.tacticalPlan } : {}),
+    objectiveHints,
     occupiedCellIds: [...(input.occupiedCellIds ?? [])],
     reservedCellIds: [...(input.reservedCellIds ?? [])],
     targetCandidates: routeCandidates,
@@ -191,7 +216,7 @@ export function buildHexAgentCommandRequest(input: {
       "Do not output winner, roundWinType, kills, damage, bomb results, economy deltas, database facts, or hidden enemy positions.",
       "targetCellId must come from reachableCells.",
       "Prefer targetCandidates when they are present; they are legal, phase-relevant route choices.",
-      "Do not choose occupiedCellIds or reservedCellIds unless the cell is your own currentCellId for an intentional hold.",
+      "Do not choose occupiedCellIds or reservedCellIds when they are friendly occupied or reserved cells; enemy occupied cells indicate possible contact, not an automatic fallback.",
       "A move action must change position. Use hold_position, watch_angle, or save when staying on the current cell is intentional.",
       "currentCellId must match the agent currentCellId.",
       "businessIntent is required and must explain the business-plan purpose of the CS action.",
@@ -200,6 +225,10 @@ export function buildHexAgentCommandRequest(input: {
       "The code validates movement, AP, C4 legality, and final game facts."
     ]
   };
+  if (input.tacticalPlan) {
+    request.constraints.push(`Round tactical variation: ${input.tacticalPlan.instruction}`);
+  }
+  request.constraints.push(...objectiveHints);
   if (economy) {
     request.economy = {
       economyPosture: economy.economyPosture,
@@ -279,13 +308,24 @@ function buildRouteCandidates(
   reachableCells: HexReachableCellSummary[],
   currentCellId: string,
   preferredActionTypes: readonly HexAgentActionType[],
-  blockedCellIds: ReadonlySet<string> = new Set()
+  blockedCellIds: ReadonlySet<string> = new Set(),
+  focusRegions: readonly string[] = [],
+  focusPoints: readonly string[] = []
 ): HexAgentRouteCandidate[] {
-  const nonCurrent = reachableCells.filter((cell) => cell.cellId !== currentCellId && cell.apCost > 0);
-  const scored = nonCurrent
+  const currentCell = reachableCells.find((cell) => cell.cellId === currentCellId);
+  const includeCurrentPlantCandidate = Boolean(
+    currentCell
+    && preferredActionTypes.includes("plant_bomb")
+    && currentCell.flags.some((flag) => flag === "bombsite_a" || flag === "bombsite_b")
+  );
+  const candidateCells = [
+    ...(includeCurrentPlantCandidate && currentCell ? [currentCell] : []),
+    ...reachableCells.filter((cell) => cell.cellId !== currentCellId && cell.apCost > 0)
+  ];
+  const scored = candidateCells
     .map((cell) => ({
       cell,
-      score: scoreRouteCandidate(cell, preferredActionTypes, blockedCellIds)
+      score: scoreRouteCandidate(cell, preferredActionTypes, blockedCellIds, focusRegions, focusPoints)
     }))
     .sort((left, right) => right.score - left.score || left.cell.apCost - right.cell.apCost || left.cell.cellId.localeCompare(right.cell.cellId));
   return scored.slice(0, 10).map(({ cell }) => ({
@@ -301,7 +341,9 @@ function buildRouteCandidates(
 function scoreRouteCandidate(
   cell: HexReachableCellSummary,
   preferredActionTypes: readonly HexAgentActionType[],
-  blockedCellIds: ReadonlySet<string>
+  blockedCellIds: ReadonlySet<string>,
+  focusRegions: readonly string[] = [],
+  focusPoints: readonly string[] = []
 ): number {
   let score = Math.min(12, cell.apCost * 8);
   if (blockedCellIds.has(cell.cellId)) {
@@ -309,9 +351,13 @@ function scoreRouteCandidate(
   }
   if (cell.regionId) {
     score += 2;
+    if (focusRegions.includes(cell.regionId)) {
+      score += 12;
+    }
   }
   if (cell.pointIds.length > 0) {
     score += 3;
+    score += cell.pointIds.filter((pointId) => focusPoints.includes(pointId)).length * 10;
   }
   if (cell.flags.some((flag) => flag === "bombsite_a" || flag === "bombsite_b")) {
     score += preferredActionTypes.includes("plant_bomb") || preferredActionTypes.includes("execute_site") ? 8 : 4;
@@ -323,6 +369,29 @@ function scoreRouteCandidate(
     score += preferredActionTypes.includes("watch_angle") ? 3 : 1;
   }
   return score;
+}
+
+function buildObjectiveHints(
+  asset: HexMapAsset,
+  context: HexAgentMemoryPromptContext,
+  tacticalPlan: HexRoundTacticalPlan | undefined
+): string[] {
+  const hints: string[] = [];
+  const currentCell = asset.cells.find((cell) => cell.cellId === context.agent.currentCellId);
+  const currentCellIsBombsite = Boolean(currentCell?.flags.includes("bombsite_a") || currentCell?.flags.includes("bombsite_b"));
+  if (context.agent.carryingC4) {
+    const preferredSite = tacticalPlan?.c4SitePreference ?? "a";
+    hints.push(`You are carrying C4; prioritize a credible route toward ${preferredSite.toUpperCase()} site unless the phase facts make another site clearly better.`);
+    if (currentCellIsBombsite) {
+      hints.push("You are currently on a legal bombsite cell; plant_bomb with targetCellId=currentCellId is a valid objective candidate when AP/path and hard C4 rules pass.");
+    } else {
+      hints.push("If not on a bombsite, keep moving toward a bombsite-capable target instead of holding spawn or drifting without objective pressure.");
+    }
+  }
+  if (context.bombState.planted && context.agent.side === "defense") {
+    hints.push("Bomb is planted; defuse_bomb is only valid at the planted cell, otherwise rotate/retake toward the planted site.");
+  }
+  return hints;
 }
 
 function buildRouteCandidateLabel(cell: HexReachableCellSummary): string {
@@ -354,12 +423,11 @@ export function normalizeHexAgentActionDraft(input: NormalizeHexAgentActionDraft
     }
   }
 
-  const agentId = readString(rawDraft.agentId);
-  if (agentId !== input.request.agent.agentId) {
-    errors.push("draft:invalid_agentId");
-  }
-
   const repairedFields: string[] = [];
+  const agentId = input.request.agent.agentId;
+  if (readString(rawDraft.agentId) !== input.request.agent.agentId) {
+    repairedFields.push("repaired_agentId");
+  }
   const phaseId = input.request.phaseId;
   if (readString(rawDraft.phaseId) !== input.request.phaseId) {
     repairedFields.push("repaired_phaseId");

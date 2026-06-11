@@ -81,7 +81,7 @@ describe("Hex agent command boundary", () => {
     expect(result.ignoredFields).toEqual(expect.arrayContaining(["winner", "kills"]));
   });
 
-  it("repairs request-owned phase and current cell fields without relaxing action facts", () => {
+  it("repairs request-owned agent, phase, and current cell fields without relaxing action facts", () => {
     const asset = loadOfficialDust2HexMap();
     const memory = initializeHexRoundMemory({
       asset,
@@ -97,7 +97,7 @@ describe("Hex agent command boundary", () => {
     const result = normalizeHexAgentActionDraft({
       request,
       rawDraft: {
-        agentId: "t_0",
+        agentId: "model_repeated_the_wrong_agent",
         phaseId: "model_repeated_the_wrong_phase",
         currentCellId: "model_repeated_the_wrong_cell",
         targetCellId: request.reachableCells[0]!.cellId,
@@ -107,7 +107,8 @@ describe("Hex agent command boundary", () => {
     });
 
     expect(result.errors).toEqual([]);
-    expect(result.repairedFields).toEqual(expect.arrayContaining(["repaired_phaseId", "repaired_currentCellId"]));
+    expect(result.repairedFields).toEqual(expect.arrayContaining(["repaired_agentId", "repaired_phaseId", "repaired_currentCellId"]));
+    expect(result.draft?.agentId).toBe(request.agent.agentId);
     expect(result.draft?.phaseId).toBe(request.phaseId);
     expect(result.draft?.currentCellId).toBe(request.agent.currentCellId);
   });
@@ -190,13 +191,12 @@ describe("Hex agent command boundary", () => {
     expect(result.draft).toBeUndefined();
     expect(result.errors).toEqual(
       expect.arrayContaining([
-        "draft:invalid_agentId",
         "draft:missing_targetCellId",
         "draft:invalid_actionType",
         "draft:missing_businessIntent"
       ])
     );
-    expect(result.repairedFields).toEqual(expect.arrayContaining(["repaired_phaseId", "repaired_currentCellId"]));
+    expect(result.repairedFields).toEqual(expect.arrayContaining(["repaired_agentId", "repaired_phaseId", "repaired_currentCellId"]));
   });
 });
 

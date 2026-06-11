@@ -256,6 +256,29 @@ N31 收口补丁 D 仍属于 Web 验收台收口，不进入 N32，不调 AP/com
 - LLM 实时进度显示 expected/attempted、accepted/rejected/fallback、当前 agent、request/response artifact id。
 - 页面中文无乱码，不伪造 HP、枪械、伤害、投掷物落点或敌人真实位置。
 
+## 3.13 N31 收口补丁 F：真实 LLM 比赛推进修复
+
+N31 收口补丁 F 继续属于 Web 验收台与真实 LLM 可验收链路修复，不新增 N 编号，不进入 N32。
+
+本补丁锁定用户连续跑多回合后暴露的 7 个问题：
+
+- AP 每 phase 必须重置。`memoryAfter` 表示当前 phase 结束状态；进入下一 phase 前必须单独生成 phase start memory，避免上一阶段 AP 消耗污染下一阶段 LLM request。
+- `agentId / phaseId / currentCellId` 属于 request 已知上下文字段。LLM 缺失或复述错误时允许由代码修正并记录 `repaired_agentId / repaired_phaseId / repaired_currentCellId`；`targetCellId / actionType / businessIntent` 仍严格校验。
+- target reservation 只硬拒友军占用或友军预占 cell。敌方 occupied cell 表示可能交火接触，不能被简化成 `target_cell_occupied` fallback。
+- round runner 提供 deterministic tactical variation，按 roundNumber 轮换 A short、B tunnels、long A、mid split 等侧重点，减少多回合路线高度一致。
+- C4 carrier 的 request 必须明确 objective chain：当前是否携带 C4、偏向 A/B、是否已在合法包点、何时 `plant_bomb` 是合法候选。
+- Web KDA 来自 combat casualties 的可追溯汇总；不伪造 HP、伤害或枪械。
+- `/hex-lab/match` 左右选手栏继续压缩和加宽，优先利用地图左右黑边，确保 10 名选手核心信息可一屏审计。
+
+补丁 F 仍禁止：
+
+- 不改 AP 汇率。
+- 不改 combat 65/35 权重。
+- 不改 economy 参数。
+- 不改 hard winner 规则。
+- 不让前端重新计算 winner。
+- 不删除旧 Node/Sector。
+
 ## 4. N32：Hex 结构封板
 
 N32 在 N31 Web 可验收后执行。

@@ -12,7 +12,8 @@ import {
   buildHexAgentCommandRequest,
   normalizeHexAgentActionDraft,
   type HexAgentActionDraft,
-  type HexAgentCommandRequest
+  type HexAgentCommandRequest,
+  type HexRoundTacticalPlan
 } from "./hex-agent-command-boundary.js";
 import {
   buildHexAgentFallbackAction,
@@ -88,6 +89,7 @@ export interface RunHexAgentPhaseCommandHarnessInput {
   artifactOwner?: HexAgentCommandArtifactOwner;
   callIdPrefix?: string;
   progressSink?: HexAgentCommandProgressSink;
+  tacticalPlan?: HexRoundTacticalPlan;
 }
 
 export interface HexAgentCommandAudit {
@@ -129,11 +131,15 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
   const maxLlmCalls = input.maxLlmCalls ?? Number.POSITIVE_INFINITY;
   let callsAttempted = 0;
   const expectedCalls = input.memory.agents.filter((agent) => agent.lifeStatus !== "dead" && agent.apRemaining > 0).length;
-  const occupiedCellOwners = new Map<string, string>();
-  const reservedCellOwners = new Map<string, string>();
+  const occupiedCellOwners = new Map<string, HexCellOccupant>();
+  const reservedCellOwners = new Map<string, HexCellOccupant>();
   for (const agent of input.memory.agents) {
     if (agent.lifeStatus !== "dead") {
-      occupiedCellOwners.set(agent.currentCellId, agent.agentId);
+      occupiedCellOwners.set(agent.currentCellId, {
+        agentId: agent.agentId,
+        teamId: agent.teamId,
+        side: agent.side
+      });
     }
   }
 
@@ -200,12 +206,19 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
       continue;
     }
 
+    const friendlyOccupiedCellIds = [...occupiedCellOwners.entries()]
+      .filter(([, owner]) => owner.teamId === agent.teamId && owner.agentId !== agent.agentId)
+      .map(([cellId]) => cellId);
+    const friendlyReservedCellIds = [...reservedCellOwners.entries()]
+      .filter(([, owner]) => owner.teamId === agent.teamId && owner.agentId !== agent.agentId)
+      .map(([cellId]) => cellId);
     const request = buildHexAgentCommandRequest({
       asset: input.asset,
       memory: input.memory,
       agentId: agent.agentId,
-      occupiedCellIds: [...occupiedCellOwners.keys()],
-      reservedCellIds: [...reservedCellOwners.keys()],
+      occupiedCellIds: friendlyOccupiedCellIds,
+      reservedCellIds: friendlyReservedCellIds,
+      ...(input.tacticalPlan ? { tacticalPlan: input.tacticalPlan } : {}),
       ...(input.economyContext ? { economyContext: input.economyContext } : {})
     });
     await emitProgress(input, {
@@ -348,7 +361,7 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
         draft: normalized.draft,
         ...(input.economyContext ? { economyContext: input.economyContext } : {})
       });
-      if (validated.valid && isTargetCellOccupiedByOther(validated, occupiedCellOwners, reservedCellOwners)) {
+      if (validated.valid && isTargetCellOccupiedByFriendly(validated, occupiedCellOwners, reservedCellOwners)) {
         validated = buildOccupiedCellFallback(input.memory, agent);
       }
       actions.push(validated);
@@ -416,7 +429,11 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
           ...(providerResult.modelId ?? input.modelId ? { modelId: providerResult.modelId ?? input.modelId } : {})
         });
       } else {
-        reservedCellOwners.set(validated.targetCellId, validated.agentId);
+        reservedCellOwners.set(validated.targetCellId, {
+          agentId: validated.agentId,
+          teamId: validated.teamId,
+          side: validated.side
+        });
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -488,17 +505,23 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
   };
 }
 
-function isTargetCellOccupiedByOther(
+interface HexCellOccupant {
+  agentId: string;
+  teamId: string;
+  side: HexRoundMemory["agents"][number]["side"];
+}
+
+function isTargetCellOccupiedByFriendly(
   action: HexValidatedAgentAction,
-  occupiedCellOwners: ReadonlyMap<string, string>,
-  reservedCellOwners: ReadonlyMap<string, string>
+  occupiedCellOwners: ReadonlyMap<string, HexCellOccupant>,
+  reservedCellOwners: ReadonlyMap<string, HexCellOccupant>
 ): boolean {
   const occupiedBy = occupiedCellOwners.get(action.targetCellId);
-  if (occupiedBy && occupiedBy !== action.agentId) {
+  if (occupiedBy && occupiedBy.agentId !== action.agentId && occupiedBy.teamId === action.teamId) {
     return true;
   }
   const reservedBy = reservedCellOwners.get(action.targetCellId);
-  return Boolean(reservedBy && reservedBy !== action.agentId);
+  return Boolean(reservedBy && reservedBy.agentId !== action.agentId && reservedBy.teamId === action.teamId);
 }
 
 function buildOccupiedCellFallback(memory: HexRoundMemory, agent: HexRoundMemory["agents"][number]): HexValidatedAgentAction {

@@ -1,7 +1,7 @@
 import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
 import { describe, expect, it } from "vitest";
 
-import { runDust2HexRound } from "./hex-round-runner.js";
+import { buildRoundTacticalPlan, runDust2HexRound } from "./hex-round-runner.js";
 
 describe("Hex round runner", () => {
   it("generates a complete fixture trace with a hard final win condition", async () => {
@@ -42,6 +42,55 @@ describe("Hex round runner", () => {
     expect(trace.finalWinCondition.isRoundOver).toBe(true);
     expect(trace.audit.fallbackCount).toBeGreaterThan(0);
     expect(JSON.stringify(trace.finalWinCondition)).not.toContain("winnerFromDraft");
+  });
+
+  it("resets AP at the start of each phase while preserving the previous phase snapshot", async () => {
+    const trace = await runDust2HexRound({
+      roundId: "round_hex_fixture_ap_reset",
+      roundNumber: 1,
+      attackTeamId: "team_t",
+      defenseTeamId: "team_ct",
+      activeAgents: createAgents(),
+      teamEconomyPlans: buildEconomyPlans(),
+      provider: (request) => ({
+        providerMode: "fixture",
+        modelId: "move_fixture",
+        rawDraft: {
+          agentId: request.agent.agentId,
+          phaseId: request.phaseId,
+          currentCellId: request.agent.currentCellId,
+          targetCellId: request.targetCandidates[0]?.targetCellId ?? request.agent.currentCellId,
+          actionType: request.targetCandidates[0] ? "move" : "hold_position",
+          businessIntent: "move fixture advances to the first legal candidate to prove AP reset between phases."
+        }
+      }),
+      providerMode: "fixture",
+      maxLlmCallsPerPhase: 10
+    });
+
+    expect(trace.phases[0]?.memoryAfter.agents.some((agent) => agent.apSpent > 0)).toBe(true);
+    const secondPhase = trace.phases[1];
+    expect(secondPhase).toBeDefined();
+    expect(secondPhase?.memoryBefore.agents.every((agent) => agent.apSpent === 0 && agent.apRemaining === agent.apBudget)).toBe(true);
+  });
+
+  it("uses unique spawn cells for the initial setup snapshot", async () => {
+    const trace = await runDust2HexRound({
+      roundId: "round_hex_fixture_unique_spawn",
+      roundNumber: 1,
+      attackTeamId: "team_t",
+      defenseTeamId: "team_ct",
+      activeAgents: createAgents(),
+      teamEconomyPlans: buildEconomyPlans()
+    });
+
+    const starts = trace.phases[0]!.memoryBefore.agents.map((agent) => agent.currentCellId);
+    expect(new Set(starts).size).toBe(starts.length);
+  });
+
+  it("rotates deterministic tactical plans by round number", () => {
+    expect(buildRoundTacticalPlan(1).attackVariant).not.toBe(buildRoundTacticalPlan(2).attackVariant);
+    expect(buildRoundTacticalPlan(1).c4SitePreference).not.toBe(buildRoundTacticalPlan(2).c4SitePreference);
   });
 });
 

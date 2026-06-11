@@ -158,6 +158,12 @@ export interface AdvanceHexPhaseMemoryInput {
   nextPhaseIndex?: number;
 }
 
+export interface PrepareHexPhaseStartMemoryInput {
+  previousMemory: HexRoundMemory;
+  nextPhaseId: HexPhaseId;
+  nextPhaseIndex?: number;
+}
+
 export type HexMemoryRejectionReason =
   | "unknown_agent"
   | "dead_agent_cannot_act"
@@ -253,17 +259,7 @@ export function initializeHexRoundMemory(input: InitializeHexRoundMemoryInput): 
 
 export function advanceHexPhaseMemory(input: AdvanceHexPhaseMemoryInput): HexRoundMemory {
   const cellsById = buildCellsById(input.asset);
-  const nextPhaseIndex = input.nextPhaseIndex ?? input.previousMemory.phaseIndex + 1;
-  const agents = input.previousMemory.agents.map((agent) => resetAgentForNextPhase(agent, nextPhaseIndex));
-  const bombState = { ...input.previousMemory.bombState };
-  const nextMemory: HexRoundMemory = {
-    phaseIndex: nextPhaseIndex,
-    phaseId: input.nextPhaseId,
-    agents,
-    bombState,
-    phaseEvents: [],
-    rejectedEvents: [...input.previousMemory.rejectedEvents]
-  };
+  const nextMemory = prepareHexPhaseStartMemory(input);
 
   for (const event of input.events) {
     applyEvent({
@@ -275,6 +271,18 @@ export function advanceHexPhaseMemory(input: AdvanceHexPhaseMemoryInput): HexRou
   }
 
   return nextMemory;
+}
+
+export function prepareHexPhaseStartMemory(input: PrepareHexPhaseStartMemoryInput): HexRoundMemory {
+  const nextPhaseIndex = input.nextPhaseIndex ?? input.previousMemory.phaseIndex + 1;
+  return {
+    phaseIndex: nextPhaseIndex,
+    phaseId: input.nextPhaseId,
+    agents: input.previousMemory.agents.map((agent) => resetAgentForNextPhase(agent, nextPhaseIndex)),
+    bombState: { ...input.previousMemory.bombState },
+    phaseEvents: [],
+    rejectedEvents: [...input.previousMemory.rejectedEvents]
+  };
 }
 
 export function buildHexAgentMemoryContext(input: BuildHexAgentMemoryContextInput): HexAgentMemoryPromptContext {

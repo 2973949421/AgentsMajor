@@ -18,6 +18,7 @@ import {
   advanceHexPhaseMemory,
   hexPhaseIds,
   initializeHexRoundMemory,
+  prepareHexPhaseStartMemory,
   type HexPhaseId,
   type HexPhaseMemoryEvent,
   type HexRoundMemory,
@@ -31,7 +32,8 @@ import {
   type HexAgentCommandProvider,
   type HexAgentCommandProviderMode,
   type HexAgentPhaseCommandHarnessResult,
-  type HexAgentCommandProgressSink
+  type HexAgentCommandProgressSink,
+  type HexRoundTacticalPlan
 } from "../action/index.js";
 import {
   materializeHexWinCondition,
@@ -120,6 +122,7 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
     teamEconomyPlans: input.teamEconomyPlans,
     memory
   });
+  const tacticalPlan = buildRoundTacticalPlan(input.roundNumber);
   const phases: HexRoundPhaseTrace[] = [];
   let finalWinCondition: HexWinConditionResult | undefined;
 
@@ -148,6 +151,7 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
           }
         : {}),
       ...(input.progressSink ? { progressSink: input.progressSink } : {}),
+      tacticalPlan,
       callIdPrefix: `hex_${input.roundId}_${phaseIndex}`
     });
     const acceptedActions = commandResult.acceptedActions;
@@ -164,7 +168,7 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
       economyContext
     }));
     const memoryEvents = [
-      ...acceptedActions.flatMap((action) => actionToMemoryEvents(action)),
+      ...acceptedActions.flatMap((action) => actionToMemoryEvents(action, memory)),
       ...combatResolutions.flatMap((resolution) => resolution.memoryEvents),
       { type: "phase_closed" as const }
     ];
@@ -173,8 +177,8 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
       asset,
       previousMemory: memory,
       events: memoryEvents,
-      nextPhaseId,
-      nextPhaseIndex: phaseIndex + 1
+      nextPhaseId: phaseId,
+      nextPhaseIndex: phaseIndex
     });
     const winCondition = materializeHexWinCondition({
       memory: memoryAfter,
@@ -203,7 +207,11 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
       break;
     }
 
-    memory = memoryAfter;
+    memory = prepareHexPhaseStartMemory({
+      previousMemory: memoryAfter,
+      nextPhaseId,
+      nextPhaseIndex: phaseIndex + 1
+    });
   }
 
   finalWinCondition ??= phases.at(-1)?.winCondition;
@@ -319,12 +327,63 @@ function cellsWithFlag(asset: HexMapAsset, flag: HexCell["flags"][number]) {
   return cells;
 }
 
-function actionToMemoryEvents(action: HexValidatedAgentAction): HexPhaseMemoryEvent[] {
+export function buildRoundTacticalPlan(roundNumber: number): HexRoundTacticalPlan {
+  const variants: HexRoundTacticalPlan[] = [
+    {
+      roundNumber,
+      attackVariant: "A short split",
+      defenseVariant: "A short and CT crossfire",
+      attackFocusRegions: ["a_short", "mid_top_mid", "a_site"],
+      defenseFocusRegions: ["a_short", "ct_mid_rotate", "a_site"],
+      attackFocusPoints: ["a_short_point", "a_bombsite", "mid_xbox"],
+      defenseFocusPoints: ["a_bombsite", "ct_spawn_point", "a_short_point"],
+      c4SitePreference: "a",
+      instruction: "Attack should bias toward A short pressure and a credible A plant path; defense should contest short and CT rotations."
+    },
+    {
+      roundNumber,
+      attackVariant: "B tunnels pressure",
+      defenseVariant: "B anchor with mid info",
+      attackFocusRegions: ["b_tunnels", "outside_tunnels", "b_site", "mid_top_mid"],
+      defenseFocusRegions: ["b_site", "ct_mid_rotate", "mid_top_mid"],
+      attackFocusPoints: ["upper_tunnels", "lower_tunnels", "b_bombsite", "top_mid"],
+      defenseFocusPoints: ["b_bombsite", "b_doors", "top_mid"],
+      c4SitePreference: "b",
+      instruction: "Attack should bias toward B tunnels or mid-to-B pressure; defense should keep B anchor and mid information."
+    },
+    {
+      roundNumber,
+      attackVariant: "Long A default",
+      defenseVariant: "Long control and A anchor",
+      attackFocusRegions: ["long_doors", "a_long_approach", "a_long_pit", "a_site"],
+      defenseFocusRegions: ["long_corner_blue", "a_long_pit", "a_site"],
+      attackFocusPoints: ["long_doors_point", "outside_long", "a_bombsite"],
+      defenseFocusPoints: ["a_bombsite", "long_corner", "ct_spawn_point"],
+      c4SitePreference: "a",
+      instruction: "Attack should bias toward long A control before committing; defense should contest long and preserve A site coverage."
+    },
+    {
+      roundNumber,
+      attackVariant: "Mid split read",
+      defenseVariant: "Flexible mid rotate",
+      attackFocusRegions: ["mid_top_mid", "ct_mid_rotate", "a_short", "b_site"],
+      defenseFocusRegions: ["mid_top_mid", "ct_mid_rotate", "a_site", "b_site"],
+      attackFocusPoints: ["top_mid", "mid_xbox", "b_doors", "a_short_point"],
+      defenseFocusPoints: ["top_mid", "ct_spawn_point", "b_doors", "a_bombsite"],
+      c4SitePreference: "b",
+      instruction: "Attack should use mid control to choose a split; defense should rotate from verified pressure instead of overstacking spawn."
+    }
+  ];
+  const selected = variants[Math.abs(roundNumber - 1) % variants.length]!;
+  return { ...selected, roundNumber };
+}
+
+function actionToMemoryEvents(action: HexValidatedAgentAction, memory: HexRoundMemory): HexPhaseMemoryEvent[] {
   if (!action.valid) {
     return [];
   }
   const events: HexPhaseMemoryEvent[] = [];
-  if (action.targetCellId !== action.currentCellId) {
+  if (action.targetCellId !== action.currentCellId && !isEnemyOccupiedTarget(action, memory)) {
     events.push({
       type: "move",
       agentId: action.agentId,
@@ -352,6 +411,15 @@ function actionToMemoryEvents(action: HexValidatedAgentAction): HexPhaseMemoryEv
     businessExecutionSummary: action.businessIntent
   });
   return events;
+}
+
+function isEnemyOccupiedTarget(action: HexValidatedAgentAction, memory: HexRoundMemory): boolean {
+  return memory.agents.some((agent) =>
+    agent.agentId !== action.agentId
+    && agent.teamId !== action.teamId
+    && agent.lifeStatus !== "dead"
+    && agent.currentCellId === action.targetCellId
+  );
 }
 
 function isEliminationWin(winCondition: HexWinConditionResult): boolean {

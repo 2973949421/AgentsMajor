@@ -213,6 +213,44 @@ describe("Hex agent command harness", () => {
     expect(rejected?.fallbackReason).toBe("target_cell_occupied");
   });
 
+  it("does not treat an enemy occupied cell as a friendly stacking rejection", async () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeMemory(asset);
+    const [attackCell, defenseCell] = asset.cells.filter((cell) => cell.playable && cell.regionId === "a_site").slice(0, 2);
+    if (!attackCell || !defenseCell) {
+      throw new Error("Missing a_site fixture cells");
+    }
+    memory.agents = memory.agents.map((agent) => {
+      if (agent.agentId === "t_0") return { ...agent, currentCellId: attackCell.cellId, currentRegionId: "a_site", currentPointIds: [...attackCell.pointIds] };
+      if (agent.agentId === "ct_0") return { ...agent, currentCellId: defenseCell.cellId, currentRegionId: "a_site", currentPointIds: [...defenseCell.pointIds] };
+      return agent;
+    });
+    const provider: HexAgentCommandProvider = (request) => ({
+      providerMode: "fixture",
+      modelId: "enemy_contact_fixture",
+      rawDraft: {
+        agentId: request.agent.agentId,
+        phaseId: request.phaseId,
+        currentCellId: request.agent.currentCellId,
+        targetCellId: defenseCell.cellId,
+        actionType: "seek_duel",
+        businessIntent: "t_0 accepts enemy contact on A site to test that enemy occupied cells are combat pressure, not friendly stacking."
+      }
+    });
+
+    const result = await runHexAgentPhaseCommandHarness({
+      asset,
+      memory,
+      provider,
+      providerMode: "fixture",
+      maxLlmCalls: 1
+    });
+
+    const action = result.actions.find((candidate) => candidate.agentId === "t_0");
+    expect(action?.valid).toBe(true);
+    expect(action?.validationErrors).not.toContain("target_cell_occupied");
+  });
+
   it("returns disabled real provider when env is missing", async () => {
     const factory = createEnvHexAgentCommandProvider({});
     const asset = loadOfficialDust2HexMap();

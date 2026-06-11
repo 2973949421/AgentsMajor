@@ -912,7 +912,13 @@ function summarizeTrace(
   const firstPhase = trace.phases[0];
   const phaseSummaries = [
     ...(firstPhase ? [summarizeSetupPhase(firstPhase, asset, economySummary, agentIdentities)] : []),
-    ...trace.phases.map((phase) => summarizePhase(phase, asset, economySummary, agentIdentities))
+    ...trace.phases.map((phase, index) => summarizePhase(
+      phase,
+      asset,
+      economySummary,
+      agentIdentities,
+      buildKdaByAgent(trace.phases.slice(0, index + 1))
+    ))
   ];
   return {
     ...roundSummary,
@@ -960,7 +966,8 @@ function summarizeSetupPhase(
       actions: [],
       asset,
       economySummary,
-      agentIdentities
+      agentIdentities,
+      kdaByAgent: new Map()
     }),
     llmAudit: {
       expectedCalls: 0,
@@ -985,7 +992,8 @@ function summarizePhase(
   phase: HexRoundTrace["phases"][number],
   asset: HexMapAsset,
   economySummary: HexMatchLabEconomySummary[],
-  agentIdentities: Map<string, AgentIdentity>
+  agentIdentities: Map<string, AgentIdentity>,
+  kdaByAgent: Map<string, HexKdaStat>
 ): HexMatchLabPhaseSummary {
   const agentsAfter = phase.memoryAfter.agents;
   const aliveAttackCount = agentsAfter.filter((agent) => agent.side === "attack" && agent.lifeStatus !== "dead").length;
@@ -1049,7 +1057,8 @@ function summarizePhase(
       actions,
       asset,
       economySummary,
-      agentIdentities
+      agentIdentities,
+      kdaByAgent
     }),
     llmAudit,
     memoryBeforeSummary: summarizeMemory(phase.memoryBefore),
@@ -1243,6 +1252,7 @@ function buildPlayerCards(input: {
   asset: HexMapAsset;
   economySummary: HexMatchLabEconomySummary[];
   agentIdentities: Map<string, AgentIdentity>;
+  kdaByAgent: Map<string, HexKdaStat>;
 }): HexMatchLabPlayerCard[] {
   const cells = new Map(input.asset.cells.map((cell) => [cell.cellId, cell]));
   const regions = new Map(input.asset.regions.map((region) => [region.regionId, region]));
@@ -1258,7 +1268,7 @@ function buildPlayerCards(input: {
       agentId: agent.agentId,
       displayName: input.agentIdentities.get(agent.agentId)?.displayName,
       roleLabel: input.agentIdentities.get(agent.agentId)?.roleLabel ?? "role unknown",
-      kda: "0/0/0",
+      kda: formatKda(input.kdaByAgent.get(agent.agentId)),
       teamId: agent.teamId,
       side: agent.side,
       lifeStatus: agent.lifeStatus,
@@ -1288,6 +1298,45 @@ function buildPlayerCards(input: {
       spend: economy?.spend
     };
   });
+}
+
+interface HexKdaStat {
+  kills: number;
+  deaths: number;
+  assists: number;
+}
+
+function buildKdaByAgent(phases: HexRoundTrace["phases"]): Map<string, HexKdaStat> {
+  const stats = new Map<string, HexKdaStat>();
+  for (const phase of phases) {
+    for (const resolution of phase.combatResolutions) {
+      for (const casualty of resolution.casualties) {
+        if (casualty.result !== "killed") {
+          continue;
+        }
+        addKda(stats, casualty.agentId, "deaths");
+        const contributors = resolution.participants.filter((participant) => participant.side !== casualty.side);
+        const killer = contributors[0];
+        if (killer) {
+          addKda(stats, killer.agentId, "kills");
+        }
+        for (const assister of contributors.slice(1)) {
+          addKda(stats, assister.agentId, "assists");
+        }
+      }
+    }
+  }
+  return stats;
+}
+
+function addKda(stats: Map<string, HexKdaStat>, agentId: string, key: keyof HexKdaStat): void {
+  const current = stats.get(agentId) ?? { kills: 0, deaths: 0, assists: 0 };
+  current[key] += 1;
+  stats.set(agentId, current);
+}
+
+function formatKda(stat: HexKdaStat | undefined): string {
+  return stat ? `${stat.kills}/${stat.deaths}/${stat.assists}` : "0/0/0";
 }
 
 function summarizeMemory(memory: HexRoundTrace["phases"][number]["memoryAfter"]): HexMatchLabMemorySummary {
