@@ -1434,9 +1434,9 @@
   .teamColumn {
     position: absolute;
     z-index: 5;
-    top: 146px;
-    width: clamp(210px, 12.8vw, 246px);
-    height: min(calc(100vh - 190px), 780px);
+    top: 126px;
+    width: clamp(300px, 18vw, 390px);
+    height: min(calc(100vh - 166px), 835px);
     max-height: none;
     overflow: hidden;
     padding: 7px;
@@ -1520,10 +1520,10 @@
   }
 
   .playerGrid {
-    grid-template-columns: 26px minmax(0, 0.9fr) 44px minmax(0, 1.1fr);
-    gap: 1px 4px;
+    grid-template-columns: 34px minmax(58px, 0.9fr) 58px minmax(88px, 1.25fr);
+    gap: 1px 7px;
     margin-top: 4px;
-    font-size: 9px;
+    font-size: 10px;
     line-height: 1.12;
   }
 
@@ -1575,9 +1575,9 @@
 
 @media (min-width: 1720px) {
   .teamColumn {
-    top: 154px;
-    width: clamp(230px, 13.2vw, 270px);
-    height: min(calc(100vh - 198px), 830px);
+    top: 126px;
+    width: clamp(360px, 19vw, 430px);
+    height: min(calc(100vh - 166px), 870px);
   }
 
   .attackColumn {
