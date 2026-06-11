@@ -1404,3 +1404,187 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* N31 layout correction: use the map's side letterbox space as the team panels. */
+@media (min-width: 1181px) {
+  .board {
+    position: relative;
+    display: block;
+    min-height: calc(100vh - 138px);
+  }
+
+  .centerStage {
+    position: relative;
+    z-index: 1;
+    min-height: calc(100vh - 138px);
+    padding: 8px;
+  }
+
+  .mapPanel {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hexMapSvg {
+    height: min(84vh, 980px);
+    min-height: 720px;
+    margin-top: 8px;
+  }
+
+  .teamColumn {
+    position: absolute;
+    z-index: 5;
+    top: 146px;
+    width: clamp(210px, 12.8vw, 246px);
+    height: min(calc(100vh - 190px), 780px);
+    max-height: none;
+    overflow: hidden;
+    padding: 7px;
+    background: rgba(13, 20, 28, 0.9);
+    border-color: rgba(98, 123, 148, 0.62);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.42);
+    backdrop-filter: blur(8px);
+  }
+
+  .attackColumn {
+    left: 18px;
+  }
+
+  .defenseColumn {
+    right: 18px;
+  }
+
+  .teamHeader {
+    gap: 6px;
+    align-items: center;
+  }
+
+  .teamHeader span {
+    font-size: 10px;
+  }
+
+  .teamHeader h2 {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .teamHeader strong {
+    font-size: 12px;
+  }
+
+  .playerStack {
+    gap: 5px;
+    margin-top: 6px;
+    height: calc(100% - 42px);
+    grid-template-rows: repeat(5, minmax(0, 1fr));
+  }
+
+  .playerCard,
+  .playerCardActive {
+    padding: 5px 6px;
+    border-radius: 7px;
+    overflow: hidden;
+  }
+
+  .playerHeader {
+    gap: 5px;
+    align-items: center;
+  }
+
+  .playerHeader strong {
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  .playerHeaderBadges {
+    gap: 4px;
+  }
+
+  .playerHeaderBadges b,
+  .playerRole {
+    padding: 1px 5px;
+    font-size: 9px;
+  }
+
+  .playerHeaderBadges em {
+    font-size: 10px;
+  }
+
+  .playerLocation {
+    margin-top: 3px;
+    font-size: 11px;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .playerGrid {
+    grid-template-columns: 26px minmax(0, 0.9fr) 44px minmax(0, 1.1fr);
+    gap: 1px 4px;
+    margin-top: 4px;
+    font-size: 9px;
+    line-height: 1.12;
+  }
+
+  .playerGrid b,
+  .playerGrid span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .playerAction {
+    margin-top: 3px;
+    font-size: 10px;
+    line-height: 1.1;
+  }
+
+  .playerBadges {
+    min-height: 0;
+    gap: 3px;
+    margin-top: 3px;
+  }
+
+  .playerBadges:empty {
+    display: none;
+  }
+
+  .playerBadges b {
+    padding: 1px 4px;
+    font-size: 9px;
+  }
+
+  .playerWarn {
+    margin-top: 2px;
+    font-size: 9px;
+    line-height: 1.05;
+    max-height: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .timelinePanel {
+    position: relative;
+    z-index: 6;
+    margin-top: 8px;
+    margin-bottom: 156px;
+  }
+}
+
+@media (min-width: 1720px) {
+  .teamColumn {
+    top: 154px;
+    width: clamp(230px, 13.2vw, 270px);
+    height: min(calc(100vh - 198px), 830px);
+  }
+
+  .attackColumn {
+    left: 24px;
+  }
+
+  .defenseColumn {
+    right: 24px;
+  }
+}
