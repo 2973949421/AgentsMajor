@@ -50,6 +50,7 @@ describe("Hex Match Lab", () => {
     expect(client).toContain("新建比赛");
     expect(client).toContain("安全重置");
     expect(client).toContain("跑下一回合（real）");
+    expect(client).toContain("real 小地图验收（6回合）");
     expect(client).toContain("一直跑");
     expect(client).toContain("停止");
     expect(client).toContain("/api/hex-lab/match/live-run");

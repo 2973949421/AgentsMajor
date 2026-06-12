@@ -42,6 +42,7 @@ import {
   materializeHexWinCondition,
   type HexWinConditionResult
 } from "../win-condition/index.js";
+import { actionToActionResultEvent, actionToMovementEvents, actionToObjectiveEvents } from "./hex-round-action-events.js";
 
 export interface HexRoundRunnerAgentInput {
   agentId: string;
@@ -396,68 +397,6 @@ export function buildRoundTacticalPlan(roundNumber: number): HexRoundTacticalPla
   ];
   const selected = variants[Math.abs(roundNumber - 1) % variants.length]!;
   return { ...selected, roundNumber };
-}
-
-function actionToMovementEvents(action: HexValidatedAgentAction, memory: HexRoundMemory): HexPhaseMemoryEvent[] {
-  if (!action.valid) {
-    return [];
-  }
-  const events: HexPhaseMemoryEvent[] = [];
-  if (action.targetCellId !== action.currentCellId && !isEnemyOccupiedTarget(action, memory)) {
-    events.push({
-      type: "move",
-      agentId: action.agentId,
-      toCellId: action.targetCellId
-    });
-  }
-  return events;
-}
-
-function actionToObjectiveEvents(action: HexValidatedAgentAction, memory: HexRoundMemory): HexPhaseMemoryEvent[] {
-  if (!action.valid) {
-    return [];
-  }
-  const actor = memory.agents.find((agent) => agent.agentId === action.agentId);
-  if (!actor || actor.lifeStatus === "dead") {
-    return [];
-  }
-  const events: HexPhaseMemoryEvent[] = [];
-  if (action.actionType === "plant_bomb") {
-    events.push({
-      type: "bomb_planted",
-      agentId: action.agentId,
-      cellId: actor.currentCellId
-    });
-  }
-  if (action.actionType === "defuse_bomb") {
-    events.push({
-      type: "bomb_defused",
-      agentId: action.agentId
-    });
-  }
-  return events;
-}
-
-function actionToActionResultEvent(action: HexValidatedAgentAction): HexPhaseMemoryEvent {
-  const repairSummary = action.repairReasons?.length ? ` repairs=${action.repairReasons.join(",")}.` : "";
-  const pathSummary = action.pathCellIds.length > 1 ? ` path=${action.pathCellIds.join(">")}.` : "";
-  const verticalSummary = action.verticalLinkIds.length > 0 ? ` vertical=${action.verticalLinkIds.join(",")}.` : "";
-  return {
-    type: "action_result",
-    agentId: action.agentId,
-    status: "success",
-    summary: `Hex action ${action.actionType} ${action.currentCellId}->${action.targetCellId}.${repairSummary}${pathSummary}${verticalSummary}`,
-    businessExecutionSummary: action.businessIntent
-  };
-}
-
-function isEnemyOccupiedTarget(action: HexValidatedAgentAction, memory: HexRoundMemory): boolean {
-  return memory.agents.some((agent) =>
-    agent.agentId !== action.agentId
-    && agent.teamId !== action.teamId
-    && agent.lifeStatus !== "dead"
-    && agent.currentCellId === action.targetCellId
-  );
 }
 
 export function dedupeHexPhaseCombatResolutions(input: {

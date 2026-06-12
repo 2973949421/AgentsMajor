@@ -480,8 +480,8 @@ export function RunMatchControls({
         <button type="button" className={styles.opsActionSecondary} onClick={() => handleRun("phase18_full_bo3")} disabled={state === "running"}>
           {state === "running" && progress?.mode === "phase18_full_bo3" ? "正在生成整场 BO3..." : "生成整场 BO3"}
         </button>
-        <a className={styles.opsActionSecondary} href="/node-lab" title="进入独立节点化实验台，旧 Phase18 控制台不再作为节点化主入口。">
-          进入节点化实验台
+        <a className={styles.opsActionSecondary} href="/hex-lab/match" title="进入 Hex Web 验收台；旧 Node/Sector 实验入口已收口。">
+          进入 Hex 验收台
         </a>
       </div>
       <span className={styles.opsMetaLine}>一直生成会在生成类失败后自动断点继续同一回合，直到当前地图结束或触发明确熔断。</span>

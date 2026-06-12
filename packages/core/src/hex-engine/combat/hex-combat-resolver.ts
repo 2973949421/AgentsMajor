@@ -2,6 +2,7 @@ import type { HexMapAsset } from "@agent-major/shared";
 import type { HexValidatedAgentAction } from "../action/index.js";
 import { summarizeHexEconomyEvidence, type HexEconomyCombatEvidence, type HexRoundEconomyContext } from "../economy/index.js";
 import type { HexRoundMemory, HexSide } from "../state/index.js";
+import { buildHexCombatCasualties, buildHexCombatSuppressions } from "./hex-combat-casualties.js";
 import { materializeHexCombatMemoryEvents } from "./hex-combat-events.js";
 import type {
   HexCombatAudit,
@@ -89,8 +90,8 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
       ? "attack"
       : "defense";
   const verdict = buildVerdict(margin);
-  const casualties = buildCasualties(input.contact, advantage, verdict);
-  const suppressions = buildSuppressions(input.contact, advantage, verdict, casualties);
+  const casualties = buildHexCombatCasualties(input.contact, advantage, verdict);
+  const suppressions = buildHexCombatSuppressions(input.contact, advantage, verdict, casualties);
   const audit: HexCombatAudit = {
     businessWeight,
     csWeight,
@@ -359,75 +360,11 @@ function buildVerdict(margin: number): HexCombatVerdict {
   return "contested_suppression";
 }
 
-function buildCasualties(contact: HexCombatContact, advantage: "attack" | "defense" | "contested", verdict: HexCombatVerdict): HexCombatCasualty[] {
-  if (advantage === "contested") {
-    return [];
-  }
-  const losingSide: HexSide = advantage === "attack" ? "defense" : "attack";
-  const target = chooseVulnerableParticipant(contact.participants.filter((participant) => participant.side === losingSide));
-  if (!target) {
-    return [];
-  }
-  if (verdict === "kill") {
-    return [buildCasualty(target, "killed", "decisive_combat_margin")];
-  }
-  if (verdict === "wound_or_forced_back" && target.lifeStatus === "wounded") {
-    return [buildCasualty(target, "killed", "wounded_agent_lost_close_combat")];
-  }
-  if (verdict === "wound_or_forced_back") {
-    return [buildCasualty(target, "wounded", "combat_pressure_margin")];
-  }
-  return [];
-}
-
-function buildSuppressions(
-  contact: HexCombatContact,
-  advantage: "attack" | "defense" | "contested",
-  verdict: HexCombatVerdict,
-  casualties: HexCombatCasualty[]
-): HexCombatSuppression[] {
-  if (verdict === "kill") {
-    return [];
-  }
-  if (advantage === "contested") {
-    return contact.participants.map((participant) => buildSuppression(participant, "suppressed", "contested_combat"));
-  }
-  const losingSide: HexSide = advantage === "attack" ? "defense" : "attack";
-  return contact.participants
-    .filter((participant) => participant.side === losingSide)
-    .filter((participant) => !casualties.some((casualty) => casualty.agentId === participant.agentId))
-    .map((participant) => buildSuppression(participant, "forced_back", "combat_pressure_margin"));
-}
-
 function buildControlHint(advantage: "attack" | "defense" | "contested", verdict: HexCombatVerdict): HexCombatControlHint {
   if (advantage === "contested") {
     return "contested";
   }
   return verdict === "contested_suppression" ? "contested" : advantage;
-}
-
-function chooseVulnerableParticipant(participants: HexCombatParticipant[]): HexCombatParticipant | undefined {
-  return participants.find((participant) => participant.lifeStatus === "wounded") ?? participants[0];
-}
-
-function buildCasualty(participant: HexCombatParticipant, result: "killed" | "wounded", reason: string): HexCombatCasualty {
-  return {
-    agentId: participant.agentId,
-    teamId: participant.teamId,
-    side: participant.side,
-    result,
-    reason
-  };
-}
-
-function buildSuppression(participant: HexCombatParticipant, result: "suppressed" | "forced_back", reason: string): HexCombatSuppression {
-  return {
-    agentId: participant.agentId,
-    teamId: participant.teamId,
-    side: participant.side,
-    result,
-    reason
-  };
 }
 
 function matchesSideBusinessLanguage(side: HexSide, text: string): boolean {

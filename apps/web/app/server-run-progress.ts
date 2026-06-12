@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { PHASE20_PRE_PROMPT_CONTRACT_ID, commitDust2NodeRoundExperimental, runDust2NodeMapExperimental } from "@agent-major/core";
+import { PHASE20_PRE_PROMPT_CONTRACT_ID } from "@agent-major/core";
 import { createSqliteRepositories, defaultSqlitePath } from "@agent-major/db";
 import { buildPhase18RuntimeMatchId, phase17CanonIds, phase18CanonIds, phase20PrePilotMapIds } from "@agent-major/materials";
 
@@ -25,7 +25,6 @@ import {
   runPhase17ShowcaseFromWeb,
   runPhase18KeepGeneratingMapFromWeb,
   runPhase18ScopeFromWeb,
-  selectCurrentPhase18MapGameId,
   toWebRunResultFromMatch,
   type WebResetResult,
   type WebRunSingleMapResult
@@ -37,7 +36,6 @@ import {
   type NodeShadowSidecarStatus
 } from "./server-node-shadow-audit";
 import { loadRootLocalEnv } from "./server-local-env";
-import { ServerLocalArtifactStore } from "./server-artifact-store";
 
 type SimulationRunStatus = "scheduled" | "running" | "completed" | "failed" | "discarded";
 type SimulationRunMode =
@@ -472,14 +470,6 @@ export async function startPhase18KeepGeneratingMapWebRun(fixtureId: string, run
 
 export async function startPhase18FullBo3WebRun(fixtureId: string, runId?: string | null): Promise<WebRunProgress> {
   return startPhase18WebRun({ fixtureId, runId, mode: "phase18_full_bo3" });
-}
-
-export async function startPhase20NodeRoundExperimentalWebRun(fixtureId: string, runId?: string | null): Promise<WebRunProgress> {
-  return startPhase18WebRun({ fixtureId, runId, mode: "phase20_node_round_experimental" });
-}
-
-export async function startPhase20NodeMapExperimentalWebRun(fixtureId: string, runId?: string | null): Promise<WebRunProgress> {
-  return startPhase18WebRun({ fixtureId, runId, mode: "phase20_node_map_experimental" });
 }
 
 export async function readWebRunProgress(runId?: string, fixtureId: string = phase18FixtureId): Promise<WebRunProgress | null> {
@@ -954,7 +944,7 @@ export function summarizeNodeShadowSidecarPayload(value: unknown, createdAt: str
           }
         }
       : {}),
-    phaseSummaries: (report?.phaseSummaries ?? []).map((phase) => ({
+    phaseSummaries: (report?.phaseSummaries ?? []).map((phase: any) => ({
       phaseId: phase.phaseId,
       activeNodeCount: phase.activeNodeCount,
       actionCount: phase.actionCount,
@@ -1181,8 +1171,6 @@ async function startPhase18WebRun(input: {
       | "phase18_current_map"
       | "phase18_keep_generating_map"
       | "phase18_full_bo3"
-      | "phase20_node_round_experimental"
-      | "phase20_node_map_experimental"
   >;
   retryMode?: WebRunRetryMode;
 }): Promise<WebRunProgress> {
@@ -1268,15 +1256,7 @@ async function startPhase18WebRun(input: {
     });
 
       const promise =
-        input.mode === "phase20_node_map_experimental"
-          ? runPhase20NodeMapExperimentalFromWeb({
-              runtimeMatchId: persistedRun.runtimeMatchId
-            })
-        : input.mode === "phase20_node_round_experimental"
-          ? runPhase20NodeRoundExperimentalFromWeb({
-              runtimeMatchId: persistedRun.runtimeMatchId
-            })
-          : input.mode === "phase18_keep_generating_map"
+        input.mode === "phase18_keep_generating_map"
           ? runPhase18KeepGeneratingMapFromWeb({
               runtimeMatchId: persistedRun.runtimeMatchId,
               runId: persistedRun.id,
@@ -1309,7 +1289,7 @@ async function startPhase18WebRun(input: {
 }
 
 function isNodeExperimentalWebRunMode(mode: WebRunMode): boolean {
-  return mode === "phase20_node_round_experimental" || mode === "phase20_node_map_experimental";
+  return false;
 }
 
   async function finalizePhase18RunPromise(
@@ -1336,40 +1316,6 @@ function isNodeExperimentalWebRunMode(mode: WebRunMode): boolean {
       activeExecution = null;
     }
   }
-  }
-
-  async function runPhase20NodeMapExperimentalFromWeb(input: { runtimeMatchId: string }): Promise<WebRunSingleMapResult> {
-    const projectRoot = findProjectRoot(process.cwd());
-    const repositories = createSqliteRepositories(resolve(projectRoot, defaultSqlitePath));
-    try {
-      const mapGameId = await selectCurrentPhase18MapGameId(repositories, input.runtimeMatchId);
-      await runDust2NodeMapExperimental({
-        repositories,
-        artifactStore: new ServerLocalArtifactStore(projectRoot, repositories.artifacts),
-        mapGameId,
-        enableMapExperimentalMode: true
-      });
-      return await toWebRunResultFromMatch(repositories, input.runtimeMatchId);
-    } finally {
-      repositories.close();
-    }
-  }
-
-  async function runPhase20NodeRoundExperimentalFromWeb(input: { runtimeMatchId: string }): Promise<WebRunSingleMapResult> {
-    const projectRoot = findProjectRoot(process.cwd());
-    const repositories = createSqliteRepositories(resolve(projectRoot, defaultSqlitePath));
-    try {
-      const mapGameId = await selectCurrentPhase18MapGameId(repositories, input.runtimeMatchId);
-      await commitDust2NodeRoundExperimental({
-        repositories,
-        artifactStore: new ServerLocalArtifactStore(projectRoot, repositories.artifacts),
-        mapGameId,
-        enableExperimentalMode: true
-      });
-      return await toWebRunResultFromMatch(repositories, input.runtimeMatchId);
-    } finally {
-      repositories.close();
-    }
   }
 
   async function finalizePhase18Run(

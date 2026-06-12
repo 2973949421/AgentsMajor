@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 
 import { createSqliteRepositories } from "@agent-major/db";
-import { runDust2NodeShadowExperiment } from "@agent-major/core";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -46,7 +45,7 @@ describe("Phase 1.8 web run progress", () => {
   });
 
   it("summarizes node shadow sidecar payloads without treating them as formal run facts", () => {
-    const report = runDust2NodeShadowExperiment().report;
+    const report = nodeShadowReportFixture();
     const summary = summarizeNodeShadowSidecarPayload(
       {
         schemaVersion: 1,
@@ -78,7 +77,7 @@ describe("Phase 1.8 web run progress", () => {
     const repositories = createSqliteRepositories(resolve(mkdtempSync(resolve(tmpdir(), "agent-major-web-progress-")), "agent-major.sqlite"));
     try {
       seedPhase18ProgressFixture(repositories);
-      const report = runDust2NodeShadowExperiment().report;
+      const report = nodeShadowReportFixture();
       const [globalSequence, sequenceInScope] = await Promise.all([
         repositories.events.getMaxGlobalSequence(),
         repositories.events.getMaxSequenceInScope("map", "map-2")
@@ -399,5 +398,59 @@ function phase18Call(index: number): WebRunLlmCallProgress {
     latencyMs: 10,
     inputTokens: 20,
     outputTokens: 10
+  };
+}
+
+function nodeShadowReportFixture() {
+  return {
+    id: "node-shadow-report-fixture",
+    source: "node_round_engine_shadow",
+    status: "complete",
+    roundNumber: 1,
+    phaseCount: 1,
+    audit: {
+      providerMode: "none",
+      llmShadowEnabled: false,
+      llmCallsAttempted: 0,
+      llmFallbackCount: 0,
+      fallbackReasons: [],
+      ignoredLlmFields: [],
+      draftValidCount: 0,
+      draftRejectedCount: 0,
+      contentLength: 0,
+      reasoningContentLength: 0,
+      jsonTruncated: false,
+      reasoningExhausted: false,
+      totalAgentActions: 2,
+      totalLocalVerdicts: 1,
+      totalApSpent: 2
+    },
+    finalWinCondition: {
+      isRoundOver: true,
+      winnerSide: "attack",
+      winnerTeamId: "team-a",
+      roundWinType: "elimination",
+      reason: "fixture"
+    },
+    phaseSummaries: [
+      {
+        phaseId: "default_opening",
+        activeNodeCount: 2,
+        actionCount: 2,
+        localVerdictCount: 1,
+        contestedNodeIds: [],
+        attackControlledNodeIds: ["a"],
+        defenseControlledNodeIds: ["b"],
+        neutralNodeIds: [],
+        actionTypeCounts: { move: 2 },
+        businessIntentSummary: ["fixture"],
+        winCondition: {
+          isRoundOver: true,
+          winnerSide: "attack",
+          roundWinType: "elimination",
+          reason: "fixture"
+        }
+      }
+    ]
   };
 }

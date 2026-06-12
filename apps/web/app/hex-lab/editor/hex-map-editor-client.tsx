@@ -737,8 +737,8 @@ export function HexMapEditorClient() {
               ))}
             </select>
           </label>
-          <a className={styles.linkButton} href="/node-lab">
-            Node Lab（旧实验台）
+          <a className={styles.linkButton} href="/hex-lab/match">
+            Hex Web 验收台
           </a>
           <a className={styles.linkButton} href="/">
             返回主页

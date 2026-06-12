@@ -59,14 +59,6 @@ function forbiddenImportHits(directory: string, forbiddenPrefixes: string[]): st
 }
 
 describe("core source architecture boundaries", () => {
-  it("keeps Phase18 independent from the node engine", () => {
-    expect(forbiddenImportHits("phase18", ["node-engine/"])).toEqual([]);
-  });
-
-  it("keeps the node engine independent from Phase18", () => {
-    expect(forbiddenImportHits("node-engine", ["phase18/"])).toEqual([]);
-  });
-
   it("keeps shared economy services independent from both engines", () => {
     expect(forbiddenImportHits("economy", ["phase18/", "node-engine/"])).toEqual([]);
   });
@@ -75,18 +67,13 @@ describe("core source architecture boundaries", () => {
     expect(forbiddenImportHits("judge", ["node-engine/"])).toEqual([]);
   });
 
-  it("keeps node local judges independent from the global judge pipeline", () => {
-    const hits = forbiddenImportHits("node-engine/judge", ["judge/judge-pipeline.ts"]);
-    expect(hits).toEqual([]);
-  });
-
   it("keeps the root public API as grouped barrel exports", () => {
     const rootIndex = readFileSync(resolve(coreSrcDir, "index.ts"), "utf8");
     const localSpecifiers = importSpecifiers(rootIndex).filter((specifier) => specifier.startsWith("./"));
 
     expect(localSpecifiers).toEqual([
       "./phase18/index.js",
-      "./node-engine/index.js",
+      "./hex-engine/index.js",
       "./judge/index.js",
       "./economy/index.js",
       "./coach/index.js",
@@ -95,5 +82,10 @@ describe("core source architecture boundaries", () => {
       "./match/index.js",
       "./ports.js"
     ]);
+  });
+
+  it("does not expose the retired Node/Sector engine from the public core API", () => {
+    const rootIndex = readFileSync(resolve(coreSrcDir, "index.ts"), "utf8");
+    expect(rootIndex).not.toContain("./node-engine/");
   });
 });

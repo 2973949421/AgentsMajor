@@ -192,23 +192,27 @@ export function HexMatchLabClient() {
     }
   }
 
-  async function runUntilMapEnd() {
+  async function runUntilMapEnd(maxRoundOverride?: number) {
+    const roundLimit = maxRoundOverride ?? maxRounds;
     stopRequested.current = false;
-    setBusyLabel("持续运行中");
-    setRunStep("逐回合提交；每回合完成后刷新 trace，可随时停止下一轮。");
+    setBusyLabel(maxRoundOverride ? "real 小地图验收" : "持续运行中");
+    setRunStep(maxRoundOverride ? `real 小地图验收：最多 ${roundLimit} 回合，逐回合刷新 trace。` : "逐回合提交；每回合完成后刷新 trace，可随时停止下一轮。");
     setElapsedMs(0);
     runStartedAt.current = Date.now();
-    for (let index = 0; index < maxRounds; index += 1) {
+    for (let index = 0; index < roundLimit; index += 1) {
       if (stopRequested.current) {
         setRunStep("已停止：当前回合完成后不会再提交下一回合。");
         break;
       }
-      setRunStep(`正在提交连续运行第 ${index + 1} 个回合`);
+      setRunStep(`正在提交连续运行第 ${index + 1}/${roundLimit} 个回合`);
       const shouldContinue = await runNextRoundLive();
       if (!shouldContinue) {
         setRunStep("地图已完成或运行失败。");
         break;
       }
+    }
+    if (maxRoundOverride && !stopRequested.current) {
+      setRunStep("real 小地图验收已到达回合上限；请检查 accepted/rejected/fallback 与 provider error。");
     }
     setBusyLabel(null);
     runStartedAt.current = null;
@@ -462,6 +466,7 @@ export function HexMatchLabClient() {
             <button type="button" onClick={createValidationMap}>新建验收比赛</button>
             <button type="button" onClick={resetAsNewMap}>安全重置</button>
             <button type="button" onClick={() => void runNextRoundLive()} disabled={!canRunRound || Boolean(busyLabel)}>跑下一回合（real）</button>
+            <button type="button" onClick={() => void runUntilMapEnd(6)} disabled={!canRunRound || Boolean(busyLabel)}>real 小地图验收（6回合）</button>
             <button type="button" onClick={() => void runUntilMapEnd()} disabled={!canRunRound || Boolean(busyLabel)}>一直跑到结束</button>
             <button type="button" onClick={() => { stopRequested.current = true; setRunStep("已请求停止：不会提交下一回合。"); }}>停止</button>
             <button type="button" onClick={() => void refreshProgress()}>刷新</button>

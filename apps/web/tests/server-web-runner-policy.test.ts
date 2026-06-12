@@ -68,7 +68,7 @@ describe("Phase 1.7 web runner policy", () => {
         projectRoot,
         { AGENT_MAJOR_WEB_RUNNER_ENABLED: "true" }
       )
-    ).toMatchObject({ ok: false, status: 403 });
+    ).toMatchObject({ ok: false, status: 400 });
     expect(
       validateWebRunnerRequest(
         localRequest(),
@@ -76,7 +76,7 @@ describe("Phase 1.7 web runner policy", () => {
         projectRoot,
         { AGENT_MAJOR_WEB_RUNNER_ENABLED: "true", NODE_ROUND_EXPERIMENTAL_ENABLED: "true" }
       )
-    ).toEqual({ ok: true, action: "run", mode: "phase20_node_round_experimental", retryMode: "full_round" });
+    ).toMatchObject({ ok: false, status: 400 });
     expect(
       validateWebRunnerRequest(
         localRequest(),
@@ -84,7 +84,7 @@ describe("Phase 1.7 web runner policy", () => {
         projectRoot,
         { AGENT_MAJOR_WEB_RUNNER_ENABLED: "true" }
       )
-    ).toMatchObject({ ok: false, status: 403 });
+    ).toMatchObject({ ok: false, status: 400 });
     expect(
       validateWebRunnerRequest(
         localRequest(),
@@ -92,7 +92,7 @@ describe("Phase 1.7 web runner policy", () => {
         projectRoot,
         { AGENT_MAJOR_WEB_RUNNER_ENABLED: "true", NODE_ROUND_MAP_EXPERIMENTAL_ENABLED: "true" }
       )
-    ).toEqual({ ok: true, action: "run", mode: "phase20_node_map_experimental", retryMode: "full_round" });
+    ).toMatchObject({ ok: false, status: 400 });
   });
 
   it("rejects the frozen legacy web mode", () => {

@@ -1,4 +1,3 @@
-import { runDust2NodeShadowExperimentAsync, type NodeRoundShadowReport } from "@agent-major/core";
 import type { SqliteRepositoryBundle } from "@agent-major/db";
 
 import type { Phase18RunFacts, SimulationRunRecord } from "./server-phase18-runs";
@@ -7,6 +6,7 @@ type EnvRecord = Record<string, string | undefined>;
 
 export type NodeShadowSidecarProviderMode = "none" | "fixture" | "real";
 export type NodeShadowSidecarStatus = "created" | "failed";
+export type NodeShadowSidecarReport = Record<string, any>;
 
 export interface NodeShadowSidecarAuditPayload extends Record<string, unknown> {
   schemaVersion: 1;
@@ -17,9 +17,9 @@ export interface NodeShadowSidecarAuditPayload extends Record<string, unknown> {
   replacesLegacyRoundPath: false;
   providerMode: NodeShadowSidecarProviderMode;
   llmShadowEnabled: boolean;
-  report?: NodeRoundShadowReport;
+  report?: NodeShadowSidecarReport;
   error?: string;
-  errorKind?: "node_shadow_sidecar_failed" | "external_provider_blocked";
+  errorKind?: "node_shadow_sidecar_failed" | "external_provider_blocked" | "node_shadow_sidecar_retired";
 }
 
 export interface NodeShadowSidecarOptions {
@@ -99,39 +99,18 @@ async function buildNodeShadowSidecarPayload(input: {
   options: NodeShadowSidecarOptions;
   env: EnvRecord;
 }): Promise<NodeShadowSidecarAuditPayload> {
-  try {
-    const result = await runDust2NodeShadowExperimentAsync({
-      llmShadow: input.options.llmShadow,
-      providerMode: input.options.providerMode === "real" ? "real" : "fixture",
-      maxLlmCalls: input.options.maxLlmCalls,
-      env: input.env
-    });
-    return {
-      schemaVersion: 1,
-      status: "created",
-      runId: input.runId,
-      executionId: input.executionId,
-      writesDb: false,
-      replacesLegacyRoundPath: false,
-      providerMode: result.report.audit.providerMode,
-      llmShadowEnabled: result.report.audit.llmShadowEnabled,
-      report: result.report
-    };
-  } catch (error) {
-    const errorText = error instanceof Error ? error.message : String(error);
-    return {
-      schemaVersion: 1,
-      status: "failed",
-      runId: input.runId,
-      executionId: input.executionId,
-      writesDb: false,
-      replacesLegacyRoundPath: false,
-      providerMode: input.options.providerMode,
-      llmShadowEnabled: input.options.llmShadow,
-      error: errorText,
-      errorKind: isExternalProviderBlocked(errorText) ? "external_provider_blocked" : "node_shadow_sidecar_failed"
-    };
-  }
+  return {
+    schemaVersion: 1,
+    status: "failed",
+    runId: input.runId,
+    executionId: input.executionId,
+    writesDb: false,
+    replacesLegacyRoundPath: false,
+    providerMode: input.options.providerMode,
+    llmShadowEnabled: input.options.llmShadow,
+    error: "Node/Sector shadow audit is retired. Use Hex Match Lab traces for Phase 2.0-pre validation.",
+    errorKind: "node_shadow_sidecar_retired"
+  };
 }
 
 function normalizeProviderMode(value: string | undefined): NodeShadowSidecarProviderMode {
@@ -142,10 +121,6 @@ function normalizeProviderMode(value: string | undefined): NodeShadowSidecarProv
     return "none";
   }
   return "fixture";
-}
-
-function isExternalProviderBlocked(errorText: string): boolean {
-  return /EACCES|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|fetch failed|provider/i.test(errorText);
 }
 
 function safeEventPart(value: string): string {
