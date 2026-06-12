@@ -503,16 +503,18 @@
 .mapPath,
 .mapPathRejected {
   fill: none;
-  stroke: #f2cf73;
-  stroke-width: 1.35;
+  stroke: rgba(242, 207, 115, 0.58);
+  stroke-width: 0.9;
   stroke-linecap: round;
   stroke-linejoin: round;
-  opacity: 0.9;
+  stroke-dasharray: 2.4 2;
+  opacity: 0.62;
 }
 
 .mapPathRejected {
   stroke: #ff7777;
   stroke-dasharray: 2 1.4;
+  opacity: 0.74;
 }
 
 .mapPathIntent {

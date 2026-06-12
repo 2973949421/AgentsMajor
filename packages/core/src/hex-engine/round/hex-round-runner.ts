@@ -9,8 +9,10 @@ import {
 } from "../economy/index.js";
 import {
   buildHexCombatContacts,
+  materializeHexCombatMemoryEvents,
   resolveHexCombat,
   type HexCombatContact,
+  type HexCombatCasualty,
   type HexCombatResolution
 } from "../combat/index.js";
 import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
@@ -167,13 +169,16 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
       memory: memoryAfterMovement,
       actions: acceptedActions
     });
-    const combatResolutions = combatContacts.map((contact) => resolveHexCombat({
-      asset,
-      memory: memoryAfterMovement,
-      contact,
-      actions: acceptedActions,
-      economyContext
-    }));
+    const combatResolutions = dedupeHexPhaseCombatResolutions({
+      memoryBeforeCombat: memoryAfterMovement,
+      resolutions: combatContacts.map((contact) => resolveHexCombat({
+        asset,
+        memory: memoryAfterMovement,
+        contact,
+        actions: acceptedActions,
+        economyContext
+      }))
+    });
     const combatEvents = combatResolutions.flatMap((resolution) => resolution.memoryEvents);
     const memoryAfterCombat = applyHexPhaseMemoryEvents({
       asset,
@@ -453,6 +458,52 @@ function isEnemyOccupiedTarget(action: HexValidatedAgentAction, memory: HexRound
     && agent.lifeStatus !== "dead"
     && agent.currentCellId === action.targetCellId
   );
+}
+
+export function dedupeHexPhaseCombatResolutions(input: {
+  memoryBeforeCombat: HexRoundMemory;
+  resolutions: HexCombatResolution[];
+}): HexCombatResolution[] {
+  const deadBeforeCombat = new Set(
+    input.memoryBeforeCombat.agents
+      .filter((agent) => agent.lifeStatus === "dead")
+      .map((agent) => agent.agentId)
+  );
+  const selectedCasualties = new Map<string, { resolutionIndex: number; casualty: HexCombatCasualty }>();
+
+  input.resolutions.forEach((resolution, resolutionIndex) => {
+    for (const casualty of resolution.casualties) {
+      if (deadBeforeCombat.has(casualty.agentId)) {
+        continue;
+      }
+      const current = selectedCasualties.get(casualty.agentId);
+      if (!current || casualtySeverity(casualty) > casualtySeverity(current.casualty)) {
+        selectedCasualties.set(casualty.agentId, { resolutionIndex, casualty });
+      }
+    }
+  });
+
+  return input.resolutions.map((resolution, resolutionIndex) => {
+    const casualties = resolution.casualties.filter((casualty) => {
+      const selected = selectedCasualties.get(casualty.agentId);
+      return selected?.resolutionIndex === resolutionIndex && selected.casualty === casualty;
+    });
+    if (casualties.length === resolution.casualties.length) {
+      return resolution;
+    }
+    return {
+      ...resolution,
+      casualties,
+      memoryEvents: materializeHexCombatMemoryEvents({
+        ...resolution,
+        casualties
+      })
+    };
+  });
+}
+
+function casualtySeverity(casualty: HexCombatCasualty): number {
+  return casualty.result === "killed" ? 2 : 1;
 }
 
 function isEliminationWin(winCondition: HexWinConditionResult): boolean {

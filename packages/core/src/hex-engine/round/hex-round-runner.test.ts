@@ -3,9 +3,11 @@ import { join } from "node:path";
 
 import type { HexCell, HexMapAsset } from "@agent-major/shared";
 import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
+import type { HexCombatResolution } from "../combat/index.js";
+import type { HexRoundMemory } from "../state/index.js";
 import { describe, expect, it } from "vitest";
 
-import { buildRoundTacticalPlan, runDust2HexRound } from "./hex-round-runner.js";
+import { buildRoundTacticalPlan, dedupeHexPhaseCombatResolutions, runDust2HexRound } from "./hex-round-runner.js";
 
 describe("Hex round runner", () => {
   it("generates a complete fixture trace with a hard final win condition", async () => {
@@ -27,6 +29,7 @@ describe("Hex round runner", () => {
     expect(trace.audit.totalLlmCallsAttempted).toBeGreaterThan(0);
     expect(trace.phases.every((phase) => phase.commandResult.actions.length === 10)).toBe(true);
     expect(trace.phases.flatMap((phase) => phase.commandResult.actions).every((action) => action.pathCellIds.length > 0)).toBe(true);
+    expectNoDuplicateKilledCasualties(trace.phases);
   });
 
   it("falls back on provider errors without letting forbidden drafts become facts", async () => {
@@ -93,6 +96,28 @@ describe("Hex round runner", () => {
     expect(new Set(starts).size).toBe(starts.length);
   });
 
+  it("deduplicates repeated killed casualties before they become phase facts", () => {
+    const memory = buildMinimalCombatMemory();
+    const deduped = dedupeHexPhaseCombatResolutions({
+      memoryBeforeCombat: memory,
+      resolutions: [
+        buildDuplicateKillResolution("hex_combat_0_t0_ct0_a", "ct_0"),
+        buildDuplicateKillResolution("hex_combat_0_t1_ct0_b", "ct_0"),
+        buildDuplicateKillResolution("hex_combat_0_t2_ct1_dead_before", "ct_1")
+      ]
+    });
+
+    const killedCasualties = deduped.flatMap((resolution) => resolution.casualties)
+      .filter((casualty) => casualty.result === "killed");
+    expect(killedCasualties.map((casualty) => casualty.agentId)).toEqual(["ct_0"]);
+    expect(deduped[1]?.memoryEvents.some((event) =>
+      event.type === "life_status_changed" && event.agentId === "ct_0" && event.lifeStatus === "dead"
+    )).toBe(false);
+    expect(deduped[2]?.memoryEvents.some((event) =>
+      event.type === "life_status_changed" && event.agentId === "ct_1" && event.lifeStatus === "dead"
+    )).toBe(false);
+  });
+
   it("rotates deterministic tactical plans by round number", () => {
     expect(buildRoundTacticalPlan(1).attackVariant).not.toBe(buildRoundTacticalPlan(2).attackVariant);
     expect(buildRoundTacticalPlan(1).c4SitePreference).not.toBe(buildRoundTacticalPlan(2).c4SitePreference);
@@ -137,6 +162,17 @@ describe("Hex round runner", () => {
     expect(firstPhase?.memoryAfter.bombState.plantedCellId).toBe(bombsite.cellId);
   });
 });
+
+function expectNoDuplicateKilledCasualties(phases: Array<{ combatResolutions: HexCombatResolution[] }>): void {
+  for (const phase of phases) {
+    const killedAgentIds = phase.combatResolutions.flatMap((resolution) =>
+      resolution.casualties
+        .filter((casualty) => casualty.result === "killed")
+        .map((casualty) => casualty.agentId)
+    );
+    expect(new Set(killedAgentIds).size).toBe(killedAgentIds.length);
+  }
+}
 
 function createAgents() {
   return [
@@ -200,4 +236,72 @@ function findCellWithFlag(asset: HexMapAsset, flag: HexCell["flags"][number]): H
     throw new Error(`Missing ${flag}`);
   }
   return cell;
+}
+
+function buildMinimalCombatMemory(): HexRoundMemory {
+  return {
+    phaseIndex: 0,
+    phaseId: "default_opening",
+    agents: [
+      { agentId: "ct_0", lifeStatus: "alive" },
+      { agentId: "ct_1", lifeStatus: "dead" }
+    ],
+    bombState: { planted: false, defused: false },
+    phaseEvents: [],
+    rejectedEvents: []
+  } as unknown as HexRoundMemory;
+}
+
+function buildDuplicateKillResolution(contactId: string, casualtyAgentId: string): HexCombatResolution {
+  return {
+    contactId,
+    phaseId: "default_opening",
+    phaseIndex: 0,
+    participants: [
+      { agentId: "t_0", teamId: "team_t", side: "attack" },
+      { agentId: casualtyAgentId, teamId: "team_ct", side: "defense" }
+    ],
+    scores: {
+      attack: { businessScore: 65, csScore: 30, totalScore: 95, reasons: [] },
+      defense: { businessScore: 20, csScore: 15, totalScore: 35, reasons: [] },
+      neutralScore: 40
+    },
+    advantage: "attack",
+    verdict: "kill",
+    casualties: [{
+      agentId: casualtyAgentId,
+      teamId: "team_ct",
+      side: "defense",
+      result: "killed",
+      reason: "test_duplicate_kill"
+    }],
+    suppressions: [],
+    regionControlHint: "attack",
+    audit: {
+      businessWeight: 65,
+      csWeight: 35,
+      triggerReasons: ["same_region"],
+      variance: {
+        mode: "off",
+        varianceApplied: false,
+        reason: "test",
+        beforeAttackScore: 95,
+        beforeDefenseScore: 35,
+        afterAttackScore: 95,
+        afterDefenseScore: 35,
+        varianceDelta: 0
+      },
+      economy: {
+        economyEvidenceApplied: false,
+        attack: {} as never,
+        defense: {} as never,
+        reasons: []
+      }
+    },
+    memoryEvents: [{
+      type: "life_status_changed",
+      agentId: casualtyAgentId,
+      lifeStatus: "dead"
+    }]
+  } as unknown as HexCombatResolution;
 }

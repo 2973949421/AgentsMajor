@@ -1326,12 +1326,17 @@ interface HexKdaStat {
 
 function buildKdaByAgent(phases: HexRoundTrace["phases"]): Map<string, HexKdaStat> {
   const stats = new Map<string, HexKdaStat>();
+  const killedAgents = new Set<string>();
   for (const phase of phases) {
     for (const resolution of phase.combatResolutions) {
       for (const casualty of resolution.casualties) {
         if (casualty.result !== "killed") {
           continue;
         }
+        if (killedAgents.has(casualty.agentId)) {
+          continue;
+        }
+        killedAgents.add(casualty.agentId);
         addKda(stats, casualty.agentId, "deaths");
         const contributors = resolution.participants.filter((participant) => participant.side !== casualty.side);
         const killer = contributors[0];
