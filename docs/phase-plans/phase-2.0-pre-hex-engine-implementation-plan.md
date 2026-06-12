@@ -10,9 +10,9 @@
 - Region（区域）、Point（点位）、Flag（标记）都从 Hex map asset（蜂巢地图资产）产生。
 - LLM（大语言模型）只输出 agent action draft（智能体行动草案）。
 - 代码负责地图、路径、AP（行动点数）、经济、生命状态、C4 状态、combat（战斗裁定）和 final winner（最终胜负）。
-- 旧 Node/Sector 不再扩展；N34 起不再暴露可执行入口，历史兼容字段只用于读取旧 artifact/replay。
+- 旧 Node/Sector 不再扩展；N34 起不再暴露可执行入口，N34b 起旧 runtime 文件物理删除，历史兼容字段只用于读取旧 artifact/replay。
 
-本文档的当前重点是 N32-N34 收口：结构封板、真实 LLM Web 小范围验收入口、旧 Node/Sector 可执行路径退役。
+本文档的当前重点是 N32-N34b 收口：结构封板、真实 LLM Web 小范围验收入口、旧 Node/Sector 可执行路径退役与物理清理。
 
 ## 1. 已完成阶段
 
@@ -32,7 +32,8 @@
 | N31 | Hex Web 验收台 | 完成，保留已知真实度问题进入后续专项 | `/hex-lab/match` |
 | N32 | Hex 结构封板 | 完成第一轮结构拆分 | memory types / combat casualties / round action events |
 | N33 | 真实 LLM Web 稳定验收 | 完成第一轮入口补强 | real 小地图验收（6 回合） |
-| N34 | 旧 Node/Sector 删除收口 | 完成保守退役；递归物理删除受环境限制未执行 | Node Lab/API/CLI retired |
+| N34 | 旧 Node/Sector 删除收口 | 完成保守退役 | Node Lab/API/CLI retired |
+| N34b | 旧 Node/Sector 物理清理 | 完成安全清理 | `node-engine` 删除，Node/Sector materials archive，兼容 parser 保留 |
 
 ## 2. 最新阶段路线
 
@@ -42,6 +43,7 @@
 2. N32：Hex 结构封板。（已完成第一轮）
 3. N33：真实 LLM Web 稳定验收。（已完成第一轮入口补强）
 4. N34：旧 Node/Sector 删除收口。（已完成可执行入口退役）
+5. N34b：旧 Node/Sector 物理清理。（已完成安全清理）
 
 这里的顺序很重要：先让用户能在 Web 人工看懂完整对局，再做结构拆分；先让真实 LLM 调用在 Web 可审计，再删除旧实验层。
 
@@ -383,27 +385,31 @@ N34 只有在 N31-N33 完成后进入，第一轮采用“可执行入口退役 
 - 旧 `sector-map.json` runtime 依赖。
 - `node-engine` 中不再被任何保留路径引用的 action/judge/graph/sector 模块。
 
-本轮实际收口：
+N34 第一轮实际收口：
 
 - `/node-lab` 页面改为退役说明，并引导到 `/hex-lab/match`。
 - `/api/node-lab/run` 固定返回 410 retired，不再调用 Node/Sector runtime。
 - `server-node-lab.ts` 改为退役 stub，保留同名导出避免残留 import 直接破坏构建。
-- `phase20-node-*` CLI 脚本改为退役提示，不再启动旧 runtime。
+- `phase20-node-*` CLI 脚本已删除，不再启动旧 runtime。
 - `server-web-runner-policy.ts` 不再接受 `phase20_node_round_experimental` / `phase20_node_map_experimental`。
 - Phase18 主页控制台中的旧 Node Lab 链接改为 Hex Web 验收台。
 - `server-node-shadow-audit.ts` 不再调用旧 node shadow core；如被环境开关触发，会写 retired failure payload。
 
-限制说明：
+N34b 安全清理补丁：
 
-- 本轮曾尝试递归删除旧 Node/Sector 目录，但执行环境拒绝了破坏性删除命令。因此物理文件暂未批量移除。
-- 为避免绕过审批，本轮不再用替代命令删除目录；改为切断所有公开入口和运行路径。
-- 历史 `nodeTraceArtifactId/nodeTraceSource` 兼容读取暂留，避免破坏旧 RoundReport / replay。
+- `packages/core/src/node-engine/**` 已物理删除，不再参与构建、导出或测试。
+- 旧 Node Lab 客户端、旧 Node Lab CSS、Dust2 node layout helper 已删除；`/node-lab` 只保留退役说明页。
+- `phase20-node-*` CLI 脚本已删除，不再作为可启动实验入口存在。
+- `node-graph.*` 与 `sector-map.*` 从 `processed/maps/dust2/` 运行资产目录移至 `data/materials/archive/maps/dust2/node-sector/`，仅保留为历史审计材料。
+- architecture boundary 增加护栏：core public API 不公开旧 Node/Sector，且旧 `node-engine` runtime 目录不得回流。
+- 历史 `nodeTraceArtifactId/nodeTraceSource` 兼容读取继续保留，避免破坏旧 RoundReport / replay。
 
 保留兼容：
 
 - 历史 frozen 文档。
 - 历史 artifact 读取兼容。
 - 旧 RoundReport 读取兼容。
+- Phase18 replay / live replay 播放层。
 
 ## 7. 总体验收原则
 

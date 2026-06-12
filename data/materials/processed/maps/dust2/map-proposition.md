@@ -22,14 +22,22 @@ processed/maps/dust2/judge-rubric.md
 processed/maps/dust2/judge-rubric.json
 ```
 
-Dust2 的节点连接图资产见：
+Dust2 的 HexGrid 运行资产见：
 
 ```text
-processed/maps/dust2/node-graph.md
-processed/maps/dust2/node-graph.json
+processed/maps/dust2/hex/dust2-hex-map.json
 ```
 
-节点连接图用于固定 Dust2 重要位置、路线、T / CT 阶段可达性和时空硬约束，后续节点化回合引擎不得让 LLM 自行猜测地点和路线。
+HexGrid 资产用于固定 Dust2 的可比赛格、层级、区域、点位、flag、vertical link、路径与 AP 计算入口，LLM 不得自行猜测地点、路线或胜负事实。
+
+历史 Node/Sector 资产已退役并归档，仅用于审计旧实验路线：
+
+```text
+archive/maps/dust2/node-sector/node-graph.md
+archive/maps/dust2/node-sector/node-graph.json
+archive/maps/dust2/node-sector/sector-map.md
+archive/maps/dust2/node-sector/sector-map.json
+```
 
 ## 2. 地图总定义
 

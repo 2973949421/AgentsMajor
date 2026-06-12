@@ -692,7 +692,7 @@ N26 只输出：
 
 ## 6. 旧实验新引擎与 HexEngine 边界
 
-当前仓库中已经存在一套实验新引擎：
+当前仓库曾经存在一套实验新引擎：
 
 - `packages/core/src/node-engine/`
 - Node Lab（节点实验台）
@@ -704,11 +704,11 @@ N26 只输出：
 - node action shadow（节点行动影子模式）
 - sector display（区块展示）
 
-这套系统不是旧 `Phase18`，但也不是未来 HexGrid（蜂巢格）终局方向。它属于中间实验层。
+这套系统不是旧 `Phase18`，但也不是未来 HexGrid（蜂巢格）终局方向。它属于中间实验层。N34/N34b 后，它只允许作为历史兼容和审计材料存在，不再作为 runtime（运行时）存在。
 
 ### 6.1 过渡期判断
 
-旧实验新引擎不能继续作为第二条主线扩张。
+旧实验新引擎不能继续作为第二条主线扩张，也不能被恢复为可执行入口。
 
 它可以作为经验来源：
 
@@ -733,16 +733,17 @@ N26 只输出：
 
 ### 6.2 目录与 import 边界
 
-N21 起必须采用清晰目录隔离：
+N21 起必须采用清晰目录隔离；N34b 后旧 runtime 目录已经物理删除：
 
 - Hex 主线 runtime 放在 `packages/core/src/hex-engine/`。
 - Hex 结构定义可放在 `packages/shared/src/hex-schemas.ts` 或后续拆分的 shared hex 目录。
 - Hex 地图资产放在 `data/materials/processed/maps/<mapSlug>/hex/`。
 - Hex 前端实验台使用 `/hex-lab/*`。
+- 旧 `node-graph.*` / `sector-map.*` 已移动到 `data/materials/archive/maps/dust2/node-sector/`，仅用于历史审计。
 
 禁止：
 
-- 在 `packages/core/src/node-engine/` 中新增 HexGrid 主线逻辑。
+- 重新创建 `packages/core/src/node-engine/` 并在其中新增 HexGrid 主线逻辑。
 - 从 `hex-engine` import（导入）旧 `node-engine/action`、`node-engine/judge`、`node-engine/graph`、`node-engine/sector` runtime 模块。
 - 从 Hex schema 复用旧 node/sector schema 作为主结构。
 - 让 Hex pathfinding（寻路）依赖 `node-graph.json`。
@@ -758,13 +759,14 @@ N21 起必须采用清晰目录隔离：
 
 ### 6.3 删除里程碑
 
-删除不是立即执行，但必须保持方向明确：
+删除里程碑已经收口：
 
 - N21-N24：冻结旧 Node/Sector，不新增功能，不删除仍可运行路径。
 - N25-N28：Hex runtime 逐步建立，仍不得 import 旧 node/sector runtime。
 - N29：Hex 单回合能提交后，删除 Node Lab 主入口和旧 sector UI 主控。
 - N30：Hex Dust2 完整地图能跑完后，删除旧 node/sector runtime 依赖。
-- N31：删除旧 `node-engine` 中不再被引用的 action/judge/graph/sector 模块，并清理旧 Dust2 node/sector 资产。
+- N34：Node Lab/API/CLI 可执行入口退役，只保留 retired stub 和历史兼容读取。
+- N34b：旧 `node-engine` runtime 物理删除；旧 Dust2 `node-graph.*` / `sector-map.*` 移入 archive；历史 `nodeTraceArtifactId/nodeTraceSource` 兼容字段继续保留。
 
 如果 Hex 路线某阶段失败：
 

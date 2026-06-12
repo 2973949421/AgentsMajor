@@ -1,6 +1,6 @@
 # Dust2 visual assets
 
-This folder stores stable visual references for the Phase 2.0-pre node round engine.
+This folder stores stable visual references for the Phase 2.0-pre Dust2 map work.
 
 ## Source images
 
@@ -15,4 +15,16 @@ This folder stores stable visual references for the Phase 2.0-pre node round eng
 
 ## Runtime rule
 
-Runtime code must read machine-readable map data such as `sector-map.json`; it must not depend on the temporary source paths where the images originally came from.
+Runtime code must read the official HexGrid asset:
+
+```text
+data/materials/processed/maps/dust2/hex/dust2-hex-map.json
+```
+
+The retired Node/Sector `sector-map.json` asset has been moved to:
+
+```text
+data/materials/archive/maps/dust2/node-sector/sector-map.json
+```
+
+The archived asset is retained for audit history only and must not be used as a runtime source.

@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -87,5 +87,9 @@ describe("core source architecture boundaries", () => {
   it("does not expose the retired Node/Sector engine from the public core API", () => {
     const rootIndex = readFileSync(resolve(coreSrcDir, "index.ts"), "utf8");
     expect(rootIndex).not.toContain("./node-engine/");
+  });
+
+  it("keeps the retired Node/Sector runtime physically removed from core", () => {
+    expect(existsSync(resolve(coreSrcDir, "node-engine"))).toBe(false);
   });
 });

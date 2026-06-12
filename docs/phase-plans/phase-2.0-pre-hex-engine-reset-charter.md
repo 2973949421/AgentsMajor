@@ -110,18 +110,17 @@
 - 基于 node edge 的旧 AP 成本模型。
 - Node Lab 作为 Hex 主控入口。
 
-暂缓删除：
+N34/N34b 后实际处理：
 
-- 旧 Node/Sector runtime。
-- 旧 Node Lab 历史展示。
-- 旧 node/sector 历史资产。
+- 旧 Node/Sector runtime 已退役并物理删除。
+- 旧 Node Lab 历史展示主控已退役，只保留 `/node-lab` 说明页和 410 API。
+- 旧 node/sector 历史资产已移入 `data/materials/archive/maps/dust2/node-sector/`。
 
-暂缓原因：
+保留原因：
 
-- N30 只是 CLI 完整地图灰度。
-- 用户仍无法在 Web 里完整人工验收 Hex 对局。
-- 先删除旧入口会降低可观察性。
-- 旧删除必须在 Hex Web 验收和真实 LLM Web 稳定验收后进行。
+- 历史 frozen 文档、RoundReport 兼容字段和 artifact parser 仍用于读取旧证据。
+- Phase18 replay / live replay 不属于 Node/Sector runtime，不能随旧实验层一起删除。
+- 删除旧路线不能破坏 `/hex-lab/match` 和历史 replay 的可观察性。
 
 ## 6. 新后续路线
 
@@ -241,6 +240,15 @@ N34 必须保留：
 - 历史 frozen 文档。
 - 旧 RoundReport 读取兼容。
 - 历史 artifact 读取兼容。
+- Phase18 replay / live replay 播放层。
+
+N34b 安全清理结果：
+
+- `packages/core/src/node-engine/**` 已物理删除。
+- 旧 Node Lab client/CSS/layout helper 已删除。
+- `phase20-node-*` CLI 已删除。
+- `node-graph.*` / `sector-map.*` 已从 processed runtime 资产目录移入 archive。
+- `/node-lab` 与 `/api/node-lab/run` 仍作为 retired stub 存在，避免用户访问时出现 404/500。
 
 ## 11. 删除策略修订
 
@@ -254,7 +262,8 @@ N34 必须保留：
 - N31：先做 Web 验收台。
 - N32：再做结构封板。
 - N33：再做真实 LLM Web 稳定验收。
-- N34：最后删除旧 Node/Sector。
+- N34：最后退役旧 Node/Sector 可执行入口。
+- N34b：在兼容护栏下物理清理旧 Node/Sector runtime 与运行资产入口。
 
 新策略原因：
 
@@ -285,10 +294,10 @@ N34 必须保留：
 
 ## 13. 下一步
 
-下一步不是旧 Node/Sector 删除，也不是纯结构封板。
+N31-N34b 已完成当前 HexGrid 收口链路。
 
-下一步是：
+下一步应基于 N34b 验证结果另行规划：
 
 ```text
-N31：Hex Web 验收台第一版
+N35：待 N34b 验证后确定
 ```
