@@ -10,9 +10,9 @@
 - Region（区域）、Point（点位）、Flag（标记）都从 Hex map asset（蜂巢地图资产）产生。
 - LLM（大语言模型）只输出 agent action draft（智能体行动草案）。
 - 代码负责地图、路径、AP（行动点数）、经济、生命状态、C4 状态、combat（战斗裁定）和 final winner（最终胜负）。
-- 旧 Node/Sector 不再扩展；N34 起不再暴露可执行入口，N34b 起旧 runtime 文件物理删除，历史兼容字段只用于读取旧 artifact/replay。
+- 旧 Node/Sector 不再扩展；N34 起不再暴露可执行入口，N34b 起旧 runtime 文件物理删除，N34c 起旧实验兼容层、progress/parser/UI 分支和 archive node-sector 资产从 active 口径移除。
 
-本文档的当前重点是 N32-N34b 收口：结构封板、真实 LLM Web 小范围验收入口、旧 Node/Sector 可执行路径退役与物理清理。
+本文档当前记录 N20-N34c 的 HexGrid 收口结果；下一步 N35 需基于当前状态另行规划。
 
 ## 1. 已完成阶段
 
@@ -34,6 +34,7 @@
 | N33 | 真实 LLM Web 稳定验收 | 完成第一轮入口补强 | real 小地图验收（6 回合） |
 | N34 | 旧 Node/Sector 删除收口 | 完成保守退役 | Node Lab/API/CLI retired |
 | N34b | 旧 Node/Sector 物理清理 | 完成安全清理 | `node-engine` 删除，Node/Sector materials archive，兼容 parser 保留 |
+| N34c | Node 实验兼容层削减 | 完成 | `phase20_node_*` active mode / progress / UI 分支删除，archive node-sector assets 删除 |
 
 ## 2. 最新阶段路线
 
@@ -44,6 +45,7 @@
 3. N33：真实 LLM Web 稳定验收。（已完成第一轮入口补强）
 4. N34：旧 Node/Sector 删除收口。（已完成可执行入口退役）
 5. N34b：旧 Node/Sector 物理清理。（已完成安全清理）
+6. N34c：Node 实验兼容层削减。（已完成 active 兼容残留清理）
 
 这里的顺序很重要：先让用户能在 Web 人工看懂完整对局，再做结构拆分；先让真实 LLM 调用在 Web 可审计，再删除旧实验层。
 

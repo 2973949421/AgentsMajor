@@ -1,125 +1,109 @@
-# Agent Major 文档索引
+# Agent Major 文档入口
 
-## 1. 阅读顺序
+本目录按“当前入口 / 契约 / Phase 计划 / 归档 / Backlog”分层维护。新 agent 进入仓库时不要从旧 Phase 文档或早期技术总览开始读，先读当前索引。
 
-当前文档按 P 级契约和 Phase 工程计划分层。P 线回答“模块边界和契约是什么”，Phase 线回答“当前工程交付到哪里”。
-
-建议阅读顺序：
+## 当前状态
 
 ```text
-1. meta/current-state.md
-2. meta/priority-roadmap.md
-3. meta/p-phase-delivery-framework.md
-4. meta/module-map.md
-5. 按当前任务阅读对应 P 级目录
+当前主线：HexGrid（蜂巢格）Phase 2.0-pre 路线。
+当前进度：N20-N34c 已完成，旧 Node/Sector 实验线已退役并清理 active 入口。
+保留兼容线：Phase18 replay / live replay 仍保留，不属于旧 Node/Sector runtime。
+下一步：文档治理完成后，再在 N35 选择 Hex 结构封板第二轮或 Hex real LLM / Web 验收质量专项。
 ```
 
-## 2. 当前状态
+## 推荐阅读顺序
 
 ```text
-P 线：已完成到 P2.3，Phase 1 范围内可按 Frozen 执行。
-Phase 线：Phase 1.8 本地真实 LLM BO3 pilot 与 Phase 1.9 Phase18 观赛主屏 / 调试控制台已完成收口并暂时冻结；当前下一步进入 Phase 2.0-pre 单图 / 定制 BO3 赛事语义校准。
+1. docs/index/current-docs.md
+2. docs/meta/current-state.md
+3. docs/phase-plans/phase-2.0-pre-hex-engine-implementation-plan.md
+4. docs/phase-plans/phase-2.0-pre-hex-engine-runtime-contract.md
+5. 按任务阅读 p0 / p1 / p2 契约或 backlog / archive
 ```
 
-## 3. 目录说明
+## 文档分层
 
-### meta
-
-项目总览、状态锚点、路线图和交付规则。
+### 当前索引
 
 ```text
-meta/current-state.md
-meta/module-map.md
-meta/priority-roadmap.md
-meta/p-phase-delivery-framework.md
-meta/technical-design.md
+docs/index/README.md
+docs/index/current-docs.md
+docs/index/archive-log.md
+docs/index/backlog-index.md
 ```
 
-### p0-foundation
+`docs/index/current-docs.md` 是当前必读文档清单；`archive-log.md` 记录历史迁移；`backlog-index.md` 记录长期设想入口。
 
-事实源、事件、赛制和基础边界。
+### Meta 状态与路线
 
 ```text
-p0-foundation/domain-schema.md
-p0-foundation/event-taxonomy.md
-p0-foundation/rules-format.md
+docs/meta/current-state.md
+docs/meta/priority-roadmap.md
+docs/meta/p-phase-delivery-framework.md
+docs/meta/module-map.md
 ```
 
-### p1-match-loop
+这些文件只承载当前状态、近期路线、交付规则和模块地图。旧 Phase 执行记录不再堆在 meta 里。
 
-最小比赛闭环：回合战报、经济、驾驶员、引擎和本地持久化。
+### 契约文档
 
 ```text
-p1-match-loop/round-report-contract.md
-p1-match-loop/token-economy.md
-p1-match-loop/llm-driver-contract.md
-p1-match-loop/simulation-engine.md
-p1-match-loop/local-persistence.md
+docs/p0-foundation/
+docs/p1-match-loop/
+docs/p2-broadcast-viewer/
 ```
 
-### p2-broadcast-viewer
+这些是事实源、事件、回合、经济、LLM、持久化、直播和展示契约。它们不是当前进度日志，修改时必须同步对应测试和实现。
 
-伪直播、观赛体验和播放层契约。
+### Hex 当前主线
 
 ```text
-p2-broadcast-viewer/live-timeline.md
-p2-broadcast-viewer/tactical-map.md
-p2-broadcast-viewer/broadcast-system.md
+docs/phase-plans/phase-2.0-pre-hex-engine-implementation-plan.md
+docs/phase-plans/phase-2.0-pre-hex-engine-runtime-contract.md
+docs/phase-plans/phase-2.0-pre-hex-engine-reset-charter.md
+docs/phase-plans/phase-2.0-pre-*.md
 ```
 
-### p3-ecosystem
+HexGrid 是当前比赛空间事实主线。旧 Node/Sector 不再作为 runtime 或 active Web/API 路线存在。
 
-赛事生态、统计、奖项、新闻和素材库。当前只保留目录，不提前展开实现细节。
+### Backlog
 
 ```text
-p3-ecosystem/stats-awards.md       # 待补
-p3-ecosystem/news-media.md         # 待补
-p3-ecosystem/materials-library.md  # 待补
+docs/backlog/ecosystem-roadmap.md
+docs/backlog/full-tournament-roadmap.md
 ```
 
-### p4-web-ops
+这里保存长期想法，例如完整 16 队赛事、统计、奖项、新闻、素材库、Web ops、队列与可观测性。Backlog 不是当前执行口径。
 
-Web 化、API、队列、观测和迁移。当前只保留目录，不阻塞 Phase 1 主线。
+### Archive
 
 ```text
-p4-web-ops/api-contract.md       # 待补
-p4-web-ops/queue-worker.md       # 待补
-p4-web-ops/observability-cost.md # 待补
-p4-web-ops/web-migration.md      # 待补
+docs/archive/
 ```
 
-### phase-plans
+这里保存旧 Phase 计划、早期技术设计、已被 HexGrid 替代的 Node/Sector 方案和 meta 旧版快照。Archive 仅供背景参考，不是当前执行依据。
 
-工程交付计划。这里不放模块契约，只放阶段实施计划。
+## Materials 当前入口
 
 ```text
-phase-plans/phase-1.0-engineering-plan.md
-phase-plans/phase-1.5-real-llm-integration.md
-phase-plans/phase-1.45-contract-code-alignment.md
-phase-plans/phase-1.6-zone-offense-defense-protocol.md
-phase-plans/phase-1.7-materials-runtime-integration.md
-phase-plans/phase-1.8-real-llm-bo3-pilot.md
-phase-plans/phase-1.9-broadcast-ui-main-screen.md
-phase-plans/phase-2.0-pre-semantic-calibration-charter.md
+地图资产：
+data/materials/processed/maps/dust2/
+data/materials/processed/maps/dust2/hex/dust2-hex-map.json
+
+队伍方案：
+data/materials/processed/teams/<team-slug>/initial-proposal.json
+data/materials/processed/teams/<team-slug>/initial-proposal.md
 ```
 
-说明：
+不要再把旧的“按队伍再按地图拆分方案”的目录当作 runtime 队伍方案入口；当前只认队伍根目录下的 `initial-proposal.*`。
+
+## 维护规则
 
 ```text
-Phase 2.0-pre 的地图级资产与队伍地图方案已转入 data/materials/processed/ 下维护。
-其中 Dust2 当前资产位于：
-- data/materials/processed/maps/dust2/
-- data/materials/processed/teams/falcon-7b/maps/dust2/
-- data/materials/processed/teams/vitallmty/maps/dust2/
-```
-
-## 4. 维护规则
-
-```text
-P 级契约文档放入对应 p* 目录。
-Phase 工程计划放入 phase-plans。
-项目状态、路线图、总览和规则放入 meta。
-不要把单篇契约文档拆成多个碎片文件。
-新增文档后必须更新本 README 和 meta/priority-roadmap.md。
-文档迁移或重命名必须整体提交 docs 的删除、新增、移动和索引更新，不允许只提交半边状态。
+当前状态只写入 docs/meta/current-state.md。
+长期想法写入 docs/backlog/。
+历史计划和旧判断写入 docs/archive/。
+新增当前必读文档必须更新 docs/index/current-docs.md。
+文档移动必须更新 docs/index/archive-log.md。
+中文文档必须按 UTF-8 读取和编辑。
 ```
