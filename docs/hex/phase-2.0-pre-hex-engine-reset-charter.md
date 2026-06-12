@@ -15,7 +15,7 @@
 - `phase-2.0-pre-hex-engine-implementation-plan.md`
 - `phase-2.0-pre-hex-engine-runtime-contract.md`
 
-旧节点化文档已经移入 `docs/phase-plans/frozen/`，只允许作为历史背景，不再作为 N20+ 主线依据。
+旧节点化文档已经移入 `docs/archive/superseded/`，只允许作为历史背景，不再作为 N20+ 主线依据。
 
 ## 2. 路线重置结论
 

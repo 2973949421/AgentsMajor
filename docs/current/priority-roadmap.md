@@ -23,7 +23,7 @@ Node/Sector 实验线：已退役并清理 active mode / runtime / Web progress 
 
 ### P0：文档治理收口
 
-目标是让 `docs/README.md`、`docs/index/`、`docs/meta/current-state.md` 成为可信入口，避免后续 agent 被旧 Phase 1.x 或旧 Node/Sector 文档带偏。
+目标是让 `docs/README.md`、`docs/current/` 成为可信入口，避免后续 agent 被旧 Phase 1.x 或旧 Node/Sector 文档带偏。
 
 ### P1：N35 候选一，Hex 结构封板第二轮
 
@@ -79,7 +79,7 @@ Web ops、队列、可观测性、远端部署。
 ```text
 docs/backlog/full-tournament-roadmap.md
 docs/backlog/ecosystem-roadmap.md
-docs/index/backlog-index.md
+docs/backlog/README.md
 ```
 
 ## 6. 当前不建议做

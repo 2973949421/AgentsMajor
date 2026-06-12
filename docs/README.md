@@ -14,33 +14,34 @@
 ## 推荐阅读顺序
 
 ```text
-1. docs/index/current-docs.md
-2. docs/meta/current-state.md
-3. docs/phase-plans/phase-2.0-pre-hex-engine-implementation-plan.md
-4. docs/phase-plans/phase-2.0-pre-hex-engine-runtime-contract.md
-5. 按任务阅读 p0 / p1 / p2 契约或 backlog / archive
+1. docs/current/README.md
+2. docs/current/current-state.md
+3. docs/hex/phase-2.0-pre-hex-engine-implementation-plan.md
+4. docs/hex/phase-2.0-pre-hex-engine-runtime-contract.md
+5. 按任务阅读 contracts、backlog 或 archive
 ```
 
 ## 文档分层
 
-### 当前索引
+### 当前入口
 
 ```text
-docs/index/README.md
-docs/index/current-docs.md
-docs/index/archive-log.md
-docs/index/backlog-index.md
+docs/current/README.md
+docs/current/current-state.md
+docs/current/priority-roadmap.md
+docs/current/delivery-framework.md
+docs/current/module-map.md
 ```
 
-`docs/index/current-docs.md` 是当前必读文档清单；`archive-log.md` 记录历史迁移；`backlog-index.md` 记录长期设想入口。
+`docs/current/README.md` 是当前必读文档清单。
 
-### Meta 状态与路线
+### Current 状态与路线
 
 ```text
-docs/meta/current-state.md
-docs/meta/priority-roadmap.md
-docs/meta/p-phase-delivery-framework.md
-docs/meta/module-map.md
+docs/current/current-state.md
+docs/current/priority-roadmap.md
+docs/current/delivery-framework.md
+docs/current/module-map.md
 ```
 
 这些文件只承载当前状态、近期路线、交付规则和模块地图。旧 Phase 执行记录不再堆在 meta 里。
@@ -48,9 +49,9 @@ docs/meta/module-map.md
 ### 契约文档
 
 ```text
-docs/p0-foundation/
-docs/p1-match-loop/
-docs/p2-broadcast-viewer/
+docs/contracts/foundation/
+docs/contracts/match-loop/
+docs/contracts/broadcast-viewer/
 ```
 
 这些是事实源、事件、回合、经济、LLM、持久化、直播和展示契约。它们不是当前进度日志，修改时必须同步对应测试和实现。
@@ -58,10 +59,10 @@ docs/p2-broadcast-viewer/
 ### Hex 当前主线
 
 ```text
-docs/phase-plans/phase-2.0-pre-hex-engine-implementation-plan.md
-docs/phase-plans/phase-2.0-pre-hex-engine-runtime-contract.md
-docs/phase-plans/phase-2.0-pre-hex-engine-reset-charter.md
-docs/phase-plans/phase-2.0-pre-*.md
+docs/hex/phase-2.0-pre-hex-engine-implementation-plan.md
+docs/hex/phase-2.0-pre-hex-engine-runtime-contract.md
+docs/hex/phase-2.0-pre-hex-engine-reset-charter.md
+docs/hex/phase-2.0-pre-*.md
 ```
 
 HexGrid 是当前比赛空间事实主线。旧 Node/Sector 不再作为 runtime 或 active Web/API 路线存在。
@@ -100,10 +101,10 @@ data/materials/processed/teams/<team-slug>/initial-proposal.md
 ## 维护规则
 
 ```text
-当前状态只写入 docs/meta/current-state.md。
+当前状态只写入 docs/current/current-state.md。
 长期想法写入 docs/backlog/。
 历史计划和旧判断写入 docs/archive/。
-新增当前必读文档必须更新 docs/index/current-docs.md。
-文档移动必须更新 docs/index/archive-log.md。
+新增当前必读文档必须更新 docs/current/README.md。
+文档移动必须更新 docs/archive/README.md。
 中文文档必须按 UTF-8 读取和编辑。
 ```

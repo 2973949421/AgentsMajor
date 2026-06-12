@@ -1,6 +1,6 @@
 # 模块地图
 
-本文描述 Agent Major 的模块边界和长期依赖关系。它不是当前下一步计划；当前状态见 `docs/meta/current-state.md`，近期路线见 `docs/meta/priority-roadmap.md`。
+本文描述 Agent Major 的模块边界和长期依赖关系。它不是当前下一步计划；当前状态见 `docs/current/current-state.md`，近期路线见 `docs/current/priority-roadmap.md`。
 
 ## 1. 当前主线分层
 

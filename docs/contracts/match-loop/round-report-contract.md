@@ -564,7 +564,7 @@ P1.1 第一批稳定事件类型必须和当前工程 schema 保持一致。
 
 ## 9. 地图区域引用
 
-P1.1 只在 `RoundKeyEvent.zoneId` 中保存稳定区域 ID，不定义 2D 坐标、展示名、地图素材或区域角色。完整布局由 P2.2 `docs/p2-broadcast-viewer/tactical-map.md` 负责。
+P1.1 只在 `RoundKeyEvent.zoneId` 中保存稳定区域 ID，不定义 2D 坐标、展示名、地图素材或区域角色。完整布局由 P2.2 `docs/contracts/broadcast-viewer/tactical-map.md` 负责。
 
 ### 9.1 字段表
 
@@ -1191,7 +1191,7 @@ type ProjectedEvent = {
 以下问题不阻塞 P1.1 契约，但会影响后续专项文档：
 
 - 最终出招模式采用同时出招、固定先后手，还是多阶段回合。
-- P1.2 中具体经济公式、收入、阈值、Drop 和 Output Gate 已由 `docs/p1-match-loop/token-economy.md` 定义；P1.1 只引用结果。
+- P1.2 中具体经济公式、收入、阈值、Drop 和 Output Gate 已由 `docs/contracts/match-loop/token-economy.md` 定义；P1.1 只引用结果。
 - P2.2 中每张地图的具体 zone 列表和 2D 坐标。
 - P2.3 中解说、弹幕、支持率变化的生成策略。
 - P1.4 中模拟引擎如何选择 active agents 和 actionPhase。

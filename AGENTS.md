@@ -58,13 +58,13 @@ Select-String -Encoding UTF8 -Path <path> -Pattern <pattern>
 需要了解项目现状时，优先按这个顺序读：
 
 ```text
-docs/meta/current-state.md
-docs/meta/priority-roadmap.md
-docs/meta/p-phase-delivery-framework.md
-docs/meta/module-map.md
+docs/current/current-state.md
+docs/current/priority-roadmap.md
+docs/current/delivery-framework.md
+docs/current/module-map.md
 ```
 
-然后再按任务读取对应的 `docs/p*` 或 `docs/phase-plans/*`。不要只读单个旧 Phase 文档就推断当前主线。
+然后再按任务读取对应的 `docs/contracts/*` 或 `docs/hex/*`。不要只读单个归档 Phase 文档就推断当前主线。
 
 当前项目的核心工作模式是：
 
@@ -216,12 +216,12 @@ Agent Major 不是普通评分器、不是管理后台、也不是 agent workflo
 Phase 2.0-pre 相关任务必须优先遵守这些文档：
 
 ```text
-docs/phase-plans/phase-2.0-pre-semantic-calibration-charter.md
-docs/phase-plans/phase-2.0-pre-information-boundary-contract.md
-docs/phase-plans/phase-2.0-pre-evidence-layer-contract.md
-docs/phase-plans/phase-2.0-pre-judge-audit-contract.md
-docs/phase-plans/phase-2.0-pre-prompt-contract.md
-docs/phase-plans/phase-2.0-pre-combat-realism-freeze.md
+docs/hex/phase-2.0-pre-semantic-calibration-charter.md
+docs/hex/phase-2.0-pre-information-boundary-contract.md
+docs/hex/phase-2.0-pre-evidence-layer-contract.md
+docs/hex/phase-2.0-pre-judge-audit-contract.md
+docs/hex/phase-2.0-pre-prompt-contract.md
+docs/hex/phase-2.0-pre-combat-realism-freeze.md
 ```
 
 关键口径：

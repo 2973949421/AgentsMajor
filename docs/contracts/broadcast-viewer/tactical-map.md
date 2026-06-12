@@ -396,7 +396,7 @@ Canvas / WebGL。
 
 ### 10.1 文档验收
 
-- `docs/p2-broadcast-viewer/tactical-map.md` 明确目标、非目标、数据来源、schema、三图 zone、事件映射和降级规则。
+- `docs/contracts/broadcast-viewer/tactical-map.md` 明确目标、非目标、数据来源、schema、三图 zone、事件映射和降级规则。
 - `DUST2`、`INFERNO`、`MIRAGE` 都有 `TacticalMapLayout` 草案。
 - 每张首批地图都定义 `spawn_a`、`spawn_b`、`buyer_mid`、`conversion_site_a`、`conversion_site_b`、`retention_connector`、`pricing_ramp`、`token_economy`。
 - 当前代码产出的 `buyer_mid`、`conversion_site_a`、`token_economy` 在三图中全部可解析。

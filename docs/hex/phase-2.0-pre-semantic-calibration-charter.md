@@ -81,7 +81,7 @@ judge 负责判断：
 
 judge 不是文风评审，也不是比分播报器。
 
-裁判可审计契约以 `docs/phase-plans/phase-2.0-pre-judge-audit-contract.md` 为准。真实 LLM 裁判回合必须产出完整 `judgeDiagnostic`，并把它作为前端展示、coach 暂停修正和 BO3 赛后复盘的主证据来源。
+裁判可审计契约以 `docs/hex/phase-2.0-pre-judge-audit-contract.md` 为准。真实 LLM 裁判回合必须产出完整 `judgeDiagnostic`，并把它作为前端展示、coach 暂停修正和 BO3 赛后复盘的主证据来源。
 
 ## 7. 攻防协议
 

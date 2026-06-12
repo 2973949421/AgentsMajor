@@ -22,7 +22,7 @@ Archive：历史记录，不作为当前决策依据。
 Superseded：已被替代，仅保留背景。
 ```
 
-新增或移动文档时必须在 `docs/index/current-docs.md`、`docs/index/archive-log.md` 或 `docs/index/backlog-index.md` 中登记。
+新增或移动文档时必须在 `docs/current/README.md`、`docs/archive/README.md` 或 `docs/backlog/README.md` 中登记。
 
 ## 3. 当前阶段判断
 
@@ -51,15 +51,15 @@ P0-P2 暂不移动目录；它们仍是 schema、event、RoundReport、LLM、per
 ```text
 Phase 1.x：Archive，位于 docs/archive/phase-history/。
 旧 Node/Sector Phase 2.0-pre：Superseded，位于 docs/archive/superseded/。
-HexGrid Phase 2.0-pre：Current，位于 docs/phase-plans/phase-2.0-pre-*.md。
+HexGrid Phase 2.0-pre：Current，位于 docs/hex/phase-2.0-pre-*.md。
 ```
 
 Hex 当前最重要文档：
 
 ```text
-docs/phase-plans/phase-2.0-pre-hex-engine-implementation-plan.md
-docs/phase-plans/phase-2.0-pre-hex-engine-runtime-contract.md
-docs/phase-plans/phase-2.0-pre-hex-engine-reset-charter.md
+docs/hex/phase-2.0-pre-hex-engine-implementation-plan.md
+docs/hex/phase-2.0-pre-hex-engine-runtime-contract.md
+docs/hex/phase-2.0-pre-hex-engine-reset-charter.md
 ```
 
 ## 6. 交付要求
@@ -91,7 +91,7 @@ docs/phase-plans/phase-2.0-pre-hex-engine-reset-charter.md
 改 shared schema 或 db：至少覆盖 shared/db/core 相关测试。
 改 web：跑相关 web tests，必要时 Next build。
 改 materials：跑 materials validate 或等效 JSON / path 检查。
-改 docs：检查 UTF-8、链接路径、当前状态是否与 docs/index 对齐。
+改 docs：检查 UTF-8、链接路径、当前状态是否与 docs/current 对齐。
 ```
 
 不得通过 `pnpm install` 解决普通验证问题。
