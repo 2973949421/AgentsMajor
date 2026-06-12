@@ -30,14 +30,7 @@ processed/maps/dust2/hex/dust2-hex-map.json
 
 HexGrid 资产用于固定 Dust2 的可比赛格、层级、区域、点位、flag、vertical link、路径与 AP 计算入口，LLM 不得自行猜测地点、路线或胜负事实。
 
-历史 Node/Sector 资产已退役并归档，仅用于审计旧实验路线：
-
-```text
-archive/maps/dust2/node-sector/node-graph.md
-archive/maps/dust2/node-sector/node-graph.json
-archive/maps/dust2/node-sector/sector-map.md
-archive/maps/dust2/node-sector/sector-map.json
-```
+历史 Node/Sector 运行资产已在 N34c 物理删除。冻结文档可保留旧路线决策背景，但 runtime、Web 验收和新数据集生成均不得再读取旧 Node/Sector 资产。
 
 ## 2. 地图总定义
 

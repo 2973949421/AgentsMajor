@@ -21,10 +21,4 @@ Runtime code must read the official HexGrid asset:
 data/materials/processed/maps/dust2/hex/dust2-hex-map.json
 ```
 
-The retired Node/Sector `sector-map.json` asset has been moved to:
-
-```text
-data/materials/archive/maps/dust2/node-sector/sector-map.json
-```
-
-The archived asset is retained for audit history only and must not be used as a runtime source.
+Retired Node/Sector runtime assets are no longer retained as active or archive materials. Frozen docs may mention the old route as historical context, but runtime and Web code must not read Node/Sector map assets.

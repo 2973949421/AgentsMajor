@@ -881,15 +881,18 @@ function buildRoundSummaries(input: {
   }
 
   return input.reports
-    .filter((report) => report.nodeTraceSource === "hex_round_engine_committed")
-    .map((report) => ({
+    .map((report) => ({ report, traceReference: getRoundTraceReference(report) }))
+    .filter((entry): entry is { report: RoundReport; traceReference: { traceArtifactId: string; traceSource: "hex_round_engine_committed" } } =>
+      entry.traceReference !== null
+    )
+    .map(({ report, traceReference }) => ({
       roundNumber: report.roundNumber,
       roundId: report.roundId,
       reportId: report.id,
       winnerTeamId: report.winnerTeamId,
       roundWinType: report.judgeResult.roundWinType,
       scoreAfterRound: report.scoreAfterRound,
-      hexTraceArtifactId: report.nodeTraceArtifactId,
+      hexTraceArtifactId: traceReference.traceArtifactId,
       fallbackCount: 0,
       combatResolutionCount: 0,
       finalHardCondition: {
@@ -899,6 +902,16 @@ function buildRoundSummaries(input: {
         reason: report.judgeResult.reason
       }
     }));
+}
+
+function getRoundTraceReference(report: RoundReport): { traceArtifactId: string; traceSource: "hex_round_engine_committed" } | null {
+  if (report.nodeTraceSource !== "hex_round_engine_committed" || !report.nodeTraceArtifactId) {
+    return null;
+  }
+  return {
+    traceArtifactId: report.nodeTraceArtifactId,
+    traceSource: report.nodeTraceSource
+  };
 }
 
 function summarizeTrace(

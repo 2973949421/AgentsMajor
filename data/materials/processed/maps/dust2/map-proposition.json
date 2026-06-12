@@ -135,12 +135,6 @@
     "当前回合裁判一句话结论",
     "当前是否处于 coach 介入窗口"
   ],
-  "archived_node_sector_asset_refs": [
-    "archive/maps/dust2/node-sector/node-graph.md",
-    "archive/maps/dust2/node-sector/node-graph.json",
-    "archive/maps/dust2/node-sector/sector-map.md",
-    "archive/maps/dust2/node-sector/sector-map.json"
-  ],
   "judge_asset_refs": [
     "processed/maps/dust2/judge-rubric.md",
     "processed/maps/dust2/judge-rubric.json"

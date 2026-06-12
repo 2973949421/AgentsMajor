@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { PHASE20_PRE_PROMPT_CONTRACT_ID } from "@agent-major/core";
@@ -29,13 +28,6 @@ import {
   type WebResetResult,
   type WebRunSingleMapResult
 } from "./server-runner";
-import {
-  appendNodeShadowSidecarAuditIfEnabled,
-  type NodeShadowSidecarAuditPayload,
-  type NodeShadowSidecarProviderMode,
-  type NodeShadowSidecarStatus
-} from "./server-node-shadow-audit";
-import { loadRootLocalEnv } from "./server-local-env";
 
 type SimulationRunStatus = "scheduled" | "running" | "completed" | "failed" | "discarded";
 type SimulationRunMode =
@@ -43,8 +35,6 @@ type SimulationRunMode =
   | "phase18_current_map"
   | "phase18_keep_generating_map"
   | "phase18_full_bo3"
-  | "phase20_node_round_experimental"
-  | "phase20_node_map_experimental"
   | "phase20_hex_round_experimental"
   | "phase20_hex_map_experimental";
 
@@ -74,8 +64,6 @@ export type WebRunMode =
   | "phase18_current_map"
   | "phase18_keep_generating_map"
   | "phase18_full_bo3"
-  | "phase20_node_round_experimental"
-  | "phase20_node_map_experimental"
   | "phase20_hex_round_experimental"
   | "phase20_hex_map_experimental";
 export type WebRunLlmCallStatus = "started" | "completed" | "failed";
@@ -107,102 +95,6 @@ export interface WebRunLlmSummary {
   completedCalls: number;
   failedCalls: number;
   runningCalls: number;
-}
-
-export interface WebRunNodeShadowPhaseProgress {
-  phaseId: string;
-  activeNodeCount: number;
-  actionCount: number;
-  localVerdictCount: number;
-  contestedNodeIds: string[];
-  attackControlledNodeIds: string[];
-  defenseControlledNodeIds: string[];
-  neutralNodeIds: string[];
-  actionTypeCounts: Record<string, number>;
-  businessIntentSummary: string[];
-  winCondition?: {
-    isRoundOver: boolean;
-    winnerSide?: "attack" | "defense";
-    roundWinType?: string;
-    reason: string;
-  };
-}
-
-export interface WebRunNodeShadowProgress {
-  status: NodeShadowSidecarStatus;
-  source: "node_round_engine_shadow" | "node_round_engine_committed";
-  reportStatus?: "complete" | "incomplete";
-  runId: string;
-  executionId: string;
-  createdAt: string;
-  reportId?: string;
-  roundNumber?: number;
-  providerMode: NodeShadowSidecarProviderMode;
-  llmShadowEnabled: boolean;
-  writesDb: boolean;
-  replacesLegacyRoundPath: false;
-  phaseCount: number;
-  llmCallsAttempted: number;
-  llmFallbackCount: number;
-  fallbackReasons: string[];
-  ignoredLlmFields: string[];
-  draftValidCount: number;
-  draftRejectedCount: number;
-  contentLength: number;
-  reasoningContentLength: number;
-  jsonTruncated: boolean;
-  reasoningExhausted: boolean;
-  totalAgentActions: number;
-  totalLocalVerdicts: number;
-  totalApSpent: number;
-  finalWinCondition?: {
-    isRoundOver: boolean;
-    winnerSide?: "attack" | "defense";
-    winnerTeamId?: string;
-    roundWinType?: string;
-    reason: string;
-  };
-  phaseSummaries: WebRunNodeShadowPhaseProgress[];
-  error?: string;
-  errorKind?: string;
-}
-
-export interface WebRunNodeMapExperimentalRoundProgress {
-  roundId: string;
-  roundNumber: number;
-  winnerTeamId?: string;
-  loserTeamId?: string;
-  roundWinType?: string;
-  nodeTraceArtifactId: string;
-  totalApSpent: number;
-  fallbackCount: number;
-  ignoredFields: string[];
-  finalHardCondition?: {
-    isRoundOver: boolean;
-    winnerSide?: "attack" | "defense";
-    winnerTeamId?: string;
-    roundWinType?: string;
-    reason: string;
-  };
-}
-
-export interface WebRunNodeMapExperimentalProgress {
-  status: "created";
-  source: "node_round_engine_map_experimental";
-  mode: "phase20_node_map_experimental";
-  writesDb: true;
-  replacesLegacyRoundPath: false;
-  summaryArtifactId: string;
-  mapGameId: string;
-  mapName: string;
-  roundsCommitted: number;
-  finalScore: { teamA: number; teamB: number };
-  completionReason: string;
-  roundTraceArtifactIds: string[];
-  totalFallbackCount: number;
-  fallbackReasons: string[];
-  ignoredFields: string[];
-  roundSummaries: WebRunNodeMapExperimentalRoundProgress[];
 }
 
 export interface WebRunProgress {
@@ -244,8 +136,6 @@ export interface WebRunProgress {
   promptContractId?: string;
   contractStatus?: "current" | "legacy" | "mixed" | "blocked";
   progressPercent: number;
-  nodeShadow?: WebRunNodeShadowProgress;
-  nodeMapExperimental?: WebRunNodeMapExperimentalProgress;
   result?: WebRunSingleMapResult;
   error?: string;
   recentRuns: WebRunHistory[];
@@ -491,10 +381,6 @@ export async function readWebRunProgress(runId?: string, fixtureId: string = pha
     const llmSummary = summarizeLlmCalls(run.expectedTotalCalls, llmCalls);
     const attemptEvents = readRoundGenerationAttemptEvents(repositories, run.id, facts.mapGameIds);
     const executionEvents = readWebRunExecutionEvents(repositories, run.id, run.runtimeMatchId);
-      const nodeShadow =
-        readNodeShadowSidecarProgress(repositories, run.id, run.runtimeMatchId) ??
-        readCommittedNodeTraceProgress(repositories, run.id, run.runtimeMatchId);
-    const nodeMapExperimental = readNodeMapExperimentalProgress(repositories, run.runtimeMatchId);
     const casterModes = readCasterModes(repositories, facts.mapGameIds);
     const completedAt = run.completedAt ?? undefined;
     const progress = buildPhase18Progress({
@@ -504,8 +390,6 @@ export async function readWebRunProgress(runId?: string, fixtureId: string = pha
       llmSummary,
       attemptEvents,
       executionEvents,
-      nodeShadow,
-      nodeMapExperimental,
       casterModes,
       recentRuns: await listPhase18RunHistoryEntries(repositories, fixtureId)
     });
@@ -655,12 +539,6 @@ interface WebRunExecutionEvent {
   createdAt: string;
 }
 
-interface NodeShadowSidecarEventRow {
-  type?: unknown;
-  payloadJson?: unknown;
-  createdAt?: unknown;
-}
-
 function readRoundGenerationAttemptEvents(
   repositories: ReturnType<typeof createSqliteRepositories>,
   runId: string,
@@ -764,326 +642,12 @@ function readLatestExecutionId(events: RoundGenerationAttemptEvent[]): string | 
   return events.at(-1)?.executionId;
 }
 
-export function readNodeShadowSidecarProgress(
-  repositories: ReturnType<typeof createSqliteRepositories>,
-  runId: string,
-  runtimeMatchId: string
-): WebRunNodeShadowProgress | null {
-  const rows = repositories.sqlite
-    .prepare(
-      `SELECT type, payload_json AS payloadJson, created_at AS createdAt
-       FROM events
-       WHERE match_id = ?
-         AND type IN ('node_round_shadow_report_created', 'node_round_shadow_report_failed')
-       ORDER BY global_sequence ASC`
-    )
-    .all(runtimeMatchId) as NodeShadowSidecarEventRow[];
-
-  const summaries = rows
-    .map((row) => summarizeNodeShadowSidecarPayload(row.payloadJson, typeof row.createdAt === "string" ? row.createdAt : ""))
-    .filter((summary): summary is WebRunNodeShadowProgress => Boolean(summary && summary.runId === runId));
-  return summaries.at(-1) ?? null;
-}
-
-export function readCommittedNodeTraceProgress(
-  repositories: ReturnType<typeof createSqliteRepositories>,
-  runId: string,
-  runtimeMatchId: string
-): WebRunNodeShadowProgress | null {
-  const row = repositories.sqlite
-    .prepare(
-      `SELECT rr.id AS reportId,
-              rr.round_number AS roundNumber,
-              rr.node_trace_artifact_id AS nodeTraceArtifactId,
-              a.uri AS artifactUri,
-              rr.created_at AS createdAt
-       FROM round_reports rr
-       LEFT JOIN artifacts a ON a.id = rr.node_trace_artifact_id
-       WHERE rr.match_id = ?
-         AND rr.node_trace_source = 'node_round_engine_committed'
-       ORDER BY rr.round_number DESC, rr.created_at DESC
-       LIMIT 1`
-    )
-    .get(runtimeMatchId) as
-    | {
-        reportId?: unknown;
-        roundNumber?: unknown;
-        nodeTraceArtifactId?: unknown;
-        artifactUri?: unknown;
-        createdAt?: unknown;
-      }
-    | undefined;
-  if (!row || typeof row.artifactUri !== "string") {
-    return null;
-  }
-  const parsed = parseUnknownRecord(readArtifactTextByUri(row.artifactUri));
-  const report = parseUnknownRecord(parsed?.committedReport);
-  const audit = parseUnknownRecord(report?.audit);
-  if (!report || report.source !== "node_round_engine_committed") {
-    return null;
-  }
-
-  return {
-    status: "created",
-    source: "node_round_engine_committed",
-    ...(typeof report.status === "string" ? { reportStatus: report.status as "complete" | "incomplete" } : {}),
-    runId,
-    executionId: "committed_node_trace",
-    createdAt: typeof row.createdAt === "string" ? row.createdAt : "",
-    ...(typeof row.reportId === "string" ? { reportId: row.reportId } : {}),
-    ...(typeof row.roundNumber === "number" ? { roundNumber: row.roundNumber } : {}),
-    providerMode: readProviderMode(audit?.providerMode),
-    llmShadowEnabled: audit?.llmShadowEnabled === true,
-    writesDb: true,
-    replacesLegacyRoundPath: false,
-    phaseCount: typeof report.phaseCount === "number" ? report.phaseCount : 0,
-    llmCallsAttempted: readNumber(audit?.llmCallsAttempted),
-    llmFallbackCount: readNumber(audit?.llmFallbackCount),
-    fallbackReasons: readStringArray(audit?.fallbackReasons),
-    ignoredLlmFields: readStringArray(audit?.ignoredLlmFields),
-    draftValidCount: readNumber(audit?.draftValidCount),
-    draftRejectedCount: readNumber(audit?.draftRejectedCount),
-    contentLength: readNumber(audit?.contentLength),
-    reasoningContentLength: readNumber(audit?.reasoningContentLength),
-    jsonTruncated: audit?.jsonTruncated === true,
-    reasoningExhausted: audit?.reasoningExhausted === true,
-    totalAgentActions: readNumber(audit?.totalAgentActions),
-    totalLocalVerdicts: readNumber(audit?.totalLocalVerdicts),
-    totalApSpent: readNumber(audit?.totalApSpent),
-    ...summarizeCommittedFinalWinCondition(report.finalWinCondition),
-    phaseSummaries: readCommittedPhaseSummaries(report.phaseSummaries)
-  };
-}
-
-export function readNodeMapExperimentalProgress(
-  repositories: ReturnType<typeof createSqliteRepositories>,
-  runtimeMatchId: string
-): WebRunNodeMapExperimentalProgress | null {
-  const row = repositories.sqlite
-    .prepare(
-      `SELECT a.id AS artifactId,
-              a.uri AS artifactUri
-       FROM artifacts a
-       WHERE a.match_id = ?
-         AND a.artifact_type = 'node_map_experimental_summary'
-       ORDER BY a.created_at DESC, a.id DESC
-       LIMIT 1`
-    )
-    .get(runtimeMatchId) as { artifactId?: unknown; artifactUri?: unknown } | undefined;
-  if (!row || typeof row.artifactId !== "string" || typeof row.artifactUri !== "string") {
-    return null;
-  }
-  const summary = parseUnknownRecord(readArtifactTextByUri(row.artifactUri));
-  if (!summary || summary.source !== "node_round_engine_map_experimental") {
-    return null;
-  }
-  const fallbackSummary = parseUnknownRecord(summary.fallbackSummary);
-  return {
-    status: "created",
-    source: "node_round_engine_map_experimental",
-    mode: "phase20_node_map_experimental",
-    writesDb: true,
-    replacesLegacyRoundPath: false,
-    summaryArtifactId: row.artifactId,
-    mapGameId: typeof summary.mapGameId === "string" ? summary.mapGameId : "",
-    mapName: typeof summary.mapName === "string" ? summary.mapName : "Dust2",
-    roundsCommitted: readNumber(summary.roundsCommitted),
-    finalScore: readScorePair(summary.finalScore),
-    completionReason: typeof summary.completionReason === "string" ? summary.completionReason : "map_completed",
-    roundTraceArtifactIds: readStringArray(summary.roundTraceArtifactIds),
-    totalFallbackCount: readNumber(fallbackSummary?.totalFallbackCount),
-    fallbackReasons: readStringArray(fallbackSummary?.reasons),
-    ignoredFields: readStringArray(fallbackSummary?.ignoredFields),
-    roundSummaries: readNodeMapRoundSummaries(summary.roundSummaries)
-  };
-}
-
-export function summarizeNodeShadowSidecarPayload(value: unknown, createdAt: string): WebRunNodeShadowProgress | null {
-  const payload = parseUnknownRecord(value) as NodeShadowSidecarAuditPayload | null;
-  if (!payload || payload.schemaVersion !== 1 || (payload.status !== "created" && payload.status !== "failed")) {
-    return null;
-  }
-
-  const report = payload.report;
-  const audit = report?.audit;
-  return {
-    status: payload.status,
-    source: "node_round_engine_shadow",
-    ...(report?.status ? { reportStatus: report.status } : {}),
-    runId: payload.runId,
-    executionId: payload.executionId,
-    createdAt,
-    ...(report?.id ? { reportId: report.id } : {}),
-    ...(typeof report?.roundNumber === "number" ? { roundNumber: report.roundNumber } : {}),
-    providerMode: audit?.providerMode ?? payload.providerMode,
-    llmShadowEnabled: audit?.llmShadowEnabled ?? payload.llmShadowEnabled,
-    writesDb: false,
-    replacesLegacyRoundPath: false,
-    phaseCount: report?.phaseCount ?? 0,
-    llmCallsAttempted: audit?.llmCallsAttempted ?? 0,
-    llmFallbackCount: audit?.llmFallbackCount ?? 0,
-    fallbackReasons: audit?.fallbackReasons ?? [],
-    ignoredLlmFields: audit?.ignoredLlmFields ?? [],
-    draftValidCount: audit?.draftValidCount ?? 0,
-    draftRejectedCount: audit?.draftRejectedCount ?? 0,
-    contentLength: audit?.contentLength ?? 0,
-    reasoningContentLength: audit?.reasoningContentLength ?? 0,
-    jsonTruncated: audit?.jsonTruncated ?? false,
-    reasoningExhausted: audit?.reasoningExhausted ?? false,
-    totalAgentActions: audit?.totalAgentActions ?? 0,
-    totalLocalVerdicts: audit?.totalLocalVerdicts ?? 0,
-    totalApSpent: audit?.totalApSpent ?? 0,
-    ...(report?.finalWinCondition
-      ? {
-          finalWinCondition: {
-            isRoundOver: report.finalWinCondition.isRoundOver,
-            ...(report.finalWinCondition.winnerSide ? { winnerSide: report.finalWinCondition.winnerSide } : {}),
-            ...(report.finalWinCondition.winnerTeamId ? { winnerTeamId: report.finalWinCondition.winnerTeamId } : {}),
-            ...(report.finalWinCondition.roundWinType ? { roundWinType: report.finalWinCondition.roundWinType } : {}),
-            reason: report.finalWinCondition.reason
-          }
-        }
-      : {}),
-    phaseSummaries: (report?.phaseSummaries ?? []).map((phase: any) => ({
-      phaseId: phase.phaseId,
-      activeNodeCount: phase.activeNodeCount,
-      actionCount: phase.actionCount,
-      localVerdictCount: phase.localVerdictCount,
-      contestedNodeIds: phase.contestedNodeIds,
-      attackControlledNodeIds: phase.attackControlledNodeIds,
-      defenseControlledNodeIds: phase.defenseControlledNodeIds,
-      neutralNodeIds: phase.neutralNodeIds,
-      actionTypeCounts: phase.actionTypeCounts,
-      businessIntentSummary: phase.businessIntentSummary,
-      winCondition: {
-        isRoundOver: phase.winCondition.isRoundOver,
-        ...(phase.winCondition.winnerSide ? { winnerSide: phase.winCondition.winnerSide } : {}),
-        ...(phase.winCondition.roundWinType ? { roundWinType: phase.winCondition.roundWinType } : {}),
-        reason: phase.winCondition.reason
-      }
-    })),
-    ...(payload.error ? { error: payload.error } : {}),
-    ...(payload.errorKind ? { errorKind: payload.errorKind } : {})
-    };
-  }
-
-function summarizeCommittedFinalWinCondition(value: unknown): Pick<WebRunNodeShadowProgress, "finalWinCondition"> {
-  const record = parseUnknownRecord(value);
-  if (!record) {
-    return {};
-  }
-  return {
-    finalWinCondition: {
-      isRoundOver: record.isRoundOver === true,
-      ...(record.winnerSide === "attack" || record.winnerSide === "defense" ? { winnerSide: record.winnerSide } : {}),
-      ...(typeof record.winnerTeamId === "string" ? { winnerTeamId: record.winnerTeamId } : {}),
-      ...(typeof record.roundWinType === "string" ? { roundWinType: record.roundWinType } : {}),
-      reason: typeof record.reason === "string" ? record.reason : "节点化 committed trace hard win condition."
-    }
-  };
-}
-
-function readNodeMapRoundSummaries(value: unknown): WebRunNodeMapExperimentalRoundProgress[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  return value
-    .map((item) => parseUnknownRecord(item))
-    .filter((item): item is Record<string, unknown> => Boolean(item))
-    .map((item): WebRunNodeMapExperimentalRoundProgress => {
-      const final = parseUnknownRecord(item.finalHardCondition);
-      const winnerSide = final?.winnerSide === "attack" || final?.winnerSide === "defense" ? final.winnerSide : undefined;
-      return {
-        roundId: typeof item.roundId === "string" ? item.roundId : "",
-        roundNumber: readNumber(item.roundNumber),
-        ...(typeof item.winnerTeamId === "string" ? { winnerTeamId: item.winnerTeamId } : {}),
-        ...(typeof item.loserTeamId === "string" ? { loserTeamId: item.loserTeamId } : {}),
-        ...(typeof item.roundWinType === "string" ? { roundWinType: item.roundWinType } : {}),
-        nodeTraceArtifactId: typeof item.nodeTraceArtifactId === "string" ? item.nodeTraceArtifactId : "",
-        totalApSpent: readNumber(item.totalApSpent),
-        fallbackCount: readNumber(item.fallbackCount),
-        ignoredFields: readStringArray(item.ignoredFields),
-        ...(final
-          ? {
-              finalHardCondition: {
-                isRoundOver: final.isRoundOver === true,
-                ...(winnerSide ? { winnerSide } : {}),
-                ...(typeof final.winnerTeamId === "string" ? { winnerTeamId: final.winnerTeamId } : {}),
-                ...(typeof final.roundWinType === "string" ? { roundWinType: final.roundWinType } : {}),
-                reason: typeof final.reason === "string" ? final.reason : "节点化地图灰度 hard win condition."
-              }
-            }
-          : {})
-      };
-    })
-    .filter((item) => item.roundId.length > 0 && item.nodeTraceArtifactId.length > 0);
-}
-
-function readScorePair(value: unknown): { teamA: number; teamB: number } {
-  const record = parseUnknownRecord(value);
-  return {
-    teamA: readNumber(record?.teamA),
-    teamB: readNumber(record?.teamB)
-  };
-}
-
-function readArtifactTextByUri(uri: string): string {
-  if (uri.startsWith("local:")) {
-    return readFileSync(resolve(findProjectRoot(process.cwd()), uri.slice("local:".length)), "utf8");
-  }
-  return readFileSync(uri, "utf8");
-}
-
-function readCommittedPhaseSummaries(value: unknown): WebRunNodeShadowPhaseProgress[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  return value.map((item) => {
-    const phase = parseUnknownRecord(item) ?? {};
-    const winCondition = parseUnknownRecord(phase.winCondition);
-    return {
-      phaseId: typeof phase.phaseId === "string" ? phase.phaseId : "unknown",
-      activeNodeCount: readNumber(phase.activeNodeCount),
-      actionCount: readNumber(phase.actionCount),
-      localVerdictCount: readNumber(phase.localVerdictCount),
-      contestedNodeIds: readStringArray(phase.contestedNodeIds),
-      attackControlledNodeIds: readStringArray(phase.attackControlledNodeIds),
-      defenseControlledNodeIds: readStringArray(phase.defenseControlledNodeIds),
-      neutralNodeIds: readStringArray(phase.neutralNodeIds),
-      actionTypeCounts: readStringNumberRecord(phase.actionTypeCounts),
-      businessIntentSummary: readStringArray(phase.businessIntentSummary),
-      ...(winCondition
-        ? {
-            winCondition: {
-              isRoundOver: winCondition.isRoundOver === true,
-              ...(winCondition.winnerSide === "attack" || winCondition.winnerSide === "defense" ? { winnerSide: winCondition.winnerSide } : {}),
-              ...(typeof winCondition.roundWinType === "string" ? { roundWinType: winCondition.roundWinType } : {}),
-              reason: typeof winCondition.reason === "string" ? winCondition.reason : "节点化 phase win condition."
-            }
-          }
-        : {})
-    };
-  });
-}
-
-function readProviderMode(value: unknown): NodeShadowSidecarProviderMode {
-  return value === "real" ? "real" : value === "fixture" ? "fixture" : "none";
-}
-
 function readNumber(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
 function readStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
-}
-
-function readStringNumberRecord(value: unknown): Record<string, number> {
-  const record = parseUnknownRecord(value);
-  if (!record) {
-    return {};
-  }
-  return Object.fromEntries(Object.entries(record).filter((entry): entry is [string, number] => typeof entry[1] === "number"));
 }
 
 async function appendWebRunExecutionEvent(
@@ -1098,8 +662,6 @@ async function appendWebRunExecutionEvent(
         | "phase18_current_map"
         | "phase18_keep_generating_map"
         | "phase18_full_bo3"
-        | "phase20_node_round_experimental"
-        | "phase20_node_map_experimental"
       >;
     status: "running" | "completed" | "failed";
     facts: Awaited<ReturnType<typeof readPhase18RunFacts>>;
@@ -1233,7 +795,7 @@ async function startPhase18WebRun(input: {
         runtimeMapGameId: facts.mapGameId ?? continuedRun?.runtimeMapGameId ?? null,
         baselineCompletedRounds: facts.completedRounds,
         estimatedTotalRounds: facts.completedRounds + remainingRounds,
-        expectedTotalCalls: isNodeExperimentalWebRunMode(input.mode) ? 0 : remainingRounds * phase18CallsPerRound,
+        expectedTotalCalls: remainingRounds * phase18CallsPerRound,
         latestCommittedRoundNumber: facts.latestCommittedRoundNumber,
         hasFreshReplay: facts.hasFreshReplay,
         latestError: null,
@@ -1288,10 +850,6 @@ async function startPhase18WebRun(input: {
   return progress;
 }
 
-function isNodeExperimentalWebRunMode(mode: WebRunMode): boolean {
-  return false;
-}
-
   async function finalizePhase18RunPromise(
     runId: string,
     executionId: string,
@@ -1301,8 +859,6 @@ function isNodeExperimentalWebRunMode(mode: WebRunMode): boolean {
       | "phase18_current_map"
       | "phase18_keep_generating_map"
       | "phase18_full_bo3"
-      | "phase20_node_round_experimental"
-      | "phase20_node_map_experimental"
     >,
     promise: Promise<WebRunSingleMapResult>
   ): Promise<void> {
@@ -1327,8 +883,6 @@ function isNodeExperimentalWebRunMode(mode: WebRunMode): boolean {
       | "phase18_current_map"
       | "phase18_keep_generating_map"
       | "phase18_full_bo3"
-      | "phase20_node_round_experimental"
-      | "phase20_node_map_experimental"
     >,
     latestError?: string
   ): Promise<void> {
@@ -1359,12 +913,6 @@ function isNodeExperimentalWebRunMode(mode: WebRunMode): boolean {
         facts,
         latestError: discardError
       });
-      await appendNodeShadowSidecarAuditSafely(repositories, {
-        run: savedRun,
-        facts,
-        executionId,
-        projectRoot
-      });
       return;
     }
 
@@ -1388,36 +936,8 @@ function isNodeExperimentalWebRunMode(mode: WebRunMode): boolean {
       facts,
       ...(latestError ? { latestError } : {})
     });
-    await appendNodeShadowSidecarAuditSafely(repositories, {
-      run: savedRun,
-      facts,
-      executionId,
-      projectRoot
-    });
   } finally {
     repositories.close();
-  }
-}
-
-async function appendNodeShadowSidecarAuditSafely(
-  repositories: ReturnType<typeof createSqliteRepositories>,
-  input: {
-    run: SimulationRunRecord;
-    facts: Awaited<ReturnType<typeof readPhase18RunFacts>>;
-    executionId: string;
-    projectRoot: string;
-  }
-): Promise<void> {
-  try {
-    await appendNodeShadowSidecarAuditIfEnabled({
-      repositories,
-      run: input.run,
-      facts: input.facts,
-      executionId: input.executionId,
-      env: loadRootLocalEnv(input.projectRoot, process.env)
-    });
-  } catch (error) {
-    console.warn("Node shadow sidecar audit failed without changing the run status.", sanitizeRunError(error));
   }
 }
 
@@ -1462,11 +982,9 @@ async function mutatePhase18Run(
       | "phase18_current_map"
       | "phase18_keep_generating_map"
       | "phase18_full_bo3"
-      | "phase20_node_round_experimental"
-      | "phase20_node_map_experimental"
     >
   ): Promise<number> {
-    if (mode === "phase18_next_round" || mode === "phase20_node_round_experimental") {
+    if (mode === "phase18_next_round") {
       return 1;
     }
 
@@ -1493,9 +1011,6 @@ async function mutatePhase18Run(
   if (mode === "phase18_current_map" || mode === "phase18_keep_generating_map") {
     return currentMapRemaining;
   }
-  if (mode === "phase20_node_map_experimental") {
-    return currentMapRemaining;
-  }
 
   const completedMaps = maps.filter((mapGame) => mapGame.status === "completed").length;
   return currentMapRemaining + Math.max(0, phase20PrePilotMapIds.length - completedMaps - 1) * estimatedMaxRoundsPerMap;
@@ -1515,8 +1030,6 @@ function buildPhase18Progress(input: {
   llmSummary: WebRunLlmSummary;
   attemptEvents: RoundGenerationAttemptEvent[];
   executionEvents: WebRunExecutionEvent[];
-  nodeShadow: WebRunNodeShadowProgress | null;
-  nodeMapExperimental: WebRunNodeMapExperimentalProgress | null;
   casterModes: Array<{ mode: string | null; count: number }>;
   recentRuns: WebRunHistory[];
 }): WebRunProgress {
@@ -1584,8 +1097,6 @@ function buildPhase18Progress(input: {
     ...(input.run.promptContractId ? { promptContractId: input.run.promptContractId } : {}),
     contractStatus: deriveProgressContractStatus(input.run, input.llmCalls),
     progressPercent,
-    ...(input.nodeShadow ? { nodeShadow: input.nodeShadow } : {}),
-    ...(input.nodeMapExperimental ? { nodeMapExperimental: input.nodeMapExperimental } : {}),
     ...(input.facts.runtimeMatchStatus
       ? {
           result: {
@@ -1930,8 +1441,6 @@ function mapWebRunModeToScope(mode: Extract<WebRunMode, "phase18_next_round" | "
       | "phase18_current_map"
       | "phase18_keep_generating_map"
       | "phase18_full_bo3"
-      | "phase20_node_round_experimental"
-      | "phase20_node_map_experimental"
     >
   ): SimulationRunMode {
     return mode;
@@ -1945,8 +1454,6 @@ function mapWebRunModeToScope(mode: Extract<WebRunMode, "phase18_next_round" | "
     | "phase18_current_map"
     | "phase18_keep_generating_map"
     | "phase18_full_bo3"
-    | "phase20_node_round_experimental"
-    | "phase20_node_map_experimental"
     | "phase20_hex_round_experimental"
     | "phase20_hex_map_experimental"
   > {

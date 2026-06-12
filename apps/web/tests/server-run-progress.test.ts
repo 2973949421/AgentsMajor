@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 
@@ -7,10 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   readMapProgressSnapshot,
-  readNodeMapExperimentalProgress,
-  readNodeShadowSidecarProgress,
   summarizeLlmCalls,
-  summarizeNodeShadowSidecarPayload,
   type WebRunLlmCallProgress
 } from "../app/server-run-progress";
 import { listPhase18RunHistoryEntries, syncPhase18SimulationRun } from "../app/server-phase18-runs";
@@ -42,158 +39,6 @@ describe("Phase 1.8 web run progress", () => {
     expect(summary.completedCalls).toBe(13);
     expect(summary.failedCalls).toBe(1);
     expect(summary.runningCalls).toBe(1);
-  });
-
-  it("summarizes node shadow sidecar payloads without treating them as formal run facts", () => {
-    const report = nodeShadowReportFixture();
-    const summary = summarizeNodeShadowSidecarPayload(
-      {
-        schemaVersion: 1,
-        status: "created",
-        runId: "run-node",
-        executionId: "exec-node",
-        writesDb: false,
-        replacesLegacyRoundPath: false,
-        providerMode: "none",
-        llmShadowEnabled: false,
-        report
-      },
-      "2026-05-04T00:00:00.000Z"
-    );
-
-    expect(summary).toMatchObject({
-      status: "created",
-      source: "node_round_engine_shadow",
-      writesDb: false,
-      replacesLegacyRoundPath: false,
-      providerMode: "none",
-      llmShadowEnabled: false,
-      phaseCount: report.phaseCount
-    });
-    expect(summary?.finalWinCondition?.winnerTeamId).toBe(report.finalWinCondition?.winnerTeamId);
-  });
-
-  it("reads the latest node shadow sidecar event for a run", async () => {
-    const repositories = createSqliteRepositories(resolve(mkdtempSync(resolve(tmpdir(), "agent-major-web-progress-")), "agent-major.sqlite"));
-    try {
-      seedPhase18ProgressFixture(repositories);
-      const report = nodeShadowReportFixture();
-      const [globalSequence, sequenceInScope] = await Promise.all([
-        repositories.events.getMaxGlobalSequence(),
-        repositories.events.getMaxSequenceInScope("map", "map-2")
-      ]);
-      await repositories.events.append({
-        id: "evt_run_node_shadow_created",
-        type: "node_round_shadow_report_created",
-        category: "runtime_control",
-        tournamentId: "tournament-1",
-        matchId: "match-1",
-        mapGameId: "map-2",
-        payload: {
-          schemaVersion: 1,
-          status: "created",
-          runId: "run-node",
-          executionId: "exec-node",
-          writesDb: false,
-          replacesLegacyRoundPath: false,
-          providerMode: "none",
-          llmShadowEnabled: false,
-          report
-        },
-        globalSequence: globalSequence + 1,
-        scopeType: "map",
-        scopeId: "map-2",
-        sequenceInScope: sequenceInScope + 1,
-        sourceModule: "test",
-        createdAt: "2026-05-04T00:00:00.000Z"
-      });
-
-      const progress = readNodeShadowSidecarProgress(repositories, "run-node", "match-1");
-
-      expect(progress?.reportId).toBe(report.id);
-      expect(progress?.phaseSummaries.length).toBe(report.phaseSummaries.length);
-      expect(progress?.writesDb).toBe(false);
-      expect(progress?.replacesLegacyRoundPath).toBe(false);
-    } finally {
-      repositories.close();
-    }
-  });
-
-  it("reads node map experimental summary artifacts without legacy run facts", async () => {
-    const tempRoot = mkdtempSync(resolve(tmpdir(), "agent-major-web-progress-"));
-    const repositories = createSqliteRepositories(resolve(tempRoot, "agent-major.sqlite"));
-    try {
-      seedPhase18ProgressFixture(repositories);
-      const artifactPath = resolve(tempRoot, "node-map-summary.json");
-      writeFileSync(
-        artifactPath,
-        JSON.stringify({
-          source: "node_round_engine_map_experimental",
-          mode: "phase20_node_map_experimental",
-          writesDb: true,
-          replacesLegacyRoundPath: false,
-          mapGameId: "map-2",
-          mapName: "Dust2",
-          roundsCommitted: 2,
-          finalScore: { teamA: 1, teamB: 1 },
-          completionReason: "map_completed",
-          roundTraceArtifactIds: ["artifact-round-1", "artifact-round-2"],
-          fallbackSummary: {
-            totalFallbackCount: 1,
-            reasons: ["fixture fallback"],
-            ignoredFields: ["winnerTeamId"]
-          },
-          roundSummaries: [
-            {
-              roundId: "round-node-1",
-              roundNumber: 1,
-              winnerTeamId: "team-a",
-              loserTeamId: "team-b",
-              roundWinType: "elimination",
-              nodeTraceArtifactId: "artifact-round-1",
-              totalApSpent: 20,
-              fallbackCount: 1,
-              ignoredFields: ["winnerTeamId"],
-              finalHardCondition: {
-                isRoundOver: true,
-                winnerSide: "attack",
-                winnerTeamId: "team-a",
-                roundWinType: "elimination",
-                reason: "fixture hard condition"
-              }
-            }
-          ]
-        }),
-        "utf8"
-      );
-      await repositories.artifacts.save({
-        id: "artifact-map-summary",
-        artifactType: "node_map_experimental_summary",
-        tournamentId: "tournament-1",
-        matchId: "match-1",
-        mapGameId: "map-2",
-        uri: artifactPath,
-        mimeType: "application/json",
-        status: "ready",
-        createdAt: "2026-05-04T00:00:00.000Z"
-      });
-
-      const progress = readNodeMapExperimentalProgress(repositories, "match-1");
-
-      expect(progress).toMatchObject({
-        source: "node_round_engine_map_experimental",
-        mode: "phase20_node_map_experimental",
-        writesDb: true,
-        replacesLegacyRoundPath: false,
-        summaryArtifactId: "artifact-map-summary",
-        roundsCommitted: 2,
-        totalFallbackCount: 1
-      });
-      expect(progress?.roundTraceArtifactIds).toEqual(["artifact-round-1", "artifact-round-2"]);
-      expect(progress?.roundSummaries[0]?.finalHardCondition?.winnerSide).toBe("attack");
-    } finally {
-      repositories.close();
-    }
   });
 
   it("promotes stale scheduled runs with completedAt and replay facts to completed", async () => {
@@ -398,59 +243,5 @@ function phase18Call(index: number): WebRunLlmCallProgress {
     latencyMs: 10,
     inputTokens: 20,
     outputTokens: 10
-  };
-}
-
-function nodeShadowReportFixture() {
-  return {
-    id: "node-shadow-report-fixture",
-    source: "node_round_engine_shadow",
-    status: "complete",
-    roundNumber: 1,
-    phaseCount: 1,
-    audit: {
-      providerMode: "none",
-      llmShadowEnabled: false,
-      llmCallsAttempted: 0,
-      llmFallbackCount: 0,
-      fallbackReasons: [],
-      ignoredLlmFields: [],
-      draftValidCount: 0,
-      draftRejectedCount: 0,
-      contentLength: 0,
-      reasoningContentLength: 0,
-      jsonTruncated: false,
-      reasoningExhausted: false,
-      totalAgentActions: 2,
-      totalLocalVerdicts: 1,
-      totalApSpent: 2
-    },
-    finalWinCondition: {
-      isRoundOver: true,
-      winnerSide: "attack",
-      winnerTeamId: "team-a",
-      roundWinType: "elimination",
-      reason: "fixture"
-    },
-    phaseSummaries: [
-      {
-        phaseId: "default_opening",
-        activeNodeCount: 2,
-        actionCount: 2,
-        localVerdictCount: 1,
-        contestedNodeIds: [],
-        attackControlledNodeIds: ["a"],
-        defenseControlledNodeIds: ["b"],
-        neutralNodeIds: [],
-        actionTypeCounts: { move: 2 },
-        businessIntentSummary: ["fixture"],
-        winCondition: {
-          isRoundOver: true,
-          winnerSide: "attack",
-          roundWinType: "elimination",
-          reason: "fixture"
-        }
-      }
-    ]
   };
 }

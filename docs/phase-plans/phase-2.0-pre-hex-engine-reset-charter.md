@@ -114,7 +114,7 @@ N34/N34b 后实际处理：
 
 - 旧 Node/Sector runtime 已退役并物理删除。
 - 旧 Node Lab 历史展示主控已退役，只保留 `/node-lab` 说明页和 410 API。
-- 旧 node/sector 历史资产已移入 `data/materials/archive/maps/dust2/node-sector/`。
+- 旧 node/sector archive 资产已在 N34c 删除；frozen 文档只保留历史决策背景，不再承诺旧资产路径可读取。
 
 保留原因：
 
@@ -247,8 +247,14 @@ N34b 安全清理结果：
 - `packages/core/src/node-engine/**` 已物理删除。
 - 旧 Node Lab client/CSS/layout helper 已删除。
 - `phase20-node-*` CLI 已删除。
-- `node-graph.*` / `sector-map.*` 已从 processed runtime 资产目录移入 archive。
 - `/node-lab` 与 `/api/node-lab/run` 仍作为 retired stub 存在，避免用户访问时出现 404/500。
+
+N34c 兼容层削减结果：
+
+- `phase20_node_*` 不再是 active run mode / Web progress / UI 分支。
+- 旧 Node shadow / Node map experimental progress parser 已删除。
+- `data/materials/archive/maps/dust2/node-sector/**` 已删除。
+- Phase18 replay/live replay 与 Hex `/hex-lab/match` 不受影响。
 
 ## 11. 删除策略修订
 

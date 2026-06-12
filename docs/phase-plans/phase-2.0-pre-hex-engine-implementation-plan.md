@@ -400,14 +400,20 @@ N34b 安全清理补丁：
 - `packages/core/src/node-engine/**` 已物理删除，不再参与构建、导出或测试。
 - 旧 Node Lab 客户端、旧 Node Lab CSS、Dust2 node layout helper 已删除；`/node-lab` 只保留退役说明页。
 - `phase20-node-*` CLI 脚本已删除，不再作为可启动实验入口存在。
-- `node-graph.*` 与 `sector-map.*` 从 `processed/maps/dust2/` 运行资产目录移至 `data/materials/archive/maps/dust2/node-sector/`，仅保留为历史审计材料。
 - architecture boundary 增加护栏：core public API 不公开旧 Node/Sector，且旧 `node-engine` runtime 目录不得回流。
 - 历史 `nodeTraceArtifactId/nodeTraceSource` 兼容读取继续保留，避免破坏旧 RoundReport / replay。
+
+N34c 兼容层削减：
+
+- `phase20_node_round_experimental` / `phase20_node_map_experimental` 已从 shared active run modes、Web progress 和控制台 UI 中移除。
+- `server-run-progress.ts` 不再解析 Node shadow / Node map experimental artifact，不再尝试恢复旧 Node 实验进度。
+- `server-node-shadow-audit.ts` 已删除，Phase18 runner 不再写 Node shadow sidecar。
+- `data/materials/archive/maps/dust2/node-sector/**` 已删除；frozen 文档保留旧路线决策背景，但旧 Node/Sector 资产不再作为可点击审计材料承诺。
+- `nodeTraceArtifactId/nodeTraceSource` 作为历史 DB/schema 兼容字段暂留；active Hex/Web 代码应通过 trace reference 语义读取，不把字段名当作 Node runtime 入口。
 
 保留兼容：
 
 - 历史 frozen 文档。
-- 历史 artifact 读取兼容。
 - 旧 RoundReport 读取兼容。
 - Phase18 replay / live replay 播放层。
 

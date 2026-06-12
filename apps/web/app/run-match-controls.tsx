@@ -14,8 +14,6 @@ export type RunMode =
   | "phase18_current_map"
   | "phase18_keep_generating_map"
   | "phase18_full_bo3"
-  | "phase20_node_round_experimental"
-  | "phase20_node_map_experimental"
   | "phase20_hex_round_experimental"
   | "phase20_hex_map_experimental";
 type RunRetryMode = "full_round" | "resume_from_stage";
@@ -66,104 +64,6 @@ export interface RunMatchHistoryEntry {
   benchmarkLabel?: string;
 }
 
-export interface WebRunNodeShadowPhaseProgress {
-  phaseId: string;
-  activeNodeCount: number;
-  actionCount: number;
-  localVerdictCount: number;
-  contestedNodeIds: string[];
-  attackControlledNodeIds: string[];
-  defenseControlledNodeIds: string[];
-  neutralNodeIds: string[];
-  actionTypeCounts: Record<string, number>;
-  businessIntentSummary: string[];
-  winCondition?: {
-    isRoundOver: boolean;
-    winnerSide?: "attack" | "defense";
-    roundWinType?: string;
-    reason: string;
-  };
-}
-
-export interface WebRunNodeShadowProgress {
-  status: "created" | "failed";
-  source: "node_round_engine_shadow" | "node_round_engine_committed";
-  reportStatus?: "complete" | "incomplete";
-  runId: string;
-  executionId: string;
-  createdAt: string;
-  reportId?: string;
-  nodeTraceArtifactId?: string;
-  nodeTraceSource?: "node_round_engine_committed";
-  roundNumber?: number;
-  providerMode: "none" | "fixture" | "real";
-  llmShadowEnabled: boolean;
-  writesDb: boolean;
-  replacesLegacyRoundPath: false;
-  phaseCount: number;
-  llmCallsAttempted: number;
-  llmFallbackCount: number;
-  fallbackReasons: string[];
-  ignoredLlmFields: string[];
-  draftValidCount: number;
-  draftRejectedCount: number;
-  contentLength: number;
-  reasoningContentLength: number;
-  jsonTruncated: boolean;
-  reasoningExhausted: boolean;
-  totalAgentActions: number;
-  totalLocalVerdicts: number;
-  totalApSpent: number;
-  finalWinCondition?: {
-    isRoundOver: boolean;
-    winnerSide?: "attack" | "defense";
-    winnerTeamId?: string;
-    roundWinType?: string;
-    reason: string;
-  };
-  phaseSummaries: WebRunNodeShadowPhaseProgress[];
-  error?: string;
-  errorKind?: string;
-}
-
-export interface WebRunNodeMapExperimentalRoundProgress {
-  roundId: string;
-  roundNumber: number;
-  winnerTeamId?: string;
-  loserTeamId?: string;
-  roundWinType?: string;
-  nodeTraceArtifactId: string;
-  totalApSpent: number;
-  fallbackCount: number;
-  ignoredFields: string[];
-  finalHardCondition?: {
-    isRoundOver: boolean;
-    winnerSide?: "attack" | "defense";
-    winnerTeamId?: string;
-    roundWinType?: string;
-    reason: string;
-  };
-}
-
-export interface WebRunNodeMapExperimentalProgress {
-  status: "created";
-  source: "node_round_engine_map_experimental";
-  mode: "phase20_node_map_experimental";
-  writesDb: true;
-  replacesLegacyRoundPath: false;
-  summaryArtifactId: string;
-  mapGameId: string;
-  mapName: string;
-  roundsCommitted: number;
-  finalScore: { teamA: number; teamB: number };
-  completionReason: string;
-  roundTraceArtifactIds: string[];
-  totalFallbackCount: number;
-  fallbackReasons: string[];
-  ignoredFields: string[];
-  roundSummaries: WebRunNodeMapExperimentalRoundProgress[];
-}
-
 export interface WebRunProgress {
   runId: string;
   mode: AnyRunMode;
@@ -205,8 +105,6 @@ export interface WebRunProgress {
   currentExecutionRunningCalls: number;
   promptContractId?: string;
   contractStatus?: "current" | "legacy" | "mixed" | "blocked";
-  nodeShadow?: WebRunNodeShadowProgress;
-  nodeMapExperimental?: WebRunNodeMapExperimentalProgress;
   recentRuns: RunMatchHistoryEntry[];
   error?: string;
   result?: {
@@ -399,17 +297,9 @@ export function RunMatchControls({
         { label: "契约状态", value: formatContractStatus(progress.contractStatus) },
         { label: "当前地图", value: progress.currentMapOrder ? `M${progress.currentMapOrder}` : "--" },
         { label: "当前回合", value: progress.currentRoundNumber ? `R${progress.currentRoundNumber}` : "--" },
-        ...(isNodeExperimentalMode(progress.mode)
-          ? [
-              { label: "节点模式", value: formatExpectedCalls(progress) },
-              { label: "节点 Trace", value: formatNodeTraceSummary(progress) },
-              { label: "旧 LLM 调用", value: "0（预期）" }
-            ]
-          : [
-              { label: "调用预估", value: formatExpectedCalls(progress) },
-              { label: "历史完成调用", value: String(progress.llmSummary.completedCalls) },
-              { label: "本次完成调用", value: String(progress.currentExecutionCompletedCalls ?? 0) }
-            ]),
+        { label: "调用预估", value: formatExpectedCalls(progress) },
+        { label: "历史完成调用", value: String(progress.llmSummary.completedCalls) },
+        { label: "本次完成调用", value: String(progress.currentExecutionCompletedCalls ?? 0) },
         { label: "当前尝试", value: progress.currentOuterAttemptNumber ? `#${progress.currentOuterAttemptNumber}` : "--" },
         { label: "已恢复失败", value: String(progress.recoveredFailureCount ?? 0) }
       ]
@@ -572,174 +462,6 @@ export function RunMatchControls({
           {failedAttemptNotice ? <span className={styles.opsMetaLine}>{failedAttemptNotice}</span> : null}
           {progress.error ? <span className={styles.opsErrorText}>最近错误：{progress.error}</span> : null}
         </div>
-      ) : null}
-
-      {progress?.nodeShadow ? (
-        <details className={styles.opsDisclosure}>
-          <summary>节点化 Shadow 审计</summary>
-          <div className={styles.opsDisclosureBody}>
-            <div className={styles.opsSummaryGrid}>
-              <div className={styles.opsSummaryItem}>
-                <span>状态</span>
-                <strong>{formatNodeShadowStatus(progress.nodeShadow)}</strong>
-              </div>
-              <div className={styles.opsSummaryItem}>
-                <span>来源</span>
-                <strong>{progress.nodeShadow.source}</strong>
-              </div>
-              <div className={styles.opsSummaryItem}>
-                <span>Provider</span>
-                <strong>{formatNodeShadowProvider(progress.nodeShadow.providerMode)}</strong>
-              </div>
-              <div className={styles.opsSummaryItem}>
-                <span>旁路承诺</span>
-                <strong>{progress.nodeShadow.writesDb ? "写库" : "不写正式事实"}</strong>
-              </div>
-              <div className={styles.opsSummaryItem}>
-                <span>阶段 / 行动</span>
-                <strong>
-                  {progress.nodeShadow.phaseCount} / {progress.nodeShadow.totalAgentActions}
-                </strong>
-              </div>
-              <div className={styles.opsSummaryItem}>
-                <span>局部裁判</span>
-                <strong>{progress.nodeShadow.totalLocalVerdicts}</strong>
-              </div>
-              <div className={styles.opsSummaryItem}>
-                <span>LLM fallback</span>
-                <strong>{progress.nodeShadow.llmFallbackCount}</strong>
-              </div>
-              <div className={styles.opsSummaryItem}>
-                <span>AP</span>
-                <strong>{progress.nodeShadow.totalApSpent}</strong>
-              </div>
-            </div>
-            {progress.nodeShadow.finalWinCondition ? (
-              <span className={styles.opsMetaLine}>
-                Shadow 硬胜负：{formatNodeShadowSide(progress.nodeShadow.finalWinCondition.winnerSide)} /{" "}
-                {progress.nodeShadow.finalWinCondition.roundWinType ?? "--"} / {progress.nodeShadow.finalWinCondition.reason}
-              </span>
-            ) : null}
-            {progress.nodeShadow.fallbackReasons.length > 0 ? (
-              <span className={styles.opsMetaLine}>Fallback：{progress.nodeShadow.fallbackReasons.join(" / ")}</span>
-            ) : null}
-            {progress.nodeShadow.ignoredLlmFields.length > 0 ? (
-              <span className={styles.opsMetaLine}>忽略字段：{progress.nodeShadow.ignoredLlmFields.join(" / ")}</span>
-            ) : null}
-            {progress.nodeShadow.error ? <span className={styles.opsErrorText}>Shadow 错误：{progress.nodeShadow.error}</span> : null}
-            {progress.nodeShadow.phaseSummaries.length > 0 ? (
-              <div className={styles.opsTableWrap}>
-                <table className={styles.opsTable}>
-                  <thead>
-                    <tr>
-                      <th>阶段</th>
-                      <th>节点</th>
-                      <th>行动</th>
-                      <th>裁判</th>
-                      <th>控制权</th>
-                      <th>商业意图</th>
-                      <th>胜负检查</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {progress.nodeShadow.phaseSummaries.map((phase) => (
-                      <tr key={phase.phaseId}>
-                        <td>{phase.phaseId}</td>
-                        <td>{phase.activeNodeCount}</td>
-                        <td>{phase.actionCount}</td>
-                        <td>{phase.localVerdictCount}</td>
-                        <td>{formatNodeControlSummary(phase)}</td>
-                        <td>{phase.businessIntentSummary.slice(0, 2).join(" / ") || "--"}</td>
-                        <td>
-                          {phase.winCondition?.isRoundOver
-                            ? `${formatNodeShadowSide(phase.winCondition.winnerSide)} / ${phase.winCondition.roundWinType ?? "--"}`
-                            : "未结束"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : null}
-          </div>
-        </details>
-      ) : null}
-
-      {progress?.nodeMapExperimental ? (
-        <details className={styles.opsDisclosure} open>
-          <summary>节点化实验地图</summary>
-          <div className={styles.opsDisclosureBody}>
-            <div className={styles.opsSummaryGrid}>
-              <div className={styles.opsSummaryItem}>
-                <span>来源</span>
-                <strong>{progress.nodeMapExperimental.source}</strong>
-              </div>
-              <div className={styles.opsSummaryItem}>
-                <span>写库</span>
-                <strong>{progress.nodeMapExperimental.writesDb ? "true" : "false"}</strong>
-              </div>
-              <div className={styles.opsSummaryItem}>
-                <span>回合</span>
-                <strong>{progress.nodeMapExperimental.roundsCommitted}</strong>
-              </div>
-              <div className={styles.opsSummaryItem}>
-                <span>比分</span>
-                <strong>
-                  {progress.nodeMapExperimental.finalScore.teamA}:{progress.nodeMapExperimental.finalScore.teamB}
-                </strong>
-              </div>
-              <div className={styles.opsSummaryItem}>
-                <span>结束原因</span>
-                <strong>{progress.nodeMapExperimental.completionReason}</strong>
-              </div>
-              <div className={styles.opsSummaryItem}>
-                <span>Fallback</span>
-                <strong>{progress.nodeMapExperimental.totalFallbackCount}</strong>
-              </div>
-            </div>
-            <span className={styles.opsMetaLine}>Summary artifact：{progress.nodeMapExperimental.summaryArtifactId}</span>
-            {progress.nodeMapExperimental.fallbackReasons.length > 0 ? (
-              <span className={styles.opsMetaLine}>Fallback：{progress.nodeMapExperimental.fallbackReasons.join(" / ")}</span>
-            ) : null}
-            {progress.nodeMapExperimental.ignoredFields.length > 0 ? (
-              <span className={styles.opsMetaLine}>忽略字段：{progress.nodeMapExperimental.ignoredFields.join(" / ")}</span>
-            ) : null}
-            {progress.nodeMapExperimental.roundSummaries.length > 0 ? (
-              <div className={styles.opsTableWrap}>
-                <table className={styles.opsTable}>
-                  <thead>
-                    <tr>
-                      <th>回合</th>
-                      <th>Winner</th>
-                      <th>胜法</th>
-                      <th>Hard condition</th>
-                      <th>AP</th>
-                      <th>Fallback</th>
-                      <th>Trace artifact</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {progress.nodeMapExperimental.roundSummaries.map((round) => (
-                      <tr key={round.roundId}>
-                        <td>R{round.roundNumber}</td>
-                        <td>{round.winnerTeamId ?? "--"}</td>
-                        <td>{round.roundWinType ?? "--"}</td>
-                        <td>
-                          {round.finalHardCondition
-                            ? `${formatNodeShadowSide(round.finalHardCondition.winnerSide)} / ${round.finalHardCondition.reason}`
-                            : "--"}
-                        </td>
-                        <td>{round.totalApSpent}</td>
-                        <td>{round.fallbackCount}</td>
-                        <td>{round.nodeTraceArtifactId}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : null}
-          </div>
-        </details>
       ) : null}
 
       <details className={styles.opsDisclosure}>
@@ -1074,9 +796,6 @@ function buildFixtureUrl(matchId: string): string {
 }
 
 function buildCompletedMessage(progress: WebRunProgress): string {
-  if (isNodeExperimentalMode(progress.mode)) {
-    return `节点化实验完成。比分 ${progress.result?.score ?? "待定"}，${formatNodeTraceSummary(progress)}，不调用旧 Phase18 LLM stage。`;
-  }
   return `运行完成。比分 ${progress.result?.score ?? "待定"}，LLM 调用已完成 ${progress.llmSummary.completedCalls} 次，${formatExpectedCalls(progress)}。`;
 }
 
@@ -1093,12 +812,6 @@ function formatExpectedCalls(progress: WebRunProgress): string {
   if (progress.mode === "phase18_full_bo3") {
     return "BO3 约每回合 14 次";
   }
-  if (progress.mode === "phase20_node_round_experimental") {
-    return "节点化实验单回合，不调用旧 Phase18 LLM stage";
-  }
-  if (progress.mode === "phase20_node_map_experimental") {
-    return "节点化实验地图，不调用旧 Phase18 LLM stage";
-  }
   if (progress.mode === "phase20_hex_round_experimental") {
     return "Hex 实验单回合，不调用旧 Phase18 LLM stage";
   }
@@ -1114,28 +827,9 @@ function isPhase18Mode(mode: AnyRunMode): mode is RunMode {
     mode === "phase18_current_map" ||
     mode === "phase18_keep_generating_map" ||
     mode === "phase18_full_bo3" ||
-    mode === "phase20_node_round_experimental" ||
-    mode === "phase20_node_map_experimental" ||
     mode === "phase20_hex_round_experimental" ||
     mode === "phase20_hex_map_experimental"
   );
-}
-
-function isNodeExperimentalMode(mode: AnyRunMode): boolean {
-  return mode === "phase20_node_round_experimental" || mode === "phase20_node_map_experimental";
-}
-
-function formatNodeTraceSummary(progress: WebRunProgress): string {
-  if (progress.nodeMapExperimental) {
-    return `${progress.nodeMapExperimental.roundsCommitted} 回合 / ${progress.nodeMapExperimental.roundTraceArtifactIds.length} trace`;
-  }
-  if (progress.nodeShadow?.nodeTraceArtifactId) {
-    return `R${progress.nodeShadow.roundNumber ?? "--"} / ${progress.nodeShadow.nodeTraceArtifactId}`;
-  }
-  if (progress.nodeShadow) {
-    return `R${progress.nodeShadow.roundNumber ?? "--"} / trace 生成中`;
-  }
-  return "等待节点 trace";
 }
 
 function runStartMessage(mode: RunMode): string {
@@ -1148,10 +842,6 @@ function runStartMessage(mode: RunMode): string {
       return "开始执行 Phase 1.8 一直生成；生成类失败会自动重试同一回合...";
     case "phase18_full_bo3":
       return "开始执行 Phase 1.8 整场 BO3 真实 LLM 生成...";
-    case "phase20_node_round_experimental":
-      return "开始执行节点化实验单回合；本模式不会接入一直生成。";
-    case "phase20_node_map_experimental":
-      return "开始执行节点化实验地图；本模式只运行当前 Dust2 地图。";
     case "phase20_hex_round_experimental":
       return "开始执行 Hex 实验单回合；本模式不替换旧 Phase18 主线。";
     case "phase20_hex_map_experimental":
@@ -1218,45 +908,6 @@ function formatLlmStatus(status: WebRunLlmCallProgress["status"]): string {
     default:
       return "完成";
   }
-}
-
-function formatNodeShadowStatus(nodeShadow: WebRunNodeShadowProgress): string {
-  if (nodeShadow.status === "failed") {
-    return "旁路失败";
-  }
-  return nodeShadow.reportStatus === "complete" ? "旁路完成" : "旁路未完成";
-}
-
-function formatNodeShadowProvider(providerMode: WebRunNodeShadowProgress["providerMode"]): string {
-  switch (providerMode) {
-    case "real":
-      return "真实 LLM";
-    case "fixture":
-      return "Fixture";
-    case "none":
-    default:
-      return "Deterministic";
-  }
-}
-
-function formatNodeShadowSide(side: "attack" | "defense" | undefined): string {
-  if (side === "attack") {
-    return "攻方";
-  }
-  if (side === "defense") {
-    return "守方";
-  }
-  return "--";
-}
-
-function formatNodeControlSummary(phase: WebRunNodeShadowPhaseProgress): string {
-  const parts = [
-    phase.contestedNodeIds.length ? `争夺 ${phase.contestedNodeIds.length}` : "",
-    phase.attackControlledNodeIds.length ? `攻 ${phase.attackControlledNodeIds.length}` : "",
-    phase.defenseControlledNodeIds.length ? `守 ${phase.defenseControlledNodeIds.length}` : "",
-    phase.neutralNodeIds.length ? `空 ${phase.neutralNodeIds.length}` : ""
-  ].filter(Boolean);
-  return parts.join(" / ") || "--";
 }
 
 function formatRunStatusLabel(status: RunStatus): string {
