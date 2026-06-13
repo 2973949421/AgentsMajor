@@ -1,4 +1,5 @@
 import type { HexValidatedAgentAction } from "../action/index.js";
+import type { HexMapAsset } from "@agent-major/shared";
 import type { HexPhaseMemoryEvent, HexRoundMemory } from "../state/index.js";
 
 export function actionToMovementEvents(action: HexValidatedAgentAction, memory: HexRoundMemory): HexPhaseMemoryEvent[] {
@@ -16,7 +17,7 @@ export function actionToMovementEvents(action: HexValidatedAgentAction, memory: 
   return events;
 }
 
-export function actionToObjectiveEvents(action: HexValidatedAgentAction, memory: HexRoundMemory): HexPhaseMemoryEvent[] {
+export function actionToObjectiveEvents(action: HexValidatedAgentAction, memory: HexRoundMemory, asset: HexMapAsset): HexPhaseMemoryEvent[] {
   if (!action.valid) {
     return [];
   }
@@ -26,13 +27,31 @@ export function actionToObjectiveEvents(action: HexValidatedAgentAction, memory:
   }
   const events: HexPhaseMemoryEvent[] = [];
   if (action.actionType === "plant_bomb") {
+    const cell = asset.cells.find((candidate) => candidate.cellId === action.targetCellId);
+    if (
+      !actor.carryingC4
+      || actor.currentCellId !== action.targetCellId
+      || !cell?.playable
+      || (!cell.flags.includes("bombsite_a") && !cell.flags.includes("bombsite_b"))
+    ) {
+      return events;
+    }
     events.push({
       type: "bomb_planted",
       agentId: action.agentId,
-      cellId: actor.currentCellId
+      cellId: action.targetCellId
     });
   }
   if (action.actionType === "defuse_bomb") {
+    if (
+      actor.side !== "defense"
+      || !memory.bombState.planted
+      || !memory.bombState.plantedCellId
+      || actor.currentCellId !== memory.bombState.plantedCellId
+      || action.targetCellId !== memory.bombState.plantedCellId
+    ) {
+      return events;
+    }
     events.push({
       type: "bomb_defused",
       agentId: action.agentId

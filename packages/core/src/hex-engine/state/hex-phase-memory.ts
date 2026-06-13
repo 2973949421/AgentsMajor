@@ -236,8 +236,7 @@ function applyEvent(input: {
       applyBombPlantedEvent(input.memory, input.cellsById, input.event);
       return;
     case "bomb_defused":
-      input.memory.bombState.defused = true;
-      input.memory.phaseEvents.push(input.event);
+      applyBombDefusedEvent(input.memory, input.event);
       return;
     case "phase_closed":
       input.memory.phaseEvents.push(input.event);
@@ -438,6 +437,10 @@ function applyBombPlantedEvent(memory: HexRoundMemory, cellsById: Map<string, He
     reject(memory, event, "invalid_bombsite", `Cell ${event.cellId} is not a bombsite`);
     return;
   }
+  if (agent.currentCellId !== event.cellId) {
+    reject(memory, event, "agent_not_on_objective_cell", `Agent ${event.agentId} is at ${agent.currentCellId}, not plant cell ${event.cellId}`);
+    return;
+  }
   agent.carryingC4 = false;
   memory.bombState.planted = true;
   memory.bombState.plantedCellId = event.cellId;
@@ -445,6 +448,27 @@ function applyBombPlantedEvent(memory: HexRoundMemory, cellsById: Map<string, He
   memory.bombState.lastCarrierAgentId = agent.agentId;
   delete memory.bombState.carrierAgentId;
   delete memory.bombState.droppedCellId;
+  memory.phaseEvents.push(event);
+}
+
+function applyBombDefusedEvent(memory: HexRoundMemory, event: HexBombDefusedMemoryEvent): void {
+  const agent = findMutableAgent(memory, event.agentId);
+  if (!agent) {
+    reject(memory, event, "unknown_agent", `Unknown defuse agent ${event.agentId}`);
+    return;
+  }
+  if (
+    agent.lifeStatus === "dead"
+    || agent.side !== "defense"
+    || !memory.bombState.planted
+    || memory.bombState.defused
+    || !memory.bombState.plantedCellId
+    || agent.currentCellId !== memory.bombState.plantedCellId
+  ) {
+    reject(memory, event, "invalid_bomb_defuse", `Agent ${event.agentId} cannot defuse C4 at ${memory.bombState.plantedCellId ?? "unknown"}`);
+    return;
+  }
+  memory.bombState.defused = true;
   memory.phaseEvents.push(event);
 }
 

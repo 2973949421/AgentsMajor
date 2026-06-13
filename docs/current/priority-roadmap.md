@@ -11,6 +11,25 @@ Simulation First, Broadcast Second.
 
 当前主线是 HexGrid，不是旧 Node/Sector，也不是继续扩 Phase18。
 
+当前 Hex 对局质量打磨的核心口径是：
+
+```text
+商业攻防决定为什么打，CS 位置决定怎么打，硬条件决定谁赢。
+```
+
+也就是：
+
+```text
+每 round 有小主题。
+守方自证，攻方质疑。
+agent 行动承载自证 / 质疑。
+战斗裁判在交火处判断自证是否驳回质疑，或质疑是否成功。
+这个判断和 CS 位置证据共同形成击杀、压制、退让、控图。
+最终胜负仍只来自 hard condition。
+```
+
+因此 N38-N41 不能仅凭“新增字段、接了 UI、测试通过”证明完成。每个 N 都要尽量给出一个可抽样解释的 round 样本，说明它如何让商业攻防事实链更可信。
+
 ## 2. 已收口的主线状态
 
 ```text
@@ -21,7 +40,7 @@ Node/Sector 实验线：已退役并清理 active mode / runtime / Web progress 
 
 ## 3. 近期优先级
 
-### P0：N38，目标行动事实链修复
+### P0：N38，目标行动事实链修复（已完成第一版）
 
 目标是先修硬事实一致性，避免出现“事件显示下包成功，但 `bombState` 仍为未下包，最终又判 `timeout_no_plant`”的矛盾。
 
@@ -34,7 +53,16 @@ hard win condition
 
 这些字段必须一致。N38 不处理 KDA、request 压缩或 Web 美化。
 
-### P1：N39，LLM 调用成本与中文输出稳定
+当前结果：
+
+```text
+bomb_planted 事件只在 C4 carrier 真正站到合法包点时生成。
+bomb reducer 会拒绝未站到 objective cell 的下包事件。
+defuse reducer 会拒绝未站到已下包格的非法拆包。
+被敌方占住的包点不会生成虚假的 bomb_planted 成功事实。
+```
+
+### P1：N39，LLM 调用成本与中文输出稳定（下一步）
 
 目标是把 real provider 每 agent request 从约 37k-39k tokens 降到 15k-22k 左右，并让商业语义字段中文为主。
 

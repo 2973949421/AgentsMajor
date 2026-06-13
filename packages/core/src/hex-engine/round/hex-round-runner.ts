@@ -202,7 +202,7 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
       memory: memoryAfterMovement,
       events: combatEvents
     });
-    const objectiveEvents = acceptedActions.flatMap((action) => actionToObjectiveEvents(action, memoryAfterCombat));
+    const objectiveEvents = acceptedActions.flatMap((action) => actionToObjectiveEvents(action, memoryAfterCombat, asset));
     const actionResultEvents = acceptedActions.map(actionToActionResultEvent);
     const memoryEvents = [
       ...movementEvents,

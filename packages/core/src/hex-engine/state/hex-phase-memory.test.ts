@@ -175,10 +175,22 @@ describe("Hex phase memory", () => {
     const asset = loadOfficialDust2HexMap();
     const memory = initializeMemory(asset);
     const bombsiteCellId = findCellWithFlag(asset, "bombsite_a").cellId;
+    const plantReady: HexRoundMemory = {
+      ...memory,
+      agents: memory.agents.map((agent) =>
+        agent.agentId === "t_0"
+          ? {
+              ...agent,
+              currentCellId: bombsiteCellId,
+              currentPointIds: [...(asset.cells.find((cell) => cell.cellId === bombsiteCellId)?.pointIds ?? [])]
+            }
+          : agent
+      )
+    };
 
     const planted = advanceHexPhaseMemory({
       asset,
-      previousMemory: memory,
+      previousMemory: plantReady,
       nextPhaseId: "execute_or_retake",
       events: [
         {
@@ -188,9 +200,21 @@ describe("Hex phase memory", () => {
         }
       ]
     });
+    const defuseReady: HexRoundMemory = {
+      ...planted,
+      agents: planted.agents.map((agent) =>
+        agent.agentId === "ct_0"
+          ? {
+              ...agent,
+              currentCellId: bombsiteCellId,
+              currentPointIds: [...(asset.cells.find((cell) => cell.cellId === bombsiteCellId)?.pointIds ?? [])]
+            }
+          : agent
+      )
+    };
     const defused = advanceHexPhaseMemory({
       asset,
-      previousMemory: planted,
+      previousMemory: defuseReady,
       nextPhaseId: "post_plant_or_clutch",
       events: [
         {
@@ -278,12 +302,46 @@ describe("Hex phase memory", () => {
           type: "bomb_planted",
           agentId: "t_1",
           cellId: bombsiteCellId
+        },
+        {
+          type: "bomb_planted",
+          agentId: "t_0",
+          cellId: bombsiteCellId
         }
       ]
     });
 
     expect(result.bombState.planted).toBe(false);
-    expect(result.rejectedEvents.map((event) => event.reason)).toEqual(["invalid_bombsite", "agent_not_carrying_c4"]);
+    expect(result.rejectedEvents.map((event) => event.reason)).toEqual(["invalid_bombsite", "agent_not_carrying_c4", "agent_not_on_objective_cell"]);
+  });
+
+  it("rejects defuse events unless the defender is on the planted C4 cell", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeMemory(asset);
+    const bombsiteCellId = findCellWithFlag(asset, "bombsite_a").cellId;
+    const planted: HexRoundMemory = {
+      ...memory,
+      bombState: {
+        planted: true,
+        plantedCellId: bombsiteCellId,
+        defused: false
+      }
+    };
+
+    const result = advanceHexPhaseMemory({
+      asset,
+      previousMemory: planted,
+      nextPhaseId: "post_plant_or_clutch",
+      events: [
+        {
+          type: "bomb_defused",
+          agentId: "ct_0"
+        }
+      ]
+    });
+
+    expect(result.bombState.defused).toBe(false);
+    expect(result.rejectedEvents.at(-1)?.reason).toBe("invalid_bomb_defuse");
   });
 });
 

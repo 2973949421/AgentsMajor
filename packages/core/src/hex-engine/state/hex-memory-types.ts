@@ -188,6 +188,8 @@ export type HexMemoryRejectionReason =
   | "move_no_path"
   | "invalid_bombsite"
   | "agent_not_carrying_c4"
+  | "agent_not_on_objective_cell"
+  | "invalid_bomb_defuse"
   | "invalid_bomb_pickup";
 
 export interface HexRejectedPhaseMemoryEvent {

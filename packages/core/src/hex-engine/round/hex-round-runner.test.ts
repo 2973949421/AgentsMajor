@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { HexCell, HexMapAsset } from "@agent-major/shared";
 import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
 import type { HexCombatResolution } from "../combat/index.js";
+import { validateHexMoveBudget } from "../path/index.js";
 import type { HexRoundMemory } from "../state/index.js";
 import { describe, expect, it } from "vitest";
 
@@ -191,6 +192,50 @@ describe("Hex round runner", () => {
     expect(firstPhase?.memoryAfter.bombState.planted).toBe(true);
     expect(firstPhase?.memoryAfter.bombState.plantedCellId).toBe(bombsite.cellId);
   });
+
+  it("does not emit bomb_planted when the carrier did not reach the target bombsite", async () => {
+    const asset = loadOfficialDust2HexMap();
+    const bombsite = findCellWithFlag(asset, "bombsite_a");
+    const attackStart = findReachableSourceCell(asset, bombsite.cellId);
+    const trace = await runDust2HexRound({
+      roundId: "round_hex_fixture_blocked_plant",
+      roundNumber: 3,
+      attackTeamId: "team_t",
+      defenseTeamId: "team_ct",
+      activeAgents: createAgents().map((agent) => {
+        if (agent.agentId === "t_0") {
+          return { ...agent, carryingC4: true, startCellId: attackStart.cellId };
+        }
+        if (agent.agentId === "ct_0") {
+          return { ...agent, startCellId: bombsite.cellId };
+        }
+        return { ...agent, carryingC4: false };
+      }),
+      teamEconomyPlans: buildEconomyPlans(),
+      provider: (request) => ({
+        providerMode: "fixture",
+        modelId: "blocked_plant_fixture",
+        rawDraft: {
+          agentId: request.agent.agentId,
+          phaseId: request.phaseId,
+          currentCellId: request.agent.currentCellId,
+          targetCellId: request.agent.agentId === "t_0" ? bombsite.cellId : request.agent.currentCellId,
+          actionType: request.agent.agentId === "t_0" ? "plant_bomb" : "hold_position",
+          businessIntent: request.agent.agentId === "t_0"
+            ? "Attempt to plant the C4 on A, but the occupied site must not become a false planted fact."
+            : "Hold current position and preserve the setup."
+        }
+      }),
+      providerMode: "fixture",
+      maxLlmCallsPerPhase: 10
+    });
+
+    const firstPhase = trace.phases[0];
+    expect(firstPhase?.commandResult.actions.find((action) => action.agentId === "t_0")?.actionType).toBe("plant_bomb");
+    expect(firstPhase?.memoryEvents.some((event) => event.type === "bomb_planted")).toBe(false);
+    expect(firstPhase?.memoryAfter.bombState.planted).toBe(false);
+    expect(firstPhase?.memoryAfter.bombState.plantedCellId).toBeUndefined();
+  });
 });
 
 function expectNoDuplicateKilledCasualties(phases: Array<{ combatResolutions: HexCombatResolution[] }>): void {
@@ -264,6 +309,23 @@ function findCellWithFlag(asset: HexMapAsset, flag: HexCell["flags"][number]): H
   const cell = asset.cells.find((candidate) => candidate.playable && candidate.flags.includes(flag));
   if (!cell) {
     throw new Error(`Missing ${flag}`);
+  }
+  return cell;
+}
+
+function findReachableSourceCell(asset: HexMapAsset, targetCellId: string): HexCell {
+  const cell = asset.cells.find((candidate) =>
+    candidate.playable
+    && candidate.cellId !== targetCellId
+    && validateHexMoveBudget({
+      asset,
+      fromCellId: candidate.cellId,
+      toCellId: targetCellId,
+      apBudget: asset.apModel.baseApPerPhase
+    }).withinBudget
+  );
+  if (!cell) {
+    throw new Error(`Missing reachable source cell for ${targetCellId}`);
   }
   return cell;
 }
