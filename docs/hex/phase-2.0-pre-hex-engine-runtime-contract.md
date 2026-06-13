@@ -478,6 +478,58 @@ businessIntent 可以短，但不能缺失。
 
 最终胜负仍由 CS 硬条件裁定。
 
+#### 2.10.1 N35 Round Business Duel（回合级商业攻防）契约
+
+N35 起，Hex round（蜂巢回合）必须在 phase action（阶段行动）之前生成一次 `HexRoundBusinessDuel（回合级商业攻防）`。
+
+它不是每个 phase 临时生成的 `businessIntent`，也不是 combat（战斗）结果。它是本回合所有 agent action 承载商业攻防的上游事实。
+
+Dust2 第一版固定为一张地图 6 个小主题：
+
+1. 机会识别与高价值切口。
+2. 信息差与中路控制。
+3. 资源集中与关键位突破。
+4. 执行闭环与边界修补。
+5. 叙事误导与转点响应。
+6. 终局主张与反证压力。
+
+主题映射规则：
+
+- 上半场 round 1-6 依次使用主题 1-6。
+- 下半场 round 7-12 再次使用主题 1-6。
+- round 1 与 round 7 必须拥有相同 `subthemeId`，但攻守方互换。
+- round 6 与 round 12 必须拥有相同 `subthemeId`，但攻守方互换。
+- 加时暂不定义正式主题；round 13+ 必须记录 `overtimeUnsupported` 或等价 audit（审计），不能伪装成正式主题规则。
+
+`HexRoundBusinessDuel` 必须包含：
+
+- `subtheme`：当前小主题。
+- `halfIndex`：上半场或下半场。
+- `roundInHalf`：半场内第几回合。
+- `mirrorRoundNumber`：同主题换边对照回合。
+- `defenseProof`：守方自证。
+- `attackChallenge`：攻方质疑。
+- `agentAssignments`：每名 agent 的商业攻防职责。
+- `sourceAudit`：材料来源与生成方式。
+
+生成规则：
+
+- `defenseProof` 必须来自当前 round 的实际守方资产。
+- `attackChallenge` 必须来自当前 round 的实际攻方资产，并针对守方自证或失败模式提出质疑。
+- 队伍资产优先读取 `data/materials/processed/teams/<team-slug>/initial-proposal.json`。
+- agent 职责优先读取 `roleProfile.agentMajorResponsibilities`。
+- 所有 `teamId / agentId / proofId / challengeId / assignmentId` 必须由代码根据上下文生成，不允许 LLM 自造。
+- 缺少必填字段、未知 id 或明显中文编码损坏时，该 round business duel 必须 fail。
+
+LLM 边界：
+
+- LLM 只能输出行动草案。
+- LLM 可以在 `businessIntent` 中说明自己如何承载当前 `businessAssignment`。
+- LLM 不能改写 `defenseProof`、`attackChallenge`、`agentAssignments` 或小主题。
+- fallback 文本不能作为正向自证或质疑来源。
+
+N35 不改变 combat scoring（战斗评分）、KDA（击杀/死亡/助攻）、winner（胜负）或 economy（经济）结算。N36 才允许 combat resolver 消费 `HexRoundBusinessDuel` 做局部自证/质疑裁定。
+
 ### 2.11 LLM 调用粒度
 
 目标设计：
@@ -902,3 +954,28 @@ N31 收口补丁 E 后，以下字段成为 Web 验收事实链：
 - 合法下包/拆包被没有具体原因地吞掉。
 - 前端隐藏 fallback/rejected 来制造成功感。
 - 前端把局部 combat advantage 包装成 final winner。
+
+## 11. N36-N37 商业攻防裁判与审计补充
+
+N36 起，combat（战斗）不再只输出局部优劣和伤亡，还必须把 N35 的 round-level business duel（回合级商业攻防）转成可审计事实。
+
+每个 combat resolution（战斗裁定）必须稳定输出：
+
+- `businessVerdict`：
+  - `proof_rebutted_challenge`：守方自证驳回攻方质疑。
+  - `challenge_succeeded`：攻方质疑成功。
+  - `contested_no_business_resolution`：商业争夺未决。
+- `businessReasons`：只来自合法行动、回合小主题、自证/质疑和 agent assignment（选手职责）。
+- `csReasons`：只来自位置、路径、接触点、压制、补枪、经济证据等 CS 层事实。
+- `killerAgentId / targetAgentId / assisterAgentIds`：击杀、受害者和助攻归因。归因必须来自 combat trace，不允许由前端或 RoundReport 桥接层猜。
+
+fallback（降级）行动可以作为失败或风险审计，但不能作为正向商业证据。战斗局部优势不能写 final winner（最终胜负）；最终胜负仍只来自 hard win condition（硬胜负条件）。
+
+N37 起，真实 LLM 输出识别必须稳定：
+
+- 单元素 `actions[]` 可以规范化为单行动，并记录 `repaired_single_action_array`。
+- 多元素 `actions[]` 必须稳定拒绝，并记录 `multiple_actions_not_allowed`。
+- 可修复字段必须记录 repair reason（修复原因）。
+- `actionType / targetCellId / businessIntent` 仍是硬事实字段，不能为了通过而替模型补业务意图。
+- 明显中文编码损坏必须 fail，不能当作同义词容错。
+- request / response artifact 必须能在 Web 审计层追溯。

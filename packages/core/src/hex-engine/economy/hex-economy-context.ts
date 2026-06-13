@@ -24,6 +24,9 @@ export interface HexAgentEconomyContext {
   economyPosture: EconomyPosture;
   buyType: BuyType;
   loadoutPackage: LoadoutPackage;
+  tokenBankBefore: number;
+  tokenBankAfterDrop: number;
+  tokenBankAfterSpend: number;
   spend: number;
   outputBudget: number;
   dropSent: number;
@@ -222,6 +225,9 @@ function buildAgentContext(plan: TeamEconomyPlan, decision: AgentBuyDecision, si
     economyPosture: decision.economyPosture,
     buyType: decision.buyType,
     loadoutPackage: decision.loadoutPackage,
+    tokenBankBefore: decision.tokenBankBefore,
+    tokenBankAfterDrop: decision.tokenBankAfterDrop,
+    tokenBankAfterSpend: Math.max(0, decision.tokenBankAfterDrop - decision.spend),
     spend: decision.spend,
     outputBudget: decision.outputBudget,
     dropSent: decision.dropSent,

@@ -220,7 +220,35 @@
 }
 
 .playerDead {
-  opacity: 0.58;
+  border-color: rgba(234, 106, 106, 0.72);
+  opacity: 0.72;
+}
+
+.playerAlive {
+  border-color: rgba(92, 178, 130, 0.38);
+}
+
+.playerWounded {
+  border-color: rgba(229, 180, 92, 0.72);
+}
+
+.statusAlive {
+  color: #7ed8a2;
+}
+
+.statusWounded {
+  color: #e5b45c;
+}
+
+.statusDead {
+  color: #ea6a6a;
+}
+
+.roundKillStars {
+  margin-left: 5px;
+  color: #ffd166;
+  font-size: 11px;
+  letter-spacing: 0;
 }
 
 .playerHeader {
@@ -282,6 +310,11 @@
 
 .playerGrid span {
   overflow-wrap: anywhere;
+}
+
+.playerKdaValue {
+  color: #f4f8ff;
+  font-weight: 800;
 }
 
 .playerMeta,
@@ -1319,6 +1352,18 @@
   color: #a7dcbc;
   font-size: 11px;
   font-style: normal;
+}
+
+.playerHeaderBadges .statusAlive {
+  color: #7ed8a2;
+}
+
+.playerHeaderBadges .statusWounded {
+  color: #e5b45c;
+}
+
+.playerHeaderBadges .statusDead {
+  color: #ea6a6a;
 }
 
 .playerLocation {

@@ -63,11 +63,19 @@ apps/web/.next-dev-3001.err.log
 
 ## 5. 下一步候选
 
-文档治理完成后，N35 候选方向应在以下两类中选择：
+当前下一步不再是结构封板第二轮，而是 N38-N41 对局质量打磨。原因是 N35-N37 已经把商业攻防、战斗裁判、KDA 来源和 Web 审计骨架接入，但 real 小地图验收暴露出 objective fact chain（目标行动事实链）、LLM 成本、角色归因和商业审计可读性问题。
 
 ```text
-1. Hex 结构封板第二轮：继续拆 action / memory / combat / round runner 等大文件，降低维护噪声。
-2. Hex real LLM / Web 验收质量专项：围绕真实 provider、小地图验收、request / response artifact、fallback 可审计性继续收口。
+N38：修 C4 / 下包 / 拆包 / hard winner 一致性。
+N39：real LLM request 减半，并稳定中文语义输出。
+N40：角色感知 KDA、助攻、combat contact 收敛。
+N41：Web 商业攻防审计主线。
 ```
 
-不建议立刻进入完整 16 队赛事、新闻站、奖项站或公网部署。那些属于 backlog，需要等 Hex 主线事实链更稳定后再规划。
+结构封板第二轮顺延到 N41 之后重新评估。不建议立刻进入完整 16 队赛事、新闻站、奖项站或公网部署。那些属于 backlog，需要等 Hex 主线事实链更稳定后再规划。
+
+固定执行口径见：
+
+```text
+docs/hex/phase-2.0-pre-n38-n41-match-quality-plan.md
+```

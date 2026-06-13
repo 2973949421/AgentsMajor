@@ -328,6 +328,12 @@ export function HexMatchLabClient() {
 
   function handleConsolePointerDown(event: ReactPointerEvent<HTMLElement>) {
     const target = event.target as HTMLElement;
+    const dragHandle = target.closest("[data-console-drag-handle]");
+    if (dragHandle) {
+      event.preventDefault();
+      setConsoleDrag({ startX: event.clientX, startY: event.clientY, originX: consolePosition.x, originY: consolePosition.y });
+      return;
+    }
     if (target.closest("button, input, select, a")) return;
     setConsoleDrag({ startX: event.clientX, startY: event.clientY, originX: consolePosition.x, originY: consolePosition.y });
   }
@@ -429,6 +435,9 @@ export function HexMatchLabClient() {
       ) : (
         <aside className={styles.floatingConsole} style={{ left: consolePosition.x, top: consolePosition.y }} onPointerDown={handleConsolePointerDown}>
           <div className={styles.consoleHeader}>
+            <button type="button" className={styles.dragHandle} data-console-drag-handle="true" aria-label="拖动控制台">
+              拖动控制台
+            </button>
             <div>
               <h2>控制台</h2>
               <span>{busyLabel ?? progress?.runStatus.currentStep ?? "idle"}</span>

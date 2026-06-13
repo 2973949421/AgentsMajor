@@ -63,6 +63,30 @@ phase20pre-prompt-contract-v6
 
 新生成回合不再把短句式 `action` 作为主事实。历史 replay 中旧 `action` 只做只读降级展示。
 
+### 5.1 Hex N35 回合级商业攻防输入
+
+HexGrid N35 起，`agent_action` 可以收到 round-level（回合级）`businessDuel` 和当前 agent 的 `businessAssignment`。
+
+规则：
+
+- `businessDuel` 每 round 只生成一次。
+- Dust2 第一版一张地图固定 6 个小主题，上下半场复用同一组主题并攻防互换。
+- `agent_action` 只能说明自己的 CS 行动如何承载当前自证/质疑职责。
+- `agent_action` 不能新增、删除或改写 `defenseProof`、`attackChallenge`、`agentAssignments`、`subthemeId`、`teamId` 或 `agentId`。
+- 如果输出中包含这些回合级字段，代码只能记录为 ignored/forbidden field（忽略/禁止字段），不能写入事实层。
+- fallback 文本不能作为正向商业自证或质疑证据。
+
+### 5.2 Hex N37 行动草案稳定识别
+
+真实 LLM 的 `agent_action` 输出必须走稳定识别策略：
+
+- 单元素 `actions[]` 可以被规范化为一个行动，并记录 `repaired_single_action_array`。
+- 多元素 `actions[]` 不允许由代码任选其一，必须稳定拒绝并记录 `multiple_actions_not_allowed`。
+- `phaseId / currentCellId` 这类代码已知上下文字段可安全修复，但必须记录 repair reason。
+- `actionType / targetCellId / businessIntent` 仍严格校验；代码不能替模型补业务意图。
+- 输出出现明显中文编码损坏时直接 fail，不做同义词猜测。
+- 原始输出、规范化行动、修复字段、拒绝原因和 request / response artifact id 必须进入审计链。
+
 ## 6. Judge Scorecard v6
 
 `judge_verdict` 必须输出 `judgeScorecard`。评分标准由代码生成并写入输入中的 `rubricProfile`，LLM 只能消费，不能修改。

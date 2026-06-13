@@ -8,6 +8,7 @@ import type {
   MapGame,
   Match,
   Round,
+  RoundKillLedgerEntry,
   RoundKeyEvent,
   RoundReport,
   ScorePair,
@@ -44,6 +45,7 @@ export interface BuildHexRoundReportInput {
 export function buildHexRoundReport(input: BuildHexRoundReportInput): RoundReport {
   const mvpAgent = selectMvpAgent(input.winnerAgents, input.hexTrace);
   const agentOutputs = buildAgentOutputs(input.activeAgents, input.hexTrace);
+  const killLedger = buildKillLedger(input.hexTrace, agentOutputs);
   const keyEvents = buildKeyEvents({
     roundId: input.round.id,
     finalWinCondition: input.finalWinCondition,
@@ -100,6 +102,7 @@ export function buildHexRoundReport(input: BuildHexRoundReportInput): RoundRepor
     judgeResult,
     agentOutputs,
     keyEvents,
+    ...(killLedger.length > 0 ? { killLedger } : {}),
     economyDelta: input.economyDelta,
     tokenSubmission: {
       activeAgentIds: agentOutputs.map((output) => output.agentId),
@@ -125,6 +128,40 @@ export function buildHexRoundReport(input: BuildHexRoundReportInput): RoundRepor
     },
     createdAt: input.createdAt
   };
+}
+
+function buildKillLedger(trace: HexRoundTrace, agentOutputs: AgentOutput[]): RoundKillLedgerEntry[] {
+  const outputIdByAgentId = new Map(agentOutputs.map((output) => [output.agentId, output.id]));
+  const entries: RoundKillLedgerEntry[] = [];
+  for (const phase of trace.phases) {
+    for (const resolution of phase.combatResolutions) {
+      for (const casualty of resolution.casualties) {
+        if (casualty.result !== "killed" || !casualty.killerAgentId) {
+          continue;
+        }
+        const killer = resolution.participants.find((participant) => participant.agentId === casualty.killerAgentId);
+        if (!killer) {
+          continue;
+        }
+        entries.push({
+          id: `hex_kill_${trace.roundId}_${phase.phaseIndex}_${entries.length}`,
+          actorAgentId: casualty.killerAgentId,
+          actorTeamId: killer.teamId,
+          targetAgentId: casualty.targetAgentId,
+          targetTeamId: casualty.teamId,
+          zoneId: resolution.regionControlHint === "neutral"
+            ? phase.phaseId
+            : (resolution.regionControlHint === "attack" || resolution.regionControlHint === "defense"
+              ? resolution.contactId
+              : phase.phaseId),
+          atMs: phase.phaseIndex * 15000 + entries.length * 1000,
+          impact: `${resolution.businessVerdict}: ${casualty.reason}`,
+          sourceAgentOutputIds: [outputIdByAgentId.get(casualty.killerAgentId)].filter((value): value is string => Boolean(value))
+        });
+      }
+    }
+  }
+  return entries;
 }
 
 function buildAgentOutputs(agents: Agent[], trace: HexRoundTrace): AgentOutput[] {

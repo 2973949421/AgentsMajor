@@ -21,37 +21,68 @@ Node/Sector 实验线：已退役并清理 active mode / runtime / Web progress 
 
 ## 3. 近期优先级
 
-### P0：文档治理收口
+### P0：N38，目标行动事实链修复
 
-目标是让 `docs/README.md`、`docs/current/` 成为可信入口，避免后续 agent 被旧 Phase 1.x 或旧 Node/Sector 文档带偏。
-
-### P1：N35 候选一，Hex 结构封板第二轮
-
-建议拆分重点：
+目标是先修硬事实一致性，避免出现“事件显示下包成功，但 `bombState` 仍为未下包，最终又判 `timeout_no_plant`”的矛盾。
 
 ```text
-hex-agent-command-harness
-hex-agent-command-boundary
-hex-phase-memory
-hex-combat-resolver
-hex-round-runner
-server-hex-match-lab projection
+bomb_planted event
+bombState.planted / plantedCellId
+agent final cell
+hard win condition
 ```
 
-目标是降低 N20-N34 快速推进带来的文件体积和职责混杂，不调比赛规则。
+这些字段必须一致。N38 不处理 KDA、request 压缩或 Web 美化。
 
-### P2：N35 候选二，Hex real LLM / Web 验收质量专项
+### P1：N39，LLM 调用成本与中文输出稳定
 
-建议聚焦：
+目标是把 real provider 每 agent request 从约 37k-39k tokens 降到 15k-22k 左右，并让商业语义字段中文为主。
 
 ```text
-real provider request / response artifact 审计
-accepted / rejected / fallback 的 phase-agent 级展示
-小地图 maxRounds 验收模式
-provider error / external blocked 的产品化失败状态
+compact request
+round business duel 摘要复用
+当前 agent 必需上下文
+language_mismatch audit
+中文 businessIntent / riskRead / tacticalIntent
 ```
 
-目标是提高真实 LLM 验收稳定性，不让 LLM 写 winner、kills、economyDelta 或 DB fact。
+### P2：N40，角色感知 KDA 与 combat contact 收敛
+
+目标是让枪战归因更像真实 CS 队内分工，同时减少一回合 80-100 个 combat resolution 的噪声。
+
+```text
+AWPer / star rifler / entry 更容易形成击杀贡献
+IGL / support 更容易形成助攻或控制贡献
+contact builder 只保留关键接触
+assist 不再长期为 0
+KDA 仍只来自 combat trace
+```
+
+### P3：N41，商业攻防审计主线
+
+目标是让用户不用打开 raw JSON，也能审查商业文斗：
+
+```text
+本回合小主题
+守方自证
+攻方质疑
+agent 商业职责
+LLM 原始输出与规范化行动
+战斗商业裁判
+CS 证据
+hard winner
+```
+
+### P4：后续候选，Hex 结构封板第二轮
+
+只有在 N38-N41 对局质量打磨完成后，才重新评估结构封板第二轮。结构封板不得抢在 N38-N41 之前，否则会把当前对局事实链问题封进新结构里。
+
+详见：
+
+```text
+docs/hex/phase-2.0-pre-n38-n41-match-quality-plan.md
+docs/hex/phase-2.0-pre-n35-n37-business-duel-quality-plan.md
+```
 
 ## 4. 中期方向
 

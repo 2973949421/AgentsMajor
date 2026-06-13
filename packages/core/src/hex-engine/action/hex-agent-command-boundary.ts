@@ -1,4 +1,5 @@
 import type { HexCell, HexMapAsset } from "@agent-major/shared";
+import { getHexAgentBusinessAssignment, type HexAgentBusinessAssignment, type HexRoundBusinessDuel } from "../business/index.js";
 import { getHexAgentEconomyContext, type HexRoundEconomyContext } from "../economy/index.js";
 import { buildHexPathGraph, calculateHexApCost } from "../path/index.js";
 import { buildHexAgentMemoryContext, type HexAgentMemoryPromptContext, type HexPhaseId, type HexRoundMemory, type HexSide } from "../state/index.js";
@@ -78,6 +79,8 @@ export interface HexAgentCommandRequest {
   reachableCells: HexReachableCellSummary[];
   phaseObjective: HexAgentPhaseObjective;
   tacticalPlan?: HexRoundTacticalPlan;
+  businessDuel?: HexAgentBusinessDuelPromptContext;
+  businessAssignment?: HexAgentBusinessAssignment;
   objectiveHints: string[];
   occupiedCellIds: string[];
   reservedCellIds: string[];
@@ -88,6 +91,28 @@ export interface HexAgentCommandRequest {
   constraints: string[];
   actionResultSummary?: string;
   businessExecutionSummary?: string;
+}
+
+export interface HexAgentBusinessDuelPromptContext {
+  roundNumber: number;
+  halfIndex: 0 | 1;
+  roundInHalf: number;
+  mirrorRoundNumber: number;
+  subthemeId: string;
+  subthemeTitle: string;
+  coreQuestion: string;
+  defenseProof: {
+    proofId: string;
+    teamId: string;
+    thesis: string;
+    claims: string[];
+  };
+  attackChallenge: {
+    challengeId: string;
+    teamId: string;
+    thesis: string;
+    challengePoints: string[];
+  };
 }
 
 export interface HexAgentEconomyPromptContext {
@@ -166,6 +191,7 @@ export function buildHexAgentCommandRequest(input: {
   occupiedCellIds?: readonly string[];
   reservedCellIds?: readonly string[];
   tacticalPlan?: HexRoundTacticalPlan;
+  businessDuel?: HexRoundBusinessDuel;
 }): HexAgentCommandRequest {
   const context = buildHexAgentMemoryContext({
     memory: input.memory,
@@ -190,6 +216,12 @@ export function buildHexAgentCommandRequest(input: {
         agentId: input.agentId
       })
     : undefined;
+  const businessAssignment = input.businessDuel
+    ? getHexAgentBusinessAssignment({
+        businessDuel: input.businessDuel,
+        agentId: input.agentId
+      })
+    : undefined;
   const request: HexAgentCommandRequest = {
     schemaVersion: 1,
     phaseId: input.memory.phaseId,
@@ -205,6 +237,8 @@ export function buildHexAgentCommandRequest(input: {
     reachableCells,
     phaseObjective,
     ...(input.tacticalPlan ? { tacticalPlan: input.tacticalPlan } : {}),
+    ...(input.businessDuel ? { businessDuel: summarizeBusinessDuelForRequest(input.businessDuel) } : {}),
+    ...(businessAssignment ? { businessAssignment } : {}),
     objectiveHints,
     occupiedCellIds: [...(input.occupiedCellIds ?? [])],
     reservedCellIds: [...(input.reservedCellIds ?? [])],
@@ -221,6 +255,7 @@ export function buildHexAgentCommandRequest(input: {
       "currentCellId must match the agent currentCellId.",
       "businessIntent is required and must explain the business-plan purpose of the CS action.",
       "businessIntent must connect the phaseObjective, role responsibility, and selected target.",
+      "When businessAssignment is present, businessIntent must carry that assignment; do not rewrite proof, challenge, assignment, team ids, or agent ids.",
       "lastSeenEnemies are historical hints, not current enemy truth.",
       "The code validates movement, AP, C4 legality, and final game facts."
     ]
@@ -258,6 +293,30 @@ export function buildHexAgentCommandRequest(input: {
     request.businessExecutionSummary = context.businessExecutionSummary;
   }
   return request;
+}
+
+function summarizeBusinessDuelForRequest(duel: HexRoundBusinessDuel): HexAgentBusinessDuelPromptContext {
+  return {
+    roundNumber: duel.roundNumber,
+    halfIndex: duel.halfIndex,
+    roundInHalf: duel.roundInHalf,
+    mirrorRoundNumber: duel.mirrorRoundNumber,
+    subthemeId: duel.subtheme.subthemeId,
+    subthemeTitle: duel.subtheme.title,
+    coreQuestion: duel.subtheme.coreQuestion,
+    defenseProof: {
+      proofId: duel.defenseProof.proofId,
+      teamId: duel.defenseProof.teamId,
+      thesis: duel.defenseProof.thesis,
+      claims: [...duel.defenseProof.claims]
+    },
+    attackChallenge: {
+      challengeId: duel.attackChallenge.challengeId,
+      teamId: duel.attackChallenge.teamId,
+      thesis: duel.attackChallenge.thesis,
+      challengePoints: [...duel.attackChallenge.challengePoints]
+    }
+  };
 }
 
 function buildPhaseObjective(phaseId: HexPhaseId, side: HexSide): HexAgentPhaseObjective {
@@ -405,15 +464,17 @@ function buildRouteCandidateLabel(cell: HexReachableCellSummary): string {
 }
 
 export function normalizeHexAgentActionDraft(input: NormalizeHexAgentActionDraftInput): NormalizeHexAgentActionDraftResult {
-  const rawDraft = extractDraftObject(input.rawDraft);
-  const errors: string[] = [];
+  const extracted = extractDraftObject(input.rawDraft);
+  const rawDraft = extracted.rawDraft;
+  const errors: string[] = [...extracted.errors];
   const ignoredFields: string[] = [];
+  const repairedFields: string[] = [...extracted.repairedFields];
 
   if (!isRecord(rawDraft)) {
     return {
-      errors: ["draft:not_object"],
+      errors: errors.length > 0 ? errors : ["draft:not_object"],
       ignoredFields,
-      repairedFields: []
+      repairedFields
     };
   }
 
@@ -423,7 +484,6 @@ export function normalizeHexAgentActionDraft(input: NormalizeHexAgentActionDraft
     }
   }
 
-  const repairedFields: string[] = [];
   const agentId = input.request.agent.agentId;
   if (readString(rawDraft.agentId) !== input.request.agent.agentId) {
     repairedFields.push("repaired_agentId");
@@ -451,6 +511,12 @@ export function normalizeHexAgentActionDraft(input: NormalizeHexAgentActionDraft
   const businessIntent = readString(rawDraft.businessIntent);
   if (!businessIntent) {
     errors.push("draft:missing_businessIntent");
+  }
+  if (containsGarbledText(businessIntent) || containsGarbledText(readOptionalString(rawDraft.tacticalIntent) ?? "")) {
+    errors.push("draft:garbled_text");
+  }
+  if (readStringArray(rawDraft.riskNotes).some(containsGarbledText)) {
+    errors.push("draft:garbled_text");
   }
 
   if (errors.length > 0) {
@@ -567,17 +633,58 @@ function summarizeCell(cell: HexCell, apCost: number): HexReachableCellSummary {
   return summary;
 }
 
-function extractDraftObject(rawDraft: unknown): unknown {
+function extractDraftObject(rawDraft: unknown): {
+  rawDraft: unknown;
+  errors: string[];
+  repairedFields: string[];
+} {
   if (!isRecord(rawDraft)) {
-    return rawDraft;
+    return {
+      rawDraft,
+      errors: [],
+      repairedFields: []
+    };
   }
   if (isRecord(rawDraft.draft)) {
-    return rawDraft.draft;
+    return {
+      rawDraft: rawDraft.draft,
+      errors: [],
+      repairedFields: []
+    };
+  }
+  if (Array.isArray(rawDraft.actions)) {
+    if (rawDraft.actions.length === 1 && isRecord(rawDraft.actions[0])) {
+      return {
+        rawDraft: rawDraft.actions[0],
+        errors: [],
+        repairedFields: ["repaired_single_action_array"]
+      };
+    }
+    return {
+      rawDraft: undefined,
+      errors: rawDraft.actions.length > 1 ? ["draft:multiple_actions_not_allowed"] : ["draft:actions_empty"],
+      repairedFields: []
+    };
   }
   if (Array.isArray(rawDraft.drafts)) {
-    return rawDraft.drafts[0];
+    if (rawDraft.drafts.length === 1 && isRecord(rawDraft.drafts[0])) {
+      return {
+        rawDraft: rawDraft.drafts[0],
+        errors: [],
+        repairedFields: ["repaired_single_draft_array"]
+      };
+    }
+    return {
+      rawDraft: undefined,
+      errors: rawDraft.drafts.length > 1 ? ["draft:multiple_actions_not_allowed"] : ["draft:drafts_empty"],
+      repairedFields: []
+    };
   }
-  return rawDraft;
+  return {
+    rawDraft,
+    errors: [],
+    repairedFields: []
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -586,6 +693,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function readString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function containsGarbledText(value: string): boolean {
+  return value.includes("\uFFFD") || /Ã.|Â.|â€|é�|�/.test(value);
 }
 
 function readOptionalString(value: unknown): string | undefined {

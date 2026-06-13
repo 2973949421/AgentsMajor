@@ -2,6 +2,7 @@ import { roundReportSchema, type Agent, type MapGame, type Match, type Round, ty
 import { describe, expect, it } from "vitest";
 
 import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
+import { buildFixtureHexRoundBusinessDuel } from "../business/index.js";
 import type { HexRoundTrace } from "../round/index.js";
 import { buildHexRoundReport } from "./hex-round-report-bridge.js";
 
@@ -193,6 +194,14 @@ function minimalTrace(agentA: Agent, attackTeamId: string, defenseTeamId: string
     mapSlug: "dust2",
     attackTeamId,
     defenseTeamId,
+    businessDuel: buildFixtureHexRoundBusinessDuel({
+      roundNumber: 1,
+      attackTeamId,
+      defenseTeamId,
+      agents: [
+        { agentId: agentA.id, teamId: agentA.teamId, side: "attack" }
+      ]
+    }),
     economyContext: { teams: [], agents: [], warnings: [] },
     phases: [
       {
@@ -263,7 +272,9 @@ function minimalTrace(agentA: Agent, attackTeamId: string, defenseTeamId: string
       totalLlmCallsAttempted: 1,
       fallbackCount: 0,
       combatResolutionCount: 0,
-      rejectedEventCount: 0
+      rejectedEventCount: 0,
+      roundStrategySeed: "fixture_round_1_seed",
+      strategyVariant: "a_short_split / site_anchor"
     }
   };
 }

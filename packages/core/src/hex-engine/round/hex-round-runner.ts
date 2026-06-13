@@ -8,6 +8,10 @@ import {
   type HexRoundEconomyContext
 } from "../economy/index.js";
 import {
+  buildFixtureHexRoundBusinessDuel,
+  type HexRoundBusinessDuel
+} from "../business/index.js";
+import {
   buildHexCombatContacts,
   materializeHexCombatMemoryEvents,
   resolveHexCombat,
@@ -70,6 +74,7 @@ export interface RunDust2HexRoundInput {
     mapGameId?: string;
   };
   progressSink?: HexAgentCommandProgressSink;
+  businessDuel?: HexRoundBusinessDuel;
   env?: Record<string, string | undefined>;
 }
 
@@ -93,6 +98,7 @@ export interface HexRoundTrace {
   mapSlug: "dust2";
   attackTeamId: string;
   defenseTeamId: string;
+  businessDuel: HexRoundBusinessDuel;
   economyContext: HexRoundEconomyContext;
   phases: HexRoundPhaseTrace[];
   finalWinCondition: HexWinConditionResult;
@@ -103,6 +109,8 @@ export interface HexRoundTrace {
     fallbackCount: number;
     combatResolutionCount: number;
     rejectedEventCount: number;
+    roundStrategySeed: string;
+    strategyVariant: string;
   };
 }
 
@@ -125,6 +133,12 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
   const economyContext = buildHexRoundEconomyContext({
     teamEconomyPlans: input.teamEconomyPlans,
     memory
+  });
+  const businessDuel = input.businessDuel ?? buildFixtureHexRoundBusinessDuel({
+    roundNumber: input.roundNumber,
+    attackTeamId: input.attackTeamId,
+    defenseTeamId: input.defenseTeamId,
+    agents: input.activeAgents
   });
   const tacticalPlan = buildRoundTacticalPlan(input.roundNumber);
   const phases: HexRoundPhaseTrace[] = [];
@@ -156,6 +170,7 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
         : {}),
       ...(input.progressSink ? { progressSink: input.progressSink } : {}),
       tacticalPlan,
+      businessDuel,
       callIdPrefix: `hex_${input.roundId}_${phaseIndex}`
     });
     const acceptedActions = commandResult.acceptedActions;
@@ -177,7 +192,8 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
         memory: memoryAfterMovement,
         contact,
         actions: acceptedActions,
-        economyContext
+        economyContext,
+        businessDuel
       }))
     });
     const combatEvents = combatResolutions.flatMap((resolution) => resolution.memoryEvents);
@@ -256,6 +272,7 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
     mapSlug: "dust2",
     attackTeamId: input.attackTeamId,
     defenseTeamId: input.defenseTeamId,
+    businessDuel,
     economyContext,
     phases,
     finalWinCondition,
@@ -265,7 +282,9 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
       totalLlmCallsAttempted: phases.reduce((sum, phase) => sum + phase.commandResult.totalCallsAttempted, 0),
       fallbackCount: phases.reduce((sum, phase) => sum + phase.commandResult.fallbackCount, 0),
       combatResolutionCount: phases.reduce((sum, phase) => sum + phase.combatResolutions.length, 0),
-      rejectedEventCount: phases.reduce((sum, phase) => sum + phase.memoryAfter.rejectedEvents.length, 0)
+      rejectedEventCount: phases.reduce((sum, phase) => sum + phase.memoryAfter.rejectedEvents.length, 0),
+      roundStrategySeed: buildRoundStrategySeed(input.roundId, input.roundNumber, tacticalPlan.attackVariant, businessDuel.subtheme.subthemeId),
+      strategyVariant: `${tacticalPlan.attackVariant} / ${tacticalPlan.defenseVariant}`
     }
   };
 }
@@ -397,6 +416,10 @@ export function buildRoundTacticalPlan(roundNumber: number): HexRoundTacticalPla
   ];
   const selected = variants[Math.abs(roundNumber - 1) % variants.length]!;
   return { ...selected, roundNumber };
+}
+
+function buildRoundStrategySeed(roundId: string, roundNumber: number, attackVariant: string, subthemeId: string): string {
+  return `hex_strategy:${roundId}:${roundNumber}:${attackVariant}:${subthemeId}`;
 }
 
 export function dedupeHexPhaseCombatResolutions(input: {

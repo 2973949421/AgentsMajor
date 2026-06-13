@@ -12,7 +12,7 @@
 - 代码负责地图、路径、AP（行动点数）、经济、生命状态、C4 状态、combat（战斗裁定）和 final winner（最终胜负）。
 - 旧 Node/Sector 不再扩展；N34 起不再暴露可执行入口，N34b 起旧 runtime 文件物理删除，N34c 起旧实验兼容层、progress/parser/UI 分支和 archive node-sector 资产从 active 口径移除。
 
-本文档当前记录 N20-N34c 的 HexGrid 收口结果；下一步 N35 需基于当前状态另行规划。
+本文档当前记录 N20-N34c 的 HexGrid 收口结果，并追加 N35 回合级商业攻防第一版契约。N35 只建立 round-level business duel（回合级商业攻防）输入事实，不改战斗裁判、KDA 或 Web 展示。
 
 ## 1. 已完成阶段
 
@@ -35,6 +35,7 @@
 | N34 | 旧 Node/Sector 删除收口 | 完成保守退役 | Node Lab/API/CLI retired |
 | N34b | 旧 Node/Sector 物理清理 | 完成安全清理 | `node-engine` 删除，Node/Sector materials archive，兼容 parser 保留 |
 | N34c | Node 实验兼容层削减 | 完成 | `phase20_node_*` active mode / progress / UI 分支删除，archive node-sector assets 删除 |
+| N35 | Hex Round Business Duel（回合级商业攻防） | 第一版实施中 | 六主题、上下半场复用、defenseProof / attackChallenge、agentAssignments |
 
 ## 2. 最新阶段路线
 
@@ -46,8 +47,11 @@
 4. N34：旧 Node/Sector 删除收口。（已完成可执行入口退役）
 5. N34b：旧 Node/Sector 物理清理。（已完成安全清理）
 6. N34c：Node 实验兼容层削减。（已完成 active 兼容残留清理）
+7. N35：Hex Round Business Duel（回合级商业攻防）。（只建立输入事实链）
+8. N36：Combat Business Adjudication（战斗商业裁判）。（后续）
+9. N37：Real LLM Quality and Audit（真实大语言模型质量与审计）。（后续）
 
-这里的顺序很重要：先让用户能在 Web 人工看懂完整对局，再做结构拆分；先让真实 LLM 调用在 Web 可审计，再删除旧实验层。
+这里的顺序很重要：N35 先把商业攻防从 phase 级 `businessIntent` 提升为 round 级自证/质疑；N36 再让 combat resolver 消费它；N37 再处理真实 LLM 输出稳定和 Web 抽样审计。
 
 ## 3. N31 收口补丁：Hex Web 验收台重做版
 
@@ -419,7 +423,97 @@ N34c 兼容层削减：
 - 旧 RoundReport 读取兼容。
 - Phase18 replay / live replay 播放层。
 
-## 7. 总体验收原则
+## 7. N35：Hex Round Business Duel（回合级商业攻防）
+
+N35 第一版只建立商业攻防输入事实链，不改 combat（战斗）、KDA（击杀/死亡/助攻）、winner（胜负）或 Web 主界面。
+
+核心规则：
+
+- Dust2 一张地图固定 6 个商业小主题。
+- 上半场 round 1-6 依次使用主题 1-6。
+- 下半场 round 7-12 再次使用主题 1-6，并形成攻防互换对照。
+- round 1 与 round 7 必须同 `subthemeId`，但 attack/defense team 互换。
+- 加时暂不定义正式主题，round 13+ 必须写入 unsupported audit。
+
+每个 round 生成一次 `HexRoundBusinessDuel`：
+
+- `subtheme`：当前小主题。
+- `halfIndex / roundInHalf / mirrorRoundNumber`：半场与对照回合。
+- `defenseProof`：当前守方自证。
+- `attackChallenge`：当前攻方质疑。
+- `agentAssignments`：10 名 agent 的职责分配。
+- `sourceAudit`：材料路径、fixture fallback、加时未定义等审计。
+
+材料来源：
+
+- 队伍资产读取 `data/materials/processed/teams/<team-slug>/initial-proposal.json`。
+- agent 职责读取 `roleProfile.agentMajorResponsibilities`。
+- 缺材料、缺必填字段、未知 id 或中文编码损坏时必须 fail。
+
+LLM 边界：
+
+- phase action request 可以包含 compact business duel 和当前 agent assignment。
+- LLM 只能写行动草案和 `businessIntent`。
+- LLM 不能改写 proof、challenge、assignment、小主题或 id。
+- fallback 文本不能成为正向商业自证/质疑证据。
+
+## 8. N36-N37：商业攻防裁判事实化与真实 LLM 审计
+
+N36 承接 N35 的 `HexRoundBusinessDuel`，把商业攻防输入推进到 combat fact（战斗事实）：
+
+- `resolveHexCombat()` 接收 round business context（回合商业上下文）。
+- 局部战斗输出 `businessVerdict / businessReasons / csReasons`。
+- 商业证据只来自当前小主题、自证/质疑、选手职责和合法行动；fallback 文本不能加正向商业分。
+- 击杀归因写入 `killerAgentId / targetAgentId / assisterAgentIds`。
+- Web KDA 和 RoundReport killLedger 只消费 combat trace，不再按 participant 顺序推断。
+- hard winner 仍只来自 win condition，不来自 combat verdict。
+
+N37 收口真实 LLM 输出稳定性和 Web 审计可读性：
+
+- 单元素 `actions[]` 稳定修复，多元素 `actions[]` 稳定拒绝。
+- 所有修复进入 `repairedFields` audit。
+- 明显中文编码损坏直接失败。
+- round trace audit 增加 `roundStrategySeed / strategyVariant`，用于审计路线提示变化，不直接决定胜负或击杀。
+- `/hex-lab/match` 审计层展示 round 小主题、守方自证、攻方质疑、LLM 原文/规范化行动、商业裁判、CS 证据和硬胜负。
+- 选手栏 KDA 作为核心战绩高亮；经济格式统一为 `当前经济 /（本局花费）`。
+
+N36-N37 不调整 AP 汇率、经济参数、combat 总权重原则或 hard winner 原则。
+
+## 9. N38-N41：对局质量打磨固定顺序
+
+N38-N41 是 N35-N37 后的必经质量打磨链路，不得被结构封板或新功能抢跑。详细计划见：
+
+```text
+docs/hex/phase-2.0-pre-n38-n41-match-quality-plan.md
+```
+
+固定顺序：
+
+1. N38：先修 objective fact chain（目标行动事实链）。
+   - `bomb_planted`、agent final cell、`bombState.plantedCellId`、hard winner 必须一致。
+   - 如果最终 `bombState.planted=true`，不得判 `timeout_no_plant`。
+   - `move -> plant_bomb` repair 必须收窄。
+2. N39：再修 real LLM 成本和中文输出。
+   - request token 目标下降 40%-50%。
+   - 语义字段中文为主。
+   - 英文语义输出进入 `language_mismatch` audit。
+3. N40：再修 KDA、角色分工和 combat contact 噪声。
+   - 枪男更容易形成击杀贡献。
+   - IGL/support 更容易形成助攻或控制贡献。
+   - contact builder 不再生成 5v5 全互联噪声。
+4. N41：最后修 Web 商业攻防审计主线。
+   - Web 直接展示小主题、自证、质疑、agent 职责、LLM 原文、规范化行动、商业裁判、CS 证据和 hard winner。
+   - Raw JSON 只能作为折叠审计，不是主要验收入口。
+
+禁止偏移：
+
+- 不在 N38 顺手调 KDA。
+- 不在 N39 顺手改 combat 裁判。
+- 不在 N40 顺手改 hard winner。
+- 不在 N41 让前端补事实。
+- 不在 N38-N41 恢复 Node/Sector 或扩完整赛事。
+
+## 10. 总体验收原则
 
 后续每个 N 都必须满足：
 

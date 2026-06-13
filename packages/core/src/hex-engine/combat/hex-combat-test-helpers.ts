@@ -56,7 +56,8 @@ export function buildCombatAction(input: {
     businessIntent: input.businessIntent ?? `${agent.agentId} keeps a valid business intent for combat testing.`,
     riskNotes: [],
     valid: input.valid ?? true,
-    validationErrors: input.valid === false ? ["missing_business_intent"] : []
+    validationErrors: input.valid === false ? ["missing_business_intent"] : [],
+    ...(input.valid === false ? { fallbackReason: "test_fallback_action" } : {})
   };
 }
 

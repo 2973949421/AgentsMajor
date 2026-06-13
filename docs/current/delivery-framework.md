@@ -98,19 +98,23 @@ docs/hex/phase-2.0-pre-hex-engine-reset-charter.md
 
 ## 8. 下一步选择规则
 
-N35 不应从旧 Phase 1.x 文档推导，而应从以下事实选择：
+N38-N41 不应从旧 Phase 1.x 文档推导，也不应被旧结构封板候选带偏，而应从以下事实选择：
 
 ```text
 HexGrid 已可跑 Dust2 map + Web 验收。
 旧 Node/Sector 已退役清理。
 Phase18 replay/live replay 保留兼容。
-N20-N34 快速推进留下结构债。
-real LLM / Web 验收仍有质量专项空间。
+N35-N37 已接入商业攻防、战斗商业裁定、KDA 事实来源和 Web 审计骨架。
+real 小地图暴露出下包事实链、LLM 成本、KDA 归因和商业攻防可读性问题。
 ```
 
-优先候选：
+固定顺序：
 
 ```text
-N35A：Hex 结构封板第二轮。
-N35B：Hex real LLM / Web 验收质量专项。
+N38：Objective Fact Chain Repair（目标行动事实链修复）。
+N39：LLM Cost and Chinese Output Stabilization（调用成本与中文输出稳定）。
+N40：Role-aware Combat Attribution（角色感知战斗归因）。
+N41：Business Duel Review UX（商业攻防审计体验）。
 ```
+
+N41 完成后再评估结构封板第二轮。结构封板不得在 N38-N41 之前抢跑。

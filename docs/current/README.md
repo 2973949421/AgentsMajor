@@ -16,12 +16,13 @@ docs/current/module-map.md
 ```text
 docs/hex/phase-2.0-pre-hex-engine-implementation-plan.md
 docs/hex/phase-2.0-pre-hex-engine-runtime-contract.md
+docs/hex/phase-2.0-pre-n38-n41-match-quality-plan.md
 docs/hex/phase-2.0-pre-hex-engine-reset-charter.md
 docs/hex/phase-2.0-pre-combat-realism-freeze.md
 docs/hex/phase-2.0-pre-llm-field-stability-addendum.md
 ```
 
-这些文档定义当前 HexGrid route、runtime contract、Web 验收、旧 Node/Sector 清理和已冻结的真实性问题。
+这些文档定义当前 HexGrid route、runtime contract、Web 验收、旧 Node/Sector 清理、N38-N41 对局质量打磨和已冻结的真实性问题。
 
 ## 3. Phase 2.0-pre 横向契约
 

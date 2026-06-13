@@ -57,10 +57,23 @@ export function HexMatchAuditDrawer(props: HexMatchAuditDrawerProps) {
 function LlmAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; phase: HexMatchLabPhaseSummary | undefined }) {
   const audit = props.phase?.llmAudit ?? props.trace?.audit;
   if (!audit) return <p className={styles.emptyInline}>暂无 LLM audit。</p>;
+  const duel = props.trace?.businessDuel;
   return (
     <div className={styles.auditStack}>
+      {duel ? (
+        <article className={styles.auditCard}>
+          <h3>{duel.subthemeTitle}</h3>
+          <p>{duel.coreQuestion}</p>
+          <p>守方自证: {duel.defenseProof.thesis}</p>
+          <p>攻方质疑: {duel.attackChallenge.thesis}</p>
+          <p>自证证据: {duel.defenseProof.claims.join("; ") || "无"}</p>
+          <p>质疑点: {duel.attackChallenge.challengePoints.join("; ") || "无"}</p>
+        </article>
+      ) : null}
       <MetricLine label="provider" value={audit.providerMode ?? "unknown"} />
       <MetricLine label="model" value={audit.modelId ?? "未记录"} />
+      <MetricLine label="strategy variant" value={audit.strategyVariant ?? "未记录"} />
+      <MetricLine label="strategy seed" value={audit.roundStrategySeed ?? "未记录"} />
       <MetricLine label="expected / attempted" value={`${audit.expectedCalls} / ${audit.totalLlmCallsAttempted}`} />
       <MetricLine label="accepted / rejected / fallback" value={`${audit.acceptedDrafts} / ${audit.rejectedDrafts} / ${audit.fallbackCount}`} />
       <MetricLine label="request artifacts" value={audit.requestArtifactIds.join(", ") || "当前 trace 未记录"} />
@@ -83,8 +96,14 @@ function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
         <article key={combat.contactId} className={styles.auditCard}>
           <h3>{combat.contactId}</h3>
           <p>{combat.advantage ?? "unknown"} / {combat.verdict ?? "no verdict"}</p>
+          <p>商业裁定: {combat.businessVerdict ?? "未记录"}</p>
           <p>participants: {combat.participants.join(", ")}</p>
           <p>casualties: {combat.casualties.join(", ") || "none"}</p>
+          <p>
+            kill attribution: {combat.killAttributions.map((item) =>
+              `${item.killerAgentId ?? "unassigned"} -> ${item.targetAgentId}${item.assisterAgentIds.length > 0 ? ` (+${item.assisterAgentIds.join(",")})` : ""}`
+            ).join("; ") || "none"}
+          </p>
           <p>suppression: {combat.suppressions.join(", ") || "none"}</p>
           <p>
             site pressure: {combat.sitePressure ? "yes" : "no"};
@@ -92,6 +111,8 @@ function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
             trade: {combat.tradeOpportunity ? "yes" : "no"}
           </p>
           <p>business A/D {combat.businessScoreAttack ?? 0}/{combat.businessScoreDefense ?? 0}; CS A/D {combat.csScoreAttack ?? 0}/{combat.csScoreDefense ?? 0}</p>
+          <p>business reasons: {combat.businessReasons.join("; ") || "无"}</p>
+          <p>CS reasons: {combat.csReasons.join("; ") || "无"}</p>
           <p>economy evidence: {combat.economyEvidenceApplied ? "applied" : "not applied"}; variance: {combat.varianceApplied ? "applied" : "off"}</p>
         </article>
       ))}

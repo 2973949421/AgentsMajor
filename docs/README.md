@@ -6,9 +6,9 @@
 
 ```text
 当前主线：HexGrid（蜂巢格）Phase 2.0-pre 路线。
-当前进度：N20-N34c 已完成，旧 Node/Sector 实验线已退役并清理 active 入口。
+当前进度：N20-N37 已进入商业攻防与 real LLM 审计质量收口，旧 Node/Sector 实验线已退役并清理 active 入口。
 保留兼容线：Phase18 replay / live replay 仍保留，不属于旧 Node/Sector runtime。
-下一步：文档治理完成后，再在 N35 选择 Hex 结构封板第二轮或 Hex real LLM / Web 验收质量专项。
+下一步：N38-N41 对局质量打磨，先修 objective fact chain（目标行动事实链），再修调用成本、KDA 归因和商业攻防审计。
 ```
 
 ## 推荐阅读顺序
@@ -18,7 +18,8 @@
 2. docs/current/current-state.md
 3. docs/hex/phase-2.0-pre-hex-engine-implementation-plan.md
 4. docs/hex/phase-2.0-pre-hex-engine-runtime-contract.md
-5. 按任务阅读 contracts、backlog 或 archive
+5. docs/hex/phase-2.0-pre-n38-n41-match-quality-plan.md
+6. 按任务阅读 contracts、backlog 或 archive
 ```
 
 ## 文档分层
@@ -61,6 +62,7 @@ docs/contracts/broadcast-viewer/
 ```text
 docs/hex/phase-2.0-pre-hex-engine-implementation-plan.md
 docs/hex/phase-2.0-pre-hex-engine-runtime-contract.md
+docs/hex/phase-2.0-pre-n38-n41-match-quality-plan.md
 docs/hex/phase-2.0-pre-hex-engine-reset-charter.md
 docs/hex/phase-2.0-pre-*.md
 ```

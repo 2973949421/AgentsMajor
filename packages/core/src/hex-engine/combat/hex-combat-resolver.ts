@@ -1,11 +1,13 @@
 import type { HexMapAsset } from "@agent-major/shared";
 import type { HexValidatedAgentAction } from "../action/index.js";
+import type { HexRoundBusinessDuel } from "../business/index.js";
 import { summarizeHexEconomyEvidence, type HexEconomyCombatEvidence, type HexRoundEconomyContext } from "../economy/index.js";
 import type { HexRoundMemory, HexSide } from "../state/index.js";
 import { buildHexCombatCasualties, buildHexCombatSuppressions } from "./hex-combat-casualties.js";
 import { materializeHexCombatMemoryEvents } from "./hex-combat-events.js";
 import type {
   HexCombatAudit,
+  HexCombatBusinessVerdict,
   HexCombatCasualty,
   HexCombatContact,
   HexCombatControlHint,
@@ -26,6 +28,7 @@ export interface ResolveHexCombatInput {
   contact: HexCombatContact;
   actions: HexValidatedAgentAction[];
   economyContext?: HexRoundEconomyContext;
+  businessDuel?: HexRoundBusinessDuel;
   varianceMode?: HexCombatVarianceMode;
   seed?: string;
 }
@@ -64,14 +67,16 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
     contact: input.contact,
     memory: input.memory,
     actions: input.actions,
-    economyEvidence: attackEconomyEvidence
+    economyEvidence: attackEconomyEvidence,
+    ...(input.businessDuel ? { businessDuel: input.businessDuel } : {})
   });
   const defenseEvidence = scoreSide({
     side: "defense",
     contact: input.contact,
     memory: input.memory,
     actions: input.actions,
-    economyEvidence: defenseEconomyEvidence
+    economyEvidence: defenseEconomyEvidence,
+    ...(input.businessDuel ? { businessDuel: input.businessDuel } : {})
   });
   const varianceInput: HexCombatVarianceInput = {
     attackScore: attackEvidence.totalScore,
@@ -89,9 +94,24 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
     : adjustedScores.attack.totalScore > adjustedScores.defense.totalScore
       ? "attack"
       : "defense";
+  const businessVerdict = buildBusinessVerdict(advantage, adjustedScores);
   const verdict = buildVerdict(margin);
-  const casualties = buildHexCombatCasualties(input.contact, advantage, verdict);
+  const attributionScores = buildAttributionScores({
+    contact: input.contact,
+    actions: input.actions,
+    businessDuel: input.businessDuel
+  });
+  const casualties = buildHexCombatCasualties(input.contact, advantage, verdict, attributionScores);
   const suppressions = buildHexCombatSuppressions(input.contact, advantage, verdict, casualties);
+  const businessReasons = [
+    ...adjustedScores.attack.reasons.filter((reason) => reason.includes(":business")),
+    ...adjustedScores.defense.reasons.filter((reason) => reason.includes(":business")),
+    `business_verdict:${businessVerdict}`
+  ];
+  const csReasons = [
+    ...adjustedScores.attack.reasons.filter((reason) => !reason.includes(":business")),
+    ...adjustedScores.defense.reasons.filter((reason) => !reason.includes(":business"))
+  ];
   const audit: HexCombatAudit = {
     businessWeight,
     csWeight,
@@ -120,6 +140,9 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
     participants: input.contact.participants.map(cloneParticipant),
     scores: adjustedScores,
     advantage,
+    businessVerdict,
+    businessReasons,
+    csReasons,
     verdict,
     casualties,
     suppressions,
@@ -177,6 +200,7 @@ function scoreSide(input: {
   memory: HexRoundMemory;
   actions: HexValidatedAgentAction[];
   economyEvidence: HexEconomyCombatEvidence;
+  businessDuel?: HexRoundBusinessDuel;
 }): HexCombatSideEvidence {
   const participants = input.contact.participants.filter((participant) => participant.side === input.side);
   const contactRegionIds = new Set(input.contact.regionIds);
@@ -188,14 +212,14 @@ function scoreSide(input: {
     return Boolean(agent?.currentRegionId && contactRegionIds.has(agent.currentRegionId))
       || participants.some((participant) => participant.agentId === action.agentId);
   });
-  const businessScore = scoreBusinessEvidence(input.side, participants, sideActionsNearContact, input.memory);
+  const businessScore = scoreBusinessEvidence(input.side, participants, sideActionsNearContact, input.memory, input.businessDuel);
   const csScore = scoreCsEvidence(input.side, participants, input.contact, sideActionsNearContact, input.economyEvidence);
   return {
     businessScore,
     csScore,
     totalScore: roundScore(businessScore + csScore),
     reasons: [
-      ...buildBusinessReasons(input.side, participants, sideActionsNearContact, input.memory),
+      ...buildBusinessReasons(input.side, participants, sideActionsNearContact, input.memory, input.businessDuel),
       ...buildCsReasons(input.side, participants, input.contact, sideActionsNearContact, input.economyEvidence)
     ]
   };
@@ -205,10 +229,11 @@ function scoreBusinessEvidence(
   side: HexSide,
   participants: HexCombatParticipant[],
   sideActionsNearContact: HexValidatedAgentAction[],
-  memory: HexRoundMemory
+  memory: HexRoundMemory,
+  businessDuel: HexRoundBusinessDuel | undefined
 ): number {
   let score = 0;
-  const validActions = sideActionsNearContact.filter((action) => action.valid);
+  const validActions = sideActionsNearContact.filter((action) => action.valid && !action.fallbackReason);
   const businessTexts = validActions.map((action) => action.businessIntent).filter((text) => text.trim().length > 0);
   if (businessTexts.length > 0) {
     score += 15;
@@ -221,6 +246,13 @@ function scoreBusinessEvidence(
     score += 15;
   } else if (businessTexts.length > 0) {
     score += 8;
+  }
+  const assignedActions = validActions.filter((action) => actionMatchesBusinessAssignment(side, action, businessDuel));
+  if (assignedActions.length > 0) {
+    score += 15;
+  }
+  if (businessTexts.some((text) => matchesRoundBusinessLanguage(side, text, businessDuel))) {
+    score += 10;
   }
   if (participants.some((participant) => {
     const agent = memory.agents.find((candidate) => candidate.agentId === participant.agentId);
@@ -235,10 +267,11 @@ function buildBusinessReasons(
   side: HexSide,
   participants: HexCombatParticipant[],
   sideActionsNearContact: HexValidatedAgentAction[],
-  memory: HexRoundMemory
+  memory: HexRoundMemory,
+  businessDuel: HexRoundBusinessDuel | undefined
 ): string[] {
   const reasons: string[] = [];
-  const validActions = sideActionsNearContact.filter((action) => action.valid);
+  const validActions = sideActionsNearContact.filter((action) => action.valid && !action.fallbackReason);
   if (validActions.some((action) => action.businessIntent.trim().length > 0)) {
     reasons.push(`${side}:business_intent_present`);
   }
@@ -250,6 +283,15 @@ function buildBusinessReasons(
   }
   if (validActions.some((action) => matchesSideBusinessLanguage(side, action.businessIntent))) {
     reasons.push(`${side}:side_specific_business_argument`);
+  }
+  if (validActions.some((action) => actionMatchesBusinessAssignment(side, action, businessDuel))) {
+    reasons.push(`${side}:business_assignment_carried_by_action`);
+  }
+  if (validActions.some((action) => matchesRoundBusinessLanguage(side, action.businessIntent, businessDuel))) {
+    reasons.push(`${side}:business_duel_theme_referenced`);
+  }
+  if (sideActionsNearContact.some((action) => action.fallbackReason)) {
+    reasons.push(`${side}:business_fallback_not_positive_evidence`);
   }
   if (participants.some((participant) => {
     const agent = memory.agents.find((candidate) => candidate.agentId === participant.agentId);
@@ -367,12 +409,110 @@ function buildControlHint(advantage: "attack" | "defense" | "contested", verdict
   return verdict === "contested_suppression" ? "contested" : advantage;
 }
 
+function buildBusinessVerdict(advantage: "attack" | "defense" | "contested", scores: HexCombatScoreboard): HexCombatBusinessVerdict {
+  if (advantage === "attack" && scores.attack.businessScore >= scores.defense.businessScore) {
+    return "challenge_succeeded";
+  }
+  if (advantage === "defense" && scores.defense.businessScore >= scores.attack.businessScore) {
+    return "proof_rebutted_challenge";
+  }
+  return "contested_no_business_resolution";
+}
+
+function buildAttributionScores(input: {
+  contact: HexCombatContact;
+  actions: HexValidatedAgentAction[];
+  businessDuel: HexRoundBusinessDuel | undefined;
+}): Map<string, number> {
+  const actionByAgent = new Map(input.actions.map((action) => [action.agentId, action]));
+  const scores = new Map<string, number>();
+  for (const participant of input.contact.participants) {
+    const action = actionByAgent.get(participant.agentId) ?? participant.action;
+    let score = 0;
+    if (action.valid && !action.fallbackReason) {
+      score += 8;
+    }
+    if (action.actionType !== "hold_position") {
+      score += 5;
+    }
+    if (isPressureAction(action)) {
+      score += 5;
+    }
+    if (actionMatchesBusinessAssignment(participant.side, action, input.businessDuel)) {
+      score += 8;
+    }
+    if (matchesRoundBusinessLanguage(participant.side, action.businessIntent, input.businessDuel)) {
+      score += 4;
+    }
+    if (participant.targetFlags.includes("bombsite_a") || participant.targetFlags.includes("bombsite_b") || participant.currentFlags.includes("cover")) {
+      score += 2;
+    }
+    scores.set(participant.agentId, score);
+  }
+  return scores;
+}
+
+function actionMatchesBusinessAssignment(
+  side: HexSide,
+  action: HexValidatedAgentAction,
+  businessDuel: HexRoundBusinessDuel | undefined
+): boolean {
+  if (!businessDuel || !action.valid || action.fallbackReason) {
+    return false;
+  }
+  const assignment = businessDuel.agentAssignments.find((candidate) => candidate.agentId === action.agentId && candidate.side === side);
+  if (!assignment) {
+    return false;
+  }
+  if (side === "attack" && assignment.linkedChallengeId !== businessDuel.attackChallenge.challengeId) {
+    return false;
+  }
+  if (side === "defense" && assignment.linkedProofId !== businessDuel.defenseProof.proofId) {
+    return false;
+  }
+  return action.businessIntent.trim().length > 0 && matchesSideBusinessLanguage(side, action.businessIntent);
+}
+
+function matchesRoundBusinessLanguage(
+  side: HexSide,
+  text: string,
+  businessDuel: HexRoundBusinessDuel | undefined
+): boolean {
+  if (!businessDuel || text.trim().length === 0) {
+    return false;
+  }
+  const haystack = normalizeBusinessText(text);
+  const sourceTexts = side === "attack"
+    ? [
+      businessDuel.subtheme.title,
+      businessDuel.subtheme.attackQuestion,
+      businessDuel.attackChallenge.thesis,
+      ...businessDuel.attackChallenge.challengePoints,
+      ...businessDuel.attackChallenge.targetFailureModes
+    ]
+    : [
+      businessDuel.subtheme.title,
+      businessDuel.subtheme.defenseQuestion,
+      businessDuel.defenseProof.thesis,
+      ...businessDuel.defenseProof.claims,
+      ...businessDuel.defenseProof.evidenceFocus
+    ];
+  return sourceTexts.some((candidate) => {
+    const normalized = normalizeBusinessText(candidate);
+    return normalized.length >= 2 && (haystack.includes(normalized) || normalized.includes(haystack));
+  });
+}
+
 function matchesSideBusinessLanguage(side: HexSide, text: string): boolean {
   const normalized = text.toLowerCase();
   const attackTerms = ["breach", "challenge", "pressure", "entry", "execute", "exploit", "质疑", "漏洞", "突破", "进点", "切入"];
   const defenseTerms = ["defend", "hold", "anchor", "deny", "response", "防守", "回应", "顶住", "守住", "拦截"];
   const terms = side === "attack" ? attackTerms : defenseTerms;
   return terms.some((term) => normalized.includes(term));
+}
+
+function normalizeBusinessText(text: string): string {
+  return text.toLowerCase().replace(/[^\p{Letter}\p{Number}\u4e00-\u9fff]+/gu, "");
 }
 
 function scoreMapFlags(participants: HexCombatParticipant[]): number {

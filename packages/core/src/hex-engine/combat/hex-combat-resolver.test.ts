@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
+import { buildFixtureHexRoundBusinessDuel } from "../business/index.js";
 import { buildHexRoundEconomyContext } from "../economy/index.js";
 import { buildHexCombatContacts } from "./hex-combat-contact-builder.js";
 import { applyHexCombatVariance, resolveHexCombat } from "./hex-combat-resolver.js";
@@ -45,19 +46,77 @@ describe("Hex combat resolver", () => {
       })
     ];
     const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
+    const businessDuel = buildFixtureHexRoundBusinessDuel({
+      roundNumber: 1,
+      attackTeamId: "t",
+      defenseTeamId: "ct",
+      agents: [
+        { agentId: "t_0", teamId: "t", side: "attack" },
+        { agentId: "t_1", teamId: "t", side: "attack" },
+        { agentId: "ct_0", teamId: "ct", side: "defense" }
+      ]
+    });
 
-    const resolution = resolveHexCombat({ asset, memory, contact, actions });
+    const resolution = resolveHexCombat({ asset, memory, contact, actions, businessDuel });
 
     expect(resolution.audit.businessWeight).toBe(65);
     expect(resolution.audit.csWeight).toBe(35);
+    expect(resolution.businessVerdict).toBe("challenge_succeeded");
     expect(resolution.scores.attack.businessScore).toBeGreaterThan(resolution.scores.defense.businessScore);
     expect(resolution.advantage).toBe("attack");
     expect(resolution.casualties).toEqual([
       expect.objectContaining({
         agentId: "ct_0",
-        result: "killed"
+        targetAgentId: "ct_0",
+        result: "killed",
+        killerAgentId: "t_0",
+        assisterAgentIds: []
       })
     ]);
+  });
+
+  it("lets defense proof rebut a weak attack challenge without using fallback as positive business evidence", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [attackCell, defenseCell] = findCellsInRegion(asset, "a_site", 2);
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_0", side: "attack", cellId: attackCell!.cellId },
+      { agentId: "ct_0", side: "defense", cellId: defenseCell!.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({
+        memory,
+        agentId: "t_0",
+        actionType: "hold_position",
+        businessIntent: "Attack fallback text claims challenge but should not count.",
+        valid: false
+      }),
+      buildCombatAction({
+        memory,
+        agentId: "ct_0",
+        actionType: "peek",
+        targetCellId: attackCell!.cellId,
+        businessIntent: "Defense hold 自证 守住 A site and deny the attack challenge."
+      })
+    ];
+    const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
+    const businessDuel = buildFixtureHexRoundBusinessDuel({
+      roundNumber: 1,
+      attackTeamId: "t",
+      defenseTeamId: "ct",
+      agents: [
+        { agentId: "t_0", teamId: "t", side: "attack" },
+        { agentId: "ct_0", teamId: "ct", side: "defense" }
+      ]
+    });
+
+    const resolution = resolveHexCombat({ asset, memory, contact, actions, businessDuel });
+
+    expect(resolution.businessVerdict).toBe("proof_rebutted_challenge");
+    expect(resolution.scores.attack.reasons).toContain("attack:business_fallback_not_positive_evidence");
+    expect(resolution.casualties[0]).toEqual(expect.objectContaining({
+      targetAgentId: "t_0",
+      killerAgentId: "ct_0"
+    }));
   });
 
   it("does not expose round winner, win type, economy delta, or database facts", () => {

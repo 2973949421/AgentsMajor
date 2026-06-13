@@ -281,6 +281,17 @@ timeout 与赛后复盘至少要消费：
 
 ## 8. 当前阶段结论
 
+### 8.1 Hex N36 商业攻防战斗裁定
+
+HexGrid N36 起，战斗裁判审计必须把商业攻防和 CS 执行证据分开记录：
+
+- `businessVerdict` 记录本次交火是守方自证驳回质疑、攻方质疑成功，还是争夺未决。
+- `businessReasons` 只记录与小主题、自证/质疑、选手职责和合法行动有关的理由。
+- `csReasons` 只记录位置、路径、接触点、压制、补枪、经济证据等 CS 层理由。
+- `killerAgentId / targetAgentId / assisterAgentIds` 是 KDA 与 killLedger 的唯一事实来源。
+- fallback 文本不能成为正向商业理由。
+- combat verdict 不能写 round winner，最终胜负仍由 hard win condition 物化。
+
 `Phase 2.0-pre` 对 judge 的要求不再是“写得像”，而是：
 
 ```text

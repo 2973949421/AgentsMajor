@@ -5,6 +5,7 @@ import type { HexCell, HexMapAsset } from "@agent-major/shared";
 import { describe, expect, it } from "vitest";
 
 import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
+import { buildFixtureHexRoundBusinessDuel } from "../business/index.js";
 import { buildHexRoundEconomyContext } from "../economy/index.js";
 import { initializeHexRoundMemory } from "../state/index.js";
 import { buildHexAgentCommandRequest, normalizeHexAgentActionDraft } from "./hex-agent-command-boundary.js";
@@ -141,6 +142,39 @@ describe("Hex agent command boundary", () => {
     expect(request.constraints.some((line) => line.includes("Economy context is already resolved"))).toBe(true);
   });
 
+  it("adds round business duel context and the current agent assignment", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset),
+      bombCarrierAgentId: "t_0"
+    });
+    const businessDuel = buildFixtureHexRoundBusinessDuel({
+      roundNumber: 7,
+      attackTeamId: "t",
+      defenseTeamId: "ct",
+      agents: memory.agents.map((agent) => ({
+        agentId: agent.agentId,
+        teamId: agent.teamId,
+        side: agent.side
+      }))
+    });
+
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_0",
+      businessDuel
+    });
+
+    expect(request.businessDuel?.subthemeId).toBe("dust2_business_subtheme_1");
+    expect(request.businessDuel?.halfIndex).toBe(1);
+    expect(request.businessDuel?.mirrorRoundNumber).toBe(1);
+    expect(request.businessAssignment?.agentId).toBe("t_0");
+    expect(request.businessAssignment?.linkedChallengeId).toBe(businessDuel.attackChallenge.challengeId);
+    expect(request.constraints.some((line) => line.includes("businessAssignment"))).toBe(true);
+  });
+
   it("includes occupied and reserved cells while deprioritizing blocked target candidates", () => {
     const asset = loadOfficialDust2HexMap();
     const memory = initializeHexRoundMemory({
@@ -197,6 +231,94 @@ describe("Hex agent command boundary", () => {
       ])
     );
     expect(result.repairedFields).toEqual(expect.arrayContaining(["repaired_agentId", "repaired_phaseId", "repaired_currentCellId"]));
+  });
+
+  it("repairs a single-element actions array into one stable action draft", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset),
+      bombCarrierAgentId: "t_0"
+    });
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_0"
+    });
+
+    const result = normalizeHexAgentActionDraft({
+      request,
+      rawDraft: {
+        actions: [{
+          agentId: "t_0",
+          phaseId: request.phaseId,
+          currentCellId: request.agent.currentCellId,
+          targetCellId: request.reachableCells[0]!.cellId,
+          actionType: "move",
+          businessIntent: "t_0 carries the attack challenge through a stable single action array."
+        }]
+      }
+    });
+
+    expect(result.errors).toEqual([]);
+    expect(result.repairedFields).toContain("repaired_single_action_array");
+    expect(result.draft?.targetCellId).toBe(request.reachableCells[0]!.cellId);
+  });
+
+  it("rejects multi-action arrays instead of choosing one at random", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset),
+      bombCarrierAgentId: "t_0"
+    });
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_0"
+    });
+
+    const result = normalizeHexAgentActionDraft({
+      request,
+      rawDraft: {
+        actions: [
+          { targetCellId: request.reachableCells[0]!.cellId, actionType: "move", businessIntent: "first" },
+          { targetCellId: request.reachableCells[1]!.cellId, actionType: "move", businessIntent: "second" }
+        ]
+      }
+    });
+
+    expect(result.draft).toBeUndefined();
+    expect(result.errors).toContain("draft:multiple_actions_not_allowed");
+  });
+
+  it("fails garbled model text instead of treating it as a synonym", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset),
+      bombCarrierAgentId: "t_0"
+    });
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_0"
+    });
+
+    const result = normalizeHexAgentActionDraft({
+      request,
+      rawDraft: {
+        agentId: "t_0",
+        phaseId: request.phaseId,
+        currentCellId: request.agent.currentCellId,
+        targetCellId: request.reachableCells[0]!.cellId,
+        actionType: "move",
+        businessIntent: "中文�损坏"
+      }
+    });
+
+    expect(result.draft).toBeUndefined();
+    expect(result.errors).toContain("draft:garbled_text");
   });
 });
 

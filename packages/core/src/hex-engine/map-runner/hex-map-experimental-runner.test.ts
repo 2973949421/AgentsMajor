@@ -188,6 +188,11 @@ async function seedFixture(repositories: SqliteRepositoryBundle, mapOverrides: P
     displayName: "Falcon",
     shortName: "FAL",
     seed: 1,
+    source: {
+      processed_paths: {
+        initial_proposal: "processed/teams/falcon-7b/initial-proposal.json"
+      }
+    },
     createdAt
   });
   await repositories.teams.save({
@@ -196,6 +201,11 @@ async function seedFixture(repositories: SqliteRepositoryBundle, mapOverrides: P
     displayName: "Vitallmty",
     shortName: "VIT",
     seed: 2,
+    source: {
+      processed_paths: {
+        initial_proposal: "processed/teams/vitallmty/initial-proposal.json"
+      }
+    },
     createdAt
   });
   await repositories.matches.save({

@@ -6,6 +6,7 @@ import {
 } from "@agent-major/llm";
 import type { HexMapAsset } from "@agent-major/shared";
 import type { ArtifactStore } from "../../ports.js";
+import type { HexRoundBusinessDuel } from "../business/index.js";
 import type { HexRoundEconomyContext } from "../economy/index.js";
 import type { HexRoundMemory } from "../state/index.js";
 import {
@@ -90,6 +91,7 @@ export interface RunHexAgentPhaseCommandHarnessInput {
   callIdPrefix?: string;
   progressSink?: HexAgentCommandProgressSink;
   tacticalPlan?: HexRoundTacticalPlan;
+  businessDuel?: HexRoundBusinessDuel;
 }
 
 export interface HexAgentCommandAudit {
@@ -219,6 +221,7 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
       occupiedCellIds: friendlyOccupiedCellIds,
       reservedCellIds: friendlyReservedCellIds,
       ...(input.tacticalPlan ? { tacticalPlan: input.tacticalPlan } : {}),
+      ...(input.businessDuel ? { businessDuel: input.businessDuel } : {}),
       ...(input.economyContext ? { economyContext: input.economyContext } : {})
     });
     await emitProgress(input, {

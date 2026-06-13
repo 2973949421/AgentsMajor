@@ -95,9 +95,15 @@ describe("Hex combat memory events", () => {
       },
       advantage: "attack",
       verdict: "wound_or_forced_back",
+      businessVerdict: "challenge_succeeded",
+      businessReasons: ["business_verdict:challenge_succeeded"],
+      csReasons: ["attack:test"],
       casualties: [
         {
           agentId: "ct_0",
+          targetAgentId: "ct_0",
+          killerAgentId: "t_0",
+          assisterAgentIds: [],
           teamId: "ct",
           side: "defense",
           result: "wounded",

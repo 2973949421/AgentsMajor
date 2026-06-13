@@ -8,6 +8,7 @@ import {
 import { evaluateMapState } from "../../match/map-rules.js";
 import type { ArtifactStore } from "../../ports.js";
 import type { HexAgentCommandProgressSink } from "../action/index.js";
+import { buildHexRoundBusinessDuel } from "../business/index.js";
 import { runDust2HexRound, type HexRoundTrace } from "../round/index.js";
 import { loadDust2HexRoundCommitContext } from "./hex-round-commit-context.js";
 import { buildHexRoundReport } from "./hex-round-report-bridge.js";
@@ -77,6 +78,22 @@ async function commitDust2HexRoundExperimentalInner(
     createdAt
   });
   await input.repositories.rounds.save(runningRound);
+  const attackingTeam = context.sideAssignment.attackingTeamId === context.teamA.id ? context.teamA : context.teamB;
+  const defendingTeam = context.sideAssignment.defendingTeamId === context.teamA.id ? context.teamA : context.teamB;
+  const attackingAgents = context.sideAssignment.attackingTeamId === context.teamA.id ? context.activeA : context.activeB;
+  const defendingAgents = context.sideAssignment.defendingTeamId === context.teamA.id ? context.activeA : context.activeB;
+  const businessDuel = buildHexRoundBusinessDuel({
+    roundNumber: context.roundNumber,
+    attack: {
+      team: attackingTeam,
+      agents: attackingAgents
+    },
+    defense: {
+      team: defendingTeam,
+      agents: defendingAgents
+    },
+    teamEconomyPlans: context.teamEconomyPlans
+  });
 
   const hexTrace = await runDust2HexRound({
     roundId: context.roundId,
@@ -85,6 +102,7 @@ async function commitDust2HexRoundExperimentalInner(
     defenseTeamId: context.sideAssignment.defendingTeamId,
     activeAgents: context.runnerAgents,
     teamEconomyPlans: context.teamEconomyPlans,
+    businessDuel,
     providerMode: input.providerMode ?? "fixture",
     maxLlmCallsPerPhase: input.maxLlmCallsPerPhase ?? 10,
     artifactStore: input.artifactStore,

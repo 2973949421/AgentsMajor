@@ -29,7 +29,37 @@ describe("Hex round runner", () => {
     expect(trace.audit.totalLlmCallsAttempted).toBeGreaterThan(0);
     expect(trace.phases.every((phase) => phase.commandResult.actions.length === 10)).toBe(true);
     expect(trace.phases.flatMap((phase) => phase.commandResult.actions).every((action) => action.pathCellIds.length > 0)).toBe(true);
+    expect(trace.businessDuel.subtheme.subthemeId).toBe("dust2_business_subtheme_1");
+    expect(trace.businessDuel.agentAssignments).toHaveLength(10);
     expectNoDuplicateKilledCasualties(trace.phases);
+  });
+
+  it("keeps the same business subtheme across mirrored halves", async () => {
+    const roundOne = await runDust2HexRound({
+      roundId: "round_hex_business_1",
+      roundNumber: 1,
+      attackTeamId: "team_t",
+      defenseTeamId: "team_ct",
+      activeAgents: createAgents(),
+      teamEconomyPlans: buildEconomyPlans()
+    });
+    const roundSeven = await runDust2HexRound({
+      roundId: "round_hex_business_7",
+      roundNumber: 7,
+      attackTeamId: "team_ct",
+      defenseTeamId: "team_t",
+      activeAgents: createAgents().map((agent) => ({
+        ...agent,
+        side: agent.side === "attack" ? "defense" as const : "attack" as const
+      })),
+      teamEconomyPlans: buildEconomyPlans()
+    });
+
+    expect(roundOne.businessDuel.subtheme.subthemeId).toBe(roundSeven.businessDuel.subtheme.subthemeId);
+    expect(roundOne.businessDuel.mirrorRoundNumber).toBe(7);
+    expect(roundSeven.businessDuel.mirrorRoundNumber).toBe(1);
+    expect(roundOne.businessDuel.attackTeamId).toBe("team_t");
+    expect(roundSeven.businessDuel.attackTeamId).toBe("team_ct");
   });
 
   it("falls back on provider errors without letting forbidden drafts become facts", async () => {
@@ -147,7 +177,7 @@ describe("Hex round runner", () => {
           targetCellId: request.agent.agentId === "t_0" ? bombsite.cellId : request.agent.currentCellId,
           actionType: request.agent.agentId === "t_0" ? "plant_bomb" : "hold_position",
           businessIntent: request.agent.agentId === "t_0"
-            ? "Plant the C4 on the A bombsite after reaching the objective window."
+            ? "Plant the C4 on the A bombsite to pressure and challenge the defense resource allocation."
             : "Hold current position and preserve the round setup."
         }
       }),
@@ -268,8 +298,14 @@ function buildDuplicateKillResolution(contactId: string, casualtyAgentId: string
     },
     advantage: "attack",
     verdict: "kill",
+    businessVerdict: "challenge_succeeded",
+    businessReasons: ["business_verdict:challenge_succeeded"],
+    csReasons: ["same_region"],
     casualties: [{
       agentId: casualtyAgentId,
+      targetAgentId: casualtyAgentId,
+      killerAgentId: "t_0",
+      assisterAgentIds: [],
       teamId: "team_ct",
       side: "defense",
       result: "killed",

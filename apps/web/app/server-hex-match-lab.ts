@@ -195,6 +195,25 @@ export interface HexMatchLabRoundTraceDetail extends HexMatchLabRoundSummary {
   phaseSummaries: HexMatchLabPhaseSummary[];
   audit: HexMatchLabLlmAuditSummary;
   economySummary: HexMatchLabEconomySummary[];
+  businessDuel?: HexMatchLabBusinessDuelSummary | undefined;
+}
+
+export interface HexMatchLabBusinessDuelSummary {
+  subthemeId: string;
+  subthemeTitle: string;
+  coreQuestion: string;
+  defenseProof: {
+    teamId: string;
+    thesis: string;
+    claims: string[];
+    evidenceFocus: string[];
+  };
+  attackChallenge: {
+    teamId: string;
+    thesis: string;
+    challengePoints: string[];
+    targetFailureModes: string[];
+  };
 }
 
 export interface HexMatchLabPhaseSummary {
@@ -233,6 +252,7 @@ export interface HexMatchLabPlayerCard {
   displayName?: string | undefined;
   roleLabel: string;
   kda: string;
+  roundKills: number;
   teamId: string;
   side: string;
   lifeStatus: string;
@@ -259,6 +279,10 @@ export interface HexMatchLabPlayerCard {
   utilityTier?: string | undefined;
   outputBudget?: number | undefined;
   dropReceived?: number | undefined;
+  tokenBankBefore?: number | undefined;
+  tokenBankAfterDrop?: number | undefined;
+  currentEconomy?: number | undefined;
+  economyBalance?: number | undefined;
   spend?: number | undefined;
 }
 
@@ -286,7 +310,16 @@ export interface HexMatchLabCombatSummary {
   participants: string[];
   advantage?: string | undefined;
   verdict?: string | undefined;
+  businessVerdict?: string | undefined;
+  businessReasons: string[];
+  csReasons: string[];
   casualties: string[];
+  killAttributions: Array<{
+    killerAgentId?: string | undefined;
+    targetAgentId: string;
+    assisterAgentIds: string[];
+    result: string;
+  }>;
   suppressions: string[];
   regionControlHint?: string | undefined;
   businessScoreAttack?: number | undefined;
@@ -315,6 +348,9 @@ export interface HexMatchLabEconomySummary {
     spend?: number | undefined;
     dropSent?: number | undefined;
     dropReceived?: number | undefined;
+    tokenBankBefore?: number | undefined;
+    tokenBankAfterDrop?: number | undefined;
+    currentEconomy?: number | undefined;
   }>;
 }
 
@@ -333,6 +369,8 @@ export interface HexMatchLabLlmAuditSummary {
   repairedFields: string[];
   fallbackReasons: string[];
   providerErrors: string[];
+  roundStrategySeed?: string | undefined;
+  strategyVariant?: string | undefined;
 }
 
 export interface HexMatchLabMemorySummary {
@@ -790,10 +828,41 @@ async function readRoundTraceDetail(
     const raw = JSON.parse(await readArtifactText(repositories, projectRoot, artifactId)) as unknown;
     const trace = unwrapHexRoundTrace(raw);
     const fallbackSummary = summaries.find((round) => round.hexTraceArtifactId === artifactId);
-    return summarizeTrace(artifactId, trace, fallbackSummary, loadOfficialDust2HexMap(), agentIdentities);
+    const preRoundKda = await buildPreRoundKdaByAgent(repositories, projectRoot, summaries, trace.roundNumber, artifactId);
+    return summarizeTrace(artifactId, trace, fallbackSummary, loadOfficialDust2HexMap(), agentIdentities, preRoundKda);
   } catch {
     return undefined;
   }
+}
+
+async function buildPreRoundKdaByAgent(
+  repositories: SqliteRepositoryBundle,
+  projectRoot: string,
+  summaries: HexMatchLabRoundSummary[],
+  selectedRoundNumber: number,
+  selectedArtifactId: string
+): Promise<Map<string, HexKdaStat>> {
+  const cumulative = new Map<string, HexKdaStat>();
+  const previousRounds = summaries
+    .filter((round) =>
+      typeof round.roundNumber === "number"
+      && round.roundNumber < selectedRoundNumber
+      && Boolean(round.hexTraceArtifactId)
+      && round.hexTraceArtifactId !== selectedArtifactId
+    )
+    .sort((left, right) => left.roundNumber - right.roundNumber);
+
+  for (const round of previousRounds) {
+    try {
+      const raw = JSON.parse(await readArtifactText(repositories, projectRoot, round.hexTraceArtifactId!)) as unknown;
+      const trace = unwrapHexRoundTrace(raw);
+      mergeKdaInto(cumulative, buildKdaByAgent(trace.phases));
+    } catch {
+      // 历史 trace 缺失时跳过，不能让 KDA 汇总阻断验收台读取。
+    }
+  }
+
+  return cumulative;
 }
 
 function unwrapHexRoundTrace(value: unknown): HexRoundTrace {
@@ -919,7 +988,8 @@ function summarizeTrace(
   trace: HexRoundTrace,
   fallbackSummary: HexMatchLabRoundSummary | undefined,
   asset: HexMapAsset,
-  agentIdentities: Map<string, AgentIdentity>
+  agentIdentities: Map<string, AgentIdentity>,
+  preRoundKdaByAgent: Map<string, HexKdaStat>
 ): HexMatchLabRoundTraceDetail {
   const roundSummary: HexMatchLabRoundSummary = fallbackSummary ?? {
     roundNumber: trace.roundNumber,
@@ -938,7 +1008,8 @@ function summarizeTrace(
       asset,
       economySummary,
       agentIdentities,
-      buildKdaByAgent(trace.phases.slice(0, index + 1))
+      mergeKdaStats(preRoundKdaByAgent, buildKdaByAgent(trace.phases.slice(0, index + 1))),
+      buildKillCountsByAgent(trace.phases.slice(0, index + 1))
     ))
   ];
   return {
@@ -947,7 +1018,30 @@ function summarizeTrace(
     source: "hex_round_engine_committed",
     phaseSummaries,
     audit: summarizeTraceAudit(trace),
-    economySummary
+    economySummary,
+    businessDuel: summarizeBusinessDuel(trace)
+  };
+}
+
+function summarizeBusinessDuel(trace: HexRoundTrace): HexMatchLabBusinessDuelSummary | undefined {
+  const duel = trace.businessDuel;
+  if (!duel) return undefined;
+  return {
+    subthemeId: duel.subtheme.subthemeId,
+    subthemeTitle: duel.subtheme.title,
+    coreQuestion: duel.subtheme.coreQuestion,
+    defenseProof: {
+      teamId: duel.defenseProof.teamId,
+      thesis: duel.defenseProof.thesis,
+      claims: duel.defenseProof.claims,
+      evidenceFocus: duel.defenseProof.evidenceFocus
+    },
+    attackChallenge: {
+      teamId: duel.attackChallenge.teamId,
+      thesis: duel.attackChallenge.thesis,
+      challengePoints: duel.attackChallenge.challengePoints,
+      targetFailureModes: duel.attackChallenge.targetFailureModes
+    }
   };
 }
 
@@ -990,7 +1084,9 @@ function summarizeSetupPhase(
       asset,
       economySummary,
       agentIdentities,
-      kdaByAgent: new Map()
+      kdaByAgent: new Map(),
+      roundKillsByAgent: new Map(),
+      isSetupPhase: true
     }),
     llmAudit: {
       expectedCalls: 0,
@@ -1016,7 +1112,8 @@ function summarizePhase(
   asset: HexMapAsset,
   economySummary: HexMatchLabEconomySummary[],
   agentIdentities: Map<string, AgentIdentity>,
-  kdaByAgent: Map<string, HexKdaStat>
+  kdaByAgent: Map<string, HexKdaStat>,
+  roundKillsByAgent: Map<string, number>
 ): HexMatchLabPhaseSummary {
   const agentsAfter = phase.memoryAfter.agents;
   const aliveAttackCount = agentsAfter.filter((agent) => agent.side === "attack" && agent.lifeStatus !== "dead").length;
@@ -1070,7 +1167,16 @@ function summarizePhase(
       participants: resolution.participants.map((participant) => participant.agentId),
       advantage: resolution.advantage,
       verdict: resolution.verdict,
-      casualties: resolution.casualties.map((casualty) => `${casualty.agentId}:${casualty.result}`),
+      businessVerdict: resolution.businessVerdict,
+      businessReasons: resolution.businessReasons ?? [],
+      csReasons: resolution.csReasons ?? [],
+      casualties: resolution.casualties.map((casualty) => `${casualty.targetAgentId ?? casualty.agentId}:${casualty.result}`),
+      killAttributions: resolution.casualties.map((casualty) => ({
+        killerAgentId: casualty.killerAgentId,
+        targetAgentId: casualty.targetAgentId ?? casualty.agentId,
+        assisterAgentIds: casualty.assisterAgentIds ?? [],
+        result: casualty.result
+      })),
       suppressions: resolution.suppressions.map((suppression) => `${suppression.agentId}:${suppression.result}`),
       regionControlHint: resolution.regionControlHint,
       businessScoreAttack: resolution.scores.attack.businessScore,
@@ -1089,7 +1195,8 @@ function summarizePhase(
       asset,
       economySummary,
       agentIdentities,
-      kdaByAgent
+      kdaByAgent,
+      roundKillsByAgent
     }),
     llmAudit,
     memoryBeforeSummary: summarizeMemory(phase.memoryBefore),
@@ -1113,7 +1220,9 @@ function summarizeTraceAudit(trace: HexRoundTrace): HexMatchLabLlmAuditSummary {
     responseArtifactIds: uniqueStrings(phaseAudits.map((audit) => audit.responseArtifactId)),
     repairedFields: uniqueStrings(phaseAudits.flatMap((audit) => audit.repairedFields ?? [])),
     fallbackReasons: uniqueStrings(phaseAudits.map((audit) => audit.fallbackReason)),
-    providerErrors: uniqueStrings(phaseAudits.flatMap((audit) => audit.errors).filter((error) => error.startsWith("provider_error")))
+    providerErrors: uniqueStrings(phaseAudits.flatMap((audit) => audit.errors).filter((error) => error.startsWith("provider_error"))),
+    roundStrategySeed: trace.audit.roundStrategySeed,
+    strategyVariant: trace.audit.strategyVariant
   };
 }
 
@@ -1284,6 +1393,8 @@ function buildPlayerCards(input: {
   economySummary: HexMatchLabEconomySummary[];
   agentIdentities: Map<string, AgentIdentity>;
   kdaByAgent: Map<string, HexKdaStat>;
+  roundKillsByAgent: Map<string, number>;
+  isSetupPhase?: boolean | undefined;
 }): HexMatchLabPlayerCard[] {
   const cells = new Map(input.asset.cells.map((cell) => [cell.cellId, cell]));
   const regions = new Map(input.asset.regions.map((region) => [region.regionId, region]));
@@ -1300,6 +1411,7 @@ function buildPlayerCards(input: {
       displayName: input.agentIdentities.get(agent.agentId)?.displayName,
       roleLabel: input.agentIdentities.get(agent.agentId)?.roleLabel ?? "role unknown",
       kda: formatKda(input.kdaByAgent.get(agent.agentId)),
+      roundKills: input.roundKillsByAgent.get(agent.agentId) ?? 0,
       teamId: agent.teamId,
       side: agent.side,
       lifeStatus: agent.lifeStatus,
@@ -1326,9 +1438,32 @@ function buildPlayerCards(input: {
       utilityTier: economy?.utilityTier,
       outputBudget: economy?.outputBudget,
       dropReceived: economy?.dropReceived,
+      tokenBankBefore: economy?.tokenBankBefore,
+      tokenBankAfterDrop: economy?.tokenBankAfterDrop,
+      currentEconomy: economy?.currentEconomy,
+      economyBalance: selectEconomyBalance(economy, Boolean(input.isSetupPhase)),
       spend: economy?.spend
     };
   });
+}
+
+function selectEconomyBalance(
+  economy: HexMatchLabEconomySummary["agents"][number] | undefined,
+  isSetupPhase: boolean
+): number | undefined {
+  if (!economy) {
+    return undefined;
+  }
+  if (isSetupPhase) {
+    return economy.tokenBankBefore ?? economy.tokenBankAfterDrop ?? economy.currentEconomy;
+  }
+  if (typeof economy.currentEconomy === "number") {
+    return economy.currentEconomy;
+  }
+  if (typeof economy.tokenBankAfterDrop === "number" && typeof economy.spend === "number") {
+    return Math.max(0, economy.tokenBankAfterDrop - economy.spend);
+  }
+  return economy.tokenBankAfterDrop ?? economy.tokenBankBefore;
 }
 
 interface HexKdaStat {
@@ -1351,18 +1486,52 @@ function buildKdaByAgent(phases: HexRoundTrace["phases"]): Map<string, HexKdaSta
         }
         killedAgents.add(casualty.agentId);
         addKda(stats, casualty.agentId, "deaths");
-        const contributors = resolution.participants.filter((participant) => participant.side !== casualty.side);
-        const killer = contributors[0];
-        if (killer) {
-          addKda(stats, killer.agentId, "kills");
+        const killerAgentId = readString(casualty.killerAgentId);
+        if (killerAgentId) {
+          addKda(stats, killerAgentId, "kills");
         }
-        for (const assister of contributors.slice(1)) {
-          addKda(stats, assister.agentId, "assists");
+        for (const assisterAgentId of casualty.assisterAgentIds ?? []) {
+          addKda(stats, assisterAgentId, "assists");
         }
       }
     }
   }
   return stats;
+}
+
+function buildKillCountsByAgent(phases: HexRoundTrace["phases"]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const [agentId, stat] of buildKdaByAgent(phases)) {
+    if (stat.kills > 0) {
+      counts.set(agentId, stat.kills);
+    }
+  }
+  return counts;
+}
+
+function mergeKdaStats(left: Map<string, HexKdaStat>, right: Map<string, HexKdaStat>): Map<string, HexKdaStat> {
+  const merged = cloneKdaStats(left);
+  mergeKdaInto(merged, right);
+  return merged;
+}
+
+function mergeKdaInto(target: Map<string, HexKdaStat>, source: Map<string, HexKdaStat>): void {
+  for (const [agentId, stat] of source) {
+    const current = target.get(agentId) ?? { kills: 0, deaths: 0, assists: 0 };
+    target.set(agentId, {
+      kills: current.kills + stat.kills,
+      deaths: current.deaths + stat.deaths,
+      assists: current.assists + stat.assists
+    });
+  }
+}
+
+function cloneKdaStats(stats: Map<string, HexKdaStat>): Map<string, HexKdaStat> {
+  const cloned = new Map<string, HexKdaStat>();
+  for (const [agentId, stat] of stats) {
+    cloned.set(agentId, { ...stat });
+  }
+  return cloned;
 }
 
 function addKda(stats: Map<string, HexKdaStat>, agentId: string, key: keyof HexKdaStat): void {
@@ -1401,7 +1570,10 @@ function summarizeEconomy(economy: HexRoundTrace["economyContext"]): HexMatchLab
       outputBudget: agent.outputBudget,
       spend: agent.spend,
       dropSent: agent.dropSent,
-      dropReceived: agent.dropReceived
+      dropReceived: agent.dropReceived,
+      tokenBankBefore: agent.tokenBankBefore,
+      tokenBankAfterDrop: agent.tokenBankAfterDrop,
+      currentEconomy: agent.tokenBankAfterSpend
     }))
   }));
 }

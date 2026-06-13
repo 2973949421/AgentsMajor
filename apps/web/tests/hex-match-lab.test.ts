@@ -69,7 +69,9 @@ describe("Hex Match Lab", () => {
     expect(mapViewer).toContain("mapCombat");
     expect(playerPanel).toContain("roleLabel");
     expect(playerPanel).toContain("KDA");
-    expect(playerPanel).toContain("本局花费");
+    expect(playerPanel).toContain("roundKills");
+    expect(playerPanel).toContain("经济");
+    expect(playerPanel).toContain("★");
     expect(playerPanel).toContain("AP");
     expect(timeline).toContain("Round / Phase 回放控制");
     expect(timeline).toContain("播放 trace");

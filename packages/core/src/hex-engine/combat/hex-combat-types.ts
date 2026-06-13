@@ -17,6 +17,10 @@ export type HexCombatAdvantage = "attack" | "defense" | "contested";
 export type HexCombatVerdict = "kill" | "wound_or_forced_back" | "contested_suppression";
 export type HexCombatControlHint = "attack" | "defense" | "contested" | "neutral";
 export type HexCombatVarianceMode = "off" | "audited";
+export type HexCombatBusinessVerdict =
+  | "proof_rebutted_challenge"
+  | "challenge_succeeded"
+  | "contested_no_business_resolution";
 
 export interface HexCombatParticipant {
   agentId: string;
@@ -62,10 +66,13 @@ export interface HexCombatScoreboard {
 
 export interface HexCombatCasualty {
   agentId: string;
+  targetAgentId: string;
   teamId: string;
   side: HexSide;
   result: "killed" | "wounded";
   reason: string;
+  killerAgentId?: string;
+  assisterAgentIds: string[];
 }
 
 export interface HexCombatSuppression {
@@ -113,6 +120,9 @@ export interface HexCombatResolutionCore {
   participants: HexCombatParticipant[];
   scores: HexCombatScoreboard;
   advantage: HexCombatAdvantage;
+  businessVerdict: HexCombatBusinessVerdict;
+  businessReasons: string[];
+  csReasons: string[];
   verdict: HexCombatVerdict;
   casualties: HexCombatCasualty[];
   suppressions: HexCombatSuppression[];
