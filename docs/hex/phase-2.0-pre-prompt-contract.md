@@ -87,6 +87,36 @@ HexGrid N35 起，`agent_action` 可以收到 round-level（回合级）`busines
 - 输出出现明显中文编码损坏时直接 fail，不做同义词猜测。
 - 原始输出、规范化行动、修复字段、拒绝原因和 request / response artifact id 必须进入审计链。
 
+### 5.3 Hex N39 紧凑请求与中文语义审计
+
+HexGrid N39 起，真实 LLM 的 `agent_action` 不再直接接收完整 `HexAgentCommandRequest`。代码必须先生成 `compact_match` 请求，只把当前 agent 决策必要上下文发给模型。
+
+紧凑请求必须保留：
+
+- 当前 `phaseId / phaseIndex / phaseObjective`。
+- 当前 agent 的 side、当前位置、AP、C4 携带状态。
+- 当前 round 小主题、守方自证、攻方质疑和该 agent 的商业职责摘要。
+- C4 状态、经济摘要、top-N 合法目标候选。
+- friendly occupied / reserved cell 摘要。
+- top-N `lastSeenEnemies`，且必须标注 lastSeen 是历史信息，不是当前真实位置。
+- 输出 schema 摘要。
+
+紧凑请求不得发送：
+
+- 完整 `reachableCells` 大列表。
+- 完整地图资产。
+- 完整队伍材料。
+- 与当前 agent 决策无关的长历史上下文。
+
+审计要求：
+
+- request artifact 必须同时保存 full request 和 compact request，便于对照。
+- response artifact 必须记录 request size metrics。
+- 如果 provider 返回 prompt token usage，必须写入审计。
+- `businessIntent / tacticalIntent / riskNotes` 等自然语言语义字段必须中文优先。
+- `agentId / phaseId / currentCellId / targetCellId / actionType` 等代码字段必须保持英文标识。
+- 英文或中英混杂语义字段不直接当作中文事实，必须记录 `language_mismatch` audit。
+
 ## 6. Judge Scorecard v6
 
 `judge_verdict` 必须输出 `judgeScorecard`。评分标准由代码生成并写入输入中的 `rubricProfile`，LLM 只能消费，不能修改。

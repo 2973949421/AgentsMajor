@@ -8,11 +8,13 @@ import { describe, expect, it } from "vitest";
 import type { ArtifactStore, ArtifactWriteInput } from "../../ports.js";
 import { initializeHexRoundMemory, type HexRoundMemory } from "../state/index.js";
 import {
+  buildRealHexAgentCommandMessages,
   createEnvHexAgentCommandProvider,
   createFixtureHexAgentCommandProvider,
   runHexAgentPhaseCommandHarness,
   type HexAgentCommandProvider
 } from "./hex-agent-command-harness.js";
+import { buildHexAgentCommandRequest, buildHexAgentCompactCommandRequest } from "./hex-agent-command-boundary.js";
 
 describe("Hex agent command harness", () => {
   it("calls fixture provider once for each actionable agent", async () => {
@@ -123,7 +125,7 @@ describe("Hex agent command harness", () => {
         currentCellId: "wrong_cell",
         targetCellId: request.targetCandidates[0]?.targetCellId ?? request.agent.currentCellId,
         actionType: "move",
-        businessIntent: "progress fixture advances to a candidate target and records repaired context fields."
+        businessIntent: "推进到候选点位，用中文记录商业攻防意图，并验证上下文字段修复。"
       }
     });
 
@@ -144,6 +146,16 @@ describe("Hex agent command harness", () => {
     });
 
     expect(result.acceptedActions).toHaveLength(1);
+    const requestArtifact = JSON.parse(String(artifactStore.writes[0]?.content ?? "{}"));
+    const responseArtifact = JSON.parse(String(artifactStore.writes[1]?.content ?? "{}"));
+    expect(requestArtifact.fullRequest.reachableCells.length).toBeGreaterThan(0);
+    expect(requestArtifact.compactRequest.requestMode).toBe("compact_match");
+    expect(requestArtifact.compactRequest.reachableCells).toBeUndefined();
+    expect(requestArtifact.requestSizeMetrics.estimatedReductionRatio).toBeGreaterThan(0.4);
+    expect(responseArtifact.semanticLanguageAudit.languageMismatch).toBe(false);
+    expect(responseArtifact.requestSizeMetrics.compactRequestCharLength).toBeLessThan(responseArtifact.requestSizeMetrics.fullRequestCharLength);
+    expect(result.audits[0]?.requestSizeMetrics?.estimatedReductionRatio).toBeGreaterThan(0.4);
+    expect(result.audits[0]?.languageMismatch).toBe(false);
     expect(events).toEqual(
       expect.arrayContaining([
         "t_0:queued",
@@ -268,6 +280,25 @@ describe("Hex agent command harness", () => {
 
     expect(result.audits[0]?.errors[0]).toContain("real_llm_disabled");
     expect(result.audits[0]?.providerMode).toBe("real");
+  });
+
+  it("builds real provider messages from the compact payload only", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeMemory(asset);
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_0"
+    });
+    const compact = buildHexAgentCompactCommandRequest(request);
+    const messages = buildRealHexAgentCommandMessages(compact);
+    const userContent = messages[1]!.content;
+
+    expect(messages[0]!.content).toContain("businessIntent、tacticalIntent、riskNotes 必须使用中文");
+    expect(userContent).toContain('"requestMode":"compact_match"');
+    expect(userContent).toContain('"targetCandidates"');
+    expect(userContent).not.toContain('"reachableCells"');
+    expect(userContent.length).toBeLessThan(JSON.stringify(request).length);
   });
 });
 

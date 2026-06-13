@@ -8,7 +8,13 @@ import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
 import { buildFixtureHexRoundBusinessDuel } from "../business/index.js";
 import { buildHexRoundEconomyContext } from "../economy/index.js";
 import { initializeHexRoundMemory } from "../state/index.js";
-import { buildHexAgentCommandRequest, normalizeHexAgentActionDraft } from "./hex-agent-command-boundary.js";
+import {
+  auditHexAgentDraftSemanticLanguage,
+  buildHexAgentCommandRequest,
+  buildHexAgentCompactCommandRequest,
+  calculateHexAgentCommandRequestSizeMetrics,
+  normalizeHexAgentActionDraft
+} from "./hex-agent-command-boundary.js";
 
 describe("Hex agent command boundary", () => {
   it("builds a compact request from phase memory without treating last-seen as current truth", () => {
@@ -175,6 +181,48 @@ describe("Hex agent command boundary", () => {
     expect(request.constraints.some((line) => line.includes("businessAssignment"))).toBe(true);
   });
 
+  it("builds a compact real-provider payload without sending full reachable cells", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset),
+      bombCarrierAgentId: "t_0"
+    });
+    const businessDuel = buildFixtureHexRoundBusinessDuel({
+      roundNumber: 1,
+      attackTeamId: "t",
+      defenseTeamId: "ct",
+      agents: memory.agents.map((agent) => ({
+        agentId: agent.agentId,
+        teamId: agent.teamId,
+        side: agent.side
+      }))
+    });
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_0",
+      businessDuel
+    });
+
+    const compact = buildHexAgentCompactCommandRequest(request);
+    const metrics = calculateHexAgentCommandRequestSizeMetrics({
+      fullRequest: request,
+      compactRequest: compact
+    });
+
+    expect(compact.requestMode).toBe("compact_match");
+    expect(compact.outputLanguage).toBe("zh-CN");
+    expect("reachableCells" in compact).toBe(false);
+    expect(compact.targetCandidates.length).toBeLessThanOrEqual(8);
+    expect(compact.businessDuel?.subthemeTitle).toBe(request.businessDuel?.subthemeTitle);
+    expect(compact.businessDuel?.agentAssignment?.businessTask).toBe(request.businessAssignment?.businessTask);
+    expect(compact.outputSchema.semanticFieldsMustUseChinese).toEqual(["businessIntent", "tacticalIntent", "riskNotes"]);
+    expect(compact.outputSchema.codeIdentifiersRemainEnglish).toContain("targetCellId");
+    expect(metrics.compactRequestCharLength).toBeLessThan(metrics.fullRequestCharLength);
+    expect(metrics.estimatedReductionRatio).toBeGreaterThan(0.4);
+  });
+
   it("includes occupied and reserved cells while deprioritizing blocked target candidates", () => {
     const asset = loadOfficialDust2HexMap();
     const memory = initializeHexRoundMemory({
@@ -319,6 +367,35 @@ describe("Hex agent command boundary", () => {
 
     expect(result.draft).toBeUndefined();
     expect(result.errors).toContain("draft:garbled_text");
+  });
+
+  it("audits natural-language fields for Chinese without flagging code identifiers", () => {
+    const zh = auditHexAgentDraftSemanticLanguage({
+      agentId: "t_0",
+      phaseId: "default_opening",
+      currentCellId: "h_01_01_l0",
+      targetCellId: "h_02_01_l0",
+      actionType: "move",
+      businessIntent: "用中路推进质疑对手的渠道护城河，并为队友制造交叉火力。",
+      tacticalIntent: "靠近 A 小道入口但不把 lastSeen 当作真实位置。",
+      riskNotes: ["避免进入队友预占格"]
+    });
+    const en = auditHexAgentDraftSemanticLanguage({
+      agentId: "t_0",
+      phaseId: "default_opening",
+      currentCellId: "h_01_01_l0",
+      targetCellId: "h_02_01_l0",
+      actionType: "move",
+      businessIntent: "pressure the channel moat with a fast mid route",
+      tacticalIntent: "keep safe spacing from h_01_01_l0",
+      riskNotes: ["avoid friendly reserved cell"]
+    });
+
+    expect(zh.semanticLanguage).toBe("zh");
+    expect(zh.languageMismatch).toBe(false);
+    expect(en.semanticLanguage).toBe("en");
+    expect(en.languageMismatch).toBe(true);
+    expect(en.inspectedSemanticFields).toEqual(["businessIntent", "tacticalIntent", "riskNotes.0"]);
   });
 });
 

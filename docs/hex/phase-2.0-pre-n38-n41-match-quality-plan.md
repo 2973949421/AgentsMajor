@@ -58,6 +58,16 @@ defuse reducer 校验防守方存活、C4 已下、未拆、且 defender 站在 
 被敌人占住导致 carrier 没能移动到包点时，不再写入虚假的 bomb_planted 成功事件。
 ```
 
+N39 第一版落地结果：
+
+```text
+real provider 不再直接发送完整 HexAgentCommandRequest，而是发送 compact_match payload。
+request artifact 同时保存 fullRequest 和 compactRequest，并写入尺寸压缩指标。
+response artifact 写入 provider prompt token（若返回）和 semantic language audit。
+businessIntent / tacticalIntent / riskNotes 要求中文语义；英文或混合语义记录 language_mismatch。
+JSON 字段名、actionType、cell id、phaseId、agentId 继续保持英文代码标识。
+```
+
 ## 2. 成功标准
 
 N38 完成后：

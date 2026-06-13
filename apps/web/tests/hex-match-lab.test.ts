@@ -77,6 +77,9 @@ describe("Hex Match Lab", () => {
     expect(timeline).toContain("播放 trace");
     expect(drawer).toContain("LLM / Combat / Economy / Hard Winner 审计");
     expect(drawer).toContain("repaired fields");
+    expect(drawer).toContain("compact requests");
+    expect(drawer).toContain("language mismatch");
+    expect(drawer).toContain("semantic languages");
     expect(drawer).toContain("最终 winner 只来自 hard condition");
 
     expect(css).toContain(".board");
@@ -122,6 +125,8 @@ describe("Hex Match Lab", () => {
     expect(server).toContain("mapAssetView");
     expect(server).toContain("buildPlayerCards");
     expect(server).toContain("repairedFields");
+    expect(server).toContain("languageMismatchCount");
+    expect(server).toContain("averageRequestReductionRatio");
     expect(server).toContain("pathCellIds");
     expect(server).toContain("droppedCellId");
     expect(server).toContain("sitePressure");

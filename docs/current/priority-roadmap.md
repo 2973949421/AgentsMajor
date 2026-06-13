@@ -62,7 +62,7 @@ defuse reducer 会拒绝未站到已下包格的非法拆包。
 被敌方占住的包点不会生成虚假的 bomb_planted 成功事实。
 ```
 
-### P1：N39，LLM 调用成本与中文输出稳定（下一步）
+### P1：N39，LLM 调用成本与中文输出稳定（已完成第一版）
 
 目标是把 real provider 每 agent request 从约 37k-39k tokens 降到 15k-22k 左右，并让商业语义字段中文为主。
 
@@ -74,7 +74,16 @@ language_mismatch audit
 中文 businessIntent / riskRead / tacticalIntent
 ```
 
-### P2：N40，角色感知 KDA 与 combat contact 收敛
+当前结果：
+
+```text
+real provider 使用 compact_match payload，不再直接发送完整 HexAgentCommandRequest。
+request artifact 同时保留 fullRequest 和 compactRequest，便于审计和回滚。
+response artifact 记录 request size metrics、provider prompt tokens（若返回）和 language_mismatch audit。
+Web LLM audit 显示 compact 请求数、平均压缩率、prompt token 总数、语义语言和 mismatch 数。
+```
+
+### P2：N40，角色感知 KDA 与 combat contact 收敛（下一步）
 
 目标是让枪战归因更像真实 CS 队内分工，同时减少一回合 80-100 个 combat resolution 的噪声。
 

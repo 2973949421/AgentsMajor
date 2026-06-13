@@ -76,6 +76,11 @@ function LlmAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; phase
       <MetricLine label="strategy seed" value={audit.roundStrategySeed ?? "未记录"} />
       <MetricLine label="expected / attempted" value={`${audit.expectedCalls} / ${audit.totalLlmCallsAttempted}`} />
       <MetricLine label="accepted / rejected / fallback" value={`${audit.acceptedDrafts} / ${audit.rejectedDrafts} / ${audit.fallbackCount}`} />
+      <MetricLine label="compact requests" value={`${audit.compactRequestCount}`} />
+      <MetricLine label="avg request reduction" value={formatPercent(audit.averageRequestReductionRatio)} />
+      <MetricLine label="prompt tokens" value={audit.promptTokenTotal !== undefined ? String(audit.promptTokenTotal) : "provider 未返回"} />
+      <MetricLine label="semantic languages" value={audit.semanticLanguages.join(", ") || "未记录"} />
+      <MetricLine label="language mismatch" value={`${audit.languageMismatchCount}`} />
       <MetricLine label="request artifacts" value={audit.requestArtifactIds.join(", ") || "当前 trace 未记录"} />
       <MetricLine label="response artifacts" value={audit.responseArtifactIds.join(", ") || "当前 trace 未记录"} />
       <MetricLine label="repaired fields" value={audit.repairedFields.join(", ") || "无"} />
@@ -173,6 +178,10 @@ function MetricLine({ label, value }: { label: string; value: string | number })
       <strong>{value}</strong>
     </div>
   );
+}
+
+function formatPercent(value: number | undefined): string {
+  return value === undefined ? "当前 trace 未记录" : `${Math.round(value * 100)}%`;
 }
 
 function tabLabel(tab: AuditTab): string {

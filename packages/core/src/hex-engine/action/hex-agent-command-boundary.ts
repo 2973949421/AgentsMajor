@@ -93,6 +93,93 @@ export interface HexAgentCommandRequest {
   businessExecutionSummary?: string;
 }
 
+export interface HexAgentCompactCommandRequest {
+  schemaVersion: 1;
+  requestMode: "compact_match";
+  outputLanguage: "zh-CN";
+  phase: {
+    phaseId: HexPhaseId;
+    phaseIndex: number;
+    objective: string;
+    pressure: string;
+  };
+  outputSchema: {
+    requiredFields: readonly ["agentId", "phaseId", "currentCellId", "targetCellId", "actionType", "businessIntent"];
+    optionalFields: readonly ["tacticalIntent", "riskNotes", "confidence"];
+    semanticFieldsMustUseChinese: readonly ["businessIntent", "tacticalIntent", "riskNotes"];
+    codeIdentifiersRemainEnglish: readonly ["agentId", "phaseId", "currentCellId", "targetCellId", "actionType"];
+  };
+  agent: {
+    agentId: string;
+    teamId: string;
+    side: HexSide;
+    roleLabel?: string | undefined;
+    currentCellId: string;
+    currentRegionId?: string | undefined;
+    currentPointIds: string[];
+    apRemaining: number;
+    apBudget: number;
+    carryingC4: boolean;
+  };
+  map: {
+    mapSlug: string;
+    cellsPerAp: number;
+  };
+  businessDuel?: {
+    subthemeId: string;
+    subthemeTitle: string;
+    coreQuestion: string;
+    defenseThesis: string;
+    defenseClaims: string[];
+    attackThesis: string;
+    attackChallengePoints: string[];
+    agentAssignment?: Pick<HexAgentBusinessAssignment, "agentId" | "teamId" | "side" | "role" | "businessTask" | "csCarrierHint" | "linkedProofId" | "linkedChallengeId"> | undefined;
+  } | undefined;
+  tacticalPlan?: {
+    roundNumber: number;
+    attackVariant: string;
+    defenseVariant: string;
+    c4SitePreference: "a" | "b";
+    instruction: string;
+    focusRegions: string[];
+    focusPoints: string[];
+  } | undefined;
+  economy?: {
+    posture: string;
+    buyType: string;
+    resourceTier: string;
+    utilityTier: string;
+    spend: number;
+    outputBudget: number;
+    allowedActionTypes: HexAgentActionType[];
+    constraints: string[];
+  } | undefined;
+  bombState: {
+    planted: boolean;
+    plantedCellId?: string | undefined;
+    carrierAgentId?: string | undefined;
+    droppedCellId?: string | undefined;
+  };
+  targetCandidates: HexAgentRouteCandidate[];
+  occupiedCellIds: string[];
+  reservedCellIds: string[];
+  lastSeenEnemies: Array<{
+    enemyAgentId: string;
+    cellId: string;
+    confidence: number;
+    note: "historical_last_seen_not_current_truth";
+  }>;
+  objectiveHints: string[];
+  hardConstraints: string[];
+}
+
+export interface HexAgentCommandRequestSizeMetrics {
+  fullRequestCharLength: number;
+  compactRequestCharLength: number;
+  estimatedReductionRatio: number;
+  providerPromptTokens?: number | undefined;
+}
+
 export interface HexAgentBusinessDuelPromptContext {
   roundNumber: number;
   halfIndex: 0 | 1;
@@ -152,6 +239,14 @@ export interface NormalizeHexAgentActionDraftResult {
   errors: string[];
   ignoredFields: string[];
   repairedFields: string[];
+}
+
+export type HexSemanticLanguage = "zh" | "en" | "mixed" | "unknown";
+
+export interface HexAgentSemanticLanguageAudit {
+  semanticLanguage: HexSemanticLanguage;
+  languageMismatch: boolean;
+  inspectedSemanticFields: string[];
 }
 
 const allowedDraftFields = new Set([
@@ -295,6 +390,181 @@ export function buildHexAgentCommandRequest(input: {
   return request;
 }
 
+export function buildHexAgentCompactCommandRequest(request: HexAgentCommandRequest): HexAgentCompactCommandRequest {
+  const sideFocusRegions = request.agent.side === "attack"
+    ? request.tacticalPlan?.attackFocusRegions
+    : request.tacticalPlan?.defenseFocusRegions;
+  const sideFocusPoints = request.agent.side === "attack"
+    ? request.tacticalPlan?.attackFocusPoints
+    : request.tacticalPlan?.defenseFocusPoints;
+  const compact: HexAgentCompactCommandRequest = {
+    schemaVersion: 1,
+    requestMode: "compact_match",
+    outputLanguage: "zh-CN",
+    phase: {
+      phaseId: request.phaseId,
+      phaseIndex: request.phaseIndex,
+      objective: request.phaseObjective.objective,
+      pressure: request.phaseObjective.pressure
+    },
+    outputSchema: {
+      requiredFields: ["agentId", "phaseId", "currentCellId", "targetCellId", "actionType", "businessIntent"],
+      optionalFields: ["tacticalIntent", "riskNotes", "confidence"],
+      semanticFieldsMustUseChinese: ["businessIntent", "tacticalIntent", "riskNotes"],
+      codeIdentifiersRemainEnglish: ["agentId", "phaseId", "currentCellId", "targetCellId", "actionType"]
+    },
+    agent: {
+      agentId: request.agent.agentId,
+      teamId: request.agent.teamId,
+      side: request.agent.side,
+      roleLabel: readOptionalAgentRoleLabel(request.agent),
+      currentCellId: request.agent.currentCellId,
+      currentRegionId: request.agent.currentRegionId,
+      currentPointIds: [...request.agent.currentPointIds],
+      apRemaining: request.agent.apRemaining,
+      apBudget: request.agent.apBudget,
+      carryingC4: request.agent.carryingC4
+    },
+    map: {
+      mapSlug: request.map.mapSlug,
+      cellsPerAp: request.map.cellsPerAp
+    },
+    bombState: {
+      planted: request.bombState.planted,
+      plantedCellId: request.bombState.plantedCellId,
+      carrierAgentId: request.bombState.carrierAgentId,
+      droppedCellId: request.bombState.droppedCellId
+    },
+    targetCandidates: request.targetCandidates.slice(0, 8).map((candidate) => ({
+      ...candidate,
+      pointIds: [...candidate.pointIds],
+      flags: [...candidate.flags]
+    })),
+    occupiedCellIds: request.occupiedCellIds.slice(0, 12),
+    reservedCellIds: request.reservedCellIds.slice(0, 12),
+    lastSeenEnemies: request.lastSeenEnemies.slice(0, 5).map((enemy) => ({
+      enemyAgentId: enemy.enemyAgentId,
+      cellId: enemy.cellId,
+      confidence: enemy.confidence,
+      note: "historical_last_seen_not_current_truth"
+    })),
+    objectiveHints: request.objectiveHints.slice(0, 6),
+    hardConstraints: [
+      "只输出一个 JSON object，不要输出数组，除非系统明确要求。",
+      "businessIntent、tacticalIntent、riskNotes 必须用中文表达商业攻防语义。",
+      "JSON 字段名、actionType、cell id、phaseId、agentId 必须保持给定英文标识。",
+      "targetCellId 必须从 targetCandidates 中选择；不要选择 friendly occupied/reserved cell。",
+      "lastSeenEnemies 是历史信息，不是当前敌人真实位置。",
+      "不要输出 winner、kill、damage、economyDelta、DB fact 或隐藏敌人位置。"
+    ]
+  };
+  if (request.businessDuel) {
+    const compactAssignment = request.businessAssignment
+      ? {
+          agentId: request.businessAssignment.agentId,
+          teamId: request.businessAssignment.teamId,
+          side: request.businessAssignment.side,
+          role: request.businessAssignment.role,
+          businessTask: request.businessAssignment.businessTask,
+          csCarrierHint: request.businessAssignment.csCarrierHint,
+          ...(request.businessAssignment.linkedProofId ? { linkedProofId: request.businessAssignment.linkedProofId } : {}),
+          ...(request.businessAssignment.linkedChallengeId ? { linkedChallengeId: request.businessAssignment.linkedChallengeId } : {})
+        }
+      : undefined;
+    compact.businessDuel = {
+      subthemeId: request.businessDuel.subthemeId,
+      subthemeTitle: request.businessDuel.subthemeTitle,
+      coreQuestion: request.businessDuel.coreQuestion,
+      defenseThesis: request.businessDuel.defenseProof.thesis,
+      defenseClaims: request.businessDuel.defenseProof.claims.slice(0, 3),
+      attackThesis: request.businessDuel.attackChallenge.thesis,
+      attackChallengePoints: request.businessDuel.attackChallenge.challengePoints.slice(0, 3),
+      ...(compactAssignment ? { agentAssignment: compactAssignment } : {})
+    };
+  }
+  if (request.tacticalPlan) {
+    compact.tacticalPlan = {
+      roundNumber: request.tacticalPlan.roundNumber,
+      attackVariant: request.tacticalPlan.attackVariant,
+      defenseVariant: request.tacticalPlan.defenseVariant,
+      c4SitePreference: request.tacticalPlan.c4SitePreference,
+      instruction: request.tacticalPlan.instruction,
+      focusRegions: [...(sideFocusRegions ?? [])],
+      focusPoints: [...(sideFocusPoints ?? [])]
+    };
+  }
+  if (request.economy) {
+    compact.economy = {
+      posture: request.economy.economyPosture,
+      buyType: request.economy.buyType,
+      resourceTier: request.economy.resourceTier,
+      utilityTier: request.economy.utilityTier,
+      spend: request.economy.spend,
+      outputBudget: request.economy.outputBudget,
+      allowedActionTypes: request.economy.economyAllowedActionTypes.slice(0, 10),
+      constraints: request.economy.economyConstraints.slice(0, 4)
+    };
+  }
+  return compact;
+}
+
+export function calculateHexAgentCommandRequestSizeMetrics(input: {
+  fullRequest: HexAgentCommandRequest;
+  compactRequest: HexAgentCompactCommandRequest;
+  providerPromptTokens?: number | undefined;
+}): HexAgentCommandRequestSizeMetrics {
+  const fullRequestCharLength = JSON.stringify(input.fullRequest).length;
+  const compactRequestCharLength = JSON.stringify(input.compactRequest).length;
+  const estimatedReductionRatio = fullRequestCharLength > 0
+    ? Number(((fullRequestCharLength - compactRequestCharLength) / fullRequestCharLength).toFixed(4))
+    : 0;
+  const metrics: HexAgentCommandRequestSizeMetrics = {
+    fullRequestCharLength,
+    compactRequestCharLength,
+    estimatedReductionRatio
+  };
+  if (input.providerPromptTokens !== undefined) {
+    metrics.providerPromptTokens = input.providerPromptTokens;
+  }
+  return metrics;
+}
+
+export function auditHexAgentDraftSemanticLanguage(draft: HexAgentActionDraft | undefined): HexAgentSemanticLanguageAudit {
+  const inspected: Array<[string, string]> = [];
+  if (draft?.businessIntent) {
+    inspected.push(["businessIntent", draft.businessIntent]);
+  }
+  if (draft?.tacticalIntent) {
+    inspected.push(["tacticalIntent", draft.tacticalIntent]);
+  }
+  for (const [index, note] of (draft?.riskNotes ?? []).entries()) {
+    inspected.push([`riskNotes.${index}`, note]);
+  }
+  if (inspected.length === 0) {
+    return {
+      semanticLanguage: "unknown",
+      languageMismatch: false,
+      inspectedSemanticFields: []
+    };
+  }
+  const text = inspected.map(([, value]) => value).join(" ");
+  const cjkCount = countMatches(text, /[\u3400-\u9FFF]/g);
+  const latinCount = countMatches(text.replace(/\b(?:h_\d+_\d+_l-?\d+|[a-z]+_\d+|[a-z]+_[a-z_]+)\b/gi, ""), /[A-Za-z]/g);
+  let semanticLanguage: HexSemanticLanguage = "unknown";
+  if (cjkCount >= 4 && latinCount <= cjkCount * 1.2) {
+    semanticLanguage = "zh";
+  } else if (cjkCount >= 4 && latinCount > cjkCount * 1.2) {
+    semanticLanguage = "mixed";
+  } else if (latinCount >= 8) {
+    semanticLanguage = "en";
+  }
+  return {
+    semanticLanguage,
+    languageMismatch: semanticLanguage === "en" || semanticLanguage === "mixed",
+    inspectedSemanticFields: inspected.map(([field]) => field)
+  };
+}
+
 function summarizeBusinessDuelForRequest(duel: HexRoundBusinessDuel): HexAgentBusinessDuelPromptContext {
   return {
     roundNumber: duel.roundNumber,
@@ -317,6 +587,16 @@ function summarizeBusinessDuelForRequest(duel: HexRoundBusinessDuel): HexAgentBu
       challengePoints: [...duel.attackChallenge.challengePoints]
     }
   };
+}
+
+function readOptionalAgentRoleLabel(agent: HexAgentCommandRequest["agent"]): string | undefined {
+  const record = agent as HexAgentCommandRequest["agent"] & { roleLabel?: unknown; role?: unknown };
+  const roleLabel = typeof record.roleLabel === "string" ? record.roleLabel.trim() : "";
+  if (roleLabel) {
+    return roleLabel;
+  }
+  const role = typeof record.role === "string" ? record.role.trim() : "";
+  return role || undefined;
 }
 
 function buildPhaseObjective(phaseId: HexPhaseId, side: HexSide): HexAgentPhaseObjective {
@@ -713,4 +993,8 @@ function readConfidence(value: unknown): number | undefined {
     return undefined;
   }
   return Math.max(0, Math.min(1, value));
+}
+
+function countMatches(value: string, pattern: RegExp): number {
+  return value.match(pattern)?.length ?? 0;
 }

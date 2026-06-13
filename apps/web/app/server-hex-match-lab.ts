@@ -366,6 +366,11 @@ export interface HexMatchLabLlmAuditSummary {
   rejectedEventCount: number;
   requestArtifactIds: string[];
   responseArtifactIds: string[];
+  compactRequestCount: number;
+  languageMismatchCount: number;
+  semanticLanguages: string[];
+  averageRequestReductionRatio?: number | undefined;
+  promptTokenTotal?: number | undefined;
   repairedFields: string[];
   fallbackReasons: string[];
   providerErrors: string[];
@@ -1098,6 +1103,9 @@ function summarizeSetupPhase(
       rejectedEventCount: 0,
       requestArtifactIds: [],
       responseArtifactIds: [],
+      compactRequestCount: 0,
+      languageMismatchCount: 0,
+      semanticLanguages: [],
       repairedFields: [],
       fallbackReasons: [],
       providerErrors: []
@@ -1218,6 +1226,11 @@ function summarizeTraceAudit(trace: HexRoundTrace): HexMatchLabLlmAuditSummary {
     rejectedEventCount: trace.audit.rejectedEventCount,
     requestArtifactIds: uniqueStrings(phaseAudits.map((audit) => audit.requestArtifactId)),
     responseArtifactIds: uniqueStrings(phaseAudits.map((audit) => audit.responseArtifactId)),
+    compactRequestCount: phaseAudits.filter((audit) => audit.requestSizeMetrics?.compactRequestCharLength).length,
+    languageMismatchCount: phaseAudits.filter((audit) => audit.languageMismatch).length,
+    semanticLanguages: uniqueStrings(phaseAudits.map((audit) => audit.semanticLanguage)),
+    averageRequestReductionRatio: averageNumbers(phaseAudits.map((audit) => audit.requestSizeMetrics?.estimatedReductionRatio)),
+    promptTokenTotal: sumNumbers(phaseAudits.map((audit) => audit.requestSizeMetrics?.providerPromptTokens)),
     repairedFields: uniqueStrings(phaseAudits.flatMap((audit) => audit.repairedFields ?? [])),
     fallbackReasons: uniqueStrings(phaseAudits.map((audit) => audit.fallbackReason)),
     providerErrors: uniqueStrings(phaseAudits.flatMap((audit) => audit.errors).filter((error) => error.startsWith("provider_error"))),
@@ -1380,6 +1393,11 @@ function summarizePhaseAudit(phase: HexRoundTrace["phases"][number]): HexMatchLa
     rejectedEventCount: phase.memoryAfter.rejectedEvents.length,
     requestArtifactIds: uniqueStrings(audits.map((audit) => audit.requestArtifactId)),
     responseArtifactIds: uniqueStrings(audits.map((audit) => audit.responseArtifactId)),
+    compactRequestCount: audits.filter((audit) => audit.requestSizeMetrics?.compactRequestCharLength).length,
+    languageMismatchCount: audits.filter((audit) => audit.languageMismatch).length,
+    semanticLanguages: uniqueStrings(audits.map((audit) => audit.semanticLanguage)),
+    averageRequestReductionRatio: averageNumbers(audits.map((audit) => audit.requestSizeMetrics?.estimatedReductionRatio)),
+    promptTokenTotal: sumNumbers(audits.map((audit) => audit.requestSizeMetrics?.providerPromptTokens)),
     repairedFields: uniqueStrings(audits.flatMap((audit) => audit.repairedFields ?? [])),
     fallbackReasons: uniqueStrings(audits.map((audit) => audit.fallbackReason)),
     providerErrors: uniqueStrings(audits.flatMap((audit) => audit.errors).filter((error) => error.startsWith("provider_error")))
@@ -1717,6 +1735,22 @@ function clampInteger(value: unknown, fallback: number, min: number, max: number
 
 function uniqueStrings(values: Array<string | undefined>): string[] {
   return [...new Set(values.filter((value): value is string => Boolean(value)))];
+}
+
+function averageNumbers(values: Array<number | undefined>): number | undefined {
+  const numbers = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  if (numbers.length === 0) {
+    return undefined;
+  }
+  return Number((numbers.reduce((sum, value) => sum + value, 0) / numbers.length).toFixed(4));
+}
+
+function sumNumbers(values: Array<number | undefined>): number | undefined {
+  const numbers = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  if (numbers.length === 0) {
+    return undefined;
+  }
+  return numbers.reduce((sum, value) => sum + value, 0);
 }
 
 function isInsideDirectory(targetPath: string, parentPath: string): boolean {

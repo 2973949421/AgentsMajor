@@ -10,10 +10,16 @@ import type { HexRoundBusinessDuel } from "../business/index.js";
 import type { HexRoundEconomyContext } from "../economy/index.js";
 import type { HexRoundMemory } from "../state/index.js";
 import {
+  auditHexAgentDraftSemanticLanguage,
+  buildHexAgentCompactCommandRequest,
   buildHexAgentCommandRequest,
+  calculateHexAgentCommandRequestSizeMetrics,
   normalizeHexAgentActionDraft,
+  type HexAgentCommandRequestSizeMetrics,
+  type HexAgentCompactCommandRequest,
   type HexAgentActionDraft,
   type HexAgentCommandRequest,
+  type HexAgentSemanticLanguageAudit,
   type HexRoundTacticalPlan
 } from "./hex-agent-command-boundary.js";
 import {
@@ -110,6 +116,10 @@ export interface HexAgentCommandAudit {
   modelId?: string;
   contentLength?: number;
   reasoningContentLength?: number;
+  requestSizeMetrics?: HexAgentCommandRequestSizeMetrics;
+  semanticLanguage?: HexAgentSemanticLanguageAudit["semanticLanguage"];
+  languageMismatch?: boolean;
+  inspectedSemanticFields?: string[];
 }
 
 export interface HexAgentPhaseCommandHarnessResult {
@@ -224,6 +234,11 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
       ...(input.businessDuel ? { businessDuel: input.businessDuel } : {}),
       ...(input.economyContext ? { economyContext: input.economyContext } : {})
     });
+    const compactRequest = buildHexAgentCompactCommandRequest(request);
+    const requestSizeMetrics = calculateHexAgentCommandRequestSizeMetrics({
+      fullRequest: request,
+      compactRequest
+    });
     await emitProgress(input, {
       agentId: agent.agentId,
       callId,
@@ -250,7 +265,11 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
       content: {
         schemaVersion: 1,
         callId,
-        request
+        request,
+        fullRequest: request,
+        compactRequest,
+        compactRequestMode: compactRequest.requestMode,
+        requestSizeMetrics
       }
     });
     if (requestArtifactId) {
@@ -273,6 +292,12 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
         rawDraft: providerResult.rawDraft,
         request
       });
+      const semanticLanguageAudit = auditHexAgentDraftSemanticLanguage(normalized.draft);
+      const responseRequestSizeMetrics = calculateHexAgentCommandRequestSizeMetrics({
+        fullRequest: request,
+        compactRequest,
+        providerPromptTokens: providerResult.usage?.promptTokens
+      });
       const responseArtifactId = await writeHarnessArtifact(input, {
         callId,
         agentId: agent.agentId,
@@ -285,7 +310,9 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
           usage: providerResult.usage,
           providerDiagnostics: providerResult.providerDiagnostics,
           rawDraft: providerResult.rawDraft,
-          normalized
+          normalized,
+          semanticLanguageAudit,
+          requestSizeMetrics: responseRequestSizeMetrics
         }
       });
       if (responseArtifactId) {
@@ -325,6 +352,8 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
           requestArtifactId,
           responseArtifactId,
           providerResult,
+          requestSizeMetrics: responseRequestSizeMetrics,
+          semanticLanguageAudit,
           input
         }));
         await emitProgress(input, {
@@ -389,12 +418,14 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
         callId,
         called: true,
         action: validated,
-          errors: validated.validationErrors,
-          ignoredFields: normalized.ignoredFields,
-          repairedFields: normalized.repairedFields,
-          requestArtifactId,
-          responseArtifactId,
-          providerResult,
+        errors: validated.validationErrors,
+        ignoredFields: normalized.ignoredFields,
+        repairedFields: normalized.repairedFields,
+        requestArtifactId,
+        responseArtifactId,
+        providerResult,
+        requestSizeMetrics: responseRequestSizeMetrics,
+        semanticLanguageAudit,
         input
       }));
       if (normalized.repairedFields.length > 0) {
@@ -672,17 +703,18 @@ export function createEnvHexAgentCommandProvider(
     providerMode: "real",
     modelId: config.modelName ?? modelId,
     provider: async (request) => {
-      const response = await gateway.generateStructured<Record<string, unknown>, HexAgentCommandRequest>({
+      const compactRequest = buildHexAgentCompactCommandRequest(request);
+      const response = await gateway.generateStructured<Record<string, unknown>, HexAgentCompactCommandRequest>({
         task: "agent_action",
         driverModelId: modelId,
-        input: request,
+        input: compactRequest,
         schemaName: "HexAgentActionDraft",
         responseFormat: "json_object",
         modelTier: "standard",
         temperature: 0.35,
         maxOutputTokens: 900,
         extraParams: { thinking: { type: "disabled" } },
-        messages: buildRealHexAgentCommandMessages(request)
+        messages: buildRealHexAgentCommandMessages(compactRequest)
       });
       return {
         providerMode: "real",
@@ -696,16 +728,18 @@ export function createEnvHexAgentCommandProvider(
   };
 }
 
-function buildRealHexAgentCommandMessages(request: HexAgentCommandRequest) {
+export function buildRealHexAgentCommandMessages(request: HexAgentCompactCommandRequest) {
   return [
     {
       role: "system" as const,
       content: [
-        "You are a HexGrid CS-business match agent command drafter.",
-        "Output one JSON object only.",
-        "Do not output winner, kills, damage, bomb result, economy delta, hidden enemy truth, database facts, or round report fields.",
-        "Choose only from reachableCells and allowedActionTypes.",
-        "lastSeenEnemies are historical hints, not current truth."
+        "你是 HexGrid CS 商业攻防比赛的 agent 行动草案生成器。",
+        "只输出一个 JSON object。",
+        "businessIntent、tacticalIntent、riskNotes 必须使用中文，表达本回合商业自证/质疑如何通过 CS 行动执行。",
+        "JSON 字段名、actionType、phaseId、agentId、cell id 必须严格保持请求里的英文标识。",
+        "不要输出 winner、kills、damage、bomb result、economy delta、hidden enemy truth、database facts 或 round report fields。",
+        "targetCellId 只能从 targetCandidates 中选择。",
+        "lastSeenEnemies 是历史提示，不是当前敌人真实位置。"
       ].join("\n")
     },
     {
@@ -767,6 +801,8 @@ function buildAudit(input: {
   requestArtifactId: string | undefined;
   responseArtifactId: string | undefined;
   providerResult: HexAgentCommandProviderResult;
+  requestSizeMetrics: HexAgentCommandRequestSizeMetrics;
+  semanticLanguageAudit: HexAgentSemanticLanguageAudit;
   input: RunHexAgentPhaseCommandHarnessInput;
 }): HexAgentCommandAudit {
   const audit: HexAgentCommandAudit = {
@@ -778,7 +814,11 @@ function buildAudit(input: {
     ignoredFields: [...input.ignoredFields],
     repairedFields: [...input.repairedFields, ...(input.action.repairReasons ?? [])],
     errors: input.errors.map(String),
-    providerMode: input.providerResult.providerMode ?? input.input.providerMode ?? "fixture"
+    providerMode: input.providerResult.providerMode ?? input.input.providerMode ?? "fixture",
+    requestSizeMetrics: input.requestSizeMetrics,
+    semanticLanguage: input.semanticLanguageAudit.semanticLanguage,
+    languageMismatch: input.semanticLanguageAudit.languageMismatch,
+    inspectedSemanticFields: [...input.semanticLanguageAudit.inspectedSemanticFields]
   };
   if (input.action.fallbackReason) {
     audit.fallbackReason = input.action.fallbackReason;
