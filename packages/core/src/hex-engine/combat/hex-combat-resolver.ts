@@ -4,6 +4,7 @@ import type { HexRoundBusinessDuel } from "../business/index.js";
 import { summarizeHexEconomyEvidence, type HexEconomyCombatEvidence, type HexRoundEconomyContext } from "../economy/index.js";
 import type { HexRoundMemory, HexSide } from "../state/index.js";
 import { buildHexCombatCasualties, buildHexCombatSuppressions } from "./hex-combat-casualties.js";
+import type { HexCombatAttributionScore } from "./hex-combat-casualties.js";
 import { materializeHexCombatMemoryEvents } from "./hex-combat-events.js";
 import type {
   HexCombatAudit,
@@ -122,7 +123,23 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
       attack: attackEconomyEvidence,
       defense: defenseEconomyEvidence,
       reasons: [...attackEconomyEvidence.reasons, ...defenseEconomyEvidence.reasons]
-    }
+    },
+    contactRetention: {
+      ...(input.contact.relevanceScore !== undefined ? { relevanceScore: input.contact.relevanceScore } : {}),
+      retentionReasons: [...(input.contact.retentionReasons ?? [])],
+      ...(input.contact.prunedCandidateCount ? { prunedCandidateCount: input.contact.prunedCandidateCount } : {})
+    },
+    roleContributions: [...attributionScores.entries()].map(([agentId, score]) => {
+      const participant = input.contact.participants.find((candidate) => candidate.agentId === agentId);
+      return {
+        agentId,
+        side: participant?.side ?? "attack",
+        roleLabel: score.roleLabel,
+        contributionType: score.killerScore > score.assistScore ? "killer" as const : score.assistScore > 0 ? "assist" as const : "neutral" as const,
+        scoreDelta: roundScore(Math.max(score.killerScore, score.assistScore)),
+        reasons: [...score.reasons]
+      };
+    })
   };
   if (input.contact.triggerReasons.includes("site_contest") || input.contact.triggerReasons.includes("plant_pressure")) {
     audit.sitePressure = true;
@@ -423,33 +440,140 @@ function buildAttributionScores(input: {
   contact: HexCombatContact;
   actions: HexValidatedAgentAction[];
   businessDuel: HexRoundBusinessDuel | undefined;
-}): Map<string, number> {
+}): Map<string, HexCombatAttributionScore> {
   const actionByAgent = new Map(input.actions.map((action) => [action.agentId, action]));
-  const scores = new Map<string, number>();
+  const scores = new Map<string, HexCombatAttributionScore>();
   for (const participant of input.contact.participants) {
     const action = actionByAgent.get(participant.agentId) ?? participant.action;
-    let score = 0;
+    let killerScore = 0;
+    let assistScore = 0;
+    const reasons: string[] = [];
     if (action.valid && !action.fallbackReason) {
-      score += 8;
+      killerScore += 8;
+      assistScore += 4;
+      reasons.push("valid_non_fallback_action");
+    } else {
+      reasons.push("fallback_not_positive_evidence");
     }
     if (action.actionType !== "hold_position") {
-      score += 5;
+      killerScore += 5;
+      assistScore += 3;
+      reasons.push("non_hold_action");
     }
     if (isPressureAction(action)) {
-      score += 5;
+      killerScore += 5;
+      assistScore += 2;
+      reasons.push("pressure_action");
+    }
+    if (isSupportAction(action)) {
+      assistScore += 7;
+      reasons.push("support_action");
     }
     if (actionMatchesBusinessAssignment(participant.side, action, input.businessDuel)) {
-      score += 8;
+      killerScore += 5;
+      assistScore += 5;
+      reasons.push("business_assignment_match");
     }
     if (matchesRoundBusinessLanguage(participant.side, action.businessIntent, input.businessDuel)) {
-      score += 4;
+      killerScore += 3;
+      assistScore += 3;
+      reasons.push("business_duel_language_match");
     }
     if (participant.targetFlags.includes("bombsite_a") || participant.targetFlags.includes("bombsite_b") || participant.currentFlags.includes("cover")) {
-      score += 2;
+      killerScore += 2;
+      assistScore += 2;
+      reasons.push("map_flag_context");
     }
-    scores.set(participant.agentId, score);
+    const roleContribution = scoreRoleContribution({
+      roleLabel: resolveRoleLabel(participant, input.businessDuel),
+      participant,
+      action
+    });
+    killerScore += roleContribution.killerDelta;
+    assistScore += roleContribution.assistDelta;
+    reasons.push(...roleContribution.reasons);
+    if (participant.supportParticipant) {
+      assistScore += 6;
+      killerScore = Math.max(0, killerScore - 4);
+      reasons.push("same_side_support_participant");
+    }
+    scores.set(participant.agentId, {
+      killerScore: roundScore(Math.max(0, killerScore)),
+      assistScore: roundScore(Math.max(0, assistScore)),
+      roleLabel: roleContribution.roleLabel,
+      reasons
+    });
   }
   return scores;
+}
+
+function scoreRoleContribution(input: {
+  roleLabel: string;
+  participant: HexCombatParticipant;
+  action: HexValidatedAgentAction;
+}): { roleLabel: string; killerDelta: number; assistDelta: number; reasons: string[] } {
+  const reasons: string[] = [];
+  let killerDelta = 0;
+  let assistDelta = 0;
+  if (!input.action.valid || input.action.fallbackReason) {
+    return { roleLabel: input.roleLabel, killerDelta, assistDelta, reasons: ["role_fallback_no_positive_contribution"] };
+  }
+  if (input.roleLabel === "awper" && ["watch_angle", "peek", "seek_duel"].includes(input.action.actionType)) {
+    killerDelta += 10;
+    assistDelta += 2;
+    reasons.push("role_awper_angle_or_pick");
+  }
+  if (input.roleLabel === "star_rifler" && ["peek", "seek_duel", "execute_site", "retake"].includes(input.action.actionType)) {
+    killerDelta += 9;
+    assistDelta += 2;
+    reasons.push("role_star_rifler_pressure");
+  }
+  if (input.roleLabel === "entry" && ["peek", "seek_duel", "execute_site"].includes(input.action.actionType)) {
+    killerDelta += 8;
+    assistDelta += 1;
+    reasons.push("role_entry_first_contact");
+  }
+  if (input.roleLabel === "igl" && ["map_control", "prepare_trade", "watch_angle", "hold_position"].includes(input.action.actionType)) {
+    killerDelta += 1;
+    assistDelta += 9;
+    reasons.push("role_igl_control_or_trade_setup");
+  }
+  if (input.roleLabel === "support" && ["prepare_trade", "use_utility", "map_control", "watch_angle", "hold_position"].includes(input.action.actionType)) {
+    assistDelta += 10;
+    reasons.push("role_support_setup_or_cover");
+  }
+  if (reasons.length === 0) {
+    reasons.push(`role_${input.roleLabel}_neutral`);
+  }
+  return { roleLabel: input.roleLabel, killerDelta, assistDelta, reasons };
+}
+
+function resolveRoleLabel(participant: HexCombatParticipant, businessDuel: HexRoundBusinessDuel | undefined): string {
+  const fromDuel = businessDuel?.agentAssignments.find((assignment) => assignment.agentId === participant.agentId)?.role;
+  return normalizeRoleLabel(fromDuel ?? participant.roleLabel);
+}
+
+function normalizeRoleLabel(role: string | undefined): string {
+  const normalized = (role ?? "unknown").toLowerCase().replace(/[\s-]+/g, "_");
+  if (normalized.includes("awp")) {
+    return "awper";
+  }
+  if (normalized.includes("star")) {
+    return "star_rifler";
+  }
+  if (normalized.includes("entry")) {
+    return "entry";
+  }
+  if (normalized.includes("igl") || normalized.includes("leader")) {
+    return "igl";
+  }
+  if (normalized.includes("support")) {
+    return "support";
+  }
+  if (normalized.includes("rifler")) {
+    return "rifler";
+  }
+  return normalized || "unknown";
 }
 
 function actionMatchesBusinessAssignment(
@@ -531,6 +655,10 @@ function scoreMapFlags(participants: HexCombatParticipant[]): number {
 
 function isPressureAction(action: HexValidatedAgentAction): boolean {
   return action.valid && ["peek", "seek_duel", "execute_site", "retake", "defuse_bomb", "plant_bomb", "map_control"].includes(action.actionType);
+}
+
+function isSupportAction(action: HexValidatedAgentAction): boolean {
+  return action.valid && ["prepare_trade", "use_utility", "map_control", "watch_angle", "hold_position"].includes(action.actionType);
 }
 
 function buildVarianceResult(

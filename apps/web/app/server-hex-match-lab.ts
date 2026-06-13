@@ -319,6 +319,8 @@ export interface HexMatchLabCombatSummary {
     targetAgentId: string;
     assisterAgentIds: string[];
     result: string;
+    attributionReasons: string[];
+    targetSelectionReasons: string[];
   }>;
   suppressions: string[];
   regionControlHint?: string | undefined;
@@ -331,6 +333,15 @@ export interface HexMatchLabCombatSummary {
   sitePressure?: boolean | undefined;
   plantDenied?: boolean | undefined;
   tradeOpportunity?: boolean | undefined;
+  contactRetentionReasons: string[];
+  prunedCandidateCount?: number | undefined;
+  roleContributions: Array<{
+    agentId: string;
+    roleLabel: string;
+    contributionType: string;
+    scoreDelta: number;
+    reasons: string[];
+  }>;
 }
 
 export interface HexMatchLabEconomySummary {
@@ -1183,7 +1194,9 @@ function summarizePhase(
         killerAgentId: casualty.killerAgentId,
         targetAgentId: casualty.targetAgentId ?? casualty.agentId,
         assisterAgentIds: casualty.assisterAgentIds ?? [],
-        result: casualty.result
+        result: casualty.result,
+        attributionReasons: casualty.attributionReasons ?? [],
+        targetSelectionReasons: casualty.targetSelectionReasons ?? []
       })),
       suppressions: resolution.suppressions.map((suppression) => `${suppression.agentId}:${suppression.result}`),
       regionControlHint: resolution.regionControlHint,
@@ -1195,7 +1208,16 @@ function summarizePhase(
       varianceApplied: Boolean(parseRecord(resolution.audit.variance)?.varianceApplied),
       sitePressure: resolution.audit.sitePressure,
       plantDenied: resolution.audit.plantDenied,
-      tradeOpportunity: resolution.audit.tradeOpportunity
+      tradeOpportunity: resolution.audit.tradeOpportunity,
+      contactRetentionReasons: resolution.audit.contactRetention?.retentionReasons ?? [],
+      prunedCandidateCount: resolution.audit.contactRetention?.prunedCandidateCount,
+      roleContributions: (resolution.audit.roleContributions ?? []).map((contribution) => ({
+        agentId: contribution.agentId,
+        roleLabel: contribution.roleLabel,
+        contributionType: contribution.contributionType,
+        scoreDelta: contribution.scoreDelta,
+        reasons: [...contribution.reasons]
+      }))
     })),
     players: buildPlayerCards({
       agents: phase.memoryAfter.agents,

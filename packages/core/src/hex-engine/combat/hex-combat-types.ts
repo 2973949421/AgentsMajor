@@ -12,7 +12,9 @@ export type HexCombatTriggerReason =
   | "site_contest"
   | "choke_contest"
   | "dropped_bomb_contest"
-  | "plant_pressure";
+  | "plant_pressure"
+  | "trade_setup"
+  | "support_contact";
 export type HexCombatAdvantage = "attack" | "defense" | "contested";
 export type HexCombatVerdict = "kill" | "wound_or_forced_back" | "contested_suppression";
 export type HexCombatControlHint = "attack" | "defense" | "contested" | "neutral";
@@ -36,6 +38,8 @@ export interface HexCombatParticipant {
   targetFlags: HexCell["flags"];
   lifeStatus: "alive" | "wounded";
   action: HexValidatedAgentAction;
+  roleLabel?: string;
+  supportParticipant?: boolean;
 }
 
 export interface HexCombatContact {
@@ -49,6 +53,9 @@ export interface HexCombatContact {
   regionIds: string[];
   pointIds: string[];
   minCellDistance?: number;
+  relevanceScore?: number;
+  retentionReasons?: string[];
+  prunedCandidateCount?: number;
 }
 
 export interface HexCombatSideEvidence {
@@ -73,6 +80,8 @@ export interface HexCombatCasualty {
   reason: string;
   killerAgentId?: string;
   assisterAgentIds: string[];
+  attributionReasons?: string[];
+  targetSelectionReasons?: string[];
 }
 
 export interface HexCombatSuppression {
@@ -104,6 +113,19 @@ export interface HexCombatAudit {
   sitePressure?: boolean;
   plantDenied?: boolean;
   tradeOpportunity?: boolean;
+  contactRetention?: {
+    relevanceScore?: number;
+    retentionReasons: string[];
+    prunedCandidateCount?: number;
+  };
+  roleContributions?: Array<{
+    agentId: string;
+    side: HexSide;
+    roleLabel: string;
+    contributionType: "killer" | "assist" | "neutral";
+    scoreDelta: number;
+    reasons: string[];
+  }>;
 }
 
 export interface HexCombatEconomyAudit {

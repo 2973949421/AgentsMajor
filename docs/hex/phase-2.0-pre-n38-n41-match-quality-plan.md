@@ -68,6 +68,17 @@ businessIntent / tacticalIntent / riskNotes 要求中文语义；英文或混合
 JSON 字段名、actionType、cell id、phaseId、agentId 继续保持英文代码标识。
 ```
 
+N40 第一版落地结果：
+
+```text
+combat contact builder 从全互联候选改为关键接触保留，默认每 phase 保留最多 12 个关键 contact。
+下包、拆包、掉包、包点争夺等 objective contact 优先保留，不被普通上限裁掉。
+contact trace 写入 relevanceScore、retentionReasons 和 prunedCandidateCount，说明为什么保留或裁掉候选。
+关键 contact 可纳入有限同侧支援者，让 prepare_trade / use_utility / map_control / watch_angle 等协作行动有助攻事实来源。
+角色贡献只影响 killer / assister 归因排序：AWPer、star rifler、entry 更容易形成击杀贡献；IGL、support 更容易形成助攻或控图贡献。
+role contribution 不写 hard winner，不覆盖商业证据和 CS 证据，不把 fallback 当正向贡献。
+```
+
 ## 2. 成功标准
 
 N38 完成后：
@@ -88,11 +99,11 @@ N39 完成后：
 
 N40 完成后：
 
-- combat contact 数量不再出现每回合 80-100 个全互联噪声，目标是只保留关键接触。
-- killer attribution 不再按 participant 顺序或接触网格偏置。
+- combat contact 数量不再出现每回合 80-100 个全互联噪声，默认每 phase 只保留最多 12 个关键接触。
+- killer attribution 不再按 participant 顺序或接触网格偏置，而是读取行动、商业职责、CS 位置和角色贡献。
 - AWPer / star rifler / entry 更容易拿击杀，但不能硬指定击杀。
 - IGL / support 更容易拿助攻、控制贡献、trade setup 贡献。
-- assist 不再长期为 0。
+- assist 不再长期为 0；但每次击杀最多 2 个 assister，且必须来自同侧有效贡献。
 - KDA 仍只来自 combat trace，不允许前端猜或报告桥接层猜。
 
 N41 完成后：

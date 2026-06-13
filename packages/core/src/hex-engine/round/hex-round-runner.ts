@@ -183,7 +183,8 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
     const combatContacts = buildHexCombatContacts({
       asset,
       memory: memoryAfterMovement,
-      actions: acceptedActions
+      actions: acceptedActions,
+      businessDuel
     });
     const combatResolutions = dedupeHexPhaseCombatResolutions({
       memoryBeforeCombat: memoryAfterMovement,

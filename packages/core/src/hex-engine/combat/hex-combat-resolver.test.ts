@@ -70,9 +70,73 @@ describe("Hex combat resolver", () => {
         targetAgentId: "ct_0",
         result: "killed",
         killerAgentId: "t_0",
-        assisterAgentIds: []
+        assisterAgentIds: ["t_1"]
       })
     ]);
+    expect(resolution.casualties[0]?.attributionReasons).toEqual(expect.arrayContaining(["assist:t_1:support_action"]));
+  });
+
+  it("uses role-aware attribution so riflers kill and IGL/support players assist", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [entryCell, defenseCell, supportCell] = findCellsInRegion(asset, "a_site", 3);
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_igl", side: "attack", cellId: supportCell!.cellId },
+      { agentId: "t_awper", side: "attack", cellId: entryCell!.cellId },
+      { agentId: "ct_anchor", side: "defense", cellId: defenseCell!.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({
+        memory,
+        agentId: "t_igl",
+        actionType: "prepare_trade",
+        targetCellId: defenseCell!.cellId,
+        businessIntent: "Attack challenge coordinates trade support around the A site proof gap."
+      }),
+      buildCombatAction({
+        memory,
+        agentId: "t_awper",
+        actionType: "peek",
+        targetCellId: defenseCell!.cellId,
+        businessIntent: "Attack challenge applies direct pick pressure to exploit the defense response gap."
+      }),
+      buildCombatAction({
+        memory,
+        agentId: "ct_anchor",
+        actionType: "hold_position",
+        targetCellId: defenseCell!.cellId,
+        businessIntent: "",
+        valid: false
+      })
+    ];
+    const businessDuel = buildFixtureHexRoundBusinessDuel({
+      roundNumber: 1,
+      attackTeamId: "t",
+      defenseTeamId: "ct",
+      agents: [
+        { agentId: "t_igl", teamId: "t", side: "attack" },
+        { agentId: "t_awper", teamId: "t", side: "attack" },
+        { agentId: "ct_anchor", teamId: "ct", side: "defense" }
+      ]
+    });
+    businessDuel.agentAssignments = businessDuel.agentAssignments.map((assignment) => {
+      if (assignment.agentId === "t_igl") return { ...assignment, role: "igl" };
+      if (assignment.agentId === "t_awper") return { ...assignment, role: "awper" };
+      return assignment;
+    });
+    const contact = buildHexCombatContacts({ asset, memory, actions, businessDuel })
+      .find((candidate) => candidate.attackAgentIds.includes("t_igl") && candidate.attackAgentIds.includes("t_awper"))!;
+
+    const resolution = resolveHexCombat({ asset, memory, contact, actions, businessDuel });
+
+    expect(resolution.casualties[0]).toEqual(expect.objectContaining({
+      targetAgentId: "ct_anchor",
+      killerAgentId: "t_awper",
+      assisterAgentIds: ["t_igl"]
+    }));
+    expect(resolution.audit.roleContributions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ agentId: "t_awper", roleLabel: "awper", contributionType: "killer" }),
+      expect.objectContaining({ agentId: "t_igl", roleLabel: "igl", contributionType: "assist" })
+    ]));
   });
 
   it("lets defense proof rebut a weak attack challenge without using fallback as positive business evidence", () => {

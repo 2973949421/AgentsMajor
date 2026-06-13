@@ -117,4 +117,48 @@ describe("Hex combat contact builder", () => {
 
     expect(buildHexCombatContacts({ asset, memory, actions })).toEqual([]);
   });
+
+  it("keeps only key contacts from a noisy same-region 5v5 mesh", () => {
+    const asset = loadOfficialDust2HexMap();
+    const cells = findCellsInRegion(asset, "mid_top_mid", 10);
+    const placements = [
+      ...cells.slice(0, 5).map((cell, index) => ({ agentId: `t_${index}`, side: "attack" as const, cellId: cell.cellId })),
+      ...cells.slice(5, 10).map((cell, index) => ({ agentId: `ct_${index}`, side: "defense" as const, cellId: cell.cellId }))
+    ];
+    const memory = initializeCombatMemory(asset, placements);
+    const actions = placements.map((placement) => buildCombatAction({
+      memory,
+      agentId: placement.agentId,
+      actionType: placement.side === "attack" ? "map_control" : "watch_angle"
+    }));
+
+    const contacts = buildHexCombatContacts({ asset, memory, actions });
+
+    expect(contacts.length).toBeLessThanOrEqual(12);
+    expect(contacts.length).toBeGreaterThan(0);
+    expect(contacts.some((contact) => (contact.prunedCandidateCount ?? 0) > 0)).toBe(true);
+    expect(contacts.every((contact) => (contact.retentionReasons ?? []).length > 0)).toBe(true);
+  });
+
+  it("adds nearby same-side support participants to key contact for assist attribution", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [entryCell, defenseCell, supportCell] = findCellsInRegion(asset, "a_site", 3);
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_entry", side: "attack", cellId: entryCell!.cellId },
+      { agentId: "t_support", side: "attack", cellId: supportCell!.cellId },
+      { agentId: "ct_anchor", side: "defense", cellId: defenseCell!.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({ memory, agentId: "t_entry", actionType: "execute_site", targetCellId: defenseCell!.cellId }),
+      buildCombatAction({ memory, agentId: "t_support", actionType: "prepare_trade", targetCellId: defenseCell!.cellId }),
+      buildCombatAction({ memory, agentId: "ct_anchor", actionType: "peek" })
+    ];
+
+    const contacts = buildHexCombatContacts({ asset, memory, actions });
+    const contact = contacts.find((candidate) => candidate.attackAgentIds.includes("t_entry") && candidate.attackAgentIds.includes("t_support"));
+
+    expect(contact).toBeDefined();
+    expect(contact?.triggerReasons).toEqual(expect.arrayContaining(["support_contact", "trade_setup"]));
+    expect(contact?.participants.find((participant) => participant.agentId === "t_support")?.supportParticipant).toBe(true);
+  });
 });

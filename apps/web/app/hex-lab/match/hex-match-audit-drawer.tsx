@@ -104,10 +104,19 @@ function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
           <p>商业裁定: {combat.businessVerdict ?? "未记录"}</p>
           <p>participants: {combat.participants.join(", ")}</p>
           <p>casualties: {combat.casualties.join(", ") || "none"}</p>
+          <p>接触保留原因: {combat.contactRetentionReasons.join("; ") || "未记录"}{combat.prunedCandidateCount ? `；本 phase 裁剪候选 ${combat.prunedCandidateCount} 个` : ""}</p>
           <p>
             kill attribution: {combat.killAttributions.map((item) =>
               `${item.killerAgentId ?? "unassigned"} -> ${item.targetAgentId}${item.assisterAgentIds.length > 0 ? ` (+${item.assisterAgentIds.join(",")})` : ""}`
             ).join("; ") || "none"}
+          </p>
+          <p>
+            归因理由: {combat.killAttributions.flatMap((item) => [...item.attributionReasons, ...item.targetSelectionReasons]).join("; ") || "无"}
+          </p>
+          <p>
+            角色贡献: {combat.roleContributions.map((item) =>
+              `${item.agentId}/${item.roleLabel}/${item.contributionType}:${item.scoreDelta}(${item.reasons.join(",")})`
+            ).join("; ") || "未记录"}
           </p>
           <p>suppression: {combat.suppressions.join(", ") || "none"}</p>
           <p>
