@@ -16,7 +16,7 @@ import { HexMatchPlayerPanel } from "./hex-match-player-panel";
 import { HexMatchTimeline } from "./hex-match-timeline";
 import styles from "./hex-match-lab.module.css";
 
-type AuditTab = "llm" | "combat" | "economy" | "winner" | "raw";
+type AuditTab = "business" | "llm" | "combat" | "economy" | "winner" | "raw";
 type ConsoleDragState = { startX: number; startY: number; originX: number; originY: number };
 
 const providerMode = "real" as const;
@@ -45,7 +45,7 @@ export function HexMatchLabClient() {
   const [playbackRunning, setPlaybackRunning] = useState(false);
   const [error, setError] = useState<{ message: string; details?: string } | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerTab, setDrawerTab] = useState<AuditTab>("llm");
+  const [drawerTab, setDrawerTab] = useState<AuditTab>("business");
   const [consoleHidden, setConsoleHidden] = useState(false);
   const [consolePosition, setConsolePosition] = useState({ x: 18, y: 86 });
   const [consoleDrag, setConsoleDrag] = useState<ConsoleDragState | null>(null);
@@ -421,7 +421,7 @@ export function HexMatchLabClient() {
           <p>accepted {selectedPhase?.acceptedActionCount ?? 0} / rejected {selectedPhase?.rejectedDraftCount ?? 0} / fallback {selectedPhase?.fallbackActionCount ?? 0}</p>
           <p>calls {selectedPhase?.callsAttempted ?? liveRun?.callsAttempted ?? 0} / expected {selectedPhase?.llmAudit.expectedCalls ?? liveRun?.expectedCalls ?? 0}</p>
         </div>
-        {(["llm", "combat", "economy", "winner"] as const).map((tab) => (
+        {(["business", "llm", "combat", "economy", "winner"] as const).map((tab) => (
           <button key={tab} type="button" onClick={() => { setDrawerTab(tab); setDrawerOpen(true); }}>
             {auditLabel(tab)}
           </button>
@@ -517,6 +517,7 @@ export function HexMatchLabClient() {
 }
 
 function auditLabel(tab: AuditTab): string {
+  if (tab === "business") return "商业攻防";
   if (tab === "llm") return "LLM 调用";
   if (tab === "combat") return "战斗裁定";
   if (tab === "economy") return "经济证据";

@@ -196,12 +196,16 @@ export interface HexMatchLabRoundTraceDetail extends HexMatchLabRoundSummary {
   audit: HexMatchLabLlmAuditSummary;
   economySummary: HexMatchLabEconomySummary[];
   businessDuel?: HexMatchLabBusinessDuelSummary | undefined;
+  businessReview?: HexMatchLabBusinessReview | undefined;
 }
 
 export interface HexMatchLabBusinessDuelSummary {
   subthemeId: string;
   subthemeTitle: string;
   coreQuestion: string;
+  halfIndex: 0 | 1;
+  roundInHalf: number;
+  mirrorRoundNumber: number;
   defenseProof: {
     teamId: string;
     thesis: string;
@@ -214,6 +218,71 @@ export interface HexMatchLabBusinessDuelSummary {
     challengePoints: string[];
     targetFailureModes: string[];
   };
+  assignments: HexMatchLabAgentBusinessAssignmentSummary[];
+}
+
+export interface HexMatchLabAgentBusinessAssignmentSummary {
+  agentId: string;
+  teamId: string;
+  side: string;
+  role: string;
+  businessTask: string;
+  csCarrierHint: string;
+}
+
+export interface HexMatchLabBusinessReview {
+  roundStory: {
+    title: string;
+    summary: string;
+    defenseSummary: string;
+    attackSummary: string;
+    mirrorSummary: string;
+  };
+  phaseStories: HexMatchLabPhaseBusinessStory[];
+  hardWinnerStory?: {
+    summary: string;
+    winnerTeamId?: string | undefined;
+    roundWinType?: string | undefined;
+    reason?: string | undefined;
+  } | undefined;
+}
+
+export interface HexMatchLabPhaseBusinessStory {
+  phaseId: string;
+  phaseIndex: number;
+  phaseLabel?: string | undefined;
+  summary: string;
+  actionStories: HexMatchLabActionBusinessStory[];
+  combatStories: HexMatchLabCombatBusinessStory[];
+}
+
+export interface HexMatchLabActionBusinessStory {
+  agentId: string;
+  side?: string | undefined;
+  role: string;
+  businessTask?: string | undefined;
+  csCarrierHint?: string | undefined;
+  actionType: string;
+  targetCellId?: string | undefined;
+  businessIntent?: string | undefined;
+  accepted: boolean;
+  fallbackReason?: string | undefined;
+  validationErrors: string[];
+  requestArtifactId?: string | undefined;
+  responseArtifactId?: string | undefined;
+  rawOutputNote: string;
+}
+
+export interface HexMatchLabCombatBusinessStory {
+  contactId: string;
+  summary: string;
+  businessVerdict?: string | undefined;
+  participants: string[];
+  retentionReasons: string[];
+  businessReasons: string[];
+  csReasons: string[];
+  killAttributions: HexMatchLabCombatSummary["killAttributions"];
+  roleContributions: HexMatchLabCombatSummary["roleContributions"];
 }
 
 export interface HexMatchLabPhaseSummary {
@@ -1028,6 +1097,8 @@ function summarizeTrace(
       buildKillCountsByAgent(trace.phases.slice(0, index + 1))
     ))
   ];
+  const businessDuel = summarizeBusinessDuel(trace);
+  const finalHardCondition = summarizeHardCondition(trace.finalWinCondition);
   return {
     ...roundSummary,
     hexTraceArtifactId: artifactId,
@@ -1035,7 +1106,14 @@ function summarizeTrace(
     phaseSummaries,
     audit: summarizeTraceAudit(trace),
     economySummary,
-    businessDuel: summarizeBusinessDuel(trace)
+    businessDuel,
+    businessReview: businessDuel
+      ? buildBusinessReview({
+        businessDuel,
+        phaseSummaries,
+        finalHardCondition
+      })
+      : undefined
   };
 }
 
@@ -1046,6 +1124,9 @@ function summarizeBusinessDuel(trace: HexRoundTrace): HexMatchLabBusinessDuelSum
     subthemeId: duel.subtheme.subthemeId,
     subthemeTitle: duel.subtheme.title,
     coreQuestion: duel.subtheme.coreQuestion,
+    halfIndex: duel.halfIndex,
+    roundInHalf: duel.roundInHalf,
+    mirrorRoundNumber: duel.mirrorRoundNumber,
     defenseProof: {
       teamId: duel.defenseProof.teamId,
       thesis: duel.defenseProof.thesis,
@@ -1057,8 +1138,113 @@ function summarizeBusinessDuel(trace: HexRoundTrace): HexMatchLabBusinessDuelSum
       thesis: duel.attackChallenge.thesis,
       challengePoints: duel.attackChallenge.challengePoints,
       targetFailureModes: duel.attackChallenge.targetFailureModes
-    }
+    },
+    assignments: duel.agentAssignments.map((assignment) => ({
+      agentId: assignment.agentId,
+      teamId: assignment.teamId,
+      side: assignment.side,
+      role: assignment.role,
+      businessTask: assignment.businessTask,
+      csCarrierHint: assignment.csCarrierHint
+    }))
   };
+}
+
+function buildBusinessReview(input: {
+  businessDuel: HexMatchLabBusinessDuelSummary;
+  phaseSummaries: HexMatchLabPhaseSummary[];
+  finalHardCondition?: HexMatchLabHardConditionSummary | undefined;
+}): HexMatchLabBusinessReview {
+  const assignmentsByAgentId = new Map(input.businessDuel.assignments.map((assignment) => [assignment.agentId, assignment]));
+  const hardWinnerStory = input.finalHardCondition
+    ? {
+      summary: `最终胜负来自硬条件：${input.finalHardCondition.roundWinType ?? "未结束"}。${input.finalHardCondition.reason ?? "未记录原因"}`,
+      winnerTeamId: input.finalHardCondition.winnerTeamId,
+      roundWinType: input.finalHardCondition.roundWinType ?? input.finalHardCondition.judgeRoundWinType,
+      reason: input.finalHardCondition.reason
+    }
+    : undefined;
+  return {
+    roundStory: {
+      title: input.businessDuel.subthemeTitle,
+      summary: `本回合小主题是「${input.businessDuel.subthemeTitle}」：${input.businessDuel.coreQuestion}`,
+      defenseSummary: `守方 ${input.businessDuel.defenseProof.teamId} 自证：${input.businessDuel.defenseProof.thesis}`,
+      attackSummary: `攻方 ${input.businessDuel.attackChallenge.teamId} 质疑：${input.businessDuel.attackChallenge.thesis}`,
+      mirrorSummary: `当前为第 ${input.businessDuel.halfIndex + 1} 个半场的第 ${input.businessDuel.roundInHalf} 个小主题；攻防互换对应 round ${input.businessDuel.mirrorRoundNumber}。`
+    },
+    phaseStories: input.phaseSummaries.map((phase) => buildPhaseBusinessStory(phase, assignmentsByAgentId)),
+    ...(hardWinnerStory ? { hardWinnerStory } : {})
+  };
+}
+
+function buildPhaseBusinessStory(
+  phase: HexMatchLabPhaseSummary,
+  assignmentsByAgentId: Map<string, HexMatchLabAgentBusinessAssignmentSummary>
+): HexMatchLabPhaseBusinessStory {
+  const actionStories = phase.actions.map((action) => {
+    const assignment = assignmentsByAgentId.get(action.agentId);
+    return {
+      agentId: action.agentId,
+      side: action.side,
+      role: assignment?.role ?? "role unknown",
+      businessTask: assignment?.businessTask,
+      csCarrierHint: assignment?.csCarrierHint,
+      actionType: action.actionType,
+      targetCellId: action.targetCellId,
+      businessIntent: action.businessIntent,
+      accepted: action.valid && !action.fallbackReason && action.validationErrors.length === 0,
+      fallbackReason: action.fallbackReason,
+      validationErrors: [...action.validationErrors],
+      requestArtifactId: action.requestArtifactId,
+      responseArtifactId: action.responseArtifactId,
+      rawOutputNote: action.responseArtifactId
+        ? "当前 trace 记录了 response artifact id；如需原文，请通过 artifact id 追溯。"
+        : "当前 trace 未内联 LLM 原文。"
+    };
+  });
+  const combatStories = phase.combats.map((combat) => ({
+    contactId: combat.contactId,
+    summary: buildCombatStorySummary(combat),
+    businessVerdict: combat.businessVerdict,
+    participants: [...combat.participants],
+    retentionReasons: [...combat.contactRetentionReasons],
+    businessReasons: [...combat.businessReasons],
+    csReasons: [...combat.csReasons],
+    killAttributions: combat.killAttributions.map((item) => ({
+      killerAgentId: item.killerAgentId,
+      targetAgentId: item.targetAgentId,
+      assisterAgentIds: [...item.assisterAgentIds],
+      result: item.result,
+      attributionReasons: [...item.attributionReasons],
+      targetSelectionReasons: [...item.targetSelectionReasons]
+    })),
+    roleContributions: combat.roleContributions.map((item) => ({
+      agentId: item.agentId,
+      roleLabel: item.roleLabel,
+      contributionType: item.contributionType,
+      scoreDelta: item.scoreDelta,
+      reasons: [...item.reasons]
+    }))
+  }));
+  return {
+    phaseId: phase.phaseId,
+    phaseIndex: phase.phaseIndex,
+    phaseLabel: phase.phaseLabel,
+    summary: phase.isSetupPhase
+      ? "准备阶段展示出生、经济、C4 和角色职责，不产生 LLM 调用。"
+      : `本阶段 accepted ${phase.acceptedActionCount}、rejected ${phase.rejectedDraftCount}、fallback ${phase.fallbackActionCount}，关键战斗 ${phase.combatResolutionCount} 个。`,
+    actionStories,
+    combatStories
+  };
+}
+
+function buildCombatStorySummary(combat: HexMatchLabCombatSummary): string {
+  const verdict = combat.businessVerdict ?? "未记录商业裁定";
+  const killText = combat.killAttributions.length > 0
+    ? combat.killAttributions.map((item) => `${item.killerAgentId ?? "未分配"} 击中 ${item.targetAgentId}${item.assisterAgentIds.length > 0 ? `，助攻 ${item.assisterAgentIds.join(", ")}` : ""}`).join("；")
+    : "没有击杀归因";
+  const controlText = combat.regionControlHint ? `控图倾向 ${combat.regionControlHint}` : "控图倾向未记录";
+  return `商业裁定：${verdict}。${killText}。${controlText}。`;
 }
 
 function summarizeSetupPhase(

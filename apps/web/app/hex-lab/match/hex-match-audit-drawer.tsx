@@ -7,7 +7,7 @@ import type {
 
 import styles from "./hex-match-lab.module.css";
 
-type AuditTab = "llm" | "combat" | "economy" | "winner" | "raw";
+type AuditTab = "business" | "llm" | "combat" | "economy" | "winner" | "raw";
 
 interface HexMatchAuditDrawerProps {
   open: boolean;
@@ -25,13 +25,13 @@ export function HexMatchAuditDrawer(props: HexMatchAuditDrawerProps) {
       <div className={styles.drawerHeader}>
         <div>
           <span>Audit drawer</span>
-          <h2>LLM / Combat / Economy / Hard Winner 审计</h2>
+          <h2>商业攻防 / LLM / Combat / Economy / Hard Winner 审计</h2>
         </div>
         <button type="button" onClick={props.onClose}>关闭</button>
       </div>
 
       <div className={styles.drawerTabs}>
-        {(["llm", "combat", "economy", "winner", "raw"] as const).map((tab) => (
+        {(["business", "llm", "combat", "economy", "winner", "raw"] as const).map((tab) => (
           <button
             type="button"
             key={tab}
@@ -44,6 +44,7 @@ export function HexMatchAuditDrawer(props: HexMatchAuditDrawerProps) {
       </div>
 
       <div className={styles.drawerBody}>
+        {props.tab === "business" ? <BusinessAudit trace={props.trace} phase={props.phase} /> : null}
         {props.tab === "llm" ? <LlmAudit trace={props.trace} phase={props.phase} /> : null}
         {props.tab === "combat" ? <CombatAudit phase={props.phase} /> : null}
         {props.tab === "economy" ? <EconomyAudit trace={props.trace} /> : null}
@@ -51,6 +52,78 @@ export function HexMatchAuditDrawer(props: HexMatchAuditDrawerProps) {
         {props.tab === "raw" ? <RawAudit trace={props.trace} phase={props.phase} /> : null}
       </div>
     </aside>
+  );
+}
+
+function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; phase: HexMatchLabPhaseSummary | undefined }) {
+  const review = props.trace?.businessReview;
+  if (!review) return <p className={styles.emptyInline}>当前 trace 未记录商业攻防审计主线。</p>;
+  const phaseStory = review.phaseStories.find((story) => story.phaseIndex === props.phase?.phaseIndex) ?? review.phaseStories[0];
+  return (
+    <div className={styles.auditStack}>
+      <article className={styles.auditCard}>
+        <h3>{review.roundStory.title}</h3>
+        <p>{review.roundStory.summary}</p>
+        <p>{review.roundStory.mirrorSummary}</p>
+      </article>
+
+      <article className={styles.auditCard}>
+        <h3>守方自证</h3>
+        <p>{review.roundStory.defenseSummary}</p>
+        <p>自证证据: {props.trace?.businessDuel?.defenseProof.claims.join("; ") || "无"}</p>
+        <p>证据焦点: {props.trace?.businessDuel?.defenseProof.evidenceFocus.join("; ") || "无"}</p>
+      </article>
+
+      <article className={styles.auditCard}>
+        <h3>攻方质疑</h3>
+        <p>{review.roundStory.attackSummary}</p>
+        <p>质疑点: {props.trace?.businessDuel?.attackChallenge.challengePoints.join("; ") || "无"}</p>
+        <p>目标失败模式: {props.trace?.businessDuel?.attackChallenge.targetFailureModes.join("; ") || "无"}</p>
+      </article>
+
+      {phaseStory ? (
+        <article className={styles.auditCard}>
+          <h3>{phaseStory.phaseLabel ?? `P${phaseStory.phaseIndex}`}</h3>
+          <p>{phaseStory.summary}</p>
+          <h4>选手行动承载</h4>
+          {phaseStory.actionStories.length > 0 ? (
+            <ul>
+              {phaseStory.actionStories.map((action) => (
+                <li key={`${phaseStory.phaseIndex}_${action.agentId}`}>
+                  <strong>{action.agentId}</strong> / {action.role} / {action.actionType}
+                  {action.targetCellId ? ` -> ${action.targetCellId}` : ""}：
+                  {action.businessIntent || action.businessTask || "未记录商业意图"}
+                  {action.fallbackReason ? `；降级：${action.fallbackReason}` : ""}
+                  {action.validationErrors.length > 0 ? `；拒绝：${action.validationErrors.join(", ")}` : ""}
+                  <br />
+                  <small>{action.rawOutputNote} {action.responseArtifactId ? `response=${action.responseArtifactId}` : ""}</small>
+                </li>
+              ))}
+            </ul>
+          ) : <p>当前阶段没有 LLM 行动。</p>}
+          <h4>战斗裁判链路</h4>
+          {phaseStory.combatStories.length > 0 ? (
+            <ul>
+              {phaseStory.combatStories.map((combat) => (
+                <li key={combat.contactId}>
+                  <strong>{combat.contactId}</strong>：{combat.summary}
+                  <br />
+                  <small>保留原因：{combat.retentionReasons.join("; ") || "未记录"}；商业理由：{combat.businessReasons.join("; ") || "无"}；CS 理由：{combat.csReasons.join("; ") || "无"}</small>
+                </li>
+              ))}
+            </ul>
+          ) : <p>当前阶段没有战斗裁定。</p>}
+        </article>
+      ) : null}
+
+      {review.hardWinnerStory ? (
+        <article className={styles.auditCard}>
+          <h3>硬胜负</h3>
+          <p>{review.hardWinnerStory.summary}</p>
+          <p className={styles.guardText}>最终胜负只来自 hard condition，不来自 LLM、局部战斗优势或前端计算。</p>
+        </article>
+      ) : null}
+    </div>
   );
 }
 
@@ -194,6 +267,7 @@ function formatPercent(value: number | undefined): string {
 }
 
 function tabLabel(tab: AuditTab): string {
+  if (tab === "business") return "商业攻防";
   if (tab === "llm") return "LLM 调用";
   if (tab === "combat") return "战斗裁定";
   if (tab === "economy") return "经济证据";

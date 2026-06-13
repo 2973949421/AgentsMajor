@@ -75,7 +75,12 @@ describe("Hex Match Lab", () => {
     expect(playerPanel).toContain("AP");
     expect(timeline).toContain("Round / Phase 回放控制");
     expect(timeline).toContain("播放 trace");
-    expect(drawer).toContain("LLM / Combat / Economy / Hard Winner 审计");
+    expect(drawer).toContain("商业攻防 / LLM / Combat / Economy / Hard Winner 审计");
+    expect(drawer).toContain("function BusinessAudit");
+    expect(drawer).toContain("守方自证");
+    expect(drawer).toContain("攻方质疑");
+    expect(drawer).toContain("战斗裁判链路");
+    expect(drawer).toContain("最终胜负只来自 hard condition");
     expect(drawer).toContain("repaired fields");
     expect(drawer).toContain("compact requests");
     expect(drawer).toContain("language mismatch");
@@ -124,6 +129,10 @@ describe("Hex Match Lab", () => {
     expect(server).toContain("hex_round_engine_committed");
     expect(server).toContain("mapAssetView");
     expect(server).toContain("buildPlayerCards");
+    expect(server).toContain("businessReview");
+    expect(server).toContain("buildBusinessReview");
+    expect(server).toContain("buildPhaseBusinessStory");
+    expect(server).toContain("buildCombatStorySummary");
     expect(server).toContain("repairedFields");
     expect(server).toContain("languageMismatchCount");
     expect(server).toContain("averageRequestReductionRatio");

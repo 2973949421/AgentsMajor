@@ -313,6 +313,30 @@ combat contact -> combat resolution -> casualties -> killerAgentId / targetAgent
 
 前端和报告桥接层只能消费这条路径，不能补猜击杀、助攻或死亡。
 
+### 8.3 Hex N41 商业攻防审计主线
+
+HexGrid N41 起，Web 验收台必须把商业攻防放在回合审计主入口，而不是把它藏在 raw JSON 或低层调试字段里。
+
+`/hex-lab/match` 至少要能按以下顺序解释一个 selected round / selected phase：
+
+- 当前 round 小主题是什么。
+- 守方自证是什么。
+- 攻方质疑是什么。
+- 当前 agent 的商业职责是什么。
+- LLM 原始行动与规范化行动如何承载自证或质疑。
+- 战斗裁判如何判定 `businessVerdict`。
+- `businessReasons` 和 `csReasons` 分别是什么。
+- killer / target / assister 如何从 combat trace 得出。
+- 最终胜负为什么仍只来自 hard condition。
+
+前端展示规则固定为：
+
+- 可以组织和翻译已有 trace 事实，让用户更容易读懂。
+- 不得重新计算 winner、AP、combat、KDA、C4 状态或 economy delta。
+- 不得把 fallback / rejected 文本包装成正向商业证据。
+- 不得把 raw JSON 当作主要验收入口；raw JSON 只能作为折叠排查层。
+- 旧 trace 缺少 N41 字段时，页面应显示“当前 trace 未记录”，不能伪造 business story。
+
 `Phase 2.0-pre` 对 judge 的要求不再是“写得像”，而是：
 
 ```text
