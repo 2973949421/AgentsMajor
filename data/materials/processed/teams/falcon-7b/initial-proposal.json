@@ -1,39 +1,100 @@
 {
-  "proposalId": "proposal_falcon_7b_core_v1",
-  "version": "2026-05-05-phase20pre-v1",
+  "proposalId": "proposal_falcon_7b_finance_nonferrous_v1",
+  "version": "2026-06-14-n43-finance-v1",
   "teamId": "team_falcon_7b",
   "teamSlug": "falcon-7b",
   "displayName": "Falcon-7B",
-  "teamThesis": "先锁定最值得打的机会，再把最强资源压到最小可执行切口上，用关键位完成收束与兑现。",
-  "opportunity": "优先选择高价值、高确定性、能快速建立领先叙事的机会，不追求铺得过宽，而追求第一性判断和先手优势。",
-  "product": "产品路线先打穿主路径体验，不把资源分散到低杠杆功能上，优先证明最小切口能否形成高压下的胜利条件。",
-  "engineering": "工程路线强调关键链路可靠、主干系统少而精、执行质量高，在高压比赛语境里保持稳定交付。",
-  "business": "商业路线偏向高价值客户、高质量转化和头部样板，用少数关键客户放大整体叙事与资源效率。",
-  "operations": "运营路线强调节奏控制、关键节点放大和战果复用，用少量高影响动作持续拉开认知差距。",
-  "scaling": "规模化建立在统一判断口径、标准化执行和关键模板复用之上，先保证顶层质量，再向外扩张。",
-  "moat": "长期壁垒来自高门槛判断、强执行密度、关键位兑现能力和头部样板沉淀后的品牌势能。",
+  "teamThesis": "以有色金属价格、库存与 A 股代表公司弹性为主线，主动寻找周期上行和预期差窗口；当证据显示价格趋势、进口线索和权益市场反应共振时，倾向提高表达强度。",
+  "opportunity": "Dust2 有色 / 行业判断阶段优先寻找价格趋势与权益市场尚未完全定价之间的错位，重点观察铜、铝、锂、黄金与稀土相关代理事实。",
+  "product": "研究产品是高 beta 行业方向判断：明确上行链条、关键品种、代表公司弹性、验证指标和反证触发，不输出泛泛行业作文。",
+  "engineering": "研究工程强调快速拼接 FRED、BaoStock 与可选 UN Comtrade 证据，形成可复核的价格-权益-贸易三段式证据链。",
+  "business": "投资表达偏进攻：在证据链足够一致时提出方向、仓位倾向和风险收益比；证据不足时必须标注 missingEvidence，不能把代理事实当完整基本面。",
+  "operations": "回合内由 PM 收束方向，宏观与供需专家负责打穿主假设，公司建模专家落到估值弹性，风控交易专家给出止损与拥挤度边界。",
+  "scaling": "扩展到其他行业地图时沿用“主题-证据-反证-配置边界”模板，但不复用旧空泛话术。",
+  "moat": "壁垒来自对周期拐点、价格弹性和公司利润敏感性的快速整合，以及敢于在高胜率窗口集中表达的纪律。",
   "mustHoldClaims": [
-    "最先该解决的不是功能堆叠，而是先判断到底该打什么机会。",
-    "核心用户不是所有 AI 团队，而是高密度协作、决策负担过重的 AI 项目小队。",
-    "切口必须足够小，先围绕单一高价值判断窗口建立胜利条件。",
-    "资源集中和关键位兑现是本队方案成立的必要条件。"
+    "有色行业判断必须先说明价格、权益和供需代理事实是否同向，不能只讲宏观情绪。",
+    "FRED 全球金属价格只能作为全球价格锚，不能直接冒充中国现货、库存或利润事实。",
+    "BaoStock 市场表现只能说明 A 股定价反应，不能直接证明行业基本面。",
+    "进攻型结论必须同时给出反证触发和仓位降级条件。"
   ],
   "failureModes": [
-    "判断过重，导致推进窗口被拖慢。",
-    "多核心同时发力时资源分配失衡。",
-    "过度追求完美标准，错失最佳时机。",
-    "关键位兑现不足时，整体叙事快速反噬。"
+    "过度相信价格趋势，忽略库存、美元、利率和估值兑现压力。",
+    "把代理事实包装成完整行业基本面。",
+    "高 beta 表达过于集中，回撤控制不足。",
+    "在证据缺口很大时仍强行给出确定性结论。"
   ],
   "playerOperatingPrinciples": [
-    "IGL：决定优先级、分配资源、在高压局里拍板最终方向。",
-    "Entry：先手试探、打开空间、逼出对手方案的真实漏洞。",
-    "AWPer：提供高精度关键证据，在关键窗口完成定点击穿。",
-    "Star Rifler：把最强主张打成结果，在关键回合负责收口。",
-    "Support / Anchor：修补边界、补全闭环、维持执行稳定性。"
+    "PM：统一行业方向、仓位倾向和风险收益比，不允许队内观点漂移。",
+    "Macro：判断美元、利率、全球周期和政策约束是否支持有色景气。",
+    "Supply-Demand：直接攻击库存、产能、进口、需求弹性与品种强弱。",
+    "Company Model：把价格假设落到利润弹性、估值锚和代表公司。",
+    "Risk Trading：识别拥挤度、止损条件、反证触发和仓位降级。"
   ],
   "coachWindowPolicies": {
-    "timeout": "在暂停窗口收窄争议，优先修正主路线执行偏差和切口发散。",
-    "postMatchReview": "整场 BO3 结束后输出复盘修正版，只作为下一场比赛的候选增量输入。"
+    "timeout": "暂停窗口先问证据链是否同向：价格、权益、贸易线索和风险边界缺一项就降低结论强度。",
+    "postMatchReview": "赛后复盘每个 round 的主假设、反证触发、missingEvidence 和 scoreCaps，形成下一张行业地图的可复用研究纪律。"
   },
-  "frontendSummary": "高密度明星阵容，偏好高价值机会、资源集中和关键位终局兑现。"
+  "frontendSummary": "进攻型周期成长队：更愿意抓有色景气拐点和高 beta 弹性，但必须接受证据缺口和回撤风险审计。",
+  "financeProfile": {
+    "investmentStyle": "进攻型周期成长",
+    "industryView": "有色行业机会来自全球价格趋势、供需缺口、权益定价反应与代表公司利润弹性的共振。",
+    "preferredEvidence": [
+      "FRED 全球金属价格趋势",
+      "BaoStock A 股代表公司行情与估值",
+      "UN Comtrade 进口线索（可选）",
+      "明确的 missingEvidence / scoreCaps"
+    ],
+    "riskBias": "进攻，接受较高波动，但要求每个强结论都有降级条件。",
+    "timeHorizon": "3-12 个月",
+    "valuationPreference": "周期位置 + 利润弹性 + 相对估值",
+    "macroAssumption": "美元、利率和制造业周期决定风险偏好上限。",
+    "commodityFocus": [
+      "铜",
+      "铝",
+      "锂",
+      "黄金",
+      "稀土"
+    ],
+    "debateWeakness": "容易高估价格弹性和景气持续性。",
+    "coachDoctrine": "先抓拐点，但每轮必须留下反证触发。"
+  },
+  "financeAgentRoster": [
+    {
+      "agentSlug": "karrigan",
+      "financeRole": "PM / Portfolio Manager",
+      "financeRoleCn": "组合经理",
+      "responsibility": "统一行业方向、配置强度和风险收益比，把专家分歧收束成可执行判断。"
+    },
+    {
+      "agentSlug": "m0nesy",
+      "financeRole": "Macro / Strategy",
+      "financeRoleCn": "宏观策略专家",
+      "responsibility": "判断美元、利率、政策、制造业周期和全球风险偏好对有色的约束。"
+    },
+    {
+      "agentSlug": "kyousuke",
+      "financeRole": "Commodity Supply-Demand",
+      "financeRoleCn": "供需 / 商品专家",
+      "responsibility": "分析库存、产能、进口、需求弹性和品种强弱，直接验证主假设。"
+    },
+    {
+      "agentSlug": "niko",
+      "financeRole": "Company / Financial Modeling",
+      "financeRoleCn": "公司 / 财务建模专家",
+      "responsibility": "将商品价格假设映射到代表公司利润弹性、估值与风险敞口。"
+    },
+    {
+      "agentSlug": "teses",
+      "financeRole": "Risk / Trading",
+      "financeRoleCn": "风控 / 交易专家",
+      "responsibility": "识别拥挤交易、止损条件、反证信号和仓位降级边界。"
+    },
+    {
+      "agentSlug": "zonic",
+      "financeRole": "Coach / Research Discipline",
+      "financeRoleCn": "教练 / 研究纪律",
+      "responsibility": "约束进攻型叙事，要求每个强结论附带 missingEvidence 和反证触发。"
+    }
+  ]
 }

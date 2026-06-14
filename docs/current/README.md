@@ -33,11 +33,22 @@ docs/finance/finance-evidence-mvp.md
 docs/finance/finance-data-asset-contract.md
 ```
 
-N42 起，下一阶段候选方向是 Finance Major（金融投资对抗）原型：保留 HexGrid 工程骨架，把旧泛商业攻防语义替换为金融研究攻防。当前测试范围是 `Dust2 有色 / 行业判断 / 6 round`。
+N42 起，下一阶段候选方向是 Finance Major（金融投资对抗）原型：保留 HexGrid 工程骨架，把旧泛商业攻防语义替换为金融研究攻防。当前测试范围是 `Dust2 有色 / 行业判断 / 6 round`。N43 已把 Falcon-7B 与 VitaLLMty 两队资产改造成金融投资风格 + 多专家 Agent 团队。
 
 数据层第一版是“免费 API 代理事实版”：默认只自动接入 FRED、BaoStock 和可选 UN Comtrade；CNINFO、国家统计局、工信部、SHFE、SMM 等先作为后置证据锚点或商业化替换源。后续 agent 必须先读 `finance-evidence-mvp.md`，不能把代理事实冒充完整中国有色基本面系统。
 
 金融数据资产入口是 `data/materials/processed/finance/`，不是 Hex 地图资产目录。正式本地环境入口是 `AgentsMajor/.env.local`。
+
+当前两队金融资产入口：
+
+```text
+data/materials/processed/teams/falcon-7b/initial-proposal.json
+data/materials/processed/teams/falcon-7b/initial-proposal.md
+data/materials/processed/teams/vitallmty/initial-proposal.json
+data/materials/processed/teams/vitallmty/initial-proposal.md
+```
+
+选手和教练文件中的 `finance_agent_profile` 是 N43 后的金融专家职责入口；`cs_role_profile` 继续作为赛事包装和 Hex 执行层表达保留。
 
 ## 4. Phase 2.0-pre 横向契约
 

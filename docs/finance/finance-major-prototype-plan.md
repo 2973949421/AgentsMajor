@@ -434,7 +434,7 @@ contested_no_business_resolution -> contested_no_finance_resolution
 - 当前路线图更新。
 - prompt / judge / runtime 文档中增加 finance transition 说明。
 
-### N43：金融队伍资产与专家 Agent 改造
+### N43：金融队伍资产与专家 Agent 改造（已完成第一版）
 
 目标：
 
@@ -448,6 +448,15 @@ contested_no_business_resolution -> contested_no_finance_resolution
 - 两队 finance profile。
 - 五专家 + coach 结构。
 - materials 验证。
+
+N43 第一版结果：
+
+```text
+Falcon-7B：进攻型周期成长风格，强调有色价格弹性、供需缺口、代表公司利润弹性和集中表达。
+VitaLLMty：稳健质量风控风格，强调安全边际、成本曲线、估值纪律和风险调整收益。
+```
+
+两队 `initial-proposal.json/md` 已替换为金融投资语义；旧 validator（校验器）要求的字段名暂时保留，但字段内容已从泛商业叙事改为金融研究资产。每名选手和教练新增 `finance_agent_profile`，CS 角色保留为赛事包装与 Hex 执行层表达，不再作为金融裁判主语义来源。
 
 ### N44：Finance Evidence MVP 接入
 

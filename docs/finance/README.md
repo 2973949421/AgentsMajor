@@ -59,6 +59,24 @@ CS 词条可以保留为赛事包装和 UI 叙事，例如 map、round、team、
 回合：6 个行业判断子命题
 ```
 
+N43 已落地第一版两队资产：
+
+```text
+Falcon-7B：进攻型周期成长，偏高 beta、供需缺口、价格弹性和集中表达。
+VitaLLMty：稳健质量风控，偏安全边际、成本曲线、估值纪律和风险调整收益。
+```
+
+每队保留 5 名选手 + 1 名教练的 CS Major 包装，但新增 `finance_agent_profile` 作为金融研究职责入口：
+
+```text
+PM / Portfolio Manager（组合经理）
+Macro / Strategy（宏观策略专家）
+Commodity Supply-Demand（供需 / 商品专家）
+Company / Financial Modeling（公司 / 财务建模专家）
+Risk / Trading（风控 / 交易专家）
+Coach / Research Discipline（教练 / 研究纪律）
+```
+
 第一版不做完整金融数据库，不做完整赛事，不做新闻/奖项站。数据事实层采用“免费 API 代理事实版”：
 
 ```text
