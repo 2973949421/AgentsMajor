@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "mapBindingId": "dust2_nonferrous_industry_judgment_v1",
+  "displayName": "Dust2 有色 / 行业判断 6R",
+  "rounds": [
+    {
+      "roundNumber": 1,
+      "roundKey": "global_metal_price_signal",
+      "title": "全球有色价格是否支持景气上行",
+      "defenseThesisFocus": "用全球金属价格趋势证明有色行业具备景气上行线索。",
+      "attackChallengeFocus": "指出全球价格不能直接等同于中国国内供需、库存或现货紧张。",
+      "requiredSources": [
+        "fred"
+      ],
+      "optionalSources": [],
+      "missingEvidenceToSurface": [
+        "domestic_inventory",
+        "domestic_spot_premium",
+        "shfe_warehouse_receipt"
+      ]
+    },
+    {
+      "roundNumber": 2,
+      "roundKey": "a_share_market_reaction",
+      "title": "A 股有色代表公司是否已经反映价格预期",
+      "defenseThesisFocus": "用代表公司股价、成交和估值变化说明市场正在反映价格预期。",
+      "attackChallengeFocus": "指出市场表现不能证明行业基本面，也可能只是风险偏好或资金风格变化。",
+      "requiredSources": [
+        "baostock"
+      ],
+      "optionalSources": [
+        "fred"
+      ],
+      "missingEvidenceToSurface": [
+        "company_margin_breakdown",
+        "product_exposure",
+        "fund_flow"
+      ]
+    },
+    {
+      "roundNumber": 3,
+      "roundKey": "valuation_price_in",
+      "title": "估值是否已经 price in",
+      "defenseThesisFocus": "用 PE/PB/收益率判断有色公司是否已经充分反映景气预期。",
+      "attackChallengeFocus": "指出缺少财报页码、利润弹性和成本曲线时，不能做强公司深度结论。",
+      "requiredSources": [
+        "baostock"
+      ],
+      "optionalSources": [
+        "fred"
+      ],
+      "missingEvidenceToSurface": [
+        "cninfo_page_locator",
+        "profit_sensitivity",
+        "cost_curve"
+      ]
+    },
+    {
+      "roundNumber": 4,
+      "roundKey": "import_export_proxy",
+      "title": "进出口数据是否支持供需变化",
+      "defenseThesisFocus": "用可选 UN Comtrade 的铜矿砂、铝土矿、精炼铜等 HS 线索观察贸易趋势。",
+      "attackChallengeFocus": "指出进出口数据滞后，且不能替代国内库存、现货和行业利润。",
+      "requiredSources": [],
+      "optionalSources": [
+        "un_comtrade"
+      ],
+      "missingEvidenceToSurface": [
+        "china_customs_local_series",
+        "domestic_inventory",
+        "industry_profit"
+      ]
+    },
+    {
+      "roundNumber": 5,
+      "roundKey": "evidence_gap_discipline",
+      "title": "当前证据缺口下哪些结论不能下",
+      "defenseThesisFocus": "主动列出 missingEvidence 和 scoreCaps，证明结论边界清楚。",
+      "attackChallengeFocus": "检验守方是否用代理事实冒充完整事实，是否回避关键缺口。",
+      "requiredSources": [
+        "fred",
+        "baostock"
+      ],
+      "optionalSources": [
+        "un_comtrade"
+      ],
+      "missingEvidenceToSurface": [
+        "domestic_inventory",
+        "domestic_spot_premium",
+        "company_product_margin",
+        "official_filing_page_locator"
+      ]
+    },
+    {
+      "roundNumber": 6,
+      "roundKey": "limited_allocation_conclusion",
+      "title": "基于有限证据的配置倾向与风险边界",
+      "defenseThesisFocus": "在证据边界内给出有限置信度的配置倾向、观察指标和降级条件。",
+      "attackChallengeFocus": "检验结论是否承认证据边界，是否具备可执行风险控制。",
+      "requiredSources": [
+        "fred",
+        "baostock"
+      ],
+      "optionalSources": [
+        "un_comtrade"
+      ],
+      "missingEvidenceToSurface": [
+        "domestic_micro_data",
+        "filing_page_anchor",
+        "positioning_and_crowding"
+      ]
+    }
+  ]
+}
+

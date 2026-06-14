@@ -22,6 +22,8 @@ Finance Major 复用最新 HexGrid 工程骨架。
 
 ```text
 docs/finance/finance-major-prototype-plan.md
+docs/finance/finance-evidence-mvp.md
+docs/finance/finance-data-asset-contract.md
 docs/current/priority-roadmap.md
 docs/hex/phase-2.0-pre-hex-engine-runtime-contract.md
 docs/hex/phase-2.0-pre-prompt-contract.md
@@ -57,5 +59,40 @@ CS 词条可以保留为赛事包装和 UI 叙事，例如 map、round、team、
 回合：6 个行业判断子命题
 ```
 
-第一版不接真实行情，不做完整赛事，不做新闻/奖项站。先用可审计材料包和结构化队伍资产验证金融攻防是否比旧商业底座更有底蕴。
+第一版不做完整金融数据库，不做完整赛事，不做新闻/奖项站。数据事实层采用“免费 API 代理事实版”：
 
+```text
+FRED + BaoStock + 可选 UN Comtrade
+```
+
+这只能支撑有色行业判断的代理事实包，不能冒充完整中国有色基本面系统。CNINFO、国家统计局、工信部、SHFE、SMM 等先作为后置证据锚点或商业化替换源，不在第一版包装成稳定免费 API。
+
+详见：
+
+```text
+docs/finance/finance-evidence-mvp.md
+docs/finance/finance-data-asset-contract.md
+```
+
+## 数据资产入口
+
+金融数据源、证据策略和 Dust2 有色行业判断绑定已经独立放入：
+
+```text
+data/materials/processed/finance/
+```
+
+它和 Hex 地图资产分层：
+
+```text
+data/materials/processed/maps/dust2/                    # 地图空间、路径、区域、点位
+data/materials/processed/finance/maps/dust2-nonferrous/ # 金融主题、回合子命题、证据源、证据包模板
+```
+
+正式本地环境入口固定为：
+
+```text
+AgentsMajor/.env.local
+```
+
+上层 `.env`、`.venv` 和外部 `metal_project/` 只作为历史验证痕迹，不作为运行时入口。

@@ -45,6 +45,9 @@ docs/archive/README.md：历史迁移记录。
 docs/backlog/README.md：长期设想索引。
 docs/hex/phase-2.0-pre-hex-engine-implementation-plan.md：Hex 当前实施口径。
 docs/hex/phase-2.0-pre-hex-engine-runtime-contract.md：Hex runtime 契约。
+docs/finance/finance-major-prototype-plan.md：Finance Major 原型路线。
+docs/finance/finance-evidence-mvp.md：免费 API 代理事实版证据层契约。
+docs/finance/finance-data-asset-contract.md：金融数据资产、环境变量和地图绑定隔离契约。
 ```
 
 旧 Phase 1.x 计划、早期技术总览和 superseded Node/Sector 计划已经移入 archive。生态、新闻、奖项、统计、完整 16 队赛事等长期想法移入 backlog。
@@ -67,18 +70,38 @@ apps/web/.next-dev-3001.err.log
 当前下一步不建议继续修旧泛商业文案，也不建议立刻做结构封板第二轮。N35-N41 已经证明 HexGrid 工程骨架可运行、可提交、可 Web 验收，但旧 business duel（商业攻防）语义层容易输出空泛内容。下一阶段候选是 N42 Finance Major（金融投资对抗）原型。
 
 ```text
-N42：Finance Duel 契约与文档。
+N42：Finance Evidence + Finance Duel 契约。
 N43：金融队伍资产与专家 Agent 改造。
-N44：Finance Duel Runtime 接入。
-N45：金融裁判替换商业裁判。
-N46：金融 Web 验收台改造。
-N47：Dust2 有色 / 行业判断 6R 小样本验收。
+N44：Finance Evidence MVP 接入。
+N45：Finance Duel Runtime 接入。
+N46：金融裁判替换商业裁判。
+N47：金融 Web 验收台改造。
+N48：Dust2 有色 / 行业判断 6R 小样本验收。
 ```
 
 Finance Major 的核心不是重写 HexGrid，而是保留最新 Hex 工程骨架，把旧商业语义替换为金融研究攻防。第一版测试范围固定为 `Dust2 有色 / 行业判断 / 6 round`。
+
+数据层口径必须保持克制：
+
+```text
+Dust2 有色第一版是免费 API 代理事实版，不是完整中国有色行业基本面系统。
+默认自动源：FRED + BaoStock + 可选 UN Comtrade。
+CNINFO、国家统计局、工信部、SHFE、SMM 等先作为后置证据锚点或商业化替换源。
+裁判必须展示 missingEvidence 和 scoreCaps，不能让 LLM 用代理事实冒充完整事实。
+```
 
 固定执行口径见：
 
 ```text
 docs/finance/finance-major-prototype-plan.md
+docs/finance/finance-evidence-mvp.md
+docs/finance/finance-data-asset-contract.md
 ```
+
+金融数据资产已经独立放在：
+
+```text
+data/materials/processed/finance/
+```
+
+它只管理 source registry、evidence policy、Dust2 有色主题绑定、回合证据模板和数据源 universe，不承载 Hex cell / region / point 等地图空间事实。

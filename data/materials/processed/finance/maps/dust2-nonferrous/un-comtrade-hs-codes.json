@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "sourceId": "un_comtrade",
+  "mapBindingId": "dust2_nonferrous_industry_judgment_v1",
+  "collector": {
+    "type": "python_package",
+    "packageName": "comtradeapicall",
+    "function": "getFinalData",
+    "apiKeyEnv": "UN_COMTRADE_KEY"
+  },
+  "defaultQueryShape": {
+    "reporterCode": 156,
+    "partnerCode": 0,
+    "flowCode": "M",
+    "typeCode": "C",
+    "freqCode": "A",
+    "classificationCode": "HS"
+  },
+  "hsCodes": [
+    {
+      "cmdCode": "260300",
+      "displayName": "铜矿砂及其精矿",
+      "commodity": "copper_ore_and_concentrates",
+      "firstPhaseUse": [
+        "import_export_proxy"
+      ]
+    },
+    {
+      "cmdCode": "260600",
+      "displayName": "铝矿砂及其精矿",
+      "commodity": "aluminium_ores_and_concentrates",
+      "firstPhaseUse": [
+        "import_export_proxy"
+      ]
+    },
+    {
+      "cmdCode": "740311",
+      "displayName": "精炼铜阴极及阴极型材",
+      "commodity": "refined_copper_cathodes",
+      "firstPhaseUse": [
+        "import_export_proxy"
+      ]
+    },
+    {
+      "cmdCode": "750210",
+      "displayName": "未锻轧非合金镍",
+      "commodity": "unwrought_unalloyed_nickel",
+      "firstPhaseUse": [
+        "import_export_proxy"
+      ]
+    },
+    {
+      "cmdCode": "790111",
+      "displayName": "含锌量不少于 99.99% 的未锻轧锌",
+      "commodity": "unwrought_zinc_high_purity",
+      "firstPhaseUse": [
+        "import_export_proxy"
+      ]
+    }
+  ],
+  "limitations": [
+    "HS mapping must be reviewed before being used as strong evidence.",
+    "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence."
+  ]
+}
+

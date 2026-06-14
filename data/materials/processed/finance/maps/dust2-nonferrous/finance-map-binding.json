@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "bindingId": "dust2_nonferrous_industry_judgment_v1",
+  "displayName": "有色行业判断",
+  "hexMapSlug": "dust2",
+  "financeMapSlug": "dust2-nonferrous",
+  "industryTrack": "nonferrous_metals",
+  "roundType": "industry_judgment",
+  "roundCount": 6,
+  "dataMode": "free_api_proxy_facts",
+  "defaultSources": [
+    "fred",
+    "baostock"
+  ],
+  "optionalSources": [
+    "un_comtrade"
+  ],
+  "deferredSources": [
+    "cninfo",
+    "nbsc",
+    "shfe",
+    "smm",
+    "lme"
+  ],
+  "sourceRegistryPath": "data/materials/processed/finance/source-registry.json",
+  "evidencePolicyPath": "data/materials/processed/finance/evidence-source-policy.json",
+  "roundTopicsPath": "data/materials/processed/finance/maps/dust2-nonferrous/round-topics.json",
+  "fredSeriesPath": "data/materials/processed/finance/maps/dust2-nonferrous/fred-series.json",
+  "baostockUniversePath": "data/materials/processed/finance/maps/dust2-nonferrous/baostock-company-universe.json",
+  "unComtradeHsCodesPath": "data/materials/processed/finance/maps/dust2-nonferrous/un-comtrade-hs-codes.json",
+  "evidencePackTemplatePath": "data/materials/processed/finance/maps/dust2-nonferrous/evidence-pack-template.json",
+  "judgeBoundaries": [
+    "This binding cannot claim a complete China nonferrous fundamental view in phase one.",
+    "FRED supports global metal price trend only.",
+    "BaoStock supports market reaction and valuation proxy only.",
+    "UN Comtrade supports lagged trade trend only.",
+    "Missing domestic inventory, SHFE/SMM, and filing page anchors must be surfaced in score caps."
+  ]
+}
+

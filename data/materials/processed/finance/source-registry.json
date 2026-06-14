@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-06-14",
+  "runtimeEnvFile": "AgentsMajor/.env.local",
+  "notes": [
+    "This registry stores source and collector metadata only. It must never store API keys or secrets.",
+    "Official or quasi-official sources anchor facts; Python packages are collectors, not final truth sources."
+  ],
+  "sources": [
+    {
+      "sourceId": "fred",
+      "displayName": "FRED",
+      "sourceRole": "official_api",
+      "sourceType": "macro_commodity_time_series",
+      "defaultQualityTier": "official_api",
+      "apiKeyEnv": "FRED_API_KEY",
+      "baseUrlEnv": "FRED_BASE_URL",
+      "collector": {
+        "collectorId": "fred_http_api_v1",
+        "type": "http_api",
+        "method": "GET",
+        "docsUrl": "https://fred.stlouisfed.org/docs/api/fred/"
+      },
+      "allowedUse": [
+        "global_metal_price_trend",
+        "macro_proxy_signal"
+      ],
+      "limitations": [
+        "FRED is not a China domestic spot price source.",
+        "FRED cannot prove China inventory, warehouse receipt, spot premium, or domestic supply-demand gap."
+      ]
+    },
+    {
+      "sourceId": "baostock",
+      "displayName": "BaoStock",
+      "sourceRole": "community_api",
+      "sourceType": "a_share_market_and_valuation",
+      "defaultQualityTier": "market_data_proxy",
+      "apiKeyEnv": null,
+      "collector": {
+        "collectorId": "baostock_python_package_v0",
+        "type": "python_package",
+        "packageName": "baostock",
+        "functions": [
+          "login",
+          "query_history_k_data_plus"
+        ],
+        "docsUrl": "http://baostock.com/baostock/index.php"
+      },
+      "allowedUse": [
+        "representative_company_market_reaction",
+        "valuation_proxy",
+        "turnover_and_liquidity_proxy"
+      ],
+      "limitations": [
+        "BaoStock market data cannot prove industry fundamentals by itself.",
+        "BaoStock cannot prove product margin, resource self-sufficiency, hedging impact, or company deep research claims."
+      ]
+    },
+    {
+      "sourceId": "un_comtrade",
+      "displayName": "UN Comtrade",
+      "sourceRole": "official_api",
+      "sourceType": "international_trade_time_series",
+      "defaultQualityTier": "official_api_lagged",
+      "apiKeyEnv": "UN_COMTRADE_KEY",
+      "secondaryApiKeyEnv": "UN_COMTRADE_SECONDARY_KEY",
+      "collector": {
+        "collectorId": "un_comtrade_python_package_v1",
+        "type": "python_package",
+        "packageName": "comtradeapicall",
+        "functions": [
+          "getFinalData"
+        ],
+        "docsUrl": "https://comtradedeveloper.un.org/"
+      },
+      "allowedUse": [
+        "china_import_export_proxy",
+        "hs_code_trade_trend"
+      ],
+      "limitations": [
+        "UN Comtrade data is lagged and may not match China customs local reporting exactly.",
+        "UN Comtrade cannot prove domestic inventory, spot premium, or company profit transmission by itself."
+      ]
+    },
+    {
+      "sourceId": "akshare",
+      "displayName": "AKShare",
+      "sourceRole": "collector_only",
+      "sourceType": "community_collector",
+      "defaultQualityTier": "collector_not_source",
+      "apiKeyEnv": null,
+      "collector": {
+        "collectorId": "akshare_python_package_v0",
+        "type": "python_package",
+        "packageName": "akshare",
+        "docsUrl": "https://akshare.akfamily.xyz/"
+      },
+      "allowedUse": [
+        "future_optional_extraction"
+      ],
+      "limitations": [
+        "AKShare is a collector layer. It must not be recorded as the final fact source.",
+        "Any data collected through AKShare must preserve original source metadata and be quality-capped."
+      ]
+    }
+  ],
+  "deferredSources": [
+    {
+      "sourceId": "cninfo",
+      "displayName": "CNINFO",
+      "firstPhaseRole": "filing_anchor_only",
+      "reason": "Do not parse full annual report PDF in the first phase. Store filing metadata, URL, hash, and page locator only when needed."
+    },
+    {
+      "sourceId": "shfe",
+      "displayName": "SHFE",
+      "firstPhaseRole": "deferred_official_anchor",
+      "reason": "User experience suggests stable automated access may be paid or restricted. Do not package it as a free stable API in phase one."
+    },
+    {
+      "sourceId": "smm",
+      "displayName": "SMM",
+      "firstPhaseRole": "paid_replacement_candidate",
+      "reason": "Requires authorization. Do not scrape or assume free use."
+    },
+    {
+      "sourceId": "nbsc",
+      "displayName": "国家统计局",
+      "firstPhaseRole": "official_anchor_later",
+      "reason": "Authoritative but not treated as a low-maintenance structured API for the first phase."
+    }
+  ]
+}
+

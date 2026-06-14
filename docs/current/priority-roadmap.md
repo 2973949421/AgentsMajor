@@ -46,17 +46,18 @@ Node/Sector 实验线：已退役并清理 active mode / runtime / Web progress 
 
 ## 3. 近期优先级
 
-### P0：N42-N47，Finance Major 原型（下一步）
+### P0：N42-N48，Finance Major 原型（下一步）
 
 目标是保留 HexGrid 工程骨架，把旧 business duel 语义替换为 finance duel：
 
 ```text
-N42：Finance Duel 契约与文档。
+N42：Finance Evidence + Finance Duel 契约。
 N43：金融队伍资产与专家 Agent 改造。
-N44：Finance Duel Runtime 接入。
-N45：金融裁判替换商业裁判。
-N46：金融 Web 验收台改造。
-N47：Dust2 有色 / 行业判断 6R 小样本验收。
+N44：Finance Evidence MVP 接入。
+N45：Finance Duel Runtime 接入。
+N46：金融裁判替换商业裁判。
+N47：金融 Web 验收台改造。
+N48：Dust2 有色 / 行业判断 6R 小样本验收。
 ```
 
 当前测试落点：
@@ -64,15 +65,43 @@ N47：Dust2 有色 / 行业判断 6R 小样本验收。
 ```text
 地图：Dust2 有色。
 轮次：行业判断。
-round：周期位置、供需缺口、价格中枢、产业链利润、政策宏观、配置取舍。
+round：全球价格、市场反应、估值是否 price in、进出口线索、证据缺口、有限配置结论。
 队伍：两种投资风格 + 五专家 agent + coach。
+数据：FRED + BaoStock + 可选 UN Comtrade 的免费 API 代理事实版。
 ```
 
 详见：
 
 ```text
 docs/finance/finance-major-prototype-plan.md
+docs/finance/finance-evidence-mvp.md
+docs/finance/finance-data-asset-contract.md
 ```
+
+当前必须承认的边界：
+
+```text
+Dust2 有色第一版不是完整中国有色行业基本面系统。
+FRED 全球金属价格不能直接证明中国国内供需。
+BaoStock 市场表现不能直接证明行业基本面。
+UN Comtrade 进出口数据只能提供滞后线索。
+CNINFO、国家统计局、工信部、SHFE、SMM 等先作为后置证据锚点或商业化替换源。
+裁判必须展示 missingEvidence 和 scoreCaps，不能让 LLM 用代理事实冒充完整事实。
+```
+
+当前金融数据资产入口：
+
+```text
+data/materials/processed/finance/
+```
+
+正式本地环境入口：
+
+```text
+AgentsMajor/.env.local
+```
+
+上层 `.env`、`.venv` 和外部 `metal_project/` 是历史验证痕迹，不作为项目运行入口。
 
 ### P1：后续候选，Hex 结构封板第二轮
 

@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "sourceId": "baostock",
+  "mapBindingId": "dust2_nonferrous_industry_judgment_v1",
+  "coreUniverse": [
+    { "code": "sh.601899", "name": "紫金矿业", "primaryExposure": "copper_gold", "bucket": "diversified_miner" },
+    { "code": "sh.600362", "name": "江西铜业", "primaryExposure": "copper", "bucket": "copper" },
+    { "code": "sh.601600", "name": "中国铝业", "primaryExposure": "aluminum", "bucket": "aluminum" },
+    { "code": "sz.000630", "name": "铜陵有色", "primaryExposure": "copper", "bucket": "copper" },
+    { "code": "sz.000878", "name": "云南铜业", "primaryExposure": "copper", "bucket": "copper" },
+    { "code": "sh.603993", "name": "洛阳钼业", "primaryExposure": "copper_cobalt_molybdenum", "bucket": "diversified_miner" },
+    { "code": "sz.002466", "name": "天齐锂业", "primaryExposure": "lithium", "bucket": "battery_metal" },
+    { "code": "sz.002460", "name": "赣锋锂业", "primaryExposure": "lithium", "bucket": "battery_metal" },
+    { "code": "sh.603799", "name": "华友钴业", "primaryExposure": "cobalt_nickel", "bucket": "battery_metal" },
+    { "code": "sz.000807", "name": "云铝股份", "primaryExposure": "aluminum", "bucket": "aluminum" }
+  ],
+  "extendedUniverse": [
+    { "code": "sh.600219", "name": "南山铝业", "primaryExposure": "aluminum", "bucket": "aluminum" },
+    { "code": "sz.000933", "name": "神火股份", "primaryExposure": "aluminum_coal", "bucket": "aluminum" },
+    { "code": "sh.601168", "name": "西部矿业", "primaryExposure": "copper_lead_zinc", "bucket": "diversified_miner" },
+    { "code": "sz.000960", "name": "锡业股份", "primaryExposure": "tin", "bucket": "minor_metal" },
+    { "code": "sh.600497", "name": "驰宏锌锗", "primaryExposure": "lead_zinc", "bucket": "base_metal" },
+    { "code": "sh.600961", "name": "株冶集团", "primaryExposure": "zinc", "bucket": "base_metal" },
+    { "code": "sh.600111", "name": "北方稀土", "primaryExposure": "rare_earth", "bucket": "rare_earth" },
+    { "code": "sh.600392", "name": "盛和资源", "primaryExposure": "rare_earth", "bucket": "rare_earth" },
+    { "code": "sh.600549", "name": "厦门钨业", "primaryExposure": "tungsten_rare_earth", "bucket": "minor_metal" },
+    { "code": "sh.600489", "name": "中金黄金", "primaryExposure": "gold", "bucket": "precious_metal" },
+    { "code": "sh.600547", "name": "山东黄金", "primaryExposure": "gold", "bucket": "precious_metal" },
+    { "code": "sh.600988", "name": "赤峰黄金", "primaryExposure": "gold", "bucket": "precious_metal" },
+    { "code": "sz.002756", "name": "永兴材料", "primaryExposure": "lithium_special_steel", "bucket": "battery_metal" },
+    { "code": "sz.002738", "name": "中矿资源", "primaryExposure": "lithium_cesium", "bucket": "battery_metal" },
+    { "code": "sz.000408", "name": "藏格矿业", "primaryExposure": "lithium_potash", "bucket": "battery_metal" },
+    { "code": "sz.300618", "name": "寒锐钴业", "primaryExposure": "cobalt", "bucket": "battery_metal" },
+    { "code": "sz.002340", "name": "格林美", "primaryExposure": "recycling_battery_metal", "bucket": "battery_metal" },
+    { "code": "sz.000426", "name": "兴业银锡", "primaryExposure": "silver_tin", "bucket": "minor_metal" },
+    { "code": "sz.000975", "name": "银泰黄金", "primaryExposure": "gold", "bucket": "precious_metal" },
+    { "code": "sz.002155", "name": "湖南黄金", "primaryExposure": "gold_antimony", "bucket": "precious_metal" },
+    { "code": "sz.000762", "name": "西藏矿业", "primaryExposure": "lithium_chromium", "bucket": "battery_metal" },
+    { "code": "sh.600711", "name": "盛屯矿业", "primaryExposure": "copper_cobalt_nickel", "bucket": "battery_metal" },
+    { "code": "sz.000831", "name": "中国稀土", "primaryExposure": "rare_earth", "bucket": "rare_earth" },
+    { "code": "sh.601958", "name": "金钼股份", "primaryExposure": "molybdenum", "bucket": "minor_metal" },
+    { "code": "sz.002167", "name": "东方锆业", "primaryExposure": "zirconium", "bucket": "minor_metal" }
+  ],
+  "firstPhaseFields": [
+    "date",
+    "code",
+    "open",
+    "high",
+    "low",
+    "close",
+    "preclose",
+    "volume",
+    "amount",
+    "peTTM",
+    "pbMRQ",
+    "psTTM",
+    "pcfNcfTTM"
+  ],
+  "limitations": [
+    "This universe supports market reaction and valuation proxy only.",
+    "Company inclusion does not imply official sector classification or verified product exposure."
+  ]
+}
+

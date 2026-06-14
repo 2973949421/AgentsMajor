@@ -20,7 +20,9 @@
 4. docs/hex/phase-2.0-pre-hex-engine-runtime-contract.md
 5. docs/hex/phase-2.0-pre-n38-n41-match-quality-plan.md
 6. docs/finance/finance-major-prototype-plan.md
-7. 按任务阅读 contracts、backlog 或 archive
+7. docs/finance/finance-evidence-mvp.md
+8. docs/finance/finance-data-asset-contract.md
+9. 按任务阅读 contracts、backlog 或 archive
 ```
 
 ## 文档分层
@@ -75,9 +77,15 @@ HexGrid 是当前比赛空间事实主线。旧 Node/Sector 不再作为 runtime
 ```text
 docs/finance/README.md
 docs/finance/finance-major-prototype-plan.md
+docs/finance/finance-evidence-mvp.md
+docs/finance/finance-data-asset-contract.md
 ```
 
 Finance Major 是 N42 起的下一阶段候选主线：复用 HexGrid 运行结构，但把旧 business duel（商业攻防）语义层替换为 finance duel（金融投资攻防）。当前测试落点是 `Dust2 有色 / 行业判断 / 6 round`。
+
+第一版数据事实层是“免费 API 代理事实版”，不是完整中国有色行业基本面系统。默认自动源是 FRED、BaoStock 和可选 UN Comtrade；CNINFO、国家统计局、工信部、SHFE、SMM 等先作为后置证据锚点或商业化替换源。裁判必须暴露 missingEvidence 和 scoreCaps，不能让 LLM 用代理事实冒充完整事实。
+
+金融数据源和 Dust2 有色行业判断绑定独立放在 `data/materials/processed/finance/`。正式本地环境入口固定为 `AgentsMajor/.env.local`，上层 `.env`、`.venv` 和外部 `metal_project/` 只作为历史验证痕迹。
 
 ### Backlog
 

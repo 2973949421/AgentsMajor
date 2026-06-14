@@ -1,0 +1,172 @@
+# Finance Data Asset Contract：金融数据资产与环境规整契约
+
+## 1. 目标
+
+本契约固定 Finance Major（金融投资对抗）第一版的数据资产和环境管理方式。
+
+用户已经验证过 BaoStock、UN Comtrade、FRED、AKShare 等 Python 接口可用，但这些验证脚本和上层虚拟环境不应直接散落进运行时主线。本契约的目标是：
+
+```text
+统一登记数据接口。
+只把仓库内 .env.local 作为正式本地环境入口。
+把金融数据资产放入独立 finance materials 目录。
+不把金融数据源和 Hex 地图资产杂糅。
+不迁移外部历史测试脚本。
+不保存 API key 或密钥预览。
+```
+
+## 2. 当前事实
+
+当前外部环境已经存在：
+
+```text
+B:\sharewithlight\LegendProject\.venv
+B:\sharewithlight\LegendProject\.env
+B:\sharewithlight\LegendProject\requirements.txt
+B:\sharewithlight\metal_project\test_baostock.py
+B:\sharewithlight\metal_project\test_comtrade.py
+B:\sharewithlight\metal_project\test_comtrade_key.py
+```
+
+这些文件证明接口曾经跑通，但不作为 Agent Major 的长期运行入口。
+
+正式入口固定为：
+
+```text
+B:\sharewithlight\LegendProject\AgentsMajor\.env.local
+```
+
+密钥只允许放在本地环境文件中，不能写入 `data/materials/`、`docs/`、测试快照或 artifact（产物）。
+
+## 3. 资产目录
+
+金融数据资产放在：
+
+```text
+data/materials/processed/finance/
+```
+
+当前结构：
+
+```text
+data/materials/processed/finance/README.md
+data/materials/processed/finance/source-registry.json
+data/materials/processed/finance/evidence-source-policy.json
+data/materials/processed/finance/maps/dust2-nonferrous/finance-map-binding.json
+data/materials/processed/finance/maps/dust2-nonferrous/round-topics.json
+data/materials/processed/finance/maps/dust2-nonferrous/fred-series.json
+data/materials/processed/finance/maps/dust2-nonferrous/baostock-company-universe.json
+data/materials/processed/finance/maps/dust2-nonferrous/un-comtrade-hs-codes.json
+data/materials/processed/finance/maps/dust2-nonferrous/evidence-pack-template.json
+```
+
+Python 依赖清单放在：
+
+```text
+tools/finance-data/requirements.txt
+```
+
+它是金融数据工具的依赖记录，不代表要在 agent 环境里重装依赖。默认仍禁止运行 `pnpm install`，Python 环境也不在本轮自动重建。
+
+## 4. 数据源与采集器边界
+
+必须区分：
+
+```text
+collector（采集器） != source（事实来源） != evidence（证据） != prompt context（模型上下文）
+```
+
+第一版正式源：
+
+| sourceId | 定位 | 入口 |
+|---|---|---|
+| `fred` | 全球金属价格和宏观代理事实 | HTTP API，`FRED_API_KEY` |
+| `baostock` | A 股代表公司行情和估值代理事实 | Python package，无 key |
+| `un_comtrade` | 进出口滞后线索，可选 | Python package，`UN_COMTRADE_KEY` |
+| `akshare` | 采集器候选，不是事实源 | Python package |
+
+`AKShare` 只能被登记为采集器，不能作为最终事实源。若未来用 AKShare 抽取 SHFE、国家统计局或其他页面，证据必须保留原始 source、URL、hash、抓取时间和质量降级说明。
+
+## 5. 与地图资产的隔离
+
+Hex 地图资产继续放在：
+
+```text
+data/materials/processed/maps/dust2/
+```
+
+金融主题绑定放在：
+
+```text
+data/materials/processed/finance/maps/dust2-nonferrous/
+```
+
+两者关系：
+
+```text
+Hex map 负责空间、路径、区域、点位、可走性。
+Finance map binding 负责行业主题、回合子命题、证据源、证据缺口和裁判上限。
+```
+
+禁止把金融数据源配置塞进 `dust2-hex-map.json`。也禁止把 Hex cell、region、point 写进金融 source registry。
+
+## 6. 外部测试脚本处理
+
+`B:\sharewithlight\metal_project` 中的测试脚本不迁移。
+
+原因：
+
+```text
+它们是历史验证脚本，不是正式 collector。
+其中 key 检查脚本会打印 key 长度和预览，不适合进入仓库。
+正式项目只需要吸收“接口可用”和“调用形态”的结论。
+```
+
+后续如果要实现正式 collector，应新建项目内代码，并遵守：
+
+```text
+不打印 key。
+不把 raw PDF 塞入 prompt。
+不把外部脚本原样复制成 runtime。
+不把 proxy fact 冒充完整行业基本面。
+```
+
+## 7. 当前第一版数据边界
+
+当前绑定名：
+
+```text
+有色行业判断
+```
+
+第一版公司池包含：
+
+```text
+coreUniverse：10 家代表公司。
+extendedUniverse：25 家扩展公司。
+```
+
+默认验收可先用 coreUniverse；如果样本太少，再扩大到 extendedUniverse。扩容不改变数据源边界：BaoStock 仍只能证明市场反应和估值代理事实，不能证明完整行业基本面。
+
+## 8. 后续实施入口
+
+N44 Finance Evidence MVP 接入时，应优先读取：
+
+```text
+data/materials/processed/finance/source-registry.json
+data/materials/processed/finance/evidence-source-policy.json
+data/materials/processed/finance/maps/dust2-nonferrous/finance-map-binding.json
+```
+
+然后按回合读取：
+
+```text
+round-topics.json
+fred-series.json
+baostock-company-universe.json
+un-comtrade-hs-codes.json
+evidence-pack-template.json
+```
+
+本契约不要求本轮实现 collector。它只固定资产、环境和边界，防止后续实现时重新把根目录、外部测试脚本、地图资产和金融数据源混在一起。
+

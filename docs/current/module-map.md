@@ -23,6 +23,8 @@ Materials
   -> style and roster assets
 
 Finance Major transition
+  -> finance evidence MVP
+  -> finance data source registry
   -> finance duel contract
   -> finance team profiles
   -> expert agent roster
@@ -127,6 +129,34 @@ winner 只来自 hard win condition。
 不恢复旧 Node/Sector。
 不让旧商业闭环词汇继续作为主 prompt 证据。
 CS 词条只保留为赛事包装和执行层表达。
+```
+
+### M09 Finance evidence MVP layer
+
+职责：
+
+```text
+接入免费 API 代理事实。
+区分 collector / source / evidence / prompt context。
+读取 data/materials/processed/finance/ 下的数据源注册、证据策略和 Dust2 有色绑定。
+维护 raw cache、normalized facts、evidence_id、round evidence pack 和 judge evidence ledger。
+为 financeDuel 提供短事实包，而不是把网页、PDF 或长文本直接塞进 LLM。
+```
+
+第一版数据源：
+
+```text
+FRED：全球金属价格和宏观代理事实。
+BaoStock：A 股代表公司行情、成交和估值。
+UN Comtrade：可选进出口线索。
+```
+
+边界：
+
+```text
+Dust2 有色第一版是免费 API 代理事实版，不是完整中国有色行业基本面系统。
+CNINFO、国家统计局、工信部、SHFE、SMM 先作为后置证据锚点或商业化替换源。
+缺失国内库存、现货升贴水、行业利润或公司财报页码时，裁判必须通过 missingEvidence 和 scoreCaps 降低结论上限。
 ```
 
 ## 3. 保留兼容模块

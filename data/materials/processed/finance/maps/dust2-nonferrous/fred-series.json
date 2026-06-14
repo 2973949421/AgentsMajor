@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "sourceId": "fred",
+  "mapBindingId": "dust2_nonferrous_industry_judgment_v1",
+  "series": [
+    {
+      "seriesId": "PCOPPUSDM",
+      "displayName": "Global price of Copper",
+      "commodity": "copper",
+      "unit": "USD per metric ton",
+      "frequency": "monthly",
+      "firstPhaseUse": [
+        "global_metal_price_signal",
+        "limited_allocation_conclusion"
+      ]
+    },
+    {
+      "seriesId": "PALUMUSDM",
+      "displayName": "Global price of Aluminum",
+      "commodity": "aluminum",
+      "unit": "USD per metric ton",
+      "frequency": "monthly",
+      "firstPhaseUse": [
+        "global_metal_price_signal",
+        "limited_allocation_conclusion"
+      ]
+    },
+    {
+      "seriesId": "PNICKUSDM",
+      "displayName": "Global price of Nickel",
+      "commodity": "nickel",
+      "unit": "USD per metric ton",
+      "frequency": "monthly",
+      "firstPhaseUse": [
+        "global_metal_price_signal"
+      ]
+    },
+    {
+      "seriesId": "PZINCUSDM",
+      "displayName": "Global price of Zinc",
+      "commodity": "zinc",
+      "unit": "USD per metric ton",
+      "frequency": "monthly",
+      "firstPhaseUse": [
+        "global_metal_price_signal"
+      ]
+    }
+  ],
+  "limitations": [
+    "These series are global price proxies.",
+    "They do not directly prove China domestic supply-demand conditions."
+  ]
+}
+

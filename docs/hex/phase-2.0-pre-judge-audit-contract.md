@@ -374,6 +374,28 @@ challenge_landed：攻方反证挑战成立。
 contested_no_finance_resolution：金融争点未决。
 ```
 
+Finance Evidence MVP 第一版必须引入证据上限：
+
+```text
+没有国内库存，供需判断最高分受限。
+没有 SHFE / SMM，国内价格判断最高分受限。
+没有 CNINFO 页码，公司盈利传导最高分受限。
+只有 BaoStock，不能证明行业基本面。
+只有 FRED，不能证明中国国内有色供需。
+只有 UN Comtrade，不能证明国内库存和利润传导。
+```
+
+裁判输出必须包含：
+
+```text
+submittedEvidenceIds
+missingEvidence
+scoreCaps
+proxyFactWarning
+```
+
+当 evidence pack 只有 FRED + BaoStock + 可选 UN Comtrade 时，裁判只能评价“代理事实判断”，不能把结论写成完整中国有色基本面判断。
+
 禁止：
 
 - 不让 LLM 直接写 winner、kill、economyDelta 或 DB fact。
@@ -381,6 +403,7 @@ contested_no_finance_resolution：金融争点未决。
 - 不把旧商业闭环词汇当作 finance evidence。
 - 不把没有材料引用和可检验假设的宏大判断当强证据。
 - 不让前端把金融解释改写成新的比赛事实。
+- 不让代理事实冒充完整行业事实。
 
 `Phase 2.0-pre` 对 judge 的要求不再是“写得像”，而是：
 

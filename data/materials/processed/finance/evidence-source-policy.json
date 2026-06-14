@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-06-14",
+  "policyId": "finance_evidence_source_policy_v1",
+  "principles": [
+    "collector is not source",
+    "LLM explains and debates but does not invent facts",
+    "proxy evidence must be labeled as proxy evidence",
+    "missing evidence must reduce score caps",
+    "API keys and local secrets are never stored in materials"
+  ],
+  "sourceTiers": [
+    {
+      "tier": "official_api",
+      "maxConfidence": 0.95,
+      "description": "Stable official or institutional API with machine-readable observations."
+    },
+    {
+      "tier": "official_api_lagged",
+      "maxConfidence": 0.9,
+      "description": "Official API with meaningful reporting lag or mapping limitations."
+    },
+    {
+      "tier": "market_data_proxy",
+      "maxConfidence": 0.75,
+      "description": "Market and valuation proxy data that can support market reaction, not full industry fundamentals."
+    },
+    {
+      "tier": "official_anchor_not_api",
+      "maxConfidence": 0.8,
+      "description": "Official source URL, file, hash, and locator preserved as audit anchor, but not a stable first-phase API."
+    },
+    {
+      "tier": "collector_not_source",
+      "maxConfidence": 0.45,
+      "description": "Collector package or scraper wrapper. Must be paired with original source metadata."
+    }
+  ],
+  "scoreCaps": [
+    {
+      "condition": "only_baostock",
+      "maxIndustryJudgmentScore": 60,
+      "reason": "A-share market reaction cannot prove industry fundamentals."
+    },
+    {
+      "condition": "only_fred",
+      "maxChinaNonferrousSupplyDemandScore": 65,
+      "reason": "Global metal prices cannot prove China domestic inventory or spot tightness."
+    },
+    {
+      "condition": "fred_plus_baostock",
+      "maxProxyFactScore": 70,
+      "reason": "Global price and market reaction can support proxy judgment, but domestic fundamental evidence is missing."
+    },
+    {
+      "condition": "fred_plus_baostock_plus_un_comtrade",
+      "maxProxyFactScore": 75,
+      "reason": "Trade data adds lagged import/export evidence, but does not replace domestic inventory, spot, or company margin evidence."
+    },
+    {
+      "condition": "no_cninfo_page_locator",
+      "maxCompanyDeepResearchScore": 60,
+      "reason": "Without filing page anchors, company margin and resource exposure claims cannot be treated as deep company evidence."
+    },
+    {
+      "condition": "no_shfe_smm_lme",
+      "maxDomesticCommodityMicroScore": 70,
+      "reason": "Domestic commodity price, inventory, and warehouse receipt claims remain under-evidenced."
+    }
+  ],
+  "evidenceIdFormat": "EVID:{source}:{domain}:{entity}:{metric}:{period}:{locator}:{hash8}",
+  "requiredEvidenceFields": [
+    "source",
+    "collector",
+    "endpointOrLocator",
+    "observationDate",
+    "fetchTime",
+    "metricName",
+    "value",
+    "unit",
+    "period",
+    "sourceType",
+    "confidence",
+    "rawHash",
+    "parserVersion",
+    "originalLocation"
+  ],
+  "prohibitedClaimsWithoutEvidence": [
+    "domestic_inventory_drawdown",
+    "domestic_spot_premium_improvement",
+    "shfe_warehouse_receipt_change",
+    "company_product_margin_expansion",
+    "hedging_impact_quantification",
+    "resource_self_sufficiency_ratio",
+    "full_china_nonferrous_fundamental_conclusion"
+  ]
+}
+

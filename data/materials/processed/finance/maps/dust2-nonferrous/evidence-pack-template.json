@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "templateId": "dust2_nonferrous_round_evidence_pack_v1",
+  "mapBindingId": "dust2_nonferrous_industry_judgment_v1",
+  "roundEvidencePack": {
+    "roundNumber": 0,
+    "roundKey": "",
+    "title": "",
+    "facts": [
+      {
+        "factId": "F001",
+        "statement": "",
+        "metricName": "",
+        "value": null,
+        "unit": "",
+        "period": "",
+        "source": "",
+        "sourceType": "",
+        "collector": "",
+        "evidenceId": "",
+        "confidence": 0,
+        "rawHash": "",
+        "parserVersion": "",
+        "originalLocation": ""
+      }
+    ],
+    "missingEvidence": [],
+    "scoreCaps": [
+      {
+        "condition": "",
+        "maxScore": 0,
+        "reason": ""
+      }
+    ],
+    "promptFacts": [
+      {
+        "factId": "F001",
+        "shortText": "",
+        "evidenceId": ""
+      }
+    ],
+    "judgeLedger": {
+      "allowedClaims": [],
+      "cappedClaims": [],
+      "prohibitedClaims": []
+    }
+  },
+  "constraints": [
+    "A round evidence pack should contain 20-40 short facts.",
+    "Prompt facts must be concise and should not include raw PDFs or long filings.",
+    "Missing evidence and score caps must be carried into judge audit."
+  ]
+}
+

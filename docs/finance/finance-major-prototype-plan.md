@@ -25,9 +25,44 @@ agent：多专家团队
 裁判：金融研究证据 60-70% + 执行层证据 30-40%
 ```
 
+但数据事实层必须更克制：
+
+```text
+Dust2 有色第一版不是完整中国有色行业基本面系统。
+它是免费 API 代理事实版。
+```
+
+第一版自动数据源只默认考虑：
+
+```text
+FRED
+BaoStock
+UN Comtrade（可选）
+```
+
+CNINFO、国家统计局、工信部、SHFE、SMM、LME、海关统计等先作为后置证据锚点或商业化替换源，不得包装成第一版稳定免费 API。详见：
+
+```text
+docs/finance/finance-evidence-mvp.md
+docs/finance/finance-data-asset-contract.md
+```
+
+金融数据资产入口固定为：
+
+```text
+data/materials/processed/finance/
+```
+
+Hex 地图资产和金融主题资产不混放：
+
+```text
+data/materials/processed/maps/dust2/                    # Hex 空间事实
+data/materials/processed/finance/maps/dust2-nonferrous/ # 金融行业判断事实
+```
+
 ## 2. 成功标准
 
-完成 N42-N47 后，至少应满足：
+完成 N42-N48 后，至少应满足：
 
 - 旧泛商业语义不再影响新对局底座。
 - 队伍资产已经从“商业叙事”替换为“投资风格 + 行业理解 + 专家团队”。
@@ -83,16 +118,18 @@ Ancient 金融地产
 
 ## 4. Dust2 有色 / 行业判断 6 个 round
 
-6 个 round 按完整行业研究链设计，不按单一品种拆分。铜、铝、锂、金、稀土等品种作为证据进入 round，而不是每个品种各写一篇作文。
+6 个 round 按行业研究链设计，但第一版必须承认数据边界。铜、铝、锂、金、稀土等品种作为证据进入 round，而不是每个品种各写一篇作文。
+
+在免费 API 代理事实版中，round 不能声称已经完整覆盖国内库存、现货升贴水、SHFE 仓单、行业利润和公司分产品毛利率。裁判必须暴露 `missingEvidence` 和 `scoreCaps`。
 
 | Round | 小主题 | 守方自证 | 攻方挑战 |
 |---|---|---|---|
-| R1 | 周期位置判断 | 当前有色处在上行、下行还是震荡阶段，核心周期判断是什么 | 是否把短期扰动误判成周期趋势，是否滞后于价格和库存信号 |
-| R2 | 供需缺口判断 | 需求端和供给端谁是主要矛盾，缺口是否真实且持续 | 需求弹性、库存、供给释放、替代品和进口扰动是否反证 |
-| R3 | 价格中枢与弹性 | 核心品种价格中枢如何变化，弹性来自哪里 | 美元、利率、库存、成本曲线和预期交易是否压制价格假设 |
-| R4 | 产业链利润分配 | 景气最终落到矿端、冶炼、加工、资源股还是材料股 | 利润是否被成本、长协、产能、下游议价权或政策约束吃掉 |
-| R5 | 政策与宏观变量 | 政策、能源转型、地产、制造业、美元、利率如何影响行业判断 | 宏观变量是否互相冲突，政策预期是否已经被定价 |
-| R6 | 行业结论与配置取舍 | 最终应 overweight / neutral / underweight 哪些方向，时间窗口和风险边界是什么 | 结论是否可执行，风险收益比是否足够，反证出现时如何修正 |
+| R1 | 全球有色价格是否支持景气上行 | 用 FRED 金属价格说明全球价格趋势 | 全球价格不能等同于中国国内供需 |
+| R2 | A 股有色代表公司是否已经反映价格预期 | 用 BaoStock 股价、成交、PE/PB 说明市场反应 | 市场表现不能证明行业基本面 |
+| R3 | 估值是否已经 price in | 用 BaoStock 估值和收益率判断是否透支 | 缺少财报页码和利润弹性时不能做公司深度强结论 |
+| R4 | 进出口数据是否支持供需变化 | 用可选 UN Comtrade 观察铜矿砂、铝土矿等进口趋势 | 进出口滞后且不能替代国内库存、现货和行业利润 |
+| R5 | 当前证据缺口下哪些结论不能下 | 主动列出 missingEvidence 和 scoreCaps | 攻方检验守方是否用代理事实冒充完整事实 |
+| R6 | 基于有限证据的配置倾向与风险边界 | 给出有限置信度的配置倾向、观察指标和降级条件 | 结论是否承认数据边界，是否具备可执行风险控制 |
 
 每个 round 的最小输出应包含：
 
@@ -371,14 +408,20 @@ contested_no_business_resolution -> contested_no_finance_resolution
 - 不把金融观点包装成数据库事实。
 - 不把没有材料引用的宏大判断当强证据。
 - 不把旧商业闭环词汇当 finance evidence。
+- 不把代理事实包装成完整行业判断。
+- 不把 FRED 全球价格直接等同于中国国内现货、库存或供需。
+- 不把 BaoStock 市场表现直接等同于行业基本面。
+- 不把缺少 CNINFO 页码的公司判断写成公司深度事实。
 
 ## 10. 未来 N 规划
 
-### N42：Finance Duel 契约与文档
+### N42：Finance Evidence + Finance Duel 契约
 
 目标：
 
 - 固定金融投资对抗定义。
+- 固定免费 API 代理事实版边界。
+- 固定 collector / source / evidence / prompt context 分层。
 - 固定 Dust2 有色 / 行业判断 6R。
 - 固定两队投资风格。
 - 固定 agent / coach 分工。
@@ -387,6 +430,7 @@ contested_no_business_resolution -> contested_no_finance_resolution
 交付：
 
 - 本文档。
+- `docs/finance/finance-evidence-mvp.md`。
 - 当前路线图更新。
 - prompt / judge / runtime 文档中增加 finance transition 说明。
 
@@ -405,7 +449,26 @@ contested_no_business_resolution -> contested_no_finance_resolution
 - 五专家 + coach 结构。
 - materials 验证。
 
-### N44：Finance Duel Runtime 接入
+### N44：Finance Evidence MVP 接入
+
+目标：
+
+- 新增 Finance Evidence MVP 的数据接入骨架。
+- 先接 FRED 和 BaoStock。
+- UN Comtrade 作为可选第三源。
+- 从 `data/materials/processed/finance/` 读取 source registry、policy、round topics 和 universe。
+- 生成 raw cache、normalized facts、evidence_id、round evidence pack。
+- 不接 CNINFO 全文解析，不接 SHFE 自动化，不接 SMM。
+
+交付：
+
+- collector 接口。
+- source registry。
+- evidence registry。
+- round evidence pack。
+- judge evidence ledger 第一版。
+
+### N45：Finance Duel Runtime 接入
 
 目标：
 
@@ -421,7 +484,7 @@ contested_no_business_resolution -> contested_no_finance_resolution
 - prompt adapter。
 - trace 测试。
 
-### N45：金融裁判替换商业裁判
+### N46：金融裁判替换商业裁判
 
 目标：
 
@@ -435,13 +498,14 @@ contested_no_business_resolution -> contested_no_finance_resolution
 - finance verdict。
 - combat attribution 测试。
 
-### N46：金融 Web 验收台改造
+### N47：金融 Web 验收台改造
 
 目标：
 
 - `/hex-lab/match` 展示金融攻防链路。
 - 选手栏显示专家职责和金融贡献。
 - 审计抽屉展示投资主张、反证挑战、金融裁判、执行证据。
+- 展示每个 round 的 evidence_id、missingEvidence 和 scoreCaps。
 
 交付：
 
@@ -449,12 +513,13 @@ contested_no_business_resolution -> contested_no_finance_resolution
 - Web 文案与审计标签替换。
 - 不再以旧商业攻防作为主入口。
 
-### N47：Dust2 有色 6R 小样本验收
+### N48：Dust2 有色 6R 小样本验收
 
 目标：
 
 - 跑一张 6 round 小地图。
 - 验证金融主题是否明显减少空话。
+- 验证代理事实版是否诚实暴露数据缺口。
 - 检查 token 成本、裁判质量、专家分工、Web 可读性。
 
 交付：
@@ -467,10 +532,11 @@ contested_no_business_resolution -> contested_no_finance_resolution
 
 - N42 只写文档，不改 runtime。
 - N43 只改 materials，不改裁判。
-- N44 只接 financeDuel，不调裁判权重。
-- N45 才替换裁判。
-- N46 才改 Web 主展示。
-- N47 才做小样本验收。
+- N44 只接 evidence MVP，不接 Web 大改。
+- N45 只接 financeDuel，不调裁判权重。
+- N46 才替换裁判。
+- N47 才改 Web 主展示。
+- N48 才做小样本验收。
 
 如果 finance 原型失败：
 
@@ -479,4 +545,3 @@ contested_no_business_resolution -> contested_no_finance_resolution
 - 不回滚 N20-N41 已有运行能力。
 - 不恢复旧 Node/Sector。
 - 不把旧商业攻防混回 finance prompt。
-

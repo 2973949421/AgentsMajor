@@ -14,6 +14,13 @@
   - 裁判规程
   - 区域语义
   - 其他公共地图资产
+- `processed/finance/`
+  金融投资对抗正式资产。只承载：
+  - 数据源注册
+  - 证据分级策略
+  - 金融地图主题绑定
+  - 回合证据包模板
+  - 公司 universe 和外部数据 series 配置
 - `processed/teams/<team-slug>/`
   队伍级正式资产。长期维护单位固定为队伍目录。
 
@@ -52,7 +59,17 @@
 - `processed/teams/<team-slug>/initial-proposal.json`
 - `processed/maps/<map-slug>/map-proposition.json`
 - `processed/maps/<map-slug>/judge-rubric.json`
+- `processed/finance/source-registry.json`
+- `processed/finance/evidence-source-policy.json`
+- `processed/finance/maps/<finance-map-slug>/finance-map-binding.json`
 - `processed/indexes/*.json`
+
+Hex 地图资产和金融主题资产分开维护：
+
+```text
+processed/maps/dust2/                    # Hex 空间、路径、区域、点位
+processed/finance/maps/dust2-nonferrous/ # 金融行业判断、证据源和回合子命题
+```
 
 ## 资产维护原则
 
