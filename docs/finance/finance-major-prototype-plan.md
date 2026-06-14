@@ -541,6 +541,24 @@ N45 不应重新设计证据格式，应消费 N44 生成物并把其接入 fina
 - prompt adapter。
 - trace 测试。
 
+N45 第一版落地口径：
+
+```text
+Hex runner 每 round 从 N44 evidence pack 生成 financeDuel。
+financeDuel 写入 HexRoundTrace，作为金融投资攻防输入事实。
+compact request 优先发送 financeDuel；businessDuel 仅保留 trace 兼容和旧裁判过渡。
+businessIntent 暂时仍是 schema 字段名，但 prompt 明确要求它承载金融自证 / 质疑意图。
+N45 不替换 combat 裁判权重，不改 hard winner，不改 AP / economy / KDA。
+```
+
+N45 的成功不是“金融裁判已经完成”，而是：
+
+```text
+LLM action request 已能看到小主题、守方投资主张、攻方反证挑战、证据边界、scoreCaps 和 agent 金融任务。
+trace artifact 已能追溯 financeDuel。
+旧商业 prompt 不再是 real provider 的主语义入口。
+```
+
 ### N46：金融裁判替换商业裁判
 
 目标：

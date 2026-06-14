@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
 import { buildFixtureHexRoundBusinessDuel } from "../business/index.js";
+import { buildHexRoundFinanceDuel } from "../finance/index.js";
 import type { HexRoundTrace } from "../round/index.js";
 import { buildHexRoundReport } from "./hex-round-report-bridge.js";
 
@@ -200,6 +201,14 @@ function minimalTrace(agentA: Agent, attackTeamId: string, defenseTeamId: string
       defenseTeamId,
       agents: [
         { agentId: agentA.id, teamId: agentA.teamId, side: "attack" }
+      ]
+    }),
+    financeDuel: buildHexRoundFinanceDuel({
+      roundNumber: 1,
+      attackTeamId,
+      defenseTeamId,
+      agents: [
+        { agentId: agentA.id, teamId: agentA.teamId, side: "attack", role: agentA.role }
       ]
     }),
     economyContext: { teams: [], agents: [], warnings: [] },

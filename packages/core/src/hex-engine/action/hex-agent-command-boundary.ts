@@ -1,6 +1,7 @@
 import type { HexCell, HexMapAsset } from "@agent-major/shared";
 import { getHexAgentBusinessAssignment, type HexAgentBusinessAssignment, type HexRoundBusinessDuel } from "../business/index.js";
 import { getHexAgentEconomyContext, type HexRoundEconomyContext } from "../economy/index.js";
+import { getHexAgentFinanceAssignment, type HexAgentFinanceAssignment, type HexRoundFinanceDuel } from "../finance/index.js";
 import { buildHexPathGraph, calculateHexApCost } from "../path/index.js";
 import { buildHexAgentMemoryContext, type HexAgentMemoryPromptContext, type HexPhaseId, type HexRoundMemory, type HexSide } from "../state/index.js";
 
@@ -79,6 +80,8 @@ export interface HexAgentCommandRequest {
   reachableCells: HexReachableCellSummary[];
   phaseObjective: HexAgentPhaseObjective;
   tacticalPlan?: HexRoundTacticalPlan;
+  financeDuel?: HexAgentFinanceDuelPromptContext;
+  financeAssignment?: HexAgentFinanceAssignment;
   businessDuel?: HexAgentBusinessDuelPromptContext;
   businessAssignment?: HexAgentBusinessAssignment;
   objectiveHints: string[];
@@ -134,6 +137,25 @@ export interface HexAgentCompactCommandRequest {
     attackThesis: string;
     attackChallengePoints: string[];
     agentAssignment?: Pick<HexAgentBusinessAssignment, "agentId" | "teamId" | "side" | "role" | "businessTask" | "csCarrierHint" | "linkedProofId" | "linkedChallengeId"> | undefined;
+  } | undefined;
+  financeDuel?: {
+    topicKey: string;
+    topicTitle: string;
+    defenseThesis: string;
+    attackChallenge: string;
+    riskBoundary: string;
+    promptFacts: Array<{
+      factId: string;
+      shortText: string;
+      evidenceId: string;
+    }>;
+    missingEvidence: string[];
+    scoreCaps: Array<{
+      condition: string;
+      maxScore: number;
+      reason: string;
+    }>;
+    agentAssignment?: Pick<HexAgentFinanceAssignment, "agentId" | "teamId" | "side" | "role" | "financeTask" | "linkedThesisId" | "linkedChallengeId"> | undefined;
   } | undefined;
   tacticalPlan?: {
     roundNumber: number;
@@ -199,6 +221,45 @@ export interface HexAgentBusinessDuelPromptContext {
     teamId: string;
     thesis: string;
     challengePoints: string[];
+  };
+}
+
+export interface HexAgentFinanceDuelPromptContext {
+  roundNumber: number;
+  halfIndex: 0 | 1;
+  roundInHalf: number;
+  mirrorRoundNumber: number;
+  topicKey: string;
+  topicTitle: string;
+  defenseThesis: {
+    thesisId: string;
+    teamId: string;
+    thesis: string;
+    keyAssumptions: string[];
+    evidenceRefs: string[];
+    riskBoundary: string;
+  };
+  attackChallenge: {
+    challengeId: string;
+    teamId: string;
+    thesis: string;
+    challengePoints: string[];
+    requiredDefense: string[];
+    evidenceRefs: string[];
+  };
+  evidence: {
+    promptFacts: Array<{
+      factId: string;
+      shortText: string;
+      evidenceId: string;
+    }>;
+    missingEvidence: string[];
+    scoreCaps: Array<{
+      condition: string;
+      maxScore: number;
+      reason: string;
+    }>;
+    sourceWarnings: string[];
   };
 }
 
@@ -287,6 +348,7 @@ export function buildHexAgentCommandRequest(input: {
   reservedCellIds?: readonly string[];
   tacticalPlan?: HexRoundTacticalPlan;
   businessDuel?: HexRoundBusinessDuel;
+  financeDuel?: HexRoundFinanceDuel;
 }): HexAgentCommandRequest {
   const context = buildHexAgentMemoryContext({
     memory: input.memory,
@@ -317,6 +379,12 @@ export function buildHexAgentCommandRequest(input: {
         agentId: input.agentId
       })
     : undefined;
+  const financeAssignment = input.financeDuel
+    ? getHexAgentFinanceAssignment({
+        financeDuel: input.financeDuel,
+        agentId: input.agentId
+      })
+    : undefined;
   const request: HexAgentCommandRequest = {
     schemaVersion: 1,
     phaseId: input.memory.phaseId,
@@ -332,6 +400,8 @@ export function buildHexAgentCommandRequest(input: {
     reachableCells,
     phaseObjective,
     ...(input.tacticalPlan ? { tacticalPlan: input.tacticalPlan } : {}),
+    ...(input.financeDuel ? { financeDuel: summarizeFinanceDuelForRequest(input.financeDuel) } : {}),
+    ...(financeAssignment ? { financeAssignment } : {}),
     ...(input.businessDuel ? { businessDuel: summarizeBusinessDuelForRequest(input.businessDuel) } : {}),
     ...(businessAssignment ? { businessAssignment } : {}),
     objectiveHints,
@@ -350,6 +420,8 @@ export function buildHexAgentCommandRequest(input: {
       "currentCellId must match the agent currentCellId.",
       "businessIntent is required and must explain the business-plan purpose of the CS action.",
       "businessIntent must connect the phaseObjective, role responsibility, and selected target.",
+      "When financeDuel is present, businessIntent is a legacy field name and must carry the finance thesis/challenge intent in Chinese.",
+      "When financeAssignment is present, businessIntent must carry that finance assignment and cite evidence boundaries; do not invent financial facts.",
       "When businessAssignment is present, businessIntent must carry that assignment; do not rewrite proof, challenge, assignment, team ids, or agent ids.",
       "lastSeenEnemies are historical hints, not current enemy truth.",
       "The code validates movement, AP, C4 legality, and final game facts."
@@ -482,6 +554,31 @@ export function buildHexAgentCompactCommandRequest(request: HexAgentCommandReque
       ...(compactAssignment ? { agentAssignment: compactAssignment } : {})
     };
   }
+  if (request.financeDuel) {
+    const compactAssignment = request.financeAssignment
+      ? {
+          agentId: request.financeAssignment.agentId,
+          teamId: request.financeAssignment.teamId,
+          side: request.financeAssignment.side,
+          role: request.financeAssignment.role,
+          financeTask: request.financeAssignment.financeTask,
+          ...(request.financeAssignment.linkedThesisId ? { linkedThesisId: request.financeAssignment.linkedThesisId } : {}),
+          ...(request.financeAssignment.linkedChallengeId ? { linkedChallengeId: request.financeAssignment.linkedChallengeId } : {})
+        }
+      : undefined;
+    compact.financeDuel = {
+      topicKey: request.financeDuel.topicKey,
+      topicTitle: request.financeDuel.topicTitle,
+      defenseThesis: request.financeDuel.defenseThesis.thesis,
+      attackChallenge: request.financeDuel.attackChallenge.thesis,
+      riskBoundary: request.financeDuel.defenseThesis.riskBoundary,
+      promptFacts: request.financeDuel.evidence.promptFacts.slice(0, 5).map((fact) => ({ ...fact })),
+      missingEvidence: request.financeDuel.evidence.missingEvidence.slice(0, 5),
+      scoreCaps: request.financeDuel.evidence.scoreCaps.slice(0, 3).map((cap) => ({ ...cap })),
+      ...(compactAssignment ? { agentAssignment: compactAssignment } : {})
+    };
+    delete compact.businessDuel;
+  }
   if (request.tacticalPlan) {
     compact.tacticalPlan = {
       roundNumber: request.tacticalPlan.roundNumber,
@@ -585,6 +682,39 @@ function summarizeBusinessDuelForRequest(duel: HexRoundBusinessDuel): HexAgentBu
       teamId: duel.attackChallenge.teamId,
       thesis: duel.attackChallenge.thesis,
       challengePoints: [...duel.attackChallenge.challengePoints]
+    }
+  };
+}
+
+function summarizeFinanceDuelForRequest(duel: HexRoundFinanceDuel): HexAgentFinanceDuelPromptContext {
+  return {
+    roundNumber: duel.roundNumber,
+    halfIndex: duel.halfIndex,
+    roundInHalf: duel.roundInHalf,
+    mirrorRoundNumber: duel.mirrorRoundNumber,
+    topicKey: duel.topic.roundKey,
+    topicTitle: duel.topic.topicTitle,
+    defenseThesis: {
+      thesisId: duel.defenseThesis.thesisId,
+      teamId: duel.defenseThesis.teamId,
+      thesis: duel.defenseThesis.thesis,
+      keyAssumptions: [...duel.defenseThesis.keyAssumptions],
+      evidenceRefs: [...duel.defenseThesis.evidenceRefs],
+      riskBoundary: duel.defenseThesis.riskBoundary
+    },
+    attackChallenge: {
+      challengeId: duel.attackChallenge.challengeId,
+      teamId: duel.attackChallenge.teamId,
+      thesis: duel.attackChallenge.thesis,
+      challengePoints: [...duel.attackChallenge.challengePoints],
+      requiredDefense: [...duel.attackChallenge.requiredDefense],
+      evidenceRefs: [...duel.attackChallenge.evidenceRefs]
+    },
+    evidence: {
+      promptFacts: duel.evidence.promptFacts.map((fact) => ({ ...fact })),
+      missingEvidence: [...duel.evidence.missingEvidence],
+      scoreCaps: duel.evidence.scoreCaps.map((cap) => ({ ...cap })),
+      sourceWarnings: [...duel.evidence.sourceWarnings]
     }
   };
 }

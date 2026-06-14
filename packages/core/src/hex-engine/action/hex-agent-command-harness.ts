@@ -8,6 +8,7 @@ import type { HexMapAsset } from "@agent-major/shared";
 import type { ArtifactStore } from "../../ports.js";
 import type { HexRoundBusinessDuel } from "../business/index.js";
 import type { HexRoundEconomyContext } from "../economy/index.js";
+import type { HexRoundFinanceDuel } from "../finance/index.js";
 import type { HexRoundMemory } from "../state/index.js";
 import {
   auditHexAgentDraftSemanticLanguage,
@@ -98,6 +99,7 @@ export interface RunHexAgentPhaseCommandHarnessInput {
   progressSink?: HexAgentCommandProgressSink;
   tacticalPlan?: HexRoundTacticalPlan;
   businessDuel?: HexRoundBusinessDuel;
+  financeDuel?: HexRoundFinanceDuel;
 }
 
 export interface HexAgentCommandAudit {
@@ -232,6 +234,7 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
       reservedCellIds: friendlyReservedCellIds,
       ...(input.tacticalPlan ? { tacticalPlan: input.tacticalPlan } : {}),
       ...(input.businessDuel ? { businessDuel: input.businessDuel } : {}),
+      ...(input.financeDuel ? { financeDuel: input.financeDuel } : {}),
       ...(input.economyContext ? { economyContext: input.economyContext } : {})
     });
     const compactRequest = buildHexAgentCompactCommandRequest(request);
@@ -733,9 +736,12 @@ export function buildRealHexAgentCommandMessages(request: HexAgentCompactCommand
     {
       role: "system" as const,
       content: [
-        "你是 HexGrid CS 商业攻防比赛的 agent 行动草案生成器。",
+        "你是 HexGrid 金融投资对抗比赛的 agent 行动草案生成器，CS 地图只是移动、接触和回合包装。",
         "只输出一个 JSON object。",
-        "businessIntent、tacticalIntent、riskNotes 必须使用中文，表达本回合商业自证/质疑如何通过 CS 行动执行。",
+        "businessIntent、tacticalIntent、riskNotes 必须使用中文。",
+        "businessIntent 是兼容字段名，内容必须使用中文表达本回合金融自证/质疑如何通过 CS 行动执行。",
+        "tacticalIntent、riskNotes 也必须使用中文。",
+        "如果请求包含 financeDuel，优先使用 financeDuel 的小主题、证据边界、守方自证和攻方质疑；不要回到旧商业叙事。",
         "JSON 字段名、actionType、phaseId、agentId、cell id 必须严格保持请求里的英文标识。",
         "不要输出 winner、kills、damage、bomb result、economy delta、hidden enemy truth、database facts 或 round report fields。",
         "targetCellId 只能从 targetCandidates 中选择。",

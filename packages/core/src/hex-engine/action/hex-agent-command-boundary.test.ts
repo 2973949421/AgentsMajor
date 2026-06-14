@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
 import { buildFixtureHexRoundBusinessDuel } from "../business/index.js";
 import { buildHexRoundEconomyContext } from "../economy/index.js";
+import { buildHexRoundFinanceDuel } from "../finance/index.js";
 import { initializeHexRoundMemory } from "../state/index.js";
 import {
   auditHexAgentDraftSemanticLanguage,
@@ -221,6 +222,52 @@ describe("Hex agent command boundary", () => {
     expect(compact.outputSchema.codeIdentifiersRemainEnglish).toContain("targetCellId");
     expect(metrics.compactRequestCharLength).toBeLessThan(metrics.fullRequestCharLength);
     expect(metrics.estimatedReductionRatio).toBeGreaterThan(0.4);
+  });
+
+  it("prefers finance duel context over legacy business context in compact requests", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset),
+      bombCarrierAgentId: "t_0"
+    });
+    const businessDuel = buildFixtureHexRoundBusinessDuel({
+      roundNumber: 1,
+      attackTeamId: "t",
+      defenseTeamId: "ct",
+      agents: memory.agents.map((agent) => ({
+        agentId: agent.agentId,
+        teamId: agent.teamId,
+        side: agent.side
+      }))
+    });
+    const financeDuel = buildHexRoundFinanceDuel({
+      roundNumber: 1,
+      attackTeamId: "t",
+      defenseTeamId: "ct",
+      agents: memory.agents.map((agent) => ({
+        agentId: agent.agentId,
+        teamId: agent.teamId,
+        side: agent.side,
+        role: agent.agentId === "t_0" ? "portfolio_manager" : "sector_specialist"
+      }))
+    });
+
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_0",
+      businessDuel,
+      financeDuel
+    });
+    const compact = buildHexAgentCompactCommandRequest(request);
+
+    expect(request.financeDuel?.topicKey).toBe("global_metal_price_signal");
+    expect(request.financeAssignment?.agentId).toBe("t_0");
+    expect(compact.financeDuel?.topicKey).toBe("global_metal_price_signal");
+    expect(compact.financeDuel?.agentAssignment?.financeTask).toContain("质疑");
+    expect(compact.businessDuel).toBeUndefined();
+    expect(compact.hardConstraints.some((line) => line.includes("businessIntent"))).toBe(true);
   });
 
   it("includes occupied and reserved cells while deprioritizing blocked target candidates", () => {

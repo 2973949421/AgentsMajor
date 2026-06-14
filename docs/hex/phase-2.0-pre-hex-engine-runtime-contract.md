@@ -1038,3 +1038,28 @@ CNINFO、国家统计局、工信部、SHFE、SMM 等第一版不作为稳定免
 docs/finance/finance-major-prototype-plan.md
 docs/finance/finance-evidence-mvp.md
 ```
+
+## 13. N45 Finance Duel Runtime 接入补充
+
+N45 第一版把 N44 生成的金融证据包接入 Hex runtime（运行时），但不改变战斗裁判、经济、AP 或 hard winner（硬胜负）。
+
+新增事实链：
+
+- `HexRoundFinanceDuel` 每 round 生成一次。
+- 一张 Dust2 有色地图固定 6 个金融小主题。
+- 第 7-12 回合复用第 1-6 回合主题，但当前攻方 / 守方身份必须来自运行时 side assignment（阵营分配）。
+- `HexRoundTrace` 写入 `financeDuel`。
+- `HexAgentCommandRequest` 和 `compact_match` 请求优先包含 `financeDuel` 和当前 agent 的 `financeAssignment`。
+
+兼容边界：
+
+- `businessDuel` 暂时保留在 trace 中，作为旧裁判和历史字段兼容。
+- 如果请求中同时存在 `financeDuel` 和 `businessDuel`，real provider prompt 必须优先使用 `financeDuel`。
+- `businessIntent` 暂时保留字段名，但语义是 finance / investment intent。
+- N45 不让金融字段直接写 winner、kill、damage、economyDelta 或 DB fact。
+
+N46 才能处理：
+
+- `businessScore` -> `financeScore`。
+- `businessVerdict` -> `financeVerdict`。
+- 金融研究证据 60-70% + 执行层证据 30-40% 的 combat resolver 替换。

@@ -157,6 +157,25 @@ prompt 必须传入 missingEvidence 和 scoreCaps，让 agent 明确哪些结论
 - 但 prompt 文案和审计语义必须标注为 finance / investment intent。
 - 后续应通过 adapter 迁移到 `financeIntent` 或 `investmentIntent`，不能让旧商业底色继续污染新样本。
 
+### 5.5 N45 Finance Duel Runtime prompt 接入
+
+N45 起，Hex real provider 的 `compact_match` 请求必须优先消费 `financeDuel`。
+
+`financeDuel` 至少包含：
+
+- round 小主题。
+- 当前守方 `defenseThesis`。
+- 当前攻方 `attackChallenge`。
+- 当前 agent 的 `financeAssignment`。
+- `promptFacts`、`missingEvidence`、`scoreCaps`。
+
+兼容规则：
+
+- `businessIntent` 仍可作为行动草案字段名存在。
+- 当请求包含 `financeDuel` 时，`businessIntent` 的语义必须解释金融投资自证 / 质疑如何通过本次 CS 行动承载。
+- compact request 不应同时把旧 `businessDuel` 作为主语义发送给模型。
+- 模型不能新增事实、不能补全缺失数据、不能把代理事实写成完整行业判断。
+
 ## 6. Judge Scorecard v6
 
 `judge_verdict` 必须输出 `judgeScorecard`。评分标准由代码生成并写入输入中的 `rubricProfile`，LLM 只能消费，不能修改。

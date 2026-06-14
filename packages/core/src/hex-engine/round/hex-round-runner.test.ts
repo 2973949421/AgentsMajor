@@ -32,10 +32,13 @@ describe("Hex round runner", () => {
     expect(trace.phases.flatMap((phase) => phase.commandResult.actions).every((action) => action.pathCellIds.length > 0)).toBe(true);
     expect(trace.businessDuel.subtheme.subthemeId).toBe("dust2_business_subtheme_1");
     expect(trace.businessDuel.agentAssignments).toHaveLength(10);
+    expect(trace.financeDuel.topic.roundKey).toBe("global_metal_price_signal");
+    expect(trace.financeDuel.evidence.promptFacts.length).toBeGreaterThan(0);
+    expect(trace.financeDuel.agentAssignments).toHaveLength(10);
     expectNoDuplicateKilledCasualties(trace.phases);
   });
 
-  it("keeps the same business subtheme across mirrored halves", async () => {
+  it("keeps the same business and finance topics across mirrored halves", async () => {
     const roundOne = await runDust2HexRound({
       roundId: "round_hex_business_1",
       roundNumber: 1,
@@ -61,6 +64,11 @@ describe("Hex round runner", () => {
     expect(roundSeven.businessDuel.mirrorRoundNumber).toBe(1);
     expect(roundOne.businessDuel.attackTeamId).toBe("team_t");
     expect(roundSeven.businessDuel.attackTeamId).toBe("team_ct");
+    expect(roundOne.financeDuel.topic.roundKey).toBe(roundSeven.financeDuel.topic.roundKey);
+    expect(roundOne.financeDuel.mirrorRoundNumber).toBe(7);
+    expect(roundSeven.financeDuel.mirrorRoundNumber).toBe(1);
+    expect(roundOne.financeDuel.attackTeamId).toBe("team_t");
+    expect(roundSeven.financeDuel.attackTeamId).toBe("team_ct");
   });
 
   it("falls back on provider errors without letting forbidden drafts become facts", async () => {

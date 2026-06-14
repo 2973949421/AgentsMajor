@@ -12,6 +12,10 @@ import {
   type HexRoundBusinessDuel
 } from "../business/index.js";
 import {
+  buildHexRoundFinanceDuel,
+  type HexRoundFinanceDuel
+} from "../finance/index.js";
+import {
   buildHexCombatContacts,
   materializeHexCombatMemoryEvents,
   resolveHexCombat,
@@ -75,6 +79,7 @@ export interface RunDust2HexRoundInput {
   };
   progressSink?: HexAgentCommandProgressSink;
   businessDuel?: HexRoundBusinessDuel;
+  financeDuel?: HexRoundFinanceDuel;
   env?: Record<string, string | undefined>;
 }
 
@@ -99,6 +104,7 @@ export interface HexRoundTrace {
   attackTeamId: string;
   defenseTeamId: string;
   businessDuel: HexRoundBusinessDuel;
+  financeDuel: HexRoundFinanceDuel;
   economyContext: HexRoundEconomyContext;
   phases: HexRoundPhaseTrace[];
   finalWinCondition: HexWinConditionResult;
@@ -140,6 +146,12 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
     defenseTeamId: input.defenseTeamId,
     agents: input.activeAgents
   });
+  const financeDuel = input.financeDuel ?? buildHexRoundFinanceDuel({
+    roundNumber: input.roundNumber,
+    attackTeamId: input.attackTeamId,
+    defenseTeamId: input.defenseTeamId,
+    agents: input.activeAgents
+  });
   const tacticalPlan = buildRoundTacticalPlan(input.roundNumber);
   const phases: HexRoundPhaseTrace[] = [];
   let finalWinCondition: HexWinConditionResult | undefined;
@@ -171,6 +183,7 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
       ...(input.progressSink ? { progressSink: input.progressSink } : {}),
       tacticalPlan,
       businessDuel,
+      financeDuel,
       callIdPrefix: `hex_${input.roundId}_${phaseIndex}`
     });
     const acceptedActions = commandResult.acceptedActions;
@@ -274,6 +287,7 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
     attackTeamId: input.attackTeamId,
     defenseTeamId: input.defenseTeamId,
     businessDuel,
+    financeDuel,
     economyContext,
     phases,
     finalWinCondition,
@@ -284,7 +298,7 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
       fallbackCount: phases.reduce((sum, phase) => sum + phase.commandResult.fallbackCount, 0),
       combatResolutionCount: phases.reduce((sum, phase) => sum + phase.combatResolutions.length, 0),
       rejectedEventCount: phases.reduce((sum, phase) => sum + phase.memoryAfter.rejectedEvents.length, 0),
-      roundStrategySeed: buildRoundStrategySeed(input.roundId, input.roundNumber, tacticalPlan.attackVariant, businessDuel.subtheme.subthemeId),
+      roundStrategySeed: buildRoundStrategySeed(input.roundId, input.roundNumber, tacticalPlan.attackVariant, financeDuel.topic.roundKey),
       strategyVariant: `${tacticalPlan.attackVariant} / ${tacticalPlan.defenseVariant}`
     }
   };
