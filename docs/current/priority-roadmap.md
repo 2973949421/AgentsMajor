@@ -9,7 +9,7 @@ Simulation First, Broadcast Second.
 事实链先稳定，再做转播包装、新闻、奖项和生态。
 ```
 
-当前主线仍是 HexGrid 工程骨架，不是旧 Node/Sector，也不是继续扩 Phase18。N42 起的下一阶段候选，是在 HexGrid 上切换到 Finance Major（金融投资对抗）原型。
+当前主线仍是 HexGrid 工程骨架，不是旧 Node/Sector，也不是继续扩 Phase18。N42 起的下一阶段，是在 HexGrid 上切换到 Finance Major（金融投资对抗）原型。
 
 Finance Major 的当前口径是：
 
@@ -51,9 +51,9 @@ Node/Sector 实验线：已退役并清理 active mode / runtime / Web progress 
 目标是保留 HexGrid 工程骨架，把旧 business duel 语义替换为 finance duel：
 
 ```text
-N42：Finance Evidence + Finance Duel 契约。
-N43：金融队伍资产与专家 Agent 改造。
-N44：Finance Evidence MVP 接入。
+N42：Finance Evidence + Finance Duel 契约。（已完成）
+N43：金融队伍资产与专家 Agent 改造。（已完成）
+N44：Finance Evidence MVP 接入。（已完成第一版）
 N45：Finance Duel Runtime 接入。
 N46：金融裁判替换商业裁判。
 N47：金融 Web 验收台改造。
@@ -77,6 +77,14 @@ docs/finance/finance-major-prototype-plan.md
 docs/finance/finance-evidence-mvp.md
 docs/finance/finance-data-asset-contract.md
 ```
+
+N44 已生成第一版证据包：
+
+```text
+data/materials/generated/finance/maps/dust2-nonferrous/round-evidence-packs.json
+```
+
+下一步是 N45：读取这份 evidence pack，生成 round-level financeDuel，并写入 Hex trace。
 
 当前必须承认的边界：
 

@@ -1,0 +1,206 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-14T16:10:10.840Z",
+  "generator": "finance-evidence-generator-v1",
+  "dataMode": "fixture-or-live",
+  "mapBindingId": "dust2_nonferrous_industry_judgment_v1",
+  "financeMapSlug": "dust2-nonferrous",
+  "roundNumber": 3,
+  "roundKey": "valuation_price_in",
+  "topicTitle": "估值是否已经 price in",
+  "defenseThesisFocus": "用 PE/PB/收益率判断有色公司是否已经充分反映景气预期。",
+  "attackChallengeFocus": "指出缺少财报页码、利润弹性和成本曲线时，不能做强公司深度结论。",
+  "requiredSources": [
+    "baostock"
+  ],
+  "optionalSources": [
+    "fred"
+  ],
+  "facts": [
+    {
+      "factId": "F001",
+      "statement": "紫金矿业 (sh.601899) is configured as a representative A-share nonferrous proxy with copper_gold exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "metricName": "representative_company_market_proxy",
+      "value": null,
+      "unit": "",
+      "period": "configured",
+      "source": "BAOSTOCK",
+      "sourceType": "market_data_proxy",
+      "collector": "baostock_python_package_v0",
+      "evidenceId": "EVID:BAOSTOCK:stock:sh.601899:representative_company_market_proxy:configured:sh.601899:e5846c2c",
+      "confidence": 0.75,
+      "rawHash": "e5846c2c",
+      "parserVersion": "finance-evidence-generator-v1",
+      "originalLocation": "baostock-company-universe.json:sh.601899",
+      "policyNotes": [
+        "This universe supports market reaction and valuation proxy only.",
+        "Company inclusion does not imply official sector classification or verified product exposure."
+      ],
+      "dataMode": "configured_proxy_fact"
+    },
+    {
+      "factId": "F002",
+      "statement": "江西铜业 (sh.600362) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "metricName": "representative_company_market_proxy",
+      "value": null,
+      "unit": "",
+      "period": "configured",
+      "source": "BAOSTOCK",
+      "sourceType": "market_data_proxy",
+      "collector": "baostock_python_package_v0",
+      "evidenceId": "EVID:BAOSTOCK:stock:sh.600362:representative_company_market_proxy:configured:sh.600362:e6d26b68",
+      "confidence": 0.75,
+      "rawHash": "e6d26b68",
+      "parserVersion": "finance-evidence-generator-v1",
+      "originalLocation": "baostock-company-universe.json:sh.600362",
+      "policyNotes": [
+        "This universe supports market reaction and valuation proxy only.",
+        "Company inclusion does not imply official sector classification or verified product exposure."
+      ],
+      "dataMode": "configured_proxy_fact"
+    },
+    {
+      "factId": "F003",
+      "statement": "中国铝业 (sh.601600) is configured as a representative A-share nonferrous proxy with aluminum exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "metricName": "representative_company_market_proxy",
+      "value": null,
+      "unit": "",
+      "period": "configured",
+      "source": "BAOSTOCK",
+      "sourceType": "market_data_proxy",
+      "collector": "baostock_python_package_v0",
+      "evidenceId": "EVID:BAOSTOCK:stock:sh.601600:representative_company_market_proxy:configured:sh.601600:52ed0876",
+      "confidence": 0.75,
+      "rawHash": "52ed0876",
+      "parserVersion": "finance-evidence-generator-v1",
+      "originalLocation": "baostock-company-universe.json:sh.601600",
+      "policyNotes": [
+        "This universe supports market reaction and valuation proxy only.",
+        "Company inclusion does not imply official sector classification or verified product exposure."
+      ],
+      "dataMode": "configured_proxy_fact"
+    },
+    {
+      "factId": "F004",
+      "statement": "铜陵有色 (sz.000630) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "metricName": "representative_company_market_proxy",
+      "value": null,
+      "unit": "",
+      "period": "configured",
+      "source": "BAOSTOCK",
+      "sourceType": "market_data_proxy",
+      "collector": "baostock_python_package_v0",
+      "evidenceId": "EVID:BAOSTOCK:stock:sz.000630:representative_company_market_proxy:configured:sz.000630:6d78537c",
+      "confidence": 0.75,
+      "rawHash": "6d78537c",
+      "parserVersion": "finance-evidence-generator-v1",
+      "originalLocation": "baostock-company-universe.json:sz.000630",
+      "policyNotes": [
+        "This universe supports market reaction and valuation proxy only.",
+        "Company inclusion does not imply official sector classification or verified product exposure."
+      ],
+      "dataMode": "configured_proxy_fact"
+    },
+    {
+      "factId": "F005",
+      "statement": "云南铜业 (sz.000878) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "metricName": "representative_company_market_proxy",
+      "value": null,
+      "unit": "",
+      "period": "configured",
+      "source": "BAOSTOCK",
+      "sourceType": "market_data_proxy",
+      "collector": "baostock_python_package_v0",
+      "evidenceId": "EVID:BAOSTOCK:stock:sz.000878:representative_company_market_proxy:configured:sz.000878:900484b2",
+      "confidence": 0.75,
+      "rawHash": "900484b2",
+      "parserVersion": "finance-evidence-generator-v1",
+      "originalLocation": "baostock-company-universe.json:sz.000878",
+      "policyNotes": [
+        "This universe supports market reaction and valuation proxy only.",
+        "Company inclusion does not imply official sector classification or verified product exposure."
+      ],
+      "dataMode": "configured_proxy_fact"
+    }
+  ],
+  "missingEvidence": [
+    "cninfo_page_locator",
+    "profit_sensitivity",
+    "cost_curve"
+  ],
+  "scoreCaps": [
+    {
+      "condition": "proxy_fact_boundary",
+      "maxScore": 70,
+      "reason": "First-phase evidence is limited to free API proxy facts and must surface missing domestic inventory, spot, SHFE/SMM, and filing anchors."
+    }
+  ],
+  "promptFacts": [
+    {
+      "factId": "F001",
+      "shortText": "紫金矿业 (sh.601899) is configured as a representative A-share nonferrous proxy with copper_gold exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "evidenceId": "EVID:BAOSTOCK:stock:sh.601899:representative_company_market_proxy:configured:sh.601899:e5846c2c"
+    },
+    {
+      "factId": "F002",
+      "shortText": "江西铜业 (sh.600362) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "evidenceId": "EVID:BAOSTOCK:stock:sh.600362:representative_company_market_proxy:configured:sh.600362:e6d26b68"
+    },
+    {
+      "factId": "F003",
+      "shortText": "中国铝业 (sh.601600) is configured as a representative A-share nonferrous proxy with aluminum exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "evidenceId": "EVID:BAOSTOCK:stock:sh.601600:representative_company_market_proxy:configured:sh.601600:52ed0876"
+    },
+    {
+      "factId": "F004",
+      "shortText": "铜陵有色 (sz.000630) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "evidenceId": "EVID:BAOSTOCK:stock:sz.000630:representative_company_market_proxy:configured:sz.000630:6d78537c"
+    },
+    {
+      "factId": "F005",
+      "shortText": "云南铜业 (sz.000878) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "evidenceId": "EVID:BAOSTOCK:stock:sz.000878:representative_company_market_proxy:configured:sz.000878:900484b2"
+    }
+  ],
+  "judgeLedger": {
+    "allowedClaims": [
+      "FRED 显示全球金属价格环境偏正面。",
+      "BaoStock 显示 A 股有色代表公司可能正在交易价格预期。",
+      "Comtrade 可作为进出口方向线索。",
+      "有限证据下可给中性偏多或低仓位观察。",
+      "缺少国内库存、加工费、开工率、下游订单和公司财务验证，应设置 scoreCaps。"
+    ],
+    "cappedClaims": [
+      "Missing cninfo_page_locator; related claims must be downgraded or capped.",
+      "Missing profit_sensitivity; related claims must be downgraded or capped.",
+      "Missing cost_curve; related claims must be downgraded or capped."
+    ],
+    "prohibitedClaims": [
+      "中国有色需求已经确认改善。",
+      "代表公司盈利已经改善。",
+      "进出口变化直接证明国内供需反转。",
+      "证据已经支持重仓进攻。",
+      "代理事实足以替代完整行业数据库。",
+      "This universe supports market reaction and valuation proxy only.",
+      "Company inclusion does not imply official sector classification or verified product exposure.",
+      "This universe supports market reaction and valuation proxy only.",
+      "Company inclusion does not imply official sector classification or verified product exposure.",
+      "This universe supports market reaction and valuation proxy only.",
+      "Company inclusion does not imply official sector classification or verified product exposure.",
+      "This universe supports market reaction and valuation proxy only.",
+      "Company inclusion does not imply official sector classification or verified product exposure.",
+      "This universe supports market reaction and valuation proxy only.",
+      "Company inclusion does not imply official sector classification or verified product exposure."
+    ]
+  },
+  "sideSwapPolicy": {
+    "interpretation": "These six topics define the subject of dispute, not fixed team ownership.",
+    "defenseThesisFocus": "Consumed by whichever team is the current defense side.",
+    "attackChallengeFocus": "Consumed by whichever team is the current attack side.",
+    "topicIndexFormula": "((mapRoundNumber - 1) % 6) + 1",
+    "sideSwapRule": "When sides swap, the same six topics are reused and proof/challenge responsibilities swap with the current side."
+  },
+  "sourceWarnings": [
+    "BaoStock live observations are not fetched by this JS MVP; configured universe facts are used as proxy scaffolding."
+  ]
+}

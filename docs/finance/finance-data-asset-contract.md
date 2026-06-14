@@ -60,6 +60,15 @@ data/materials/processed/finance/maps/dust2-nonferrous/un-comtrade-hs-codes.json
 data/materials/processed/finance/maps/dust2-nonferrous/evidence-pack-template.json
 ```
 
+N44 后，生成型证据包放在：
+
+```text
+data/materials/generated/finance/maps/dust2-nonferrous/round-evidence-packs.json
+data/materials/generated/finance/maps/dust2-nonferrous/round-<n>-evidence-pack.json
+```
+
+`processed/` 是人工维护的资产真相；`generated/` 是由脚本生成的低成本证据包。`generated/` 可以提交小型、可审计的 evidence pack（证据包）样本，但不得提交 raw cache、API key、网页全文或大体积 PDF。
+
 Python 依赖清单放在：
 
 ```text
@@ -168,5 +177,11 @@ un-comtrade-hs-codes.json
 evidence-pack-template.json
 ```
 
-本契约不要求本轮实现 collector。它只固定资产、环境和边界，防止后续实现时重新把根目录、外部测试脚本、地图资产和金融数据源混在一起。
+N44 第一版已新增：
 
+```text
+data/materials/scripts/generate-finance-evidence.mjs
+data/materials/scripts/validate-finance-evidence.mjs
+```
+
+当前脚本先生成 configured proxy facts，不在没有稳定 live adapter（实时适配器）时伪造市场数值。N45 runtime 应优先读取 `round-evidence-packs.json`，而不是重新扫描 source registry 或直接调用外部 API。

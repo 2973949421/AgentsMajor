@@ -1,0 +1,263 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-14T16:10:10.840Z",
+  "generator": "finance-evidence-generator-v1",
+  "dataMode": "fixture-or-live",
+  "mapBindingId": "dust2_nonferrous_industry_judgment_v1",
+  "financeMapSlug": "dust2-nonferrous",
+  "roundNumber": 6,
+  "roundKey": "limited_allocation_conclusion",
+  "topicTitle": "基于有限证据的配置倾向与风险边界",
+  "defenseThesisFocus": "在证据边界内给出有限置信度的配置倾向、观察指标和降级条件。",
+  "attackChallengeFocus": "检验结论是否承认证据边界，是否具备可执行风险控制。",
+  "requiredSources": [
+    "fred",
+    "baostock"
+  ],
+  "optionalSources": [
+    "un_comtrade"
+  ],
+  "facts": [
+    {
+      "factId": "F001",
+      "statement": "FRED series PCOPPUSDM (Global price of Copper) is configured as a global copper price proxy for 基于有限证据的配置倾向与风险边界; it does not prove China domestic inventory, spot premium, or supply-demand tightness.",
+      "metricName": "Global price of Copper",
+      "value": null,
+      "unit": "USD per metric ton",
+      "period": "configured",
+      "source": "FRED",
+      "sourceType": "official_api",
+      "collector": "fred_http_api_v1",
+      "evidenceId": "EVID:FRED:commodity:PCOPPUSDM:global_price_of_copper:configured:PCOPPUSDM:ddd077aa",
+      "confidence": 0.95,
+      "rawHash": "ddd077aa",
+      "parserVersion": "finance-evidence-generator-v1",
+      "originalLocation": "fred-series.json:PCOPPUSDM",
+      "policyNotes": [
+        "These series are global price proxies.",
+        "They do not directly prove China domestic supply-demand conditions."
+      ],
+      "dataMode": "configured_proxy_fact"
+    },
+    {
+      "factId": "F002",
+      "statement": "FRED series PALUMUSDM (Global price of Aluminum) is configured as a global aluminum price proxy for 基于有限证据的配置倾向与风险边界; it does not prove China domestic inventory, spot premium, or supply-demand tightness.",
+      "metricName": "Global price of Aluminum",
+      "value": null,
+      "unit": "USD per metric ton",
+      "period": "configured",
+      "source": "FRED",
+      "sourceType": "official_api",
+      "collector": "fred_http_api_v1",
+      "evidenceId": "EVID:FRED:commodity:PALUMUSDM:global_price_of_aluminum:configured:PALUMUSDM:f0aa978e",
+      "confidence": 0.95,
+      "rawHash": "f0aa978e",
+      "parserVersion": "finance-evidence-generator-v1",
+      "originalLocation": "fred-series.json:PALUMUSDM",
+      "policyNotes": [
+        "These series are global price proxies.",
+        "They do not directly prove China domestic supply-demand conditions."
+      ],
+      "dataMode": "configured_proxy_fact"
+    },
+    {
+      "factId": "F003",
+      "statement": "紫金矿业 (sh.601899) is configured as a representative A-share nonferrous proxy with copper_gold exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "metricName": "representative_company_market_proxy",
+      "value": null,
+      "unit": "",
+      "period": "configured",
+      "source": "BAOSTOCK",
+      "sourceType": "market_data_proxy",
+      "collector": "baostock_python_package_v0",
+      "evidenceId": "EVID:BAOSTOCK:stock:sh.601899:representative_company_market_proxy:configured:sh.601899:e5846c2c",
+      "confidence": 0.75,
+      "rawHash": "e5846c2c",
+      "parserVersion": "finance-evidence-generator-v1",
+      "originalLocation": "baostock-company-universe.json:sh.601899",
+      "policyNotes": [
+        "This universe supports market reaction and valuation proxy only.",
+        "Company inclusion does not imply official sector classification or verified product exposure."
+      ],
+      "dataMode": "configured_proxy_fact"
+    },
+    {
+      "factId": "F004",
+      "statement": "江西铜业 (sh.600362) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "metricName": "representative_company_market_proxy",
+      "value": null,
+      "unit": "",
+      "period": "configured",
+      "source": "BAOSTOCK",
+      "sourceType": "market_data_proxy",
+      "collector": "baostock_python_package_v0",
+      "evidenceId": "EVID:BAOSTOCK:stock:sh.600362:representative_company_market_proxy:configured:sh.600362:e6d26b68",
+      "confidence": 0.75,
+      "rawHash": "e6d26b68",
+      "parserVersion": "finance-evidence-generator-v1",
+      "originalLocation": "baostock-company-universe.json:sh.600362",
+      "policyNotes": [
+        "This universe supports market reaction and valuation proxy only.",
+        "Company inclusion does not imply official sector classification or verified product exposure."
+      ],
+      "dataMode": "configured_proxy_fact"
+    },
+    {
+      "factId": "F005",
+      "statement": "中国铝业 (sh.601600) is configured as a representative A-share nonferrous proxy with aluminum exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "metricName": "representative_company_market_proxy",
+      "value": null,
+      "unit": "",
+      "period": "configured",
+      "source": "BAOSTOCK",
+      "sourceType": "market_data_proxy",
+      "collector": "baostock_python_package_v0",
+      "evidenceId": "EVID:BAOSTOCK:stock:sh.601600:representative_company_market_proxy:configured:sh.601600:52ed0876",
+      "confidence": 0.75,
+      "rawHash": "52ed0876",
+      "parserVersion": "finance-evidence-generator-v1",
+      "originalLocation": "baostock-company-universe.json:sh.601600",
+      "policyNotes": [
+        "This universe supports market reaction and valuation proxy only.",
+        "Company inclusion does not imply official sector classification or verified product exposure."
+      ],
+      "dataMode": "configured_proxy_fact"
+    },
+    {
+      "factId": "F006",
+      "statement": "铜陵有色 (sz.000630) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "metricName": "representative_company_market_proxy",
+      "value": null,
+      "unit": "",
+      "period": "configured",
+      "source": "BAOSTOCK",
+      "sourceType": "market_data_proxy",
+      "collector": "baostock_python_package_v0",
+      "evidenceId": "EVID:BAOSTOCK:stock:sz.000630:representative_company_market_proxy:configured:sz.000630:6d78537c",
+      "confidence": 0.75,
+      "rawHash": "6d78537c",
+      "parserVersion": "finance-evidence-generator-v1",
+      "originalLocation": "baostock-company-universe.json:sz.000630",
+      "policyNotes": [
+        "This universe supports market reaction and valuation proxy only.",
+        "Company inclusion does not imply official sector classification or verified product exposure."
+      ],
+      "dataMode": "configured_proxy_fact"
+    },
+    {
+      "factId": "F007",
+      "statement": "云南铜业 (sz.000878) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "metricName": "representative_company_market_proxy",
+      "value": null,
+      "unit": "",
+      "period": "configured",
+      "source": "BAOSTOCK",
+      "sourceType": "market_data_proxy",
+      "collector": "baostock_python_package_v0",
+      "evidenceId": "EVID:BAOSTOCK:stock:sz.000878:representative_company_market_proxy:configured:sz.000878:900484b2",
+      "confidence": 0.75,
+      "rawHash": "900484b2",
+      "parserVersion": "finance-evidence-generator-v1",
+      "originalLocation": "baostock-company-universe.json:sz.000878",
+      "policyNotes": [
+        "This universe supports market reaction and valuation proxy only.",
+        "Company inclusion does not imply official sector classification or verified product exposure."
+      ],
+      "dataMode": "configured_proxy_fact"
+    }
+  ],
+  "missingEvidence": [
+    "domestic_micro_data",
+    "filing_page_anchor",
+    "positioning_and_crowding"
+  ],
+  "scoreCaps": [
+    {
+      "condition": "proxy_fact_boundary",
+      "maxScore": 70,
+      "reason": "First-phase evidence is limited to free API proxy facts and must surface missing domestic inventory, spot, SHFE/SMM, and filing anchors."
+    }
+  ],
+  "promptFacts": [
+    {
+      "factId": "F001",
+      "shortText": "FRED series PCOPPUSDM (Global price of Copper) is configured as a global copper price proxy for 基于有限证据的配置倾向与风险边界; it does not prove China domestic inventory, spot premium, or supply-demand tightness.",
+      "evidenceId": "EVID:FRED:commodity:PCOPPUSDM:global_price_of_copper:configured:PCOPPUSDM:ddd077aa"
+    },
+    {
+      "factId": "F002",
+      "shortText": "FRED series PALUMUSDM (Global price of Aluminum) is configured as a global aluminum price proxy for 基于有限证据的配置倾向与风险边界; it does not prove China domestic inventory, spot premium, or supply-demand tightness.",
+      "evidenceId": "EVID:FRED:commodity:PALUMUSDM:global_price_of_aluminum:configured:PALUMUSDM:f0aa978e"
+    },
+    {
+      "factId": "F003",
+      "shortText": "紫金矿业 (sh.601899) is configured as a representative A-share nonferrous proxy with copper_gold exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "evidenceId": "EVID:BAOSTOCK:stock:sh.601899:representative_company_market_proxy:configured:sh.601899:e5846c2c"
+    },
+    {
+      "factId": "F004",
+      "shortText": "江西铜业 (sh.600362) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "evidenceId": "EVID:BAOSTOCK:stock:sh.600362:representative_company_market_proxy:configured:sh.600362:e6d26b68"
+    },
+    {
+      "factId": "F005",
+      "shortText": "中国铝业 (sh.601600) is configured as a representative A-share nonferrous proxy with aluminum exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "evidenceId": "EVID:BAOSTOCK:stock:sh.601600:representative_company_market_proxy:configured:sh.601600:52ed0876"
+    },
+    {
+      "factId": "F006",
+      "shortText": "铜陵有色 (sz.000630) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "evidenceId": "EVID:BAOSTOCK:stock:sz.000630:representative_company_market_proxy:configured:sz.000630:6d78537c"
+    },
+    {
+      "factId": "F007",
+      "shortText": "云南铜业 (sz.000878) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "evidenceId": "EVID:BAOSTOCK:stock:sz.000878:representative_company_market_proxy:configured:sz.000878:900484b2"
+    }
+  ],
+  "judgeLedger": {
+    "allowedClaims": [
+      "FRED 显示全球金属价格环境偏正面。",
+      "BaoStock 显示 A 股有色代表公司可能正在交易价格预期。",
+      "Comtrade 可作为进出口方向线索。",
+      "有限证据下可给中性偏多或低仓位观察。",
+      "缺少国内库存、加工费、开工率、下游订单和公司财务验证，应设置 scoreCaps。"
+    ],
+    "cappedClaims": [
+      "Missing domestic_micro_data; related claims must be downgraded or capped.",
+      "Missing filing_page_anchor; related claims must be downgraded or capped.",
+      "Missing positioning_and_crowding; related claims must be downgraded or capped."
+    ],
+    "prohibitedClaims": [
+      "中国有色需求已经确认改善。",
+      "代表公司盈利已经改善。",
+      "进出口变化直接证明国内供需反转。",
+      "证据已经支持重仓进攻。",
+      "代理事实足以替代完整行业数据库。",
+      "These series are global price proxies.",
+      "They do not directly prove China domestic supply-demand conditions.",
+      "These series are global price proxies.",
+      "They do not directly prove China domestic supply-demand conditions.",
+      "This universe supports market reaction and valuation proxy only.",
+      "Company inclusion does not imply official sector classification or verified product exposure.",
+      "This universe supports market reaction and valuation proxy only.",
+      "Company inclusion does not imply official sector classification or verified product exposure.",
+      "This universe supports market reaction and valuation proxy only.",
+      "Company inclusion does not imply official sector classification or verified product exposure.",
+      "This universe supports market reaction and valuation proxy only.",
+      "Company inclusion does not imply official sector classification or verified product exposure.",
+      "This universe supports market reaction and valuation proxy only.",
+      "Company inclusion does not imply official sector classification or verified product exposure."
+    ]
+  },
+  "sideSwapPolicy": {
+    "interpretation": "These six topics define the subject of dispute, not fixed team ownership.",
+    "defenseThesisFocus": "Consumed by whichever team is the current defense side.",
+    "attackChallengeFocus": "Consumed by whichever team is the current attack side.",
+    "topicIndexFormula": "((mapRoundNumber - 1) % 6) + 1",
+    "sideSwapRule": "When sides swap, the same six topics are reused and proof/challenge responsibilities swap with the current side."
+  },
+  "sourceWarnings": [
+    "BaoStock live observations are not fetched by this JS MVP; configured universe facts are used as proxy scaffolding."
+  ]
+}

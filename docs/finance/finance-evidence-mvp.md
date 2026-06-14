@@ -34,6 +34,16 @@ collector（采集器）
 
 LLM 只能读取短事实包，不能自由上网、不能编数字、不能把代理事实冒充完整行业判断。
 
+N44 第一版已经落地材料层证据包生成：
+
+```text
+生成脚本：data/materials/scripts/generate-finance-evidence.mjs
+校验脚本：data/materials/scripts/validate-finance-evidence.mjs
+生成结果：data/materials/generated/finance/maps/dust2-nonferrous/
+```
+
+当前生成模式是 `fixture-or-live`：脚本读取真实 source registry、round topics、map overlay 和 universe 配置，生成可审计的 configured proxy facts（已配置代理事实）。它不会伪造实时价格、估值或进出口数值；如果 live collector（实时采集器）尚未启用，就用明确标注的配置事实和 source warnings 支撑 N45 接入测试。
+
 ## 2. 数据源分层
 
 后续设计必须区分四个概念：
@@ -329,6 +339,23 @@ originalLocation
     "reason": "未接入国内库存、现货升贴水、行业利润和公司公告页码证据。"
   }
 }
+```
+
+N44 生成物已经固定为两层：
+
+```text
+round-evidence-packs.json              # 6R 聚合包，供 runtime / Web 一次性读取
+round-<n>-evidence-pack.json           # 单 round 拆分包，供人工审计和测试
+```
+
+每个 pack 必须保留：
+
+```text
+sideSwapPolicy：攻守互换策略，防止把队伍风格写死成固定攻守。
+sourceWarnings：说明哪些 live 数据未抓取或可选源不可用。
+judgeLedger：allowed / capped / prohibited claims。
+scoreCaps：代理事实导致的裁判上限。
+missingEvidence：本 round 仍缺失的关键证据。
 ```
 
 ## 10. Web Audit 要求

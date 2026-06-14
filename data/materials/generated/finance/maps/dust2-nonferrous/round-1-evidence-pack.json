@@ -1,0 +1,174 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-14T16:10:10.840Z",
+  "generator": "finance-evidence-generator-v1",
+  "dataMode": "fixture-or-live",
+  "mapBindingId": "dust2_nonferrous_industry_judgment_v1",
+  "financeMapSlug": "dust2-nonferrous",
+  "roundNumber": 1,
+  "roundKey": "global_metal_price_signal",
+  "topicTitle": "全球有色价格是否支持景气上行",
+  "defenseThesisFocus": "用全球金属价格趋势证明有色行业具备景气上行线索。",
+  "attackChallengeFocus": "指出全球价格不能直接等同于中国国内供需、库存或现货紧张。",
+  "requiredSources": [
+    "fred"
+  ],
+  "optionalSources": [],
+  "facts": [
+    {
+      "factId": "F001",
+      "statement": "FRED series PCOPPUSDM (Global price of Copper) is configured as a global copper price proxy for 全球有色价格是否支持景气上行; it does not prove China domestic inventory, spot premium, or supply-demand tightness.",
+      "metricName": "Global price of Copper",
+      "value": null,
+      "unit": "USD per metric ton",
+      "period": "configured",
+      "source": "FRED",
+      "sourceType": "official_api",
+      "collector": "fred_http_api_v1",
+      "evidenceId": "EVID:FRED:commodity:PCOPPUSDM:global_price_of_copper:configured:PCOPPUSDM:df443573",
+      "confidence": 0.95,
+      "rawHash": "df443573",
+      "parserVersion": "finance-evidence-generator-v1",
+      "originalLocation": "fred-series.json:PCOPPUSDM",
+      "policyNotes": [
+        "These series are global price proxies.",
+        "They do not directly prove China domestic supply-demand conditions."
+      ],
+      "dataMode": "configured_proxy_fact"
+    },
+    {
+      "factId": "F002",
+      "statement": "FRED series PALUMUSDM (Global price of Aluminum) is configured as a global aluminum price proxy for 全球有色价格是否支持景气上行; it does not prove China domestic inventory, spot premium, or supply-demand tightness.",
+      "metricName": "Global price of Aluminum",
+      "value": null,
+      "unit": "USD per metric ton",
+      "period": "configured",
+      "source": "FRED",
+      "sourceType": "official_api",
+      "collector": "fred_http_api_v1",
+      "evidenceId": "EVID:FRED:commodity:PALUMUSDM:global_price_of_aluminum:configured:PALUMUSDM:90c87620",
+      "confidence": 0.95,
+      "rawHash": "90c87620",
+      "parserVersion": "finance-evidence-generator-v1",
+      "originalLocation": "fred-series.json:PALUMUSDM",
+      "policyNotes": [
+        "These series are global price proxies.",
+        "They do not directly prove China domestic supply-demand conditions."
+      ],
+      "dataMode": "configured_proxy_fact"
+    },
+    {
+      "factId": "F003",
+      "statement": "FRED series PNICKUSDM (Global price of Nickel) is configured as a global nickel price proxy for 全球有色价格是否支持景气上行; it does not prove China domestic inventory, spot premium, or supply-demand tightness.",
+      "metricName": "Global price of Nickel",
+      "value": null,
+      "unit": "USD per metric ton",
+      "period": "configured",
+      "source": "FRED",
+      "sourceType": "official_api",
+      "collector": "fred_http_api_v1",
+      "evidenceId": "EVID:FRED:commodity:PNICKUSDM:global_price_of_nickel:configured:PNICKUSDM:a1476e2c",
+      "confidence": 0.95,
+      "rawHash": "a1476e2c",
+      "parserVersion": "finance-evidence-generator-v1",
+      "originalLocation": "fred-series.json:PNICKUSDM",
+      "policyNotes": [
+        "These series are global price proxies.",
+        "They do not directly prove China domestic supply-demand conditions."
+      ],
+      "dataMode": "configured_proxy_fact"
+    },
+    {
+      "factId": "F004",
+      "statement": "FRED series PZINCUSDM (Global price of Zinc) is configured as a global zinc price proxy for 全球有色价格是否支持景气上行; it does not prove China domestic inventory, spot premium, or supply-demand tightness.",
+      "metricName": "Global price of Zinc",
+      "value": null,
+      "unit": "USD per metric ton",
+      "period": "configured",
+      "source": "FRED",
+      "sourceType": "official_api",
+      "collector": "fred_http_api_v1",
+      "evidenceId": "EVID:FRED:commodity:PZINCUSDM:global_price_of_zinc:configured:PZINCUSDM:b8c583ad",
+      "confidence": 0.95,
+      "rawHash": "b8c583ad",
+      "parserVersion": "finance-evidence-generator-v1",
+      "originalLocation": "fred-series.json:PZINCUSDM",
+      "policyNotes": [
+        "These series are global price proxies.",
+        "They do not directly prove China domestic supply-demand conditions."
+      ],
+      "dataMode": "configured_proxy_fact"
+    }
+  ],
+  "missingEvidence": [
+    "domestic_inventory",
+    "domestic_spot_premium",
+    "shfe_warehouse_receipt"
+  ],
+  "scoreCaps": [
+    {
+      "condition": "proxy_fact_boundary",
+      "maxScore": 70,
+      "reason": "First-phase evidence is limited to free API proxy facts and must surface missing domestic inventory, spot, SHFE/SMM, and filing anchors."
+    }
+  ],
+  "promptFacts": [
+    {
+      "factId": "F001",
+      "shortText": "FRED series PCOPPUSDM (Global price of Copper) is configured as a global copper price proxy for 全球有色价格是否支持景气上行; it does not prove China domestic inventory, spot premium, or supply-demand tightness.",
+      "evidenceId": "EVID:FRED:commodity:PCOPPUSDM:global_price_of_copper:configured:PCOPPUSDM:df443573"
+    },
+    {
+      "factId": "F002",
+      "shortText": "FRED series PALUMUSDM (Global price of Aluminum) is configured as a global aluminum price proxy for 全球有色价格是否支持景气上行; it does not prove China domestic inventory, spot premium, or supply-demand tightness.",
+      "evidenceId": "EVID:FRED:commodity:PALUMUSDM:global_price_of_aluminum:configured:PALUMUSDM:90c87620"
+    },
+    {
+      "factId": "F003",
+      "shortText": "FRED series PNICKUSDM (Global price of Nickel) is configured as a global nickel price proxy for 全球有色价格是否支持景气上行; it does not prove China domestic inventory, spot premium, or supply-demand tightness.",
+      "evidenceId": "EVID:FRED:commodity:PNICKUSDM:global_price_of_nickel:configured:PNICKUSDM:a1476e2c"
+    },
+    {
+      "factId": "F004",
+      "shortText": "FRED series PZINCUSDM (Global price of Zinc) is configured as a global zinc price proxy for 全球有色价格是否支持景气上行; it does not prove China domestic inventory, spot premium, or supply-demand tightness.",
+      "evidenceId": "EVID:FRED:commodity:PZINCUSDM:global_price_of_zinc:configured:PZINCUSDM:b8c583ad"
+    }
+  ],
+  "judgeLedger": {
+    "allowedClaims": [
+      "FRED 显示全球金属价格环境偏正面。",
+      "BaoStock 显示 A 股有色代表公司可能正在交易价格预期。",
+      "Comtrade 可作为进出口方向线索。",
+      "有限证据下可给中性偏多或低仓位观察。",
+      "缺少国内库存、加工费、开工率、下游订单和公司财务验证，应设置 scoreCaps。"
+    ],
+    "cappedClaims": [
+      "Missing domestic_inventory; related claims must be downgraded or capped.",
+      "Missing domestic_spot_premium; related claims must be downgraded or capped.",
+      "Missing shfe_warehouse_receipt; related claims must be downgraded or capped."
+    ],
+    "prohibitedClaims": [
+      "中国有色需求已经确认改善。",
+      "代表公司盈利已经改善。",
+      "进出口变化直接证明国内供需反转。",
+      "证据已经支持重仓进攻。",
+      "代理事实足以替代完整行业数据库。",
+      "These series are global price proxies.",
+      "They do not directly prove China domestic supply-demand conditions.",
+      "These series are global price proxies.",
+      "They do not directly prove China domestic supply-demand conditions.",
+      "These series are global price proxies.",
+      "They do not directly prove China domestic supply-demand conditions.",
+      "These series are global price proxies.",
+      "They do not directly prove China domestic supply-demand conditions."
+    ]
+  },
+  "sideSwapPolicy": {
+    "interpretation": "These six topics define the subject of dispute, not fixed team ownership.",
+    "defenseThesisFocus": "Consumed by whichever team is the current defense side.",
+    "attackChallengeFocus": "Consumed by whichever team is the current attack side.",
+    "topicIndexFormula": "((mapRoundNumber - 1) % 6) + 1",
+    "sideSwapRule": "When sides swap, the same six topics are reused and proof/challenge responsibilities swap with the current side."
+  },
+  "sourceWarnings": []
+}
