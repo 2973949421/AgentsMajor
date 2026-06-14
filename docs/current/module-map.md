@@ -21,6 +21,12 @@ Materials
   -> processed map assets
   -> processed team proposals
   -> style and roster assets
+
+Finance Major transition
+  -> finance duel contract
+  -> finance team profiles
+  -> expert agent roster
+  -> finance judge evidence
 ```
 
 旧 Node/Sector 不再是 active module。相关文档只在 archive / frozen 背景中保留。
@@ -100,6 +106,27 @@ winner 只来自 hard win condition。
 展示 map summary、round trace、phase、agent action、combat、economy、hard condition。
 提供 fixture / real provider 验收入口。
 不重新计算比赛事实。
+```
+
+### M08 Finance duel semantic layer
+
+职责：
+
+```text
+复用 HexGrid 运行结构。
+把旧 business duel 语义替换为 finance duel。
+读取金融队伍资产、专家 agent 职责和 coach 研究纪律。
+生成行业地图 / 研究轮次 / round 子命题。
+把投资主张、自证、反证挑战和金融裁判证据写入 trace。
+```
+
+边界：
+
+```text
+不新建第二套地图引擎。
+不恢复旧 Node/Sector。
+不让旧商业闭环词汇继续作为主 prompt 证据。
+CS 词条只保留为赛事包装和执行层表达。
 ```
 
 ## 3. 保留兼容模块

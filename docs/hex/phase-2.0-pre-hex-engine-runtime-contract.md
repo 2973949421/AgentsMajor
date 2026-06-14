@@ -979,3 +979,46 @@ N37 起，真实 LLM 输出识别必须稳定：
 - `actionType / targetCellId / businessIntent` 仍是硬事实字段，不能为了通过而替模型补业务意图。
 - 明显中文编码损坏必须 fail，不能当作同义词容错。
 - request / response artifact 必须能在 Web 审计层追溯。
+
+## 12. N42 Finance Major 过渡契约
+
+N42 起，下一阶段候选主线是 Finance Major（金融投资对抗）原型。它不是新建第二套 runtime，而是复用最新 HexGrid 工程骨架，替换旧 business duel（商业攻防）语义层。
+
+保留：
+
+- Hex map / path / state / action / combat / economy / round / commit / map-runner。
+- `/hex-lab/match` Web 验收台。
+- trace artifact、RoundReport、hard win condition、LLM request/response audit。
+- CS Major 赛事外壳和部分 UI 词条，例如 map、round、half、attack、defense、player、coach、entry、AWPer、IGL、support。
+
+替换：
+
+- `businessDuel` 的主语义替换为 `financeDuel`。
+- `businessIntent` 的主语义替换为 `financeIntent / investmentIntent`。
+- `businessScore` 替换为 `financeScore`。
+- `businessVerdict` 替换为 `financeVerdict`。
+- 守方商业自证替换为守方投资主张自证。
+- 攻方商业质疑替换为攻方反证挑战。
+
+第一版测试范围：
+
+```text
+地图：Dust2 有色。
+轮次：行业判断。
+round：6 个行业判断子命题。
+队伍：两种投资风格 + 五专家 agent + coach。
+```
+
+运行边界：
+
+- 不让旧商业底色继续进入 finance prompt 主体。
+- 不删除 Hex 运行结构。
+- 不恢复旧 Node/Sector。
+- 不让 LLM 或前端写 hard facts。
+- 不让金融裁判直接覆盖 hard winner。
+
+详细计划见：
+
+```text
+docs/finance/finance-major-prototype-plan.md
+```

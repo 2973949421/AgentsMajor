@@ -117,6 +117,35 @@ HexGrid N39 起，真实 LLM 的 `agent_action` 不再直接接收完整 `HexAge
 - `agentId / phaseId / currentCellId / targetCellId / actionType` 等代码字段必须保持英文标识。
 - 英文或中英混杂语义字段不直接当作中文事实，必须记录 `language_mismatch` audit。
 
+### 5.4 N42 Finance Major prompt 切换
+
+N42 起，下一阶段候选主线是 Finance Major（金融投资对抗）原型。该原型复用 HexGrid 运行结构，但 prompt 语义必须从旧 business duel（商业攻防）切换到 finance duel（金融投资攻防）。
+
+切换原则：
+
+- 不把 finance prompt 写成旧 business prompt 的同义词替换。
+- 不继续使用“闭环、信任、价值放大、执行力”这类泛商业模板作为主证据。
+- 守方输出应是投资主张自证。
+- 攻方输出应是反证挑战。
+- agent 行动应承载专家职责、材料引用、假设、反证、风险边界或可执行结论。
+- JSON 字段名、`agentId`、`phaseId`、`cellId`、`actionType` 等代码标识仍保持英文。
+- 自然语言语义字段默认中文。
+
+Finance prompt 第一版应围绕：
+
+```text
+地图：Dust2 有色。
+轮次：行业判断。
+round：周期位置、供需缺口、价格中枢、产业链利润、政策宏观、配置取舍。
+队伍：投资风格 + 行业理解 + 五专家 agent + coach。
+```
+
+短期兼容：
+
+- 底层仍可暂时保留 `businessIntent` 字段名以减少 schema 震荡。
+- 但 prompt 文案和审计语义必须标注为 finance / investment intent。
+- 后续应通过 adapter 迁移到 `financeIntent` 或 `investmentIntent`，不能让旧商业底色继续污染新样本。
+
 ## 6. Judge Scorecard v6
 
 `judge_verdict` 必须输出 `judgeScorecard`。评分标准由代码生成并写入输入中的 `rubricProfile`，LLM 只能消费，不能修改。

@@ -6,9 +6,9 @@
 
 ```text
 当前主线：HexGrid（蜂巢格）Phase 2.0-pre 路线。
-当前进度：N20-N37 已进入商业攻防与 real LLM 审计质量收口，旧 Node/Sector 实验线已退役并清理 active 入口。
+当前进度：N20-N41 已完成 HexGrid 运行链路、Web 验收和商业攻防质量打磨第一轮；旧 Node/Sector 实验线已退役并清理 active 入口。
 保留兼容线：Phase18 replay / live replay 仍保留，不属于旧 Node/Sector runtime。
-下一步：N38-N41 对局质量打磨，先修 objective fact chain（目标行动事实链），再修调用成本、KDA 归因和商业攻防审计。
+下一步：N42 起准备 Finance Major（金融投资对抗）原型，保留 HexGrid 工程骨架，但把旧泛商业语义层替换为金融研究攻防。
 ```
 
 ## 推荐阅读顺序
@@ -19,7 +19,8 @@
 3. docs/hex/phase-2.0-pre-hex-engine-implementation-plan.md
 4. docs/hex/phase-2.0-pre-hex-engine-runtime-contract.md
 5. docs/hex/phase-2.0-pre-n38-n41-match-quality-plan.md
-6. 按任务阅读 contracts、backlog 或 archive
+6. docs/finance/finance-major-prototype-plan.md
+7. 按任务阅读 contracts、backlog 或 archive
 ```
 
 ## 文档分层
@@ -68,6 +69,15 @@ docs/hex/phase-2.0-pre-*.md
 ```
 
 HexGrid 是当前比赛空间事实主线。旧 Node/Sector 不再作为 runtime 或 active Web/API 路线存在。
+
+### Finance Major 下一阶段
+
+```text
+docs/finance/README.md
+docs/finance/finance-major-prototype-plan.md
+```
+
+Finance Major 是 N42 起的下一阶段候选主线：复用 HexGrid 运行结构，但把旧 business duel（商业攻防）语义层替换为 finance duel（金融投资攻防）。当前测试落点是 `Dust2 有色 / 行业判断 / 6 round`。
 
 ### Backlog
 

@@ -9,6 +9,12 @@ docs/backlog/ecosystem-roadmap.md
 docs/backlog/full-tournament-roadmap.md
 ```
 
+Finance Major（金融投资对抗）已经从长期设想提升为 N42 起的下一阶段候选主线，不再只作为 backlog 处理。当前文档见：
+
+```text
+docs/finance/finance-major-prototype-plan.md
+```
+
 ## 主题
 
 ### 赛事生态

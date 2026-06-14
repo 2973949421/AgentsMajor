@@ -6,9 +6,10 @@
 
 ```text
 当前主线：HexGrid（蜂巢格）Phase 2.0-pre。
-当前进度：N20-N38 已完成。
+当前进度：N20-N41 已完成第一版。
 当前入口：/hex-lab/match。
 当前底层事实：official Dust2 Hex map、Hex phase memory、Hex action/combat/economy/round runner、Hex map runner、Hex trace artifacts。
+下一阶段候选：N42 Finance Major（金融投资对抗）原型。
 ```
 
 HexGrid 现在是新的比赛事实主线。它负责地图可走性、AP、阶段记忆、agent action、局部 combat、economy evidence、单回合提交、完整 Dust2 地图灰度和 Web 验收。
@@ -63,19 +64,21 @@ apps/web/.next-dev-3001.err.log
 
 ## 5. 下一步候选
 
-当前下一步不再是结构封板第二轮，而是继续 N39-N41 对局质量打磨。原因是 N35-N37 已经把商业攻防、战斗裁判、KDA 来源和 Web 审计骨架接入，N38 已修复 objective fact chain（目标行动事实链）的第一版一致性；剩余重点是 LLM 成本、中文输出、角色归因和商业审计可读性问题。
+当前下一步不建议继续修旧泛商业文案，也不建议立刻做结构封板第二轮。N35-N41 已经证明 HexGrid 工程骨架可运行、可提交、可 Web 验收，但旧 business duel（商业攻防）语义层容易输出空泛内容。下一阶段候选是 N42 Finance Major（金融投资对抗）原型。
 
 ```text
-N38：已完成第一版，修 C4 / 下包 / 拆包 / hard winner 一致性。
-N39：real LLM request 减半，并稳定中文语义输出。
-N40：角色感知 KDA、助攻、combat contact 收敛。
-N41：Web 商业攻防审计主线。
+N42：Finance Duel 契约与文档。
+N43：金融队伍资产与专家 Agent 改造。
+N44：Finance Duel Runtime 接入。
+N45：金融裁判替换商业裁判。
+N46：金融 Web 验收台改造。
+N47：Dust2 有色 / 行业判断 6R 小样本验收。
 ```
 
-结构封板第二轮顺延到 N41 之后重新评估。不建议立刻进入完整 16 队赛事、新闻站、奖项站或公网部署。那些属于 backlog，需要等 Hex 主线事实链更稳定后再规划。
+Finance Major 的核心不是重写 HexGrid，而是保留最新 Hex 工程骨架，把旧商业语义替换为金融研究攻防。第一版测试范围固定为 `Dust2 有色 / 行业判断 / 6 round`。
 
 固定执行口径见：
 
 ```text
-docs/hex/phase-2.0-pre-n38-n41-match-quality-plan.md
+docs/finance/finance-major-prototype-plan.md
 ```
