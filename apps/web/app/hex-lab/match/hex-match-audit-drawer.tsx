@@ -25,7 +25,7 @@ export function HexMatchAuditDrawer(props: HexMatchAuditDrawerProps) {
       <div className={styles.drawerHeader}>
         <div>
           <span>Audit drawer</span>
-          <h2>商业攻防 / LLM / Combat / Economy / Hard Winner 审计</h2>
+          <h2>金融攻防 / LLM / 战斗 / 经济 / 硬胜负审计</h2>
         </div>
         <button type="button" onClick={props.onClose}>关闭</button>
       </div>
@@ -56,12 +56,86 @@ export function HexMatchAuditDrawer(props: HexMatchAuditDrawerProps) {
 }
 
 function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; phase: HexMatchLabPhaseSummary | undefined }) {
+  const financeReview = props.trace?.financeReview;
+  if (financeReview) {
+    const phaseStory = financeReview.phaseStories.find((story) => story.phaseIndex === props.phase?.phaseIndex) ?? financeReview.phaseStories[0];
+    return (
+      <div className={styles.auditStack}>
+        <article className={styles.auditCard}>
+          <h3>{financeReview.roundStory.title}</h3>
+          <p>{financeReview.roundStory.summary}</p>
+          <p>{financeReview.roundStory.mirrorSummary}</p>
+          <p>{financeReview.roundStory.evidenceSummary}</p>
+        </article>
+
+        <article className={styles.auditCard}>
+          <h3>守方投资主张</h3>
+          <p>{financeReview.roundStory.defenseSummary}</p>
+          <p>关键假设: {props.trace?.financeDuel?.defenseThesis.keyAssumptions.join("; ") || "无"}</p>
+          <p>证据编号: {props.trace?.financeDuel?.defenseThesis.evidenceRefs.join("; ") || "无"}</p>
+          <p>风险边界: {props.trace?.financeDuel?.defenseThesis.riskBoundary || "无"}</p>
+        </article>
+
+        <article className={styles.auditCard}>
+          <h3>攻方反证质疑</h3>
+          <p>{financeReview.roundStory.attackSummary}</p>
+          <p>质疑点: {props.trace?.financeDuel?.attackChallenge.challengePoints.join("; ") || "无"}</p>
+          <p>要求守方回答: {props.trace?.financeDuel?.attackChallenge.requiredDefense.join("; ") || "无"}</p>
+          <p>缺失证据: {props.trace?.financeDuel?.evidence.missingEvidence.join("; ") || "无"}</p>
+        </article>
+
+        {phaseStory ? (
+          <article className={styles.auditCard}>
+            <h3>{phaseStory.phaseLabel ?? `P${phaseStory.phaseIndex}`}</h3>
+            <p>{phaseStory.summary}</p>
+            <h4>选手行动承载</h4>
+            {phaseStory.actionStories.length > 0 ? (
+              <ul>
+                {phaseStory.actionStories.map((action) => (
+                  <li key={`${phaseStory.phaseIndex}_${action.agentId}`}>
+                    <strong>{action.agentId}</strong> / {action.role} / {action.actionType}
+                    {action.targetCellId ? ` -> ${action.targetCellId}` : ""}：
+                    {action.financeIntent || action.financeTask || "未记录金融意图"}
+                    {action.fallbackReason ? `；降级：${action.fallbackReason}` : ""}
+                    {action.validationErrors.length > 0 ? `；拒绝：${action.validationErrors.join(", ")}` : ""}
+                    <br />
+                    <small>{action.rawOutputNote} {action.responseArtifactId ? `response=${action.responseArtifactId}` : ""}</small>
+                  </li>
+                ))}
+              </ul>
+            ) : <p>当前阶段没有 LLM 行动。</p>}
+            <h4>金融裁判链路</h4>
+            {phaseStory.combatStories.length > 0 ? (
+              <ul>
+                {phaseStory.combatStories.map((combat) => (
+                  <li key={combat.contactId}>
+                    <strong>{combat.contactId}</strong>：{combat.summary}
+                    <br />
+                    <small>保留原因：{combat.retentionReasons.join("; ") || "未记录"}；金融理由：{combat.financeReasons.join("; ") || "无"}；CS 理由：{combat.csReasons.join("; ") || "无"}</small>
+                  </li>
+                ))}
+              </ul>
+            ) : <p>当前阶段没有战斗裁定。</p>}
+          </article>
+        ) : null}
+
+        {financeReview.hardWinnerStory ? (
+          <article className={styles.auditCard}>
+            <h3>硬胜负</h3>
+            <p>{financeReview.hardWinnerStory.summary}</p>
+            <p className={styles.guardText}>最终胜负只来自 hard condition，不来自 LLM、局部金融裁判或前端计算。</p>
+          </article>
+        ) : null}
+      </div>
+    );
+  }
   const review = props.trace?.businessReview;
-  if (!review) return <p className={styles.emptyInline}>当前 trace 未记录商业攻防审计主线。</p>;
+  if (!review) return <p className={styles.emptyInline}>当前 trace 未记录金融攻防审计主线。</p>;
   const phaseStory = review.phaseStories.find((story) => story.phaseIndex === props.phase?.phaseIndex) ?? review.phaseStories[0];
   return (
     <div className={styles.auditStack}>
       <article className={styles.auditCard}>
+        <p className={styles.guardText}>旧商业轨迹，只读兼容；当前主线应使用金融攻防 trace。</p>
         <h3>{review.roundStory.title}</h3>
         <p>{review.roundStory.summary}</p>
         <p>{review.roundStory.mirrorSummary}</p>
@@ -130,10 +204,19 @@ function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; 
 function LlmAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; phase: HexMatchLabPhaseSummary | undefined }) {
   const audit = props.phase?.llmAudit ?? props.trace?.audit;
   if (!audit) return <p className={styles.emptyInline}>暂无 LLM audit。</p>;
+  const financeDuel = props.trace?.financeDuel;
   const duel = props.trace?.businessDuel;
   return (
     <div className={styles.auditStack}>
-      {duel ? (
+      {financeDuel ? (
+        <article className={styles.auditCard}>
+          <h3>{financeDuel.topicTitle}</h3>
+          <p>守方投资主张: {financeDuel.defenseThesis.thesis}</p>
+          <p>攻方反证质疑: {financeDuel.attackChallenge.thesis}</p>
+          <p>证据编号: {financeDuel.evidence.promptFacts.map((fact) => fact.factId).join(", ") || "无"}</p>
+          <p>缺失证据: {financeDuel.evidence.missingEvidence.join(", ") || "无"}</p>
+        </article>
+      ) : duel ? (
         <article className={styles.auditCard}>
           <h3>{duel.subthemeTitle}</h3>
           <p>{duel.coreQuestion}</p>
@@ -174,7 +257,8 @@ function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
         <article key={combat.contactId} className={styles.auditCard}>
           <h3>{combat.contactId}</h3>
           <p>{combat.advantage ?? "unknown"} / {combat.verdict ?? "no verdict"}</p>
-          <p>商业裁定: {combat.businessVerdict ?? "未记录"}</p>
+          <p>金融裁定: {combat.financeVerdict ?? "未记录"}</p>
+          <p>兼容商业裁定: {combat.businessVerdict ?? "未记录"}</p>
           <p>participants: {combat.participants.join(", ")}</p>
           <p>casualties: {combat.casualties.join(", ") || "none"}</p>
           <p>接触保留原因: {combat.contactRetentionReasons.join("; ") || "未记录"}{combat.prunedCandidateCount ? `；本 phase 裁剪候选 ${combat.prunedCandidateCount} 个` : ""}</p>
@@ -197,8 +281,9 @@ function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
             plant denied: {combat.plantDenied ? "yes" : "no"};
             trade: {combat.tradeOpportunity ? "yes" : "no"}
           </p>
-          <p>business A/D {combat.businessScoreAttack ?? 0}/{combat.businessScoreDefense ?? 0}; CS A/D {combat.csScoreAttack ?? 0}/{combat.csScoreDefense ?? 0}</p>
-          <p>business reasons: {combat.businessReasons.join("; ") || "无"}</p>
+          <p>finance A/D {combat.financeScoreAttack ?? combat.businessScoreAttack ?? 0}/{combat.financeScoreDefense ?? combat.businessScoreDefense ?? 0}; CS A/D {combat.csScoreAttack ?? 0}/{combat.csScoreDefense ?? 0}</p>
+          <p>finance reasons: {combat.financeReasons.join("; ") || "无"}</p>
+          <p>compat business reasons: {combat.businessReasons.join("; ") || "无"}</p>
           <p>CS reasons: {combat.csReasons.join("; ") || "无"}</p>
           <p>economy evidence: {combat.economyEvidenceApplied ? "applied" : "not applied"}; variance: {combat.varianceApplied ? "applied" : "off"}</p>
         </article>
@@ -267,7 +352,7 @@ function formatPercent(value: number | undefined): string {
 }
 
 function tabLabel(tab: AuditTab): string {
-  if (tab === "business") return "商业攻防";
+  if (tab === "business") return "金融攻防";
   if (tab === "llm") return "LLM 调用";
   if (tab === "combat") return "战斗裁定";
   if (tab === "economy") return "经济证据";

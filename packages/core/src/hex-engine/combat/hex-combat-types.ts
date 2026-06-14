@@ -23,6 +23,10 @@ export type HexCombatBusinessVerdict =
   | "proof_rebutted_challenge"
   | "challenge_succeeded"
   | "contested_no_business_resolution";
+export type HexCombatFinanceVerdict =
+  | "thesis_defended"
+  | "challenge_landed"
+  | "contested_no_finance_resolution";
 
 export interface HexCombatParticipant {
   agentId: string;
@@ -60,6 +64,7 @@ export interface HexCombatContact {
 
 export interface HexCombatSideEvidence {
   businessScore: number;
+  financeScore?: number;
   csScore: number;
   totalScore: number;
   reasons: string[];
@@ -106,7 +111,9 @@ export interface HexCombatVarianceAudit {
 
 export interface HexCombatAudit {
   businessWeight: 65;
+  financeWeight?: 65;
   csWeight: 35;
+  financeEvidenceApplied?: boolean;
   triggerReasons: HexCombatTriggerReason[];
   variance: HexCombatVarianceAudit;
   economy: HexCombatEconomyAudit;
@@ -143,7 +150,9 @@ export interface HexCombatResolutionCore {
   scores: HexCombatScoreboard;
   advantage: HexCombatAdvantage;
   businessVerdict: HexCombatBusinessVerdict;
+  financeVerdict?: HexCombatFinanceVerdict;
   businessReasons: string[];
+  financeReasons?: string[];
   csReasons: string[];
   verdict: HexCombatVerdict;
   casualties: HexCombatCasualty[];

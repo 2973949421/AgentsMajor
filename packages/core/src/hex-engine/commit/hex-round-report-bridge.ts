@@ -155,7 +155,7 @@ function buildKillLedger(trace: HexRoundTrace, agentOutputs: AgentOutput[]): Rou
               ? resolution.contactId
               : phase.phaseId),
           atMs: phase.phaseIndex * 15000 + entries.length * 1000,
-          impact: `${resolution.businessVerdict}: ${casualty.reason}`,
+          impact: `${resolution.financeVerdict ?? resolution.businessVerdict}: ${casualty.reason}`,
           sourceAgentOutputIds: [outputIdByAgentId.get(casualty.killerAgentId)].filter((value): value is string => Boolean(value))
         });
       }

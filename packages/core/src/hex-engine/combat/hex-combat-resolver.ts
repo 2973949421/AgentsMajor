@@ -2,6 +2,7 @@ import type { HexMapAsset } from "@agent-major/shared";
 import type { HexValidatedAgentAction } from "../action/index.js";
 import type { HexRoundBusinessDuel } from "../business/index.js";
 import { summarizeHexEconomyEvidence, type HexEconomyCombatEvidence, type HexRoundEconomyContext } from "../economy/index.js";
+import type { HexRoundFinanceDuel } from "../finance/index.js";
 import type { HexRoundMemory, HexSide } from "../state/index.js";
 import { buildHexCombatCasualties, buildHexCombatSuppressions } from "./hex-combat-casualties.js";
 import type { HexCombatAttributionScore } from "./hex-combat-casualties.js";
@@ -12,6 +13,7 @@ import type {
   HexCombatCasualty,
   HexCombatContact,
   HexCombatControlHint,
+  HexCombatFinanceVerdict,
   HexCombatParticipant,
   HexCombatResolution,
   HexCombatResolutionCore,
@@ -30,6 +32,7 @@ export interface ResolveHexCombatInput {
   actions: HexValidatedAgentAction[];
   economyContext?: HexRoundEconomyContext;
   businessDuel?: HexRoundBusinessDuel;
+  financeDuel?: HexRoundFinanceDuel;
   varianceMode?: HexCombatVarianceMode;
   seed?: string;
 }
@@ -47,7 +50,8 @@ export interface HexCombatVarianceResult {
   audit: HexCombatVarianceAudit;
 }
 
-const businessWeight = 65 as const;
+const financeWeight = 65 as const;
+const businessWeight = financeWeight;
 const csWeight = 35 as const;
 const decisiveMargin = 12;
 const pressureMargin = 6;
@@ -69,7 +73,8 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
     memory: input.memory,
     actions: input.actions,
     economyEvidence: attackEconomyEvidence,
-    ...(input.businessDuel ? { businessDuel: input.businessDuel } : {})
+    ...(input.businessDuel ? { businessDuel: input.businessDuel } : {}),
+    ...(input.financeDuel ? { financeDuel: input.financeDuel } : {})
   });
   const defenseEvidence = scoreSide({
     side: "defense",
@@ -77,7 +82,8 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
     memory: input.memory,
     actions: input.actions,
     economyEvidence: defenseEconomyEvidence,
-    ...(input.businessDuel ? { businessDuel: input.businessDuel } : {})
+    ...(input.businessDuel ? { businessDuel: input.businessDuel } : {}),
+    ...(input.financeDuel ? { financeDuel: input.financeDuel } : {})
   });
   const varianceInput: HexCombatVarianceInput = {
     attackScore: attackEvidence.totalScore,
@@ -95,12 +101,14 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
     : adjustedScores.attack.totalScore > adjustedScores.defense.totalScore
       ? "attack"
       : "defense";
-  const businessVerdict = buildBusinessVerdict(advantage, adjustedScores);
+  const financeVerdict = input.financeDuel ? buildFinanceVerdict(advantage, adjustedScores) : undefined;
+  const businessVerdict = financeVerdict ? mapFinanceVerdictToBusinessVerdict(financeVerdict) : buildBusinessVerdict(advantage, adjustedScores);
   const verdict = buildVerdict(margin);
   const attributionScores = buildAttributionScores({
     contact: input.contact,
     actions: input.actions,
-    businessDuel: input.businessDuel
+    businessDuel: input.businessDuel,
+    financeDuel: input.financeDuel
   });
   const casualties = buildHexCombatCasualties(input.contact, advantage, verdict, attributionScores);
   const suppressions = buildHexCombatSuppressions(input.contact, advantage, verdict, casualties);
@@ -109,13 +117,25 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
     ...adjustedScores.defense.reasons.filter((reason) => reason.includes(":business")),
     `business_verdict:${businessVerdict}`
   ];
+  if (financeVerdict) {
+    businessReasons.push("business_compat_from_finance_verdict");
+  }
+  const financeReasons = input.financeDuel
+    ? [
+        ...adjustedScores.attack.reasons.filter((reason) => reason.includes(":finance")),
+        ...adjustedScores.defense.reasons.filter((reason) => reason.includes(":finance")),
+        `finance_verdict:${financeVerdict}`
+      ]
+    : undefined;
   const csReasons = [
-    ...adjustedScores.attack.reasons.filter((reason) => !reason.includes(":business")),
-    ...adjustedScores.defense.reasons.filter((reason) => !reason.includes(":business"))
+    ...adjustedScores.attack.reasons.filter((reason) => !reason.includes(":business") && !reason.includes(":finance")),
+    ...adjustedScores.defense.reasons.filter((reason) => !reason.includes(":business") && !reason.includes(":finance"))
   ];
   const audit: HexCombatAudit = {
     businessWeight,
+    financeWeight,
     csWeight,
+    financeEvidenceApplied: Boolean(input.financeDuel),
     triggerReasons: [...input.contact.triggerReasons],
     variance: variance.audit,
     economy: {
@@ -158,7 +178,9 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
     scores: adjustedScores,
     advantage,
     businessVerdict,
+    ...(financeVerdict ? { financeVerdict } : {}),
     businessReasons,
+    ...(financeReasons ? { financeReasons } : {}),
     csReasons,
     verdict,
     casualties,
@@ -218,6 +240,7 @@ function scoreSide(input: {
   actions: HexValidatedAgentAction[];
   economyEvidence: HexEconomyCombatEvidence;
   businessDuel?: HexRoundBusinessDuel;
+  financeDuel?: HexRoundFinanceDuel;
 }): HexCombatSideEvidence {
   const participants = input.contact.participants.filter((participant) => participant.side === input.side);
   const contactRegionIds = new Set(input.contact.regionIds);
@@ -229,14 +252,20 @@ function scoreSide(input: {
     return Boolean(agent?.currentRegionId && contactRegionIds.has(agent.currentRegionId))
       || participants.some((participant) => participant.agentId === action.agentId);
   });
-  const businessScore = scoreBusinessEvidence(input.side, participants, sideActionsNearContact, input.memory, input.businessDuel);
+  const financeScore = input.financeDuel
+    ? scoreFinanceEvidence(input.side, participants, sideActionsNearContact, input.memory, input.financeDuel)
+    : undefined;
+  const businessScore = financeScore ?? scoreBusinessEvidence(input.side, participants, sideActionsNearContact, input.memory, input.businessDuel);
   const csScore = scoreCsEvidence(input.side, participants, input.contact, sideActionsNearContact, input.economyEvidence);
   return {
     businessScore,
+    ...(financeScore !== undefined ? { financeScore } : {}),
     csScore,
     totalScore: roundScore(businessScore + csScore),
     reasons: [
-      ...buildBusinessReasons(input.side, participants, sideActionsNearContact, input.memory, input.businessDuel),
+      ...(input.financeDuel
+        ? buildFinanceReasons(input.side, participants, sideActionsNearContact, input.memory, input.financeDuel)
+        : buildBusinessReasons(input.side, participants, sideActionsNearContact, input.memory, input.businessDuel)),
       ...buildCsReasons(input.side, participants, input.contact, sideActionsNearContact, input.economyEvidence)
     ]
   };
@@ -315,6 +344,101 @@ function buildBusinessReasons(
     return Boolean(agent?.actionResultSummary || agent?.businessExecutionSummary);
   })) {
     reasons.push(`${side}:previous_phase_summary_supports_action`);
+  }
+  return reasons;
+}
+
+function scoreFinanceEvidence(
+  side: HexSide,
+  participants: HexCombatParticipant[],
+  sideActionsNearContact: HexValidatedAgentAction[],
+  memory: HexRoundMemory,
+  financeDuel: HexRoundFinanceDuel
+): number {
+  let score = 0;
+  const validActions = sideActionsNearContact.filter((action) => action.valid && !action.fallbackReason);
+  const financeTexts = validActions.map((action) => action.businessIntent).filter((text) => text.trim().length > 0);
+  if (financeTexts.length > 0) {
+    score += 10;
+  }
+  if (validActions.some((action) => action.actionType !== "hold_position")) {
+    score += 8;
+  }
+  score += validActions.length >= 2 ? 10 : validActions.length === 1 ? 6 : 0;
+  if (financeTexts.some((text) => matchesSideFinanceLanguage(side, text))) {
+    score += 10;
+  } else if (financeTexts.length > 0) {
+    score += 4;
+  }
+  if (validActions.some((action) => actionMatchesFinanceAssignment(side, action, financeDuel))) {
+    score += 12;
+  }
+  if (financeTexts.some((text) => matchesRoundFinanceLanguage(side, text, financeDuel))) {
+    score += 10;
+  }
+  if (financeTexts.some((text) => referencesFinanceEvidence(text, financeDuel))) {
+    score += 10;
+  }
+  if (financeTexts.some((text) => mentionsFinanceRiskBoundary(text, financeDuel))) {
+    score += 5;
+  }
+  if (participants.some((participant) => {
+    const agent = memory.agents.find((candidate) => candidate.agentId === participant.agentId);
+    return Boolean(agent?.actionResultSummary || agent?.businessExecutionSummary);
+  })) {
+    score += 5;
+  }
+  if (financeDuel.evidence.scoreCaps.length > 0 && !financeTexts.some((text) => referencesFinanceEvidence(text, financeDuel))) {
+    const cap = Math.min(...financeDuel.evidence.scoreCaps.map((candidate) => candidate.maxScore));
+    score = Math.min(score, Math.max(0, Math.min(financeWeight, Math.round((cap / 100) * financeWeight))));
+  }
+  return Math.min(financeWeight, score);
+}
+
+function buildFinanceReasons(
+  side: HexSide,
+  participants: HexCombatParticipant[],
+  sideActionsNearContact: HexValidatedAgentAction[],
+  memory: HexRoundMemory,
+  financeDuel: HexRoundFinanceDuel
+): string[] {
+  const reasons: string[] = [];
+  const validActions = sideActionsNearContact.filter((action) => action.valid && !action.fallbackReason);
+  if (validActions.some((action) => action.businessIntent.trim().length > 0)) {
+    reasons.push(`${side}:finance_intent_present`);
+  }
+  if (validActions.some((action) => action.actionType !== "hold_position")) {
+    reasons.push(`${side}:finance_action_matches_combat_pressure`);
+  }
+  if (validActions.length >= 2) {
+    reasons.push(`${side}:finance_team_coordination_near_contact`);
+  }
+  if (validActions.some((action) => matchesSideFinanceLanguage(side, action.businessIntent))) {
+    reasons.push(`${side}:finance_side_specific_argument`);
+  }
+  if (validActions.some((action) => actionMatchesFinanceAssignment(side, action, financeDuel))) {
+    reasons.push(`${side}:finance_assignment_carried_by_action`);
+  }
+  if (validActions.some((action) => matchesRoundFinanceLanguage(side, action.businessIntent, financeDuel))) {
+    reasons.push(`${side}:finance_duel_topic_referenced`);
+  }
+  if (validActions.some((action) => referencesFinanceEvidence(action.businessIntent, financeDuel))) {
+    reasons.push(`${side}:finance_evidence_reference_used`);
+  }
+  if (validActions.some((action) => mentionsFinanceRiskBoundary(action.businessIntent, financeDuel))) {
+    reasons.push(`${side}:finance_risk_boundary_acknowledged`);
+  }
+  if (sideActionsNearContact.some((action) => action.fallbackReason)) {
+    reasons.push(`${side}:finance_fallback_not_positive_evidence`);
+  }
+  if (financeDuel.evidence.scoreCaps.length > 0 && !validActions.some((action) => referencesFinanceEvidence(action.businessIntent, financeDuel))) {
+    reasons.push(`${side}:finance_score_cap_applied_without_evidence_reference`);
+  }
+  if (participants.some((participant) => {
+    const agent = memory.agents.find((candidate) => candidate.agentId === participant.agentId);
+    return Boolean(agent?.actionResultSummary || agent?.businessExecutionSummary);
+  })) {
+    reasons.push(`${side}:previous_phase_summary_supports_finance_action`);
   }
   return reasons;
 }
@@ -436,10 +560,33 @@ function buildBusinessVerdict(advantage: "attack" | "defense" | "contested", sco
   return "contested_no_business_resolution";
 }
 
+function buildFinanceVerdict(advantage: "attack" | "defense" | "contested", scores: HexCombatScoreboard): HexCombatFinanceVerdict {
+  const attackFinanceScore = scores.attack.financeScore ?? scores.attack.businessScore;
+  const defenseFinanceScore = scores.defense.financeScore ?? scores.defense.businessScore;
+  if (advantage === "attack" && attackFinanceScore >= defenseFinanceScore) {
+    return "challenge_landed";
+  }
+  if (advantage === "defense" && defenseFinanceScore >= attackFinanceScore) {
+    return "thesis_defended";
+  }
+  return "contested_no_finance_resolution";
+}
+
+function mapFinanceVerdictToBusinessVerdict(verdict: HexCombatFinanceVerdict): HexCombatBusinessVerdict {
+  if (verdict === "challenge_landed") {
+    return "challenge_succeeded";
+  }
+  if (verdict === "thesis_defended") {
+    return "proof_rebutted_challenge";
+  }
+  return "contested_no_business_resolution";
+}
+
 function buildAttributionScores(input: {
   contact: HexCombatContact;
   actions: HexValidatedAgentAction[];
   businessDuel: HexRoundBusinessDuel | undefined;
+  financeDuel: HexRoundFinanceDuel | undefined;
 }): Map<string, HexCombatAttributionScore> {
   const actionByAgent = new Map(input.actions.map((action) => [action.agentId, action]));
   const scores = new Map<string, HexCombatAttributionScore>();
@@ -469,15 +616,20 @@ function buildAttributionScores(input: {
       assistScore += 7;
       reasons.push("support_action");
     }
-    if (actionMatchesBusinessAssignment(participant.side, action, input.businessDuel)) {
+    if (input.financeDuel ? actionMatchesFinanceAssignment(participant.side, action, input.financeDuel) : actionMatchesBusinessAssignment(participant.side, action, input.businessDuel)) {
       killerScore += 5;
       assistScore += 5;
-      reasons.push("business_assignment_match");
+      reasons.push(input.financeDuel ? "finance_assignment_match" : "business_assignment_match");
     }
-    if (matchesRoundBusinessLanguage(participant.side, action.businessIntent, input.businessDuel)) {
+    if (input.financeDuel ? matchesRoundFinanceLanguage(participant.side, action.businessIntent, input.financeDuel) : matchesRoundBusinessLanguage(participant.side, action.businessIntent, input.businessDuel)) {
       killerScore += 3;
       assistScore += 3;
-      reasons.push("business_duel_language_match");
+      reasons.push(input.financeDuel ? "finance_duel_language_match" : "business_duel_language_match");
+    }
+    if (input.financeDuel && referencesFinanceEvidence(action.businessIntent, input.financeDuel)) {
+      killerScore += 2;
+      assistScore += 2;
+      reasons.push("finance_evidence_reference_used");
     }
     if (participant.targetFlags.includes("bombsite_a") || participant.targetFlags.includes("bombsite_b") || participant.currentFlags.includes("cover")) {
       killerScore += 2;
@@ -485,7 +637,7 @@ function buildAttributionScores(input: {
       reasons.push("map_flag_context");
     }
     const roleContribution = scoreRoleContribution({
-      roleLabel: resolveRoleLabel(participant, input.businessDuel),
+      roleLabel: resolveRoleLabel(participant, input.businessDuel, input.financeDuel),
       participant,
       action
     });
@@ -548,7 +700,15 @@ function scoreRoleContribution(input: {
   return { roleLabel: input.roleLabel, killerDelta, assistDelta, reasons };
 }
 
-function resolveRoleLabel(participant: HexCombatParticipant, businessDuel: HexRoundBusinessDuel | undefined): string {
+function resolveRoleLabel(
+  participant: HexCombatParticipant,
+  businessDuel: HexRoundBusinessDuel | undefined,
+  financeDuel?: HexRoundFinanceDuel | undefined
+): string {
+  const fromFinanceDuel = financeDuel?.agentAssignments.find((assignment) => assignment.agentId === participant.agentId)?.role;
+  if (fromFinanceDuel) {
+    return normalizeRoleLabel(fromFinanceDuel);
+  }
   const fromDuel = businessDuel?.agentAssignments.find((assignment) => assignment.agentId === participant.agentId)?.role;
   return normalizeRoleLabel(fromDuel ?? participant.roleLabel);
 }
@@ -597,6 +757,31 @@ function actionMatchesBusinessAssignment(
   return action.businessIntent.trim().length > 0 && matchesSideBusinessLanguage(side, action.businessIntent);
 }
 
+function actionMatchesFinanceAssignment(
+  side: HexSide,
+  action: HexValidatedAgentAction,
+  financeDuel: HexRoundFinanceDuel
+): boolean {
+  if (!action.valid || action.fallbackReason) {
+    return false;
+  }
+  const assignment = financeDuel.agentAssignments.find((candidate) => candidate.agentId === action.agentId && candidate.side === side);
+  if (!assignment) {
+    return false;
+  }
+  if (side === "attack" && assignment.linkedChallengeId !== financeDuel.attackChallenge.challengeId) {
+    return false;
+  }
+  if (side === "defense" && assignment.linkedThesisId !== financeDuel.defenseThesis.thesisId) {
+    return false;
+  }
+  return action.businessIntent.trim().length > 0 && (
+    matchesSideFinanceLanguage(side, action.businessIntent)
+    || matchesRoundFinanceLanguage(side, action.businessIntent, financeDuel)
+    || referencesFinanceEvidence(action.businessIntent, financeDuel)
+  );
+}
+
 function matchesRoundBusinessLanguage(
   side: HexSide,
   text: string,
@@ -637,6 +822,77 @@ function matchesSideBusinessLanguage(side: HexSide, text: string): boolean {
 
 function normalizeBusinessText(text: string): string {
   return text.toLowerCase().replace(/[^\p{Letter}\p{Number}\u4e00-\u9fff]+/gu, "");
+}
+
+function matchesRoundFinanceLanguage(
+  side: HexSide,
+  text: string,
+  financeDuel: HexRoundFinanceDuel
+): boolean {
+  if (text.trim().length === 0) {
+    return false;
+  }
+  const haystack = normalizeFinanceText(text);
+  const sourceTexts = side === "attack"
+    ? [
+      financeDuel.topic.topicTitle,
+      financeDuel.topic.attackChallengeFocus,
+      financeDuel.attackChallenge.thesis,
+      ...financeDuel.attackChallenge.challengePoints,
+      ...financeDuel.attackChallenge.requiredDefense,
+      ...financeDuel.evidence.missingEvidence
+    ]
+    : [
+      financeDuel.topic.topicTitle,
+      financeDuel.topic.defenseThesisFocus,
+      financeDuel.defenseThesis.thesis,
+      ...financeDuel.defenseThesis.keyAssumptions,
+      financeDuel.defenseThesis.riskBoundary,
+      ...financeDuel.evidence.promptFacts.map((fact) => fact.shortText)
+    ];
+  return sourceTexts.some((candidate) => {
+    const normalized = normalizeFinanceText(candidate);
+    return normalized.length >= 4 && (haystack.includes(normalized.slice(0, Math.min(16, normalized.length))) || normalized.includes(haystack));
+  });
+}
+
+function matchesSideFinanceLanguage(side: HexSide, text: string): boolean {
+  const normalized = text.toLowerCase();
+  const attackTerms = ["质疑", "反证", "挑战", "风险", "假设", "估值", "周期", "供需", "下修", "缺口", "证据不足", "challenge", "risk", "valuation"];
+  const defenseTerms = ["自证", "主张", "支撑", "证明", "证据", "风险边界", "周期", "供需", "估值", "守住", "thesis", "evidence"];
+  const terms = side === "attack" ? attackTerms : defenseTerms;
+  return terms.some((term) => normalized.includes(term));
+}
+
+function referencesFinanceEvidence(text: string, financeDuel: HexRoundFinanceDuel): boolean {
+  const normalized = normalizeFinanceText(text);
+  const evidenceTokens = [
+    ...financeDuel.defenseThesis.evidenceRefs,
+    ...financeDuel.attackChallenge.evidenceRefs,
+    ...financeDuel.evidence.promptFacts.flatMap((fact) => [fact.factId, fact.evidenceId]),
+    ...financeDuel.evidence.facts.flatMap((fact) => [fact.factId, fact.evidenceId, fact.metricName, fact.source])
+  ].map(normalizeFinanceText).filter((token) => token.length >= 2);
+  return evidenceTokens.some((token) => normalized.includes(token));
+}
+
+function mentionsFinanceRiskBoundary(text: string, financeDuel: HexRoundFinanceDuel): boolean {
+  const normalized = normalizeFinanceText(text);
+  const boundaryTokens = [
+    ...financeDuel.evidence.missingEvidence,
+    ...financeDuel.evidence.scoreCaps.map((cap) => cap.condition),
+    ...financeDuel.evidence.scoreCaps.map((cap) => cap.reason),
+    "缺失",
+    "缺少",
+    "评分上限",
+    "代理事实",
+    "不能证明",
+    "风险边界"
+  ].map(normalizeFinanceText).filter((token) => token.length >= 2);
+  return boundaryTokens.some((token) => normalized.includes(token));
+}
+
+function normalizeFinanceText(text: string): string {
+  return text.toLowerCase().replace(/[^\p{Letter}\p{Number}\u4e00-\u9fff:]+/gu, "");
 }
 
 function scoreMapFlags(participants: HexCombatParticipant[]): number {

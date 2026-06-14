@@ -195,8 +195,105 @@ export interface HexMatchLabRoundTraceDetail extends HexMatchLabRoundSummary {
   phaseSummaries: HexMatchLabPhaseSummary[];
   audit: HexMatchLabLlmAuditSummary;
   economySummary: HexMatchLabEconomySummary[];
+  financeDuel?: HexMatchLabFinanceDuelSummary | undefined;
+  financeReview?: HexMatchLabFinanceReview | undefined;
   businessDuel?: HexMatchLabBusinessDuelSummary | undefined;
   businessReview?: HexMatchLabBusinessReview | undefined;
+}
+
+export interface HexMatchLabFinanceDuelSummary {
+  topicKey: string;
+  topicTitle: string;
+  defenseThesisFocus: string;
+  attackChallengeFocus: string;
+  halfIndex: 0 | 1;
+  roundInHalf: number;
+  mirrorRoundNumber: number;
+  defenseThesis: {
+    teamId: string;
+    thesis: string;
+    keyAssumptions: string[];
+    evidenceRefs: string[];
+    riskBoundary: string;
+  };
+  attackChallenge: {
+    teamId: string;
+    thesis: string;
+    challengePoints: string[];
+    requiredDefense: string[];
+    evidenceRefs: string[];
+  };
+  evidence: {
+    promptFacts: Array<{ factId: string; shortText: string; evidenceId: string }>;
+    missingEvidence: string[];
+    scoreCaps: Array<{ condition: string; maxScore: number; reason: string }>;
+  };
+  assignments: HexMatchLabAgentFinanceAssignmentSummary[];
+}
+
+export interface HexMatchLabAgentFinanceAssignmentSummary {
+  agentId: string;
+  teamId: string;
+  side: string;
+  role: string;
+  financeTask: string;
+  linkedThesisId?: string | undefined;
+  linkedChallengeId?: string | undefined;
+}
+
+export interface HexMatchLabFinanceReview {
+  roundStory: {
+    title: string;
+    summary: string;
+    defenseSummary: string;
+    attackSummary: string;
+    evidenceSummary: string;
+    mirrorSummary: string;
+  };
+  phaseStories: HexMatchLabPhaseFinanceStory[];
+  hardWinnerStory?: {
+    summary: string;
+    winnerTeamId?: string | undefined;
+    roundWinType?: string | undefined;
+    reason?: string | undefined;
+  } | undefined;
+}
+
+export interface HexMatchLabPhaseFinanceStory {
+  phaseId: string;
+  phaseIndex: number;
+  phaseLabel?: string | undefined;
+  summary: string;
+  actionStories: HexMatchLabActionFinanceStory[];
+  combatStories: HexMatchLabCombatFinanceStory[];
+}
+
+export interface HexMatchLabActionFinanceStory {
+  agentId: string;
+  side?: string | undefined;
+  role: string;
+  financeTask?: string | undefined;
+  actionType: string;
+  targetCellId?: string | undefined;
+  financeIntent?: string | undefined;
+  accepted: boolean;
+  fallbackReason?: string | undefined;
+  validationErrors: string[];
+  requestArtifactId?: string | undefined;
+  responseArtifactId?: string | undefined;
+  rawOutputNote: string;
+}
+
+export interface HexMatchLabCombatFinanceStory {
+  contactId: string;
+  summary: string;
+  financeVerdict?: string | undefined;
+  participants: string[];
+  retentionReasons: string[];
+  financeReasons: string[];
+  csReasons: string[];
+  killAttributions: HexMatchLabCombatSummary["killAttributions"];
+  roleContributions: HexMatchLabCombatSummary["roleContributions"];
 }
 
 export interface HexMatchLabBusinessDuelSummary {
@@ -380,7 +477,9 @@ export interface HexMatchLabCombatSummary {
   advantage?: string | undefined;
   verdict?: string | undefined;
   businessVerdict?: string | undefined;
+  financeVerdict?: string | undefined;
   businessReasons: string[];
+  financeReasons: string[];
   csReasons: string[];
   casualties: string[];
   killAttributions: Array<{
@@ -395,6 +494,8 @@ export interface HexMatchLabCombatSummary {
   regionControlHint?: string | undefined;
   businessScoreAttack?: number | undefined;
   businessScoreDefense?: number | undefined;
+  financeScoreAttack?: number | undefined;
+  financeScoreDefense?: number | undefined;
   csScoreAttack?: number | undefined;
   csScoreDefense?: number | undefined;
   economyEvidenceApplied?: boolean | undefined;
@@ -1098,6 +1199,7 @@ function summarizeTrace(
     ))
   ];
   const businessDuel = summarizeBusinessDuel(trace);
+  const financeDuel = summarizeFinanceDuel(trace);
   const finalHardCondition = summarizeHardCondition(trace.finalWinCondition);
   return {
     ...roundSummary,
@@ -1106,6 +1208,14 @@ function summarizeTrace(
     phaseSummaries,
     audit: summarizeTraceAudit(trace),
     economySummary,
+    financeDuel,
+    financeReview: financeDuel
+      ? buildFinanceReview({
+        financeDuel,
+        phaseSummaries,
+        finalHardCondition
+      })
+      : undefined,
     businessDuel,
     businessReview: businessDuel
       ? buildBusinessReview({
@@ -1148,6 +1258,145 @@ function summarizeBusinessDuel(trace: HexRoundTrace): HexMatchLabBusinessDuelSum
       csCarrierHint: assignment.csCarrierHint
     }))
   };
+}
+
+function summarizeFinanceDuel(trace: HexRoundTrace): HexMatchLabFinanceDuelSummary | undefined {
+  const duel = trace.financeDuel;
+  if (!duel) return undefined;
+  return {
+    topicKey: duel.topic.roundKey,
+    topicTitle: duel.topic.topicTitle,
+    defenseThesisFocus: duel.topic.defenseThesisFocus,
+    attackChallengeFocus: duel.topic.attackChallengeFocus,
+    halfIndex: duel.halfIndex,
+    roundInHalf: duel.roundInHalf,
+    mirrorRoundNumber: duel.mirrorRoundNumber,
+    defenseThesis: {
+      teamId: duel.defenseThesis.teamId,
+      thesis: duel.defenseThesis.thesis,
+      keyAssumptions: [...duel.defenseThesis.keyAssumptions],
+      evidenceRefs: [...duel.defenseThesis.evidenceRefs],
+      riskBoundary: duel.defenseThesis.riskBoundary
+    },
+    attackChallenge: {
+      teamId: duel.attackChallenge.teamId,
+      thesis: duel.attackChallenge.thesis,
+      challengePoints: [...duel.attackChallenge.challengePoints],
+      requiredDefense: [...duel.attackChallenge.requiredDefense],
+      evidenceRefs: [...duel.attackChallenge.evidenceRefs]
+    },
+    evidence: {
+      promptFacts: duel.evidence.promptFacts.map((fact) => ({ ...fact })),
+      missingEvidence: [...duel.evidence.missingEvidence],
+      scoreCaps: duel.evidence.scoreCaps.map((cap) => ({ ...cap }))
+    },
+    assignments: duel.agentAssignments.map((assignment) => ({
+      agentId: assignment.agentId,
+      teamId: assignment.teamId,
+      side: assignment.side,
+      role: assignment.role,
+      financeTask: assignment.financeTask,
+      linkedThesisId: assignment.linkedThesisId,
+      linkedChallengeId: assignment.linkedChallengeId
+    }))
+  };
+}
+
+function buildFinanceReview(input: {
+  financeDuel: HexMatchLabFinanceDuelSummary;
+  phaseSummaries: HexMatchLabPhaseSummary[];
+  finalHardCondition?: HexMatchLabHardConditionSummary | undefined;
+}): HexMatchLabFinanceReview {
+  const assignmentsByAgentId = new Map(input.financeDuel.assignments.map((assignment) => [assignment.agentId, assignment]));
+  const hardWinnerStory = input.finalHardCondition
+    ? {
+      summary: `最终胜负来自硬条件：${input.finalHardCondition.roundWinType ?? "未结束"}。${input.finalHardCondition.reason ?? "未记录原因"}`,
+      winnerTeamId: input.finalHardCondition.winnerTeamId,
+      roundWinType: input.finalHardCondition.roundWinType ?? input.finalHardCondition.judgeRoundWinType,
+      reason: input.finalHardCondition.reason
+    }
+    : undefined;
+  return {
+    roundStory: {
+      title: input.financeDuel.topicTitle,
+      summary: `本回合金融小主题是「${input.financeDuel.topicTitle}」：守方围绕「${input.financeDuel.defenseThesisFocus}」自证，攻方围绕「${input.financeDuel.attackChallengeFocus}」反证。`,
+      defenseSummary: `守方 ${input.financeDuel.defenseThesis.teamId} 投资主张：${input.financeDuel.defenseThesis.thesis}`,
+      attackSummary: `攻方 ${input.financeDuel.attackChallenge.teamId} 反证质疑：${input.financeDuel.attackChallenge.thesis}`,
+      evidenceSummary: `证据 ${input.financeDuel.evidence.promptFacts.map((fact) => fact.factId).join(", ") || "无"}；缺失 ${input.financeDuel.evidence.missingEvidence.join(", ") || "无"}；评分上限 ${input.financeDuel.evidence.scoreCaps.map((cap) => `${cap.condition}:${cap.maxScore}`).join(", ") || "无"}`,
+      mirrorSummary: `当前为第 ${input.financeDuel.halfIndex + 1} 个半场的第 ${input.financeDuel.roundInHalf} 个小主题；攻防互换对应 round ${input.financeDuel.mirrorRoundNumber}。`
+    },
+    phaseStories: input.phaseSummaries.map((phase) => buildPhaseFinanceStory(phase, assignmentsByAgentId)),
+    ...(hardWinnerStory ? { hardWinnerStory } : {})
+  };
+}
+
+function buildPhaseFinanceStory(
+  phase: HexMatchLabPhaseSummary,
+  assignmentsByAgentId: Map<string, HexMatchLabAgentFinanceAssignmentSummary>
+): HexMatchLabPhaseFinanceStory {
+  const actionStories = phase.actions.map((action) => {
+    const assignment = assignmentsByAgentId.get(action.agentId);
+    return {
+      agentId: action.agentId,
+      side: action.side,
+      role: assignment?.role ?? "role unknown",
+      financeTask: assignment?.financeTask,
+      actionType: action.actionType,
+      targetCellId: action.targetCellId,
+      financeIntent: action.businessIntent,
+      accepted: action.valid && !action.fallbackReason && action.validationErrors.length === 0,
+      fallbackReason: action.fallbackReason,
+      validationErrors: [...action.validationErrors],
+      requestArtifactId: action.requestArtifactId,
+      responseArtifactId: action.responseArtifactId,
+      rawOutputNote: action.responseArtifactId
+        ? "当前 trace 记录了 response artifact id；如需原文，请通过 artifact id 追溯。"
+        : "当前 trace 未内联 LLM 原文。"
+    };
+  });
+  const combatStories = phase.combats.map((combat) => ({
+    contactId: combat.contactId,
+    summary: buildFinanceCombatStorySummary(combat),
+    financeVerdict: combat.financeVerdict,
+    participants: [...combat.participants],
+    retentionReasons: [...combat.contactRetentionReasons],
+    financeReasons: [...combat.financeReasons],
+    csReasons: [...combat.csReasons],
+    killAttributions: combat.killAttributions.map((item) => ({
+      killerAgentId: item.killerAgentId,
+      targetAgentId: item.targetAgentId,
+      assisterAgentIds: [...item.assisterAgentIds],
+      result: item.result,
+      attributionReasons: [...item.attributionReasons],
+      targetSelectionReasons: [...item.targetSelectionReasons]
+    })),
+    roleContributions: combat.roleContributions.map((item) => ({
+      agentId: item.agentId,
+      roleLabel: item.roleLabel,
+      contributionType: item.contributionType,
+      scoreDelta: item.scoreDelta,
+      reasons: [...item.reasons]
+    }))
+  }));
+  return {
+    phaseId: phase.phaseId,
+    phaseIndex: phase.phaseIndex,
+    phaseLabel: phase.phaseLabel,
+    summary: phase.isSetupPhase
+      ? "准备阶段展示出生、经济、C4 和金融角色职责，不产生 LLM 调用。"
+      : `本阶段 accepted ${phase.acceptedActionCount}、rejected ${phase.rejectedDraftCount}、fallback ${phase.fallbackActionCount}，关键战斗 ${phase.combatResolutionCount} 个。`,
+    actionStories,
+    combatStories
+  };
+}
+
+function buildFinanceCombatStorySummary(combat: HexMatchLabCombatSummary): string {
+  const verdict = combat.financeVerdict ?? "未记录金融裁定";
+  const killText = combat.killAttributions.length > 0
+    ? combat.killAttributions.map((item) => `${item.killerAgentId ?? "未分配"} 击中 ${item.targetAgentId}${item.assisterAgentIds.length > 0 ? `，助攻 ${item.assisterAgentIds.join(", ")}` : ""}`).join("；")
+    : "没有击杀归因";
+  const controlText = combat.regionControlHint ? `控图倾向 ${combat.regionControlHint}` : "控图倾向未记录";
+  return `金融裁定：${verdict}。${killText}。${controlText}。`;
 }
 
 function buildBusinessReview(input: {
@@ -1373,7 +1622,9 @@ function summarizePhase(
       advantage: resolution.advantage,
       verdict: resolution.verdict,
       businessVerdict: resolution.businessVerdict,
+      financeVerdict: resolution.financeVerdict,
       businessReasons: resolution.businessReasons ?? [],
+      financeReasons: resolution.financeReasons ?? [],
       csReasons: resolution.csReasons ?? [],
       casualties: resolution.casualties.map((casualty) => `${casualty.targetAgentId ?? casualty.agentId}:${casualty.result}`),
       killAttributions: resolution.casualties.map((casualty) => ({
@@ -1388,6 +1639,8 @@ function summarizePhase(
       regionControlHint: resolution.regionControlHint,
       businessScoreAttack: resolution.scores.attack.businessScore,
       businessScoreDefense: resolution.scores.defense.businessScore,
+      financeScoreAttack: resolution.scores.attack.financeScore,
+      financeScoreDefense: resolution.scores.defense.financeScore,
       csScoreAttack: resolution.scores.attack.csScore,
       csScoreDefense: resolution.scores.defense.csScore,
       economyEvidenceApplied: resolution.audit.economy.economyEvidenceApplied,

@@ -559,7 +559,7 @@ trace artifact 已能追溯 financeDuel。
 旧商业 prompt 不再是 real provider 的主语义入口。
 ```
 
-### N46：金融裁判替换商业裁判
+### N46：金融裁判替换商业裁判（已完成第一版）
 
 目标：
 
@@ -573,7 +573,20 @@ trace artifact 已能追溯 financeDuel。
 - finance verdict。
 - combat attribution 测试。
 
-### N47：金融 Web 验收台改造
+N46 第一版落地口径：
+
+```text
+combat resolver 优先读取 financeDuel。
+financeScore 成为局部战斗裁判的主要研究证据分。
+businessScore / businessVerdict / businessReasons 暂时保留为兼容别名。
+financeVerdict 输出 thesis_defended / challenge_landed / contested_no_finance_resolution。
+金融证据理由会检查小主题、投资主张、反证质疑、证据编号、缺失证据和 scoreCaps。
+fallback 文本、缺证据空话和未引用证据的强判断不能作为正向金融证据。
+击杀归因优先看金融任务匹配、证据引用、角色贡献和 CS 执行证据，不按数组顺序分配。
+hard winner 仍只来自 hard condition。
+```
+
+### N47：金融 Web 验收台改造（已完成第一版）
 
 目标：
 
@@ -588,7 +601,18 @@ trace artifact 已能追溯 financeDuel。
 - Web 文案与审计标签替换。
 - 不再以旧商业攻防作为主入口。
 
-### N48：Dust2 有色 6R 小样本验收
+N47 第一版落地口径：
+
+```text
+/hex-lab/match 审计抽屉优先显示金融攻防。
+round 层展示小主题、守方投资主张、攻方反证质疑、证据编号、缺失证据和 scoreCaps。
+phase 层展示 agent 行动如何承载金融任务。
+combat 层展示 financeVerdict、financeReasons、CS reasons、击杀归因和角色贡献。
+hard winner 单独展示，明确不来自 LLM、局部金融裁判或前端计算。
+旧 trace 若只有 businessReview，只显示“旧商业轨迹，只读兼容”，不能伪装成金融轨迹。
+```
+
+### N48：Dust2 有色 6R 小样本验收（下一步）
 
 目标：
 

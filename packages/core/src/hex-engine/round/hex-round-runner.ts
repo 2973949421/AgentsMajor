@@ -207,7 +207,8 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
         contact,
         actions: acceptedActions,
         economyContext,
-        businessDuel
+        businessDuel,
+        financeDuel
       }))
     });
     const combatEvents = combatResolutions.flatMap((resolution) => resolution.memoryEvents);

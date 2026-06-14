@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
 import { buildFixtureHexRoundBusinessDuel } from "../business/index.js";
 import { buildHexRoundEconomyContext } from "../economy/index.js";
+import { buildHexRoundFinanceDuel } from "../finance/index.js";
 import { buildHexCombatContacts } from "./hex-combat-contact-builder.js";
 import { applyHexCombatVariance, resolveHexCombat } from "./hex-combat-resolver.js";
 import {
@@ -13,6 +14,117 @@ import {
 } from "./hex-combat-test-helpers.js";
 
 describe("Hex combat resolver", () => {
+  it("lets finance challenge evidence drive attack combat attribution while keeping business compatibility fields", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [attackCell, defenseCell, supportCell] = findCellsInRegion(asset, "a_site", 3);
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_0", side: "attack", cellId: attackCell!.cellId },
+      { agentId: "t_1", side: "attack", cellId: supportCell!.cellId },
+      { agentId: "ct_0", side: "defense", cellId: defenseCell!.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({
+        memory,
+        agentId: "t_0",
+        actionType: "execute_site",
+        targetCellId: defenseCell!.cellId,
+        businessIntent: "质疑全球铜价代理事实 F001 不能证明国内库存，挑战守方景气上行假设并推进 A 点。"
+      }),
+      buildCombatAction({
+        memory,
+        agentId: "t_1",
+        actionType: "prepare_trade",
+        targetCellId: defenseCell!.cellId,
+        businessIntent: "用 F002 铝价代理事实配合反证，指出 domestic_inventory 缺失会限制守方结论。"
+      }),
+      buildCombatAction({
+        memory,
+        agentId: "ct_0",
+        actionType: "hold_position",
+        targetCellId: defenseCell!.cellId,
+        businessIntent: "",
+        valid: false
+      })
+    ];
+    const financeDuel = buildHexRoundFinanceDuel({
+      roundNumber: 1,
+      attackTeamId: "t",
+      defenseTeamId: "ct",
+      agents: [
+        { agentId: "t_0", teamId: "t", side: "attack", role: "star rifler" },
+        { agentId: "t_1", teamId: "t", side: "attack", role: "support" },
+        { agentId: "ct_0", teamId: "ct", side: "defense", role: "anchor" }
+      ]
+    });
+    const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
+
+    const resolution = resolveHexCombat({ asset, memory, contact, actions, financeDuel });
+
+    expect(resolution.financeVerdict).toBe("challenge_landed");
+    expect(resolution.businessVerdict).toBe("challenge_succeeded");
+    expect(resolution.audit.financeEvidenceApplied).toBe(true);
+    expect(resolution.scores.attack.financeScore).toBeGreaterThan(resolution.scores.defense.financeScore ?? 0);
+    expect(resolution.financeReasons).toEqual(expect.arrayContaining([
+      "attack:finance_evidence_reference_used",
+      "finance_verdict:challenge_landed"
+    ]));
+    expect(resolution.casualties[0]).toEqual(expect.objectContaining({
+      targetAgentId: "ct_0",
+      killerAgentId: "t_0",
+      assisterAgentIds: ["t_1"]
+    }));
+    expect(resolution.casualties[0]?.attributionReasons).toEqual(expect.arrayContaining(["killer:t_0:finance_evidence_reference_used"]));
+  });
+
+  it("lets defense finance thesis stand when attack falls back and lacks usable evidence", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [attackCell, defenseCell] = findCellsInRegion(asset, "a_site", 2);
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_0", side: "attack", cellId: attackCell!.cellId },
+      { agentId: "ct_0", side: "defense", cellId: defenseCell!.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({
+        memory,
+        agentId: "t_0",
+        actionType: "hold_position",
+        businessIntent: "质疑文本来自 fallback，不能作为正向金融证据。",
+        valid: false
+      }),
+      buildCombatAction({
+        memory,
+        agentId: "ct_0",
+        actionType: "peek",
+        targetCellId: attackCell!.cellId,
+        businessIntent: "自证使用 F001 全球铜价代理事实支撑景气线索，同时承认 domestic_inventory 缺失和评分上限。"
+      })
+    ];
+    const financeDuel = buildHexRoundFinanceDuel({
+      roundNumber: 1,
+      attackTeamId: "t",
+      defenseTeamId: "ct",
+      agents: [
+        { agentId: "t_0", teamId: "t", side: "attack", role: "entry" },
+        { agentId: "ct_0", teamId: "ct", side: "defense", role: "star rifler" }
+      ]
+    });
+    const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
+
+    const resolution = resolveHexCombat({ asset, memory, contact, actions, financeDuel });
+
+    expect(resolution.financeVerdict).toBe("thesis_defended");
+    expect(resolution.businessVerdict).toBe("proof_rebutted_challenge");
+    expect(resolution.financeReasons).toEqual(expect.arrayContaining([
+      "attack:finance_fallback_not_positive_evidence",
+      "defense:finance_evidence_reference_used",
+      "finance_verdict:thesis_defended"
+    ]));
+    expect(resolution.casualties[0]).toEqual(expect.objectContaining({
+      targetAgentId: "t_0",
+      killerAgentId: "ct_0"
+    }));
+  });
+
   it("lets business evidence dominate the first deterministic combat verdict", () => {
     const asset = loadOfficialDust2HexMap();
     const [attackCell, defenseCell, supportCell] = findCellsInRegion(asset, "a_site", 3);

@@ -55,9 +55,9 @@ N42：Finance Evidence + Finance Duel 契约。（已完成）
 N43：金融队伍资产与专家 Agent 改造。（已完成）
 N44：Finance Evidence MVP 接入。（已完成第一版）
 N45：Finance Duel Runtime 接入。（已完成第一版）
-N46：金融裁判替换商业裁判。
-N47：金融 Web 验收台改造。
-N48：Dust2 有色 / 行业判断 6R 小样本验收。
+N46：金融裁判替换商业裁判。（已完成第一版）
+N47：金融 Web 验收台改造。（已完成第一版）
+N48：Dust2 有色 / 行业判断 6R 小样本验收。（下一步）
 ```
 
 当前测试落点：
@@ -84,7 +84,7 @@ N44 已生成第一版证据包：
 data/materials/generated/finance/maps/dust2-nonferrous/round-evidence-packs.json
 ```
 
-N45 已读取这份 evidence pack，生成 round-level financeDuel，并写入 Hex trace。N45 的边界是 runtime 和 prompt 接入，不替换 combat 裁判；金融裁判替换留到 N46。
+N45 已读取这份 evidence pack，生成 round-level financeDuel，并写入 Hex trace。N46 已让 combat 裁判优先消费 financeDuel，并保留旧 business 字段作为兼容别名。N47 已让 `/hex-lab/match` 的审计抽屉优先展示金融小主题、投资主张、反证质疑、证据编号、缺失证据、评分上限、金融裁判和 hard condition 分离链路。N48 的下一步是跑 Dust2 有色 / 行业判断 6R 小样本验收。
 
 当前必须承认的边界：
 

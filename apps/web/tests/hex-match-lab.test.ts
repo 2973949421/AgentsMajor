@@ -75,11 +75,12 @@ describe("Hex Match Lab", () => {
     expect(playerPanel).toContain("AP");
     expect(timeline).toContain("Round / Phase 回放控制");
     expect(timeline).toContain("播放 trace");
-    expect(drawer).toContain("商业攻防 / LLM / Combat / Economy / Hard Winner 审计");
+    expect(drawer).toContain("金融攻防 / LLM / 战斗 / 经济 / 硬胜负审计");
     expect(drawer).toContain("function BusinessAudit");
-    expect(drawer).toContain("守方自证");
-    expect(drawer).toContain("攻方质疑");
-    expect(drawer).toContain("战斗裁判链路");
+    expect(drawer).toContain("守方投资主张");
+    expect(drawer).toContain("攻方反证质疑");
+    expect(drawer).toContain("金融裁判链路");
+    expect(drawer).toContain("旧商业轨迹，只读兼容");
     expect(drawer).toContain("最终胜负只来自 hard condition");
     expect(drawer).toContain("repaired fields");
     expect(drawer).toContain("compact requests");
