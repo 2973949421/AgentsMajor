@@ -48,7 +48,13 @@ data/materials/processed/teams/vitallmty/initial-proposal.json
 data/materials/processed/teams/vitallmty/initial-proposal.md
 ```
 
-选手和教练文件中的 `finance_agent_profile` 是 N43 后的金融专家职责入口；`cs_role_profile` 继续作为赛事包装和 Hex 执行层表达保留。
+选手和教练文件中的 `finance_agent_profile` 是 N43 后的金融专家职责入口；`cs_role_profile` 继续作为赛事包装和 Hex 执行层表达保留。N43b 后，`finance_agent_profile` 进一步包含跨行业 Agent Core 字段，例如 `signatureLens`、`attackStyle`、`defenseStyle`、`decisionThreshold`、`crossMapStrength` 和 `oneLineVoice`。
+
+Dust2 有色地图专属内容不写进队伍核心资产，统一放在：
+
+```text
+data/materials/processed/finance/maps/dust2-nonferrous/map-overlay.json
+```
 
 ## 4. Phase 2.0-pre 横向契约
 

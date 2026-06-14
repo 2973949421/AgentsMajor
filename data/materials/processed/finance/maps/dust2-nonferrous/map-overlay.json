@@ -1,0 +1,278 @@
+{
+  "schemaVersion": 1,
+  "overlayId": "dust2_nonferrous_overlay_v1",
+  "mapBindingId": "dust2_nonferrous_industry_judgment_v1",
+  "mapTheme": {
+    "displayName": "Dust2 有色 / 行业判断",
+    "description": "核心问题不是“有色一定上涨或下跌”，而是在有限、低成本、可审计代理事实下，判断全球价格、A 股市场表现、进出口线索是否足以支持行业景气、估值和配置倾向。",
+    "roundStructure": "一张地图 6 个小主题：R1 全球有色价格，R2 A 股代表公司市场表现，R3 估值是否 price in，R4 进出口线索，R5 证据缺口，R6 配置倾向与风险边界；半场攻守互换后复用同 6 个主题。",
+    "researchBoundary": "Hex / CS 词条只做赛事包装，裁判依据仍是证据质量、推理一致性、反证处理、收益风险比和可执行性。"
+  },
+  "sideSwapGuardrails": {
+    "summary": "Team bias and agent specialization describe style, not fixed side ownership.",
+    "topicIndexFormula": "((mapRoundNumber - 1) % 6) + 1",
+    "currentDefenseObligation": "The current defense side uses the selected topic to produce defenseProof.",
+    "currentAttackObligation": "The current attack side uses the selected topic to produce attackChallenge.",
+    "roundOwnershipInterpretation": "roundOwnership entries are team-style playbook examples under each topic; they must be re-resolved through current side assignment before prompt or judge consumption.",
+    "forbiddenInterpretations": [
+      "Falcon-7B is always the attack side.",
+      "VitaLLMty is always the defense side.",
+      "A team's aggressive or conservative style determines its side role.",
+      "R1-R6 topics are consumed only once and ignored after side swap."
+    ]
+  },
+  "allowedEvidenceSources": {
+    "fred": {
+      "allowedUse": "可用于观察铜、铝、锂、黄金等全球价格趋势、价格斜率、跨品种同步性和宏观价格环境。",
+      "notAllowedUse": "不能直接等同于中国国内供需、企业盈利或 A 股公司基本面。"
+    },
+    "baostock": {
+      "allowedUse": "可用于观察代表公司股价、成交、PE/PB、相对强弱、市场是否交易有色预期。",
+      "notAllowedUse": "不能直接等同于行业基本面改善，也不能证明公司盈利已经兑现。"
+    },
+    "un_comtrade": {
+      "allowedUse": "可用于观察进出口方向、贸易流向变化和供需线索。",
+      "notAllowedUse": "不能直接证明中国国内真实需求，需注意口径、滞后、商品编码、转口和库存调节。"
+    }
+  },
+  "missingEvidence": [
+    {
+      "id": "domestic_inventory",
+      "whyItMatters": "判断价格上涨是否对应国内供需紧张，而不是海外价格或金融属性驱动。"
+    },
+    {
+      "id": "processing_fees_or_smelting_profit",
+      "whyItMatters": "判断上游价格变化能否传导到冶炼和企业利润。"
+    },
+    {
+      "id": "operating_rate_or_capacity_utilization",
+      "whyItMatters": "判断供给响应速度和景气持续性。"
+    },
+    {
+      "id": "downstream_orders",
+      "whyItMatters": "判断需求是真实改善，还是价格预期和渠道补库。"
+    },
+    {
+      "id": "domestic_output",
+      "whyItMatters": "判断供给是否扩张、紧张是否可持续。"
+    },
+    {
+      "id": "company_financial_detail",
+      "whyItMatters": "判断 BaoStock 反映的是市场预期，还是盈利兑现。"
+    },
+    {
+      "id": "metal_specific_chain_data",
+      "whyItMatters": "铜、铝、锂、黄金、稀土的驱动差异很大，不能用一个有色结论覆盖全部品种。"
+    }
+  ],
+  "scoreCaps": [
+    {
+      "id": "scoreCap:ProxyOnly",
+      "trigger": "只有 FRED、BaoStock 或 Comtrade 代理事实，无直接行业或公司验证。",
+      "scoringImplication": "只能给倾向或假设增强，不能给确认。"
+    },
+    {
+      "id": "scoreCap:NoChinaDemandConfirmation",
+      "trigger": "缺少国内库存、开工率、下游订单等证据。",
+      "scoringImplication": "不能声称中国国内需求已经确认改善。"
+    },
+    {
+      "id": "scoreCap:NoEarningsConfirmation",
+      "trigger": "缺少企业收入、利润率、成本、现金流数据。",
+      "scoringImplication": "不能声称 A 股代表公司盈利已经改善。"
+    },
+    {
+      "id": "scoreCap:StaticValuationOnly",
+      "trigger": "只用 PE/PB 判断贵贱，没有盈利情景和周期位置分析。",
+      "scoringImplication": "R3 估值判断降权。"
+    },
+    {
+      "id": "scoreCap:TradeDataAmbiguity",
+      "trigger": "只用 Comtrade 单一方向变化，没有口径解释。",
+      "scoringImplication": "R4 只能作为线索，不能作为供需确认。"
+    },
+    {
+      "id": "scoreCap:CrossMetalOvergeneralization",
+      "trigger": "用铜、铝、锂、黄金、稀土中某一品种外推整个有色板块。",
+      "scoringImplication": "行业结论必须降级，需标注品种差异。"
+    }
+  ],
+  "teamMapBias": {
+    "falcon-7b": {
+      "mapBias": "更愿意从 FRED 全球金属价格上行、A 股代表公司相对强势、估值未极端化中推导有限证据下的进攻配置。",
+      "likelyStrongClaim": "全球价格环境改善 + A 股开始交易有色预期，支持中性偏进攻。",
+      "likelyOverreach": "把全球金属价格直接外推为中国有色景气；把 BaoStock 股价表现当成盈利改善。",
+      "bestDefenseMove": "主动降级措辞：不说确认景气，只说景气假设增强；不说盈利改善，只说市场正在交易盈利弹性。"
+    },
+    "vitallmty": {
+      "mapBias": "更愿意把有色判断拆成全球价格、国内供需、公司盈利、估值吸收四层，逐层限制结论强度。",
+      "likelyStrongClaim": "代理证据可以支持跟踪或低仓位参与，但不足以支持高置信重仓。",
+      "likelyOverreach": "可能因直接证据不足而低估有色价格和 A 股预期修复的交易价值。",
+      "bestDefenseMove": "承认 FRED 和 BaoStock 的方向意义，但用 missingEvidence 和 scoreCaps 限制配置强度。"
+    }
+  },
+  "agentMapSpecialization": {
+    "falcon-7b": {
+      "karrigan": "把 FRED 价格趋势、BaoStock 相对强弱和估值位置组合成配置倾向；负责 R6 进攻表达。",
+      "m0nesy": "判断铜、铝、锂、黄金等全球价格是否形成同步趋势；负责 R1 宏观价格环境。",
+      "kyousuke": "用 Comtrade 和价格分化提出供需假设，但必须标注国内库存、加工费、开工率缺口。",
+      "niko": "用 BaoStock 的股价、成交、PE/PB 判断 A 股有色代表公司是否已 price in。",
+      "teses": "把 FRED 价格转弱、BaoStock 相对强弱失效、估值快速扩张设为减仓或降级条件。",
+      "zonic": "防止队员把 FRED/BaoStock/Comtrade 代理事实说成国内供需或盈利确认。"
+    },
+    "vitallmty": {
+      "apex": "将有色配置压到风险调整收益框架：方向偏多可以承认，但仓位必须受证据缺口限制。",
+      "zywoo": "区分全球金属价格上行和中国有色盈利传导；负责 R1 与 R6 的宏观边界。",
+      "flamez": "重点攻击价格反推供需；要求国内库存、开工率、加工费、下游订单等直接证据。",
+      "ropz": "评估 BaoStock 中 PE/PB 和股价表现是否已 price in，警惕周期股估值陷阱。",
+      "mezii": "根据证据等级设置仓位上限；代理证据越多，风险预算越低。",
+      "xtqzzz": "在 R5 主导 missingEvidence、unsupportedInference 和 scoreCaps 判定。"
+    }
+  },
+  "roundOwnership": [
+    {
+      "roundNumber": 1,
+      "title": "全球有色价格是否支持景气上行",
+      "falcon": {
+        "leadAgent": "m0nesy",
+        "supportAgents": [
+          "kyousuke"
+        ],
+        "howTheyPlay": "用 FRED 观察全球价格趋势和跨品种同步性，主张全球定价环境改善；补充供需假设但不直接声称中国国内景气确认。"
+      },
+      "vitallmty": {
+        "leadAgent": "zywoo",
+        "supportAgents": [
+          "flamez"
+        ],
+        "howTheyPlay": "承认全球价格上涨是正面信号，但要求说明传导路径；强调价格上涨可能来自海外扰动、金融属性或单品种因素。"
+      },
+      "controversyPoint": "FRED 全球金属价格能否支持中国有色景气上行，还是只能支持外部价格环境偏正面。"
+    },
+    {
+      "roundNumber": 2,
+      "title": "A 股有色代表公司是否已经反映价格预期",
+      "falcon": {
+        "leadAgent": "niko",
+        "supportAgents": [
+          "karrigan"
+        ],
+        "howTheyPlay": "用 BaoStock 股价相对强弱、成交、PE/PB 变化判断市场是否开始交易有色价格预期，主张反映一部分不等于完全 price in。"
+      },
+      "vitallmty": {
+        "leadAgent": "ropz",
+        "supportAgents": [
+          "apex"
+        ],
+        "howTheyPlay": "区分市场预期和盈利兑现，追问当前买入是否仍有风险调整收益。"
+      },
+      "controversyPoint": "BaoStock 市场表现是有色基本面改善的证据，还是仅能说明 A 股正在交易有色预期。"
+    },
+    {
+      "roundNumber": 3,
+      "title": "估值是否已经 price in",
+      "falcon": {
+        "leadAgent": "niko",
+        "supportAgents": [
+          "karrigan"
+        ],
+        "howTheyPlay": "强调周期行业不能只看静态 PE/PB。若 FRED 价格趋势仍向上，市场可能尚未完全反映盈利弹性。"
+      },
+      "vitallmty": {
+        "leadAgent": "ropz",
+        "supportAgents": [
+          "mezii"
+        ],
+        "howTheyPlay": "警惕周期股低 PE 陷阱和高 PB 透支风险。若缺少公司盈利、成本和现金流验证，估值结论必须降权。"
+      },
+      "controversyPoint": "PE/PB 能否判断有色板块是否 price in；没有利润弹性模型时，估值判断应给多高权重。"
+    },
+    {
+      "roundNumber": 4,
+      "title": "进出口数据是否支持供需变化",
+      "falcon": {
+        "leadAgent": "kyousuke",
+        "supportAgents": [
+          "m0nesy"
+        ],
+        "howTheyPlay": "尝试用 UN Comtrade 的进出口方向变化作为供需线索；若与 FRED 价格趋势一致，主张供需改善假设增强。"
+      },
+      "vitallmty": {
+        "leadAgent": "flamez",
+        "supportAgents": [
+          "zywoo"
+        ],
+        "howTheyPlay": "强调 Comtrade 有口径、滞后、商品编码、转口和库存调节问题，不能直接推导中国国内供需。"
+      },
+      "controversyPoint": "Comtrade 能否支撑供需变化判断，还是只能作为需要进一步验证的贸易线索。"
+    },
+    {
+      "roundNumber": 5,
+      "title": "当前证据缺口下哪些结论不能下",
+      "falcon": {
+        "leadAgent": "zonic",
+        "supportAgents": [
+          "teses"
+        ],
+        "howTheyPlay": "主动承认不能下强结论：不能确认中国需求、不能确认企业盈利、不能确认所有金属品种同向；把缺口转成仓位边界。"
+      },
+      "vitallmty": {
+        "leadAgent": "xtqzzz",
+        "supportAgents": [
+          "flamez",
+          "ropz"
+        ],
+        "howTheyPlay": "系统列出 missingEvidence，要求 Falcon 降级所有跨层推断。"
+      },
+      "controversyPoint": "证据缺口只是限制结论强度，还是足以否定进攻配置。"
+    },
+    {
+      "roundNumber": 6,
+      "title": "基于有限证据的配置倾向与风险边界",
+      "falcon": {
+        "leadAgent": "karrigan",
+        "supportAgents": [
+          "teses",
+          "zonic"
+        ],
+        "howTheyPlay": "给出中性偏进攻配置；如果 FRED 价格趋势、BaoStock 相对强弱、估值未极端化同向，则允许有限仓位参与。"
+      },
+      "vitallmty": {
+        "leadAgent": "apex",
+        "supportAgents": [
+          "mezii",
+          "xtqzzz"
+        ],
+        "howTheyPlay": "给出中性偏观察或低仓位参与；承认正面代理信号，但因 missingEvidence 较多，不支持高仓位。"
+      },
+      "controversyPoint": "有限代理证据下，应优先进攻赔率窗口，还是优先等待国内供需和公司盈利验证。"
+    }
+  ],
+  "refereeLanguageGuide": [
+    {
+      "conclusionLevel": "价格层",
+      "allowedLanguage": "FRED 显示全球金属价格环境偏正面。",
+      "bannedOrDowngradedLanguage": "中国有色需求已经确认改善。"
+    },
+    {
+      "conclusionLevel": "市场预期层",
+      "allowedLanguage": "BaoStock 显示 A 股有色代表公司可能正在交易价格预期。",
+      "bannedOrDowngradedLanguage": "代表公司盈利已经改善。"
+    },
+    {
+      "conclusionLevel": "贸易线索层",
+      "allowedLanguage": "Comtrade 可作为进出口方向线索。",
+      "bannedOrDowngradedLanguage": "进出口变化直接证明国内供需反转。"
+    },
+    {
+      "conclusionLevel": "配置层",
+      "allowedLanguage": "有限证据下可给中性偏多或低仓位观察。",
+      "bannedOrDowngradedLanguage": "证据已经支持重仓进攻。"
+    },
+    {
+      "conclusionLevel": "风险层",
+      "allowedLanguage": "缺少国内库存、加工费、开工率、下游订单和公司财务验证，应设置 scoreCaps。",
+      "bannedOrDowngradedLanguage": "代理事实足以替代完整行业数据库。"
+    }
+  ]
+}

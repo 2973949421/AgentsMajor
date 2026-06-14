@@ -2,6 +2,13 @@
   "schemaVersion": 1,
   "mapBindingId": "dust2_nonferrous_industry_judgment_v1",
   "displayName": "Dust2 有色 / 行业判断 6R",
+  "sideSwapPolicy": {
+    "interpretation": "These six topics define the subject of dispute, not fixed team ownership.",
+    "defenseThesisFocus": "Consumed by whichever team is the current defense side.",
+    "attackChallengeFocus": "Consumed by whichever team is the current attack side.",
+    "topicIndexFormula": "((mapRoundNumber - 1) % 6) + 1",
+    "sideSwapRule": "When sides swap, the same six topics are reused and proof/challenge responsibilities swap with the current side."
+  },
   "rounds": [
     {
       "roundNumber": 1,
@@ -112,4 +119,3 @@
     }
   ]
 }
-

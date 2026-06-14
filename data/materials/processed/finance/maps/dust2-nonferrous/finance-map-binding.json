@@ -7,6 +7,18 @@
   "industryTrack": "nonferrous_metals",
   "roundType": "industry_judgment",
   "roundCount": 6,
+  "sideSwapPolicy": {
+    "topicCycleRoundCount": 6,
+    "topicIndexFormula": "((mapRoundNumber - 1) % 6) + 1",
+    "halfPolicy": "The same six industry-judgment topics are reused after side swap; overtime is out of scope for v1.",
+    "sideRoleResolution": "The current defense side must generate defenseProof from the selected topic; the current attack side must generate attackChallenge from the same selected topic.",
+    "teamIdentityRule": "Team style and agent specialization must not be interpreted as fixed attack/defense ownership.",
+    "hardGuards": [
+      "Do not hard-code Falcon-7B as permanent attack or VitaLLMty as permanent defense.",
+      "Do not bind defenseThesisFocus or attackChallengeFocus to a team slug before resolving current side assignment.",
+      "For map rounds 7-12, reuse topics R1-R6 with swapped side roles."
+    ]
+  },
   "dataMode": "free_api_proxy_facts",
   "defaultSources": [
     "fred",
@@ -34,7 +46,11 @@
     "FRED supports global metal price trend only.",
     "BaoStock supports market reaction and valuation proxy only.",
     "UN Comtrade supports lagged trade trend only.",
-    "Missing domestic inventory, SHFE/SMM, and filing page anchors must be surfaced in score caps."
-  ]
+    "Missing domestic inventory, SHFE/SMM, and filing page anchors must be surfaced in score caps.",
+    "Map overlay contains Dust2-specific team bias, agent specialization, score caps, and referee language guidance.",
+    "Team core and agent core must remain cross-industry reusable; Dust2-specific facts belong in map-overlay.json.",
+    "Round topics are side-dependent, not team-fixed: current defense consumes defenseThesisFocus, current attack consumes attackChallengeFocus.",
+    "After side swap, the same six round topics are reused and the proof/challenge roles must swap with the current side assignment."
+  ],
+  "mapOverlayPath": "data/materials/processed/finance/maps/dust2-nonferrous/map-overlay.json"
 }
-

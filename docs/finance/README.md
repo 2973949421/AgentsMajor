@@ -59,7 +59,7 @@ CS 词条可以保留为赛事包装和 UI 叙事，例如 map、round、team、
 回合：6 个行业判断子命题
 ```
 
-N43 已落地第一版两队资产：
+N43 已落地第一版两队资产，N43b 进一步把资产分为跨行业 core（核心）和地图 overlay（覆盖层）：
 
 ```text
 Falcon-7B：进攻型周期成长，偏高 beta、供需缺口、价格弹性和集中表达。
@@ -76,6 +76,16 @@ Company / Financial Modeling（公司 / 财务建模专家）
 Risk / Trading（风控 / 交易专家）
 Coach / Research Discipline（教练 / 研究纪律）
 ```
+
+N43b 后的资产分层：
+
+```text
+Team Core：写在 data/materials/processed/teams/<team>/initial-proposal.json 的 teamCore。
+Agent Core：写在 players/coach 的 finance_agent_profile，包含 signatureLens、attackStyle、defenseStyle、decisionThreshold、crossMapStrength 等跨行业字段。
+Map Overlay：写在 data/materials/processed/finance/maps/dust2-nonferrous/map-overlay.json，只承载 Dust2 有色专属证据源、R1-R6、scoreCaps、agentMapSpecialization。
+```
+
+后续新增 TMT、消费、医药、金融地产等地图时，优先新增对应 `map-overlay.json`，不要重写队伍和选手核心资产。
 
 第一版不做完整金融数据库，不做完整赛事，不做新闻/奖项站。数据事实层采用“免费 API 代理事实版”：
 
@@ -106,6 +116,26 @@ data/materials/processed/finance/
 data/materials/processed/maps/dust2/                    # 地图空间、路径、区域、点位
 data/materials/processed/finance/maps/dust2-nonferrous/ # 金融主题、回合子命题、证据源、证据包模板
 ```
+
+Dust2 有色地图覆盖层入口：
+
+```text
+data/materials/processed/finance/maps/dust2-nonferrous/map-overlay.json
+```
+
+## 攻守互换约束
+
+Dust2 有色第一版只有 6 个行业判断小主题；半场攻守互换后复用同 6 个主题。当前守方读取 `defenseThesisFocus` 并生成自证，当前攻方读取 `attackChallengeFocus` 并生成质疑。队伍风格、选手专长和 `map-overlay.json` 里的地图偏好不能被解释成固定攻守身份。
+
+这条约束已经写入：
+
+```text
+data/materials/processed/finance/maps/dust2-nonferrous/finance-map-binding.json
+data/materials/processed/finance/maps/dust2-nonferrous/round-topics.json
+data/materials/processed/finance/maps/dust2-nonferrous/map-overlay.json
+```
+
+后续 prompt（提示词）、judge（裁判）和 Web 展示在使用 `roundOwnership`、`teamMapBias` 或 `agentMapSpecialization` 前，必须先解析当前 side assignment（阵营分配）。不能把 Falcon-7B 写死成进攻方，也不能把 VitaLLMty 写死成防守方。
 
 正式本地环境入口固定为：
 
