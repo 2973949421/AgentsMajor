@@ -6,10 +6,10 @@
 
 ```text
 当前主线：HexGrid（蜂巢格）Phase 2.0-pre。
-当前进度：N20-N49 已完成第一版验收。
+当前进度：N20-N50 已完成第一版验收。
 当前入口：/hex-lab/match。
 当前底层事实：official Dust2 Hex map、Hex phase memory、Hex action/combat/economy/round runner、Hex map runner、Hex trace artifacts。
-下一阶段候选：N50-N54 金融事实链与审计连续收口。
+下一阶段候选：N51-N54 金融事实链与审计连续收口。
 ```
 
 HexGrid 现在是新的比赛事实主线。它负责地图可走性、AP、阶段记忆、agent action、局部 combat、economy evidence、单回合提交、完整 Dust2 地图灰度和 Web 验收。
@@ -79,8 +79,8 @@ N46：金融裁判替换商业裁判。（已完成第一版）
 N47：金融 Web 验收台改造。（已完成第一版）
 N48：Dust2 有色 / 行业判断 6R 小样本验收。（条件通过）
 N49：中文可读审计 + 回合信息层 / 局内行动层拆分。（已完成第一版）
-N50：离线金融事实库。（下一步）
-N51：专家证据切片与开局信息卡差异化。（计划）
+N50：离线金融事实库。（已完成第一版）
+N51：专家证据切片与开局信息卡差异化。（下一步）
 N52：回合信息层 / 局内行动层硬隔离。（计划）
 N53：金融裁判证据采信事实化。（计划）
 N54：中文人类审计与真实样本验收。（计划）
@@ -113,11 +113,14 @@ data/materials/processed/finance/
 
 它只管理 source registry、evidence policy、Dust2 有色主题绑定、回合证据模板和数据源 universe，不承载 Hex cell / region / point 等地图空间事实。
 
-当前必须承认的 N50-N54 前置事实：
+当前必须承认的 N51-N54 前置事实：
 
 ```text
 FRED / BaoStock / UN Comtrade / AKShare 已被登记。
-当前 generated evidence pack 主要仍是 configured_proxy_fact。
+N50 已生成 `data/materials/generated/finance/fact-bank/dust2-nonferrous/latest.json`。
+FRED 和 BaoStock 已进入 `offline_observation_fact`。
+UN Comtrade 第一版为 optional unavailable observation。
+当前 generated round evidence pack 仍可保留 configured_proxy_fact 兜底。
 比赛运行时读到了 evidence pack，但不是实时 API 数据。
-N50 只负责离线生成充足、低 token、可审计的宏微观事实库；N51 才按专家角色切片给 agent；N52-N54 再处理行动边界、裁判采信和人工审计。
+N51 才按专家角色切片给 agent；N52-N54 再处理行动边界、裁判采信和人工审计。
 ```

@@ -7,9 +7,10 @@ const materialsRoot = path.resolve(__dirname, "..");
 const generatedFinanceRoot = path.join(materialsRoot, "generated", "finance");
 
 function parseArgs(argv) {
-  const args = { map: "dust2-nonferrous" };
+  const args = { map: "dust2-nonferrous", factBank: false };
   for (let index = 0; index < argv.length; index += 1) {
     if (argv[index] === "--map") args.map = argv[++index];
+    else if (argv[index] === "--fact-bank") args.factBank = true;
   }
   return args;
 }
@@ -40,6 +41,72 @@ function validateFact(fact, context) {
   }
   assert(/^EVID:/.test(fact.evidenceId), `${context} fact has invalid evidenceId ${fact.evidenceId}.`);
   assert(!/api[_-]?key|secret|token/i.test(JSON.stringify(fact)), `${context} fact appears to contain secret-like text.`);
+}
+
+function validateFactBankFact(fact, context) {
+  const requiredFields = [
+    "factId",
+    "statementZh",
+    "metricName",
+    "source",
+    "sourceType",
+    "collector",
+    "evidenceId",
+    "confidence",
+    "rawHash",
+    "parserVersion",
+    "originalLocation",
+    "dataMode",
+    "generatedAt"
+  ];
+  for (const field of requiredFields) {
+    assert(fact[field] !== undefined && fact[field] !== "", `${context} fact bank fact missing ${field}.`);
+  }
+  assert(/^EVID:/.test(fact.evidenceId), `${context} fact bank fact has invalid evidenceId ${fact.evidenceId}.`);
+  assert(
+    ["offline_observation_fact", "unavailable_observation"].includes(fact.dataMode),
+    `${context} fact bank fact has unsupported dataMode ${fact.dataMode}.`
+  );
+  if (fact.dataMode === "offline_observation_fact") {
+    assert(fact.value !== null && fact.value !== undefined && fact.value !== "", `${context} observed fact missing value.`);
+    assert(fact.period && fact.period !== "configured", `${context} observed fact missing concrete period.`);
+    assert(fact.unit !== undefined, `${context} observed fact missing unit.`);
+  }
+  if (fact.dataMode === "unavailable_observation") {
+    assert(fact.unavailableReason, `${context} unavailable fact missing unavailableReason.`);
+    assert(fact.sourceWarning, `${context} unavailable fact missing sourceWarning.`);
+  }
+  assert(!/api[_-]?key|secret|token/i.test(JSON.stringify(fact.value)), `${context} fact value appears secret-like.`);
+}
+
+function validateFactBank(map) {
+  const root = path.join(generatedFinanceRoot, "fact-bank", map);
+  const latestPath = path.join(root, "latest.json");
+  assert(fs.existsSync(latestPath), `Missing ${latestPath}`);
+  const latest = readJson(latestPath);
+  assert(latest.schemaVersion === 1, "Fact bank schemaVersion must be 1.");
+  assert(latest.mapBindingId === "dust2_nonferrous_industry_judgment_v1", "Fact bank has unexpected mapBindingId.");
+  assert(latest.dataMode === "offline_fact_bank_snapshot", "Fact bank dataMode must be offline_fact_bank_snapshot.");
+  assert(Array.isArray(latest.sourceStatus) && latest.sourceStatus.length >= 4, "Fact bank must include sourceStatus.");
+  assert(Array.isArray(latest.facts) && latest.facts.length >= 1, "Fact bank must include facts.");
+  assert(!/FRED_API_KEY|UN_COMTRADE_KEY|UN_COMTRADE_SECONDARY_KEY/.test(JSON.stringify(latest)), "Fact bank leaks env key names.");
+  assert(!/api[_-]?key["']?\s*[:=]\s*["'][^"']{4,}/i.test(JSON.stringify(latest)), "Fact bank appears to contain API key material.");
+
+  const sourceStatus = new Map(latest.sourceStatus.map((item) => [item.sourceId, item]));
+  assert(sourceStatus.get("fred"), "Fact bank missing FRED source status.");
+  assert(sourceStatus.get("baostock"), "Fact bank missing BaoStock source status.");
+  assert(sourceStatus.get("un_comtrade"), "Fact bank missing UN Comtrade source status.");
+  assert(sourceStatus.get("akshare")?.dataMode === "registered_collector_not_used", "AKShare must remain registered_collector_not_used in N50.");
+
+  const observedFred = latest.facts.some((fact) => fact.source === "FRED" && fact.dataMode === "offline_observation_fact");
+  const observedBaoStock = latest.facts.some((fact) => fact.source === "BAOSTOCK" && fact.dataMode === "offline_observation_fact");
+  assert(observedFred, "Fact bank must include at least one observed FRED fact.");
+  assert(observedBaoStock, "Fact bank must include at least one observed BaoStock fact.");
+
+  for (const fact of latest.facts) validateFactBankFact(fact, `factBank:${fact.factId}`);
+  for (const fileName of ["fred-facts.json", "baostock-facts.json", "un-comtrade-facts.json"]) {
+    assert(fs.existsSync(path.join(root, fileName)), `Missing split fact bank file ${fileName}.`);
+  }
 }
 
 function main() {
@@ -79,6 +146,7 @@ function main() {
     assert(seenRounds.has(round), `Missing round ${round}.`);
     assert(fs.existsSync(path.join(root, `round-${round}-evidence-pack.json`)), `Missing split pack for round ${round}.`);
   }
+  if (args.factBank) validateFactBank(args.map);
   console.log(`Validated ${aggregate.packs.length} finance evidence packs for ${args.map}.`);
 }
 

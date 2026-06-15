@@ -257,6 +257,24 @@ N50 生成的事实库建议放在：
 data/materials/generated/finance/fact-bank/
 ```
 
+N50 第一版已生成：
+
+```text
+data/materials/generated/finance/fact-bank/dust2-nonferrous/latest.json
+data/materials/generated/finance/fact-bank/dust2-nonferrous/fred-facts.json
+data/materials/generated/finance/fact-bank/dust2-nonferrous/baostock-facts.json
+data/materials/generated/finance/fact-bank/dust2-nonferrous/un-comtrade-facts.json
+```
+
+当前状态：
+
+```text
+FRED：offline_observation_fact。
+BaoStock：offline_observation_fact。
+UN Comtrade：optional unavailable_observation。
+AKShare：registered_collector_not_used。
+```
+
 比赛运行时仍读取：
 
 ```text

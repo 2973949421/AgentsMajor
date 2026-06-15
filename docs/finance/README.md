@@ -112,12 +112,20 @@ N49 后暴露出的关键问题是：FRED / BaoStock / UN Comtrade / AKShare 已
 因此下一段不是一个巨大 N50，而是 N50-N54 连续收口：
 
 ```text
-N50：离线金融事实库。
-N51：专家证据切片与开局信息卡差异化。
+N50：离线金融事实库。（已完成第一版）
+N51：专家证据切片与开局信息卡差异化。（下一步）
 N52：回合信息层 / 局内行动层硬隔离。
 N53：金融裁判证据采信事实化。
 N54：中文人类审计与真实样本验收。
 ```
+
+N50 第一版输出：
+
+```text
+data/materials/generated/finance/fact-bank/dust2-nonferrous/latest.json
+```
+
+当前状态是：FRED 和 BaoStock 已有离线观测事实；UN Comtrade 作为可选源记录不可用观测；AKShare 仍只登记为采集器候选。
 
 ## 数据资产入口
 

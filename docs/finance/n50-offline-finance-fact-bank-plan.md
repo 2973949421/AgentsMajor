@@ -2,7 +2,7 @@
 
 ## 1. 目标
 
-本轮做 **N50：离线金融事实库**。
+本轮做 **N50：离线金融事实库**。（已完成第一版）
 
 用户真正要解决的问题是：当前 FRED、BaoStock、UN Comtrade、AKShare 已经完成接口登记和本地验证，但比赛实际消费的 `round-evidence-packs.json` 仍主要是 `configured_proxy_fact`（配置型代理事实）。这意味着金融攻防看起来接入了证据层，实际仍没有稳定的离线观测事实支撑。
 
@@ -308,6 +308,15 @@ N50 交付：
 5. AKShare 登记但未启用说明。
 6. 验证脚本与文档更新。
 7. 单独提交。
+
+第一版实际输出：
+
+```text
+data/materials/generated/finance/fact-bank/dust2-nonferrous/latest.json
+data/materials/generated/finance/fact-bank/dust2-nonferrous/fred-facts.json
+data/materials/generated/finance/fact-bank/dust2-nonferrous/baostock-facts.json
+data/materials/generated/finance/fact-bank/dust2-nonferrous/un-comtrade-facts.json
+```
 
 N50 后进入：
 

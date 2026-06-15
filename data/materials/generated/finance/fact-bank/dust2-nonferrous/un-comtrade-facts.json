@@ -1,0 +1,134 @@
+{
+  "sourceId": "un_comtrade",
+  "collector": "un_comtrade_python_package_v1",
+  "dataMode": "unavailable_observation",
+  "facts": [
+    {
+      "factId": "COM001",
+      "statementZh": "UN Comtrade 未能采集 HS 260300（铜矿砂及其精矿）的可用观测。",
+      "metricName": "china_import_export_proxy",
+      "value": null,
+      "unit": "",
+      "period": "unavailable",
+      "source": "UN_COMTRADE",
+      "sourceType": "official_api_lagged",
+      "collector": "un_comtrade_python_package_v1",
+      "evidenceId": "EVID:UN_COMTRADE:trade:260300:china_import_export_proxy:unavailable:260300:0f458faa",
+      "confidence": 0,
+      "rawHash": "0f458faa",
+      "parserVersion": "finance-fact-bank-collector-v1",
+      "originalLocation": "un-comtrade-hs-codes.json:260300",
+      "policyNotes": [
+        "HS mapping must be reviewed before being used as strong evidence.",
+        "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence."
+      ],
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "UN Comtrade HS 260300 unavailable: ValueError",
+      "sourceWarning": "UN Comtrade query failed; do not treat this HS code as observed evidence.",
+      "generatedAt": "2026-06-15T14:19:52Z"
+    },
+    {
+      "factId": "COM002",
+      "statementZh": "UN Comtrade 未能采集 HS 260600（铝矿砂及其精矿）的可用观测。",
+      "metricName": "china_import_export_proxy",
+      "value": null,
+      "unit": "",
+      "period": "unavailable",
+      "source": "UN_COMTRADE",
+      "sourceType": "official_api_lagged",
+      "collector": "un_comtrade_python_package_v1",
+      "evidenceId": "EVID:UN_COMTRADE:trade:260600:china_import_export_proxy:unavailable:260600:833c4f53",
+      "confidence": 0,
+      "rawHash": "833c4f53",
+      "parserVersion": "finance-fact-bank-collector-v1",
+      "originalLocation": "un-comtrade-hs-codes.json:260600",
+      "policyNotes": [
+        "HS mapping must be reviewed before being used as strong evidence.",
+        "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence."
+      ],
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "UN Comtrade HS 260600 unavailable: ValueError",
+      "sourceWarning": "UN Comtrade query failed; do not treat this HS code as observed evidence.",
+      "generatedAt": "2026-06-15T14:19:54Z"
+    },
+    {
+      "factId": "COM003",
+      "statementZh": "UN Comtrade 未能采集 HS 740311（精炼铜阴极及阴极型材）的可用观测。",
+      "metricName": "china_import_export_proxy",
+      "value": null,
+      "unit": "",
+      "period": "unavailable",
+      "source": "UN_COMTRADE",
+      "sourceType": "official_api_lagged",
+      "collector": "un_comtrade_python_package_v1",
+      "evidenceId": "EVID:UN_COMTRADE:trade:740311:china_import_export_proxy:unavailable:740311:83f92349",
+      "confidence": 0,
+      "rawHash": "83f92349",
+      "parserVersion": "finance-fact-bank-collector-v1",
+      "originalLocation": "un-comtrade-hs-codes.json:740311",
+      "policyNotes": [
+        "HS mapping must be reviewed before being used as strong evidence.",
+        "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence."
+      ],
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "UN Comtrade HS 740311 unavailable: ValueError",
+      "sourceWarning": "UN Comtrade query failed; do not treat this HS code as observed evidence.",
+      "generatedAt": "2026-06-15T14:19:56Z"
+    },
+    {
+      "factId": "COM004",
+      "statementZh": "UN Comtrade 未能采集 HS 750210（未锻轧非合金镍）的可用观测。",
+      "metricName": "china_import_export_proxy",
+      "value": null,
+      "unit": "",
+      "period": "unavailable",
+      "source": "UN_COMTRADE",
+      "sourceType": "official_api_lagged",
+      "collector": "un_comtrade_python_package_v1",
+      "evidenceId": "EVID:UN_COMTRADE:trade:750210:china_import_export_proxy:unavailable:750210:a09e329d",
+      "confidence": 0,
+      "rawHash": "a09e329d",
+      "parserVersion": "finance-fact-bank-collector-v1",
+      "originalLocation": "un-comtrade-hs-codes.json:750210",
+      "policyNotes": [
+        "HS mapping must be reviewed before being used as strong evidence.",
+        "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence."
+      ],
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "UN Comtrade HS 750210 unavailable: ValueError",
+      "sourceWarning": "UN Comtrade query failed; do not treat this HS code as observed evidence.",
+      "generatedAt": "2026-06-15T14:19:58Z"
+    },
+    {
+      "factId": "COM005",
+      "statementZh": "UN Comtrade 未能采集 HS 790111（含锌量不少于 99.99% 的未锻轧锌）的可用观测。",
+      "metricName": "china_import_export_proxy",
+      "value": null,
+      "unit": "",
+      "period": "unavailable",
+      "source": "UN_COMTRADE",
+      "sourceType": "official_api_lagged",
+      "collector": "un_comtrade_python_package_v1",
+      "evidenceId": "EVID:UN_COMTRADE:trade:790111:china_import_export_proxy:unavailable:790111:41a26410",
+      "confidence": 0,
+      "rawHash": "41a26410",
+      "parserVersion": "finance-fact-bank-collector-v1",
+      "originalLocation": "un-comtrade-hs-codes.json:790111",
+      "policyNotes": [
+        "HS mapping must be reviewed before being used as strong evidence.",
+        "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence."
+      ],
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "UN Comtrade HS 790111 unavailable: ValueError",
+      "sourceWarning": "UN Comtrade query failed; do not treat this HS code as observed evidence.",
+      "generatedAt": "2026-06-15T14:20:00Z"
+    }
+  ],
+  "warnings": [
+    "UN Comtrade HS 260300 unavailable: ValueError",
+    "UN Comtrade HS 260600 unavailable: ValueError",
+    "UN Comtrade HS 740311 unavailable: ValueError",
+    "UN Comtrade HS 750210 unavailable: ValueError",
+    "UN Comtrade HS 790111 unavailable: ValueError"
+  ]
+}
