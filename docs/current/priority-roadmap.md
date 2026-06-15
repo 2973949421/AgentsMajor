@@ -46,7 +46,7 @@ Node/Sector 实验线：已退役并清理 active mode / runtime / Web progress 
 
 ## 3. 近期优先级
 
-### P0：N42-N48，Finance Major 原型（下一步）
+### P0：N42-N49，Finance Major 原型（当前）
 
 目标是保留 HexGrid 工程骨架，把旧 business duel 语义替换为 finance duel：
 
@@ -57,7 +57,8 @@ N44：Finance Evidence MVP 接入。（已完成第一版）
 N45：Finance Duel Runtime 接入。（已完成第一版）
 N46：金融裁判替换商业裁判。（已完成第一版）
 N47：金融 Web 验收台改造。（已完成第一版）
-N48：Dust2 有色 / 行业判断 6R 小样本验收。（下一步）
+N48：Dust2 有色 / 行业判断 6R 小样本验收。（条件通过）
+N49：Finance real 6R 样本与成本/语义质量修复。（下一步）
 ```
 
 当前测试落点：
@@ -84,7 +85,17 @@ N44 已生成第一版证据包：
 data/materials/generated/finance/maps/dust2-nonferrous/round-evidence-packs.json
 ```
 
-N45 已读取这份 evidence pack，生成 round-level financeDuel，并写入 Hex trace。N46 已让 combat 裁判优先消费 financeDuel，并保留旧 business 字段作为兼容别名。N47 已让 `/hex-lab/match` 的审计抽屉优先展示金融小主题、投资主张、反证质疑、证据编号、缺失证据、评分上限、金融裁判和 hard condition 分离链路。N48 的下一步是跑 Dust2 有色 / 行业判断 6R 小样本验收。
+N45 已读取这份 evidence pack，生成 round-level financeDuel，并写入 Hex trace。N46 已让 combat 裁判优先消费 financeDuel，并保留旧 business 字段作为兼容别名。N47 已让 `/hex-lab/match` 的审计抽屉优先展示金融小主题、投资主张、反证质疑、证据编号、缺失证据、评分上限、金融裁判和 hard condition 分离链路。N48 已完成 Dust2 有色 / 行业判断 6R 小样本验收，结论是条件通过：fixture 结构链路通过，real provider 金融样本尚未通过。
+
+N49 的下一步是修复 real provider 金融 6R 样本和成本/语义质量，重点包括：
+
+```text
+1. 生成新的 financeDuel real 6R 样本，而不是沿用旧 businessDuel real trace。
+2. 降低 request artifact 体积，避免 300KB+ 单次请求继续污染成本。
+3. 让真实模型输出围绕投资主张、反证质疑、证据编号和缺失证据。
+4. 将 fixture 文案从旧 business-plan action 改为金融兼容表达。
+5. 解释或修复连续 timeout_no_plant 的样本单调问题。
+```
 
 当前必须承认的边界：
 
