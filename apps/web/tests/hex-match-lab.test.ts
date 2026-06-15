@@ -83,6 +83,8 @@ describe("Hex Match Lab", () => {
     expect(drawer).toContain("证据缺口");
     expect(drawer).toContain("证据切片技术细节");
     expect(drawer).toContain("本阶段行动");
+    expect(drawer).toContain("引用开局信息卡");
+    expect(drawer).toContain("repairSummaryZh");
     expect(drawer).toContain("守方投资主张");
     expect(drawer).toContain("攻方反证质疑");
     expect(drawer).toContain("金融裁判链路");
@@ -148,6 +150,11 @@ describe("Hex Match Lab", () => {
     expect(server).toContain("usableFactsZh");
     expect(server).toContain("evidenceRefs");
     expect(server).toContain("repairedFields");
+    expect(server).toContain("phase_repeated_round_thesis");
+    expect(server).toContain("phase_action_reason_too_long");
+    expect(server).toContain("repaired_missing_briefRefId");
+    expect(server).toContain("repaired_invalid_briefRefId");
+    expect(server).toContain("本行动被修复");
     expect(server).toContain("languageMismatchCount");
     expect(server).toContain("averageRequestReductionRatio");
     expect(server).toContain("pathCellIds");

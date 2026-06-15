@@ -262,6 +262,7 @@ export interface HexMatchLabHumanActionStory {
     requestArtifactId?: string | undefined;
     responseArtifactId?: string | undefined;
     validationErrors: string[];
+    repairedFields: string[];
   };
 }
 
@@ -544,6 +545,7 @@ export interface HexMatchLabActionSummary {
   valid: boolean;
   fallbackReason?: string | undefined;
   validationErrors: string[];
+  repairedFields: string[];
   businessIntent?: string | undefined;
   briefRefId?: string | undefined;
   actionRationaleZh?: string | undefined;
@@ -1592,13 +1594,15 @@ function buildHumanPhaseStory(
     const actionSummaryZh = [
       `${displayName} 本阶段${humanizeActionType(action.actionType)}`,
       action.actionRationaleZh || action.businessIntent ? `理由：${action.actionRationaleZh ?? action.businessIntent}` : "理由：未记录",
-      brief ? `引用开局信息卡：${brief.roundTaskZh}` : "未记录开局信息卡引用"
+      brief ? `引用开局信息卡：${brief.roleQuestionZh ?? brief.roundTaskZh}` : "未记录开局信息卡引用"
     ].join("；");
     const repairSummaryZh = action.fallbackReason
       ? `本行动被降级：${humanizeReason(action.fallbackReason)}`
       : action.validationErrors.length > 0
         ? `本行动被拒绝：${action.validationErrors.map(humanizeReason).join("、")}`
-        : undefined;
+        : action.repairedFields.length > 0
+          ? `本行动被修复：${action.repairedFields.map(humanizeReason).join("、")}`
+          : undefined;
     return {
       agentId: action.agentId,
       displayName,
@@ -1609,7 +1613,8 @@ function buildHumanPhaseStory(
         targetCellId: action.targetCellId,
         requestArtifactId: action.requestArtifactId,
         responseArtifactId: action.responseArtifactId,
-        validationErrors: [...action.validationErrors]
+        validationErrors: [...action.validationErrors],
+        repairedFields: [...action.repairedFields]
       }
     };
   });
@@ -1735,6 +1740,10 @@ function humanizeReason(reason: string): string {
     validated_ap_path: "行动路径和 AP 合法",
     finance_intent_present: "行动理由已引用金融攻防任务",
     finance_score_cap_applied_without_evidence_reference: "证据引用不足，金融得分被封顶",
+    phase_repeated_round_thesis: "阶段行动复述了开局金融论点，已拒绝",
+    phase_action_reason_too_long: "阶段行动理由过长，疑似重新写金融作文",
+    repaired_missing_briefRefId: "已补齐开局信息卡引用",
+    repaired_invalid_briefRefId: "已修正为当前选手自己的开局信息卡",
     target_cell_occupied: "目标格已被占用",
     max_llm_calls_reached: "已达到本阶段 LLM 调用上限",
     dead_agent_skipped: "选手已阵亡，跳过行动",
@@ -2046,6 +2055,7 @@ function summarizePhase(
       valid: action.valid,
       fallbackReason: action.fallbackReason,
       validationErrors: action.validationErrors,
+      repairedFields: audit?.repairedFields ?? [],
       businessIntent: action.businessIntent,
       briefRefId: action.briefRefId,
       actionRationaleZh: action.actionRationaleZh,

@@ -332,6 +332,11 @@ const forbiddenDraftFields = new Set([
   "hiddenEnemyPosition"
 ]);
 
+const maxPhaseBusinessIntentChars = 160;
+const maxPhaseActionRationaleChars = 200;
+const maxRiskNoteCount = 3;
+const maxRiskNoteChars = 80;
+
 export function buildHexAgentCommandRequest(input: {
   asset: HexMapAsset;
   memory: HexRoundMemory;
@@ -533,7 +538,8 @@ export function buildHexAgentCompactCommandRequest(request: HexAgentCommandReque
       "只输出一个 JSON object，不要输出数组，除非系统明确要求。",
       "businessIntent、tacticalIntent、riskNotes 必须用中文表达本阶段行动理由。",
       "如果有 agentOpeningBrief，businessIntent 必须引用该信息卡的任务或证据边界，但不要复述完整金融主张。",
-      "可以输出 briefRefId 和 actionRationaleZh；briefRefId 必须等于 agentOpeningBrief.briefId。",
+      "必须输出 briefRefId 和 actionRationaleZh；briefRefId 必须等于 agentOpeningBrief.briefId。",
+      "businessIntent 不超过 160 个中文字符，actionRationaleZh 不超过 200 个中文字符，riskNotes 最多 3 条且每条不超过 80 个中文字符。",
       "JSON 字段名、actionType、cell id、phaseId、agentId 必须保持给定英文标识。",
       "targetCellId 必须从 targetCandidates 中选择；不要选择 friendly occupied/reserved cell。",
       "lastSeenEnemies 是历史信息，不是当前敌人真实位置。",
@@ -568,8 +574,8 @@ export function buildHexAgentCompactCommandRequest(request: HexAgentCommandReque
     compact.financeDuel = {
       topicKey: request.financeDuel.topicKey,
       topicTitle: request.financeDuel.topicTitle,
-      defenseSummaryZh: `守方自证：${request.financeDuel.defenseThesis.thesis}`,
-      attackSummaryZh: `攻方质疑：${request.financeDuel.attackChallenge.thesis}`
+      defenseSummaryZh: "守方自证已固定在开局信息卡；局内只引用信息卡，不复述完整主张。",
+      attackSummaryZh: "攻方质疑已固定在开局信息卡；局内只引用信息卡，不复述完整质疑。"
     };
     if (request.agentOpeningBrief) {
       compact.agentOpeningBrief = { ...request.agentOpeningBrief };
@@ -922,17 +928,26 @@ export function normalizeHexAgentActionDraft(input: NormalizeHexAgentActionDraft
   if (!businessIntent) {
     errors.push("draft:missing_businessIntent");
   }
+  const actionRationaleZh = readOptionalString(rawDraft.actionRationaleZh);
+  const tacticalIntent = readOptionalString(rawDraft.tacticalIntent);
+  const riskNotes = readStringArray(rawDraft.riskNotes);
   if (containsGarbledText(businessIntent) || containsGarbledText(readOptionalString(rawDraft.tacticalIntent) ?? "")) {
     errors.push("draft:garbled_text");
   }
-  if (containsGarbledText(readOptionalString(rawDraft.actionRationaleZh) ?? "")) {
+  if (containsGarbledText(actionRationaleZh ?? "")) {
     errors.push("draft:garbled_text");
   }
-  if (readStringArray(rawDraft.riskNotes).some(containsGarbledText)) {
+  if (riskNotes.some(containsGarbledText)) {
     errors.push("draft:garbled_text");
   }
-  if (input.request.agentOpeningBrief && repeatsRoundOpeningBrief(businessIntent, input.request.agentOpeningBrief)) {
-    repairedFields.push("phase_repeated_round_thesis");
+  if (input.request.agentOpeningBrief) {
+    const phaseBoundaryErrors = validatePhaseActionBoundary({
+      businessIntent,
+      actionRationaleZh,
+      riskNotes,
+      brief: input.request.agentOpeningBrief
+    });
+    errors.push(...phaseBoundaryErrors);
   }
 
   if (errors.length > 0) {
@@ -951,19 +966,23 @@ export function normalizeHexAgentActionDraft(input: NormalizeHexAgentActionDraft
     actionType: actionType as HexAgentActionType,
     businessIntent
   };
-  const briefRefId = readOptionalString(rawDraft.briefRefId);
-  if (briefRefId) {
-    draft.briefRefId = briefRefId;
+  const rawBriefRefId = readOptionalString(rawDraft.briefRefId);
+  if (input.request.agentOpeningBrief) {
+    if (!rawBriefRefId) {
+      repairedFields.push("repaired_missing_briefRefId");
+    } else if (rawBriefRefId !== input.request.agentOpeningBrief.briefId) {
+      repairedFields.push("repaired_invalid_briefRefId");
+    }
+    draft.briefRefId = input.request.agentOpeningBrief.briefId;
+  } else if (rawBriefRefId) {
+    draft.briefRefId = rawBriefRefId;
   }
-  const actionRationaleZh = readOptionalString(rawDraft.actionRationaleZh);
   if (actionRationaleZh) {
     draft.actionRationaleZh = actionRationaleZh;
   }
-  const tacticalIntent = readOptionalString(rawDraft.tacticalIntent);
   if (tacticalIntent) {
     draft.tacticalIntent = tacticalIntent;
   }
-  const riskNotes = readStringArray(rawDraft.riskNotes);
   if (riskNotes.length > 0) {
     draft.riskNotes = riskNotes;
   }
@@ -979,19 +998,52 @@ export function normalizeHexAgentActionDraft(input: NormalizeHexAgentActionDraft
   };
 }
 
+function validatePhaseActionBoundary(input: {
+  businessIntent: string;
+  actionRationaleZh?: string | undefined;
+  riskNotes: string[];
+  brief: HexAgentOpeningBrief;
+}): string[] {
+  const errors = new Set<string>();
+  if (isTooLongPhaseActionText(input.businessIntent, maxPhaseBusinessIntentChars)
+    || isTooLongPhaseActionText(input.actionRationaleZh ?? "", maxPhaseActionRationaleChars)
+    || input.riskNotes.length > maxRiskNoteCount
+    || input.riskNotes.some((note) => isTooLongPhaseActionText(note, maxRiskNoteChars))) {
+    errors.add("phase_action_reason_too_long");
+  }
+  if (repeatsRoundOpeningBrief(input.businessIntent, input.brief)
+    || repeatsRoundOpeningBrief(input.actionRationaleZh ?? "", input.brief)) {
+    errors.add("phase_repeated_round_thesis");
+  }
+  return [...errors];
+}
+
+function isTooLongPhaseActionText(text: string, maxChars: number): boolean {
+  return text.replace(/\s+/g, "").length > maxChars;
+}
+
 function repeatsRoundOpeningBrief(text: string, brief: HexAgentOpeningBrief): boolean {
   const normalized = text.replace(/\s+/g, "");
-  if (normalized.length < 120) {
+  if (normalized.length < 48) {
     return false;
   }
   const candidates = [
     brief.proofOrChallengeZh,
     brief.evidenceBoundaryZh,
-    brief.roundTaskZh
+    brief.roundTaskZh,
+    brief.roleQuestionZh ?? "",
+    ...(brief.usableFactsZh ?? [])
   ]
-    .map((value) => value.replace(/\s+/g, "").slice(0, 24))
+    .map((value) => value.replace(/\s+/g, ""))
     .filter((value) => value.length >= 12);
-  return candidates.some((candidate) => normalized.includes(candidate));
+  return candidates.some((candidate) => {
+    const exactWindow = candidate.slice(0, Math.min(candidate.length, 32));
+    if (exactWindow.length >= 16 && normalized.includes(exactWindow)) {
+      return true;
+    }
+    const overlapWindow = candidate.slice(0, Math.min(candidate.length, 48));
+    return overlapWindow.length >= 24 && normalized.includes(overlapWindow);
+  });
 }
 
 export function isHexAgentActionType(value: string): value is HexAgentActionType {

@@ -248,6 +248,40 @@ Risk / support：missingEvidence、scoreCaps、反证、止损和仓位降级。
 - 技术字段必须完整保留在折叠的“技术细节”中。
 - 未识别 reason 不允许静默丢弃，必须显示为“未翻译技术原因”并保留原文。
 
+### 5.8 N52 回合信息层 / 局内行动层硬隔离
+
+N52 起，`agent_action` 的 compact request 必须把金融观点层和局内行动层硬隔离。
+
+真实 provider 发送的 compact request 不得携带完整 `financeDuel.defenseThesis.thesis`、`financeDuel.attackChallenge.thesis` 或长 claims / challenge points。完整请求仍可保存在 request artifact 中用于审计和调试，但不能作为 real provider 的主输入。
+
+compact request 只允许发送：
+
+- 当前局势、`phaseId`、当前位置、AP、C4、lastSeen、targetCandidates、occupied / reserved cells。
+- 当前 agent 的 `agentOpeningBrief` 和 `agentEvidenceSlice` 摘要。
+- round 小主题标题和极短侧向目标。
+
+当存在 `agentOpeningBrief` 时，输出契约为：
+
+- `briefRefId` 等价于必填。
+- 缺失 `briefRefId` 时，代码只能修正为当前 agent 自己的 `briefId`，并记录 `repaired_missing_briefRefId`。
+- 错写为其他 agent 或不存在的 `briefRefId` 时，代码只能修正为当前 agent 自己的 `briefId`，并记录 `repaired_invalid_briefRefId`。
+- `businessIntent` 只是 legacy 字段名，只能表示本阶段行动理由。
+- `actionRationaleZh` 是优先展示的中文阶段行动理由。
+
+阶段行动输出不得重新写完整金融论文：
+
+- 如果 `businessIntent / actionRationaleZh` 大段复述开局自证、质疑、角色问题、证据边界或可用事实，必须记录 `phase_repeated_round_thesis` 并拒绝草案。
+- 如果行动理由明显超长，必须记录 `phase_action_reason_too_long` 并拒绝草案。
+- 短句引用开局信息卡允许通过；完整复述不允许通过。
+
+Web 审计默认展示中文行动摘要：
+
+```text
+行动 -> 目标 -> 引用哪张开局信息卡 -> 简短行动理由 -> 修复 / 拒绝 / 降级原因
+```
+
+raw `briefRefId`、`agentId`、`cellId`、artifact id 和英文枚举仍必须保留在技术细节中，不能为了中文展示而删除审计事实。
+
 ## 6. Judge Scorecard v6
 
 `judge_verdict` 必须输出 `judgeScorecard`。评分标准由代码生成并写入输入中的 `rubricProfile`，LLM 只能消费，不能修改。

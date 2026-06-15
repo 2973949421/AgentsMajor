@@ -270,6 +270,8 @@ describe("Hex agent command boundary", () => {
     expect(compact.financeDuel?.topicKey).toBe("global_metal_price_signal");
     expect(compact.financeDuel?.defenseSummaryZh).toContain("守方自证");
     expect(compact.financeDuel?.attackSummaryZh).toContain("攻方质疑");
+    expect(compact.financeDuel?.defenseSummaryZh).not.toContain(financeDuel.defenseThesis.thesis);
+    expect(compact.financeDuel?.attackSummaryZh).not.toContain(financeDuel.attackChallenge.thesis);
     expect(compact.agentOpeningBrief?.briefId).toBe(request.agentOpeningBrief?.briefId);
     expect(compact.agentOpeningBrief?.sliceId).toBeDefined();
     expect(compact.agentOpeningBrief?.financeRoleCn).toBeDefined();
@@ -278,6 +280,132 @@ describe("Hex agent command boundary", () => {
     expect(JSON.stringify(compact)).not.toContain("\"scoreCaps\"");
     expect(compact.businessDuel).toBeUndefined();
     expect(compact.hardConstraints.some((line) => line.includes("businessIntent"))).toBe(true);
+  });
+
+  it("repairs missing and invalid brief references to the current opening brief", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset),
+      bombCarrierAgentId: "t_0"
+    });
+    const financeDuel = buildHexRoundFinanceDuel({
+      roundNumber: 1,
+      attackTeamId: "t",
+      defenseTeamId: "ct",
+      agents: memory.agents.map((agent) => ({
+        agentId: agent.agentId,
+        teamId: agent.teamId,
+        side: agent.side,
+        role: agent.agentId === "t_0" ? "portfolio_manager" : "sector_specialist"
+      }))
+    });
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_0",
+      financeDuel
+    });
+    const missing = normalizeHexAgentActionDraft({
+      request,
+      rawDraft: {
+        agentId: "t_0",
+        phaseId: request.phaseId,
+        currentCellId: request.agent.currentCellId,
+        targetCellId: request.targetCandidates[0]!.targetCellId,
+        actionType: "move",
+        businessIntent: "引用开局信息卡的配置边界，移动到候选点位验证风险，不重写整段金融主张。"
+      }
+    });
+    const invalid = normalizeHexAgentActionDraft({
+      request,
+      rawDraft: {
+        agentId: "t_0",
+        phaseId: request.phaseId,
+        currentCellId: request.agent.currentCellId,
+        targetCellId: request.targetCandidates[0]!.targetCellId,
+        actionType: "move",
+        briefRefId: "opening_wrong_agent",
+        businessIntent: "引用开局信息卡的配置边界，移动到候选点位验证风险，不重写整段金融主张。"
+      }
+    });
+
+    expect(missing.errors).toEqual([]);
+    expect(missing.draft?.briefRefId).toBe(request.agentOpeningBrief?.briefId);
+    expect(missing.repairedFields).toContain("repaired_missing_briefRefId");
+    expect(invalid.errors).toEqual([]);
+    expect(invalid.draft?.briefRefId).toBe(request.agentOpeningBrief?.briefId);
+    expect(invalid.repairedFields).toContain("repaired_invalid_briefRefId");
+  });
+
+  it("rejects phase action drafts that repeat the full opening thesis or exceed action bounds", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset),
+      bombCarrierAgentId: "t_0"
+    });
+    const financeDuel = buildHexRoundFinanceDuel({
+      roundNumber: 1,
+      attackTeamId: "t",
+      defenseTeamId: "ct",
+      agents: memory.agents.map((agent) => ({
+        agentId: agent.agentId,
+        teamId: agent.teamId,
+        side: agent.side,
+        role: agent.agentId === "t_0" ? "portfolio_manager" : "sector_specialist"
+      }))
+    });
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_0",
+      financeDuel
+    });
+    const shortReference = normalizeHexAgentActionDraft({
+      request,
+      rawDraft: {
+        agentId: "t_0",
+        phaseId: request.phaseId,
+        currentCellId: request.agent.currentCellId,
+        targetCellId: request.targetCandidates[0]!.targetCellId,
+        actionType: "move",
+        briefRefId: request.agentOpeningBrief?.briefId,
+        businessIntent: "引用开局卡的配置边界，推进到候选点位验证风险。",
+        actionRationaleZh: "只做本阶段移动和风险验证。"
+      }
+    });
+    const repeated = normalizeHexAgentActionDraft({
+      request,
+      rawDraft: {
+        agentId: "t_0",
+        phaseId: request.phaseId,
+        currentCellId: request.agent.currentCellId,
+        targetCellId: request.targetCandidates[0]!.targetCellId,
+        actionType: "move",
+        briefRefId: request.agentOpeningBrief?.briefId,
+        businessIntent: `${request.agentOpeningBrief?.proofOrChallengeZh ?? ""} ${request.agentOpeningBrief?.evidenceBoundaryZh ?? ""}`
+      }
+    });
+    const tooLong = normalizeHexAgentActionDraft({
+      request,
+      rawDraft: {
+        agentId: "t_0",
+        phaseId: request.phaseId,
+        currentCellId: request.agent.currentCellId,
+        targetCellId: request.targetCandidates[0]!.targetCellId,
+        actionType: "move",
+        briefRefId: request.agentOpeningBrief?.briefId,
+        businessIntent: "引用开局卡，但本阶段仍然输出一大段不必要的金融作文。".repeat(12)
+      }
+    });
+
+    expect(shortReference.errors).toEqual([]);
+    expect(shortReference.draft?.briefRefId).toBe(request.agentOpeningBrief?.briefId);
+    expect(repeated.draft).toBeUndefined();
+    expect(repeated.errors).toContain("phase_repeated_round_thesis");
+    expect(tooLong.draft).toBeUndefined();
+    expect(tooLong.errors).toContain("phase_action_reason_too_long");
   });
 
   it("builds deterministic round opening briefs for all agents without extra LLM calls", () => {

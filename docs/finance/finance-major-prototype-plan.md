@@ -783,14 +783,17 @@ N51 不重新拉 API，不新增 agent 临场 API 调用，不改 Hex AP / comba
 docs/finance/n51-agent-evidence-slice-plan.md
 ```
 
-### N52：回合信息层 / 局内行动层硬隔离（计划）
+### N52：回合信息层 / 局内行动层硬隔离（已完成第一版）
 
 目标：
 
 - phase action 只引用当前 agent 的开局信息卡和当前局势。
 - compact request 不再发送完整 financeDuel 长文本。
 - 输出必须带 `briefRefId` 或等效引用。
-- 如果 phase action 复述完整 round thesis，记录 `phase_repeated_round_thesis`。
+- 如果 phase action 复述完整 round thesis，记录 `phase_repeated_round_thesis` 并拒绝草案。
+- 如果 phase action 理由明显超长，记录 `phase_action_reason_too_long` 并拒绝草案。
+- 缺失或错写 `briefRefId` 时，只能修正为当前 agent 自己的开局信息卡，并记录 `repaired_missing_briefRefId` / `repaired_invalid_briefRefId`。
+- Web 中文审计会显示本阶段行动引用的信息卡、简短行动理由、修复、拒绝或降级原因。
 
 详细计划：
 

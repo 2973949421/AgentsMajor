@@ -107,6 +107,7 @@ function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; 
           <article className={styles.auditCard}>
             <h3>{phaseStory.phaseLabel ?? `P${phaseStory.phaseIndex}`}：本阶段行动</h3>
             <p>{phaseStory.summaryZh}</p>
+            <h4>行动与引用开局信息卡</h4>
             {phaseStory.actionStories.length > 0 ? (
               <ul>
                 {phaseStory.actionStories.map((action) => (

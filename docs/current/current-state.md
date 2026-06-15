@@ -6,10 +6,10 @@
 
 ```text
 当前主线：HexGrid（蜂巢格）Phase 2.0-pre。
-当前进度：N20-N51 已完成第一版验收。
+当前进度：N20-N52 已完成第一版验收。
 当前入口：/hex-lab/match。
 当前底层事实：official Dust2 Hex map、Hex phase memory、Hex action/combat/economy/round runner、Hex map runner、Hex trace artifacts。
-下一阶段候选：N52-N54 金融事实链与审计连续收口。
+下一阶段候选：N53-N54 金融事实链与审计连续收口。
 ```
 
 HexGrid 现在是新的比赛事实主线。它负责地图可走性、AP、阶段记忆、agent action、局部 combat、economy evidence、单回合提交、完整 Dust2 地图灰度和 Web 验收。
@@ -68,7 +68,7 @@ apps/web/.next-dev-3001.err.log
 
 ## 5. 下一步候选
 
-当前下一步不建议继续修旧泛商业文案，也不建议立刻做结构封板第二轮。N35-N41 已经证明 HexGrid 工程骨架可运行、可提交、可 Web 验收，但旧 business duel（商业攻防）语义层容易输出空泛内容。N42-N47 已经把 Finance Major（金融投资对抗）原型接入到证据包、队伍资产、运行时 financeDuel、战斗金融裁判和 Web 金融审计。N48 已完成 Dust2 有色 / 行业判断 6R 小样本验收，结论是条件通过。N49 已完成中文可读审计和回合信息层 / 局内行动层拆分第一版。N50 已生成离线金融事实库。N51 已把事实库按 PM / Macro / Commodity / Company / Risk 五类专家角色切成 agentEvidenceSlice，并让开局信息卡引用各自的证据、缺口和边界。下一阶段继续处理局内行动层硬隔离、裁判证据采信和真实样本级中文验收。
+当前下一步不建议继续修旧泛商业文案，也不建议立刻做结构封板第二轮。N35-N41 已经证明 HexGrid 工程骨架可运行、可提交、可 Web 验收，但旧 business duel（商业攻防）语义层容易输出空泛内容。N42-N47 已经把 Finance Major（金融投资对抗）原型接入到证据包、队伍资产、运行时 financeDuel、战斗金融裁判和 Web 金融审计。N48 已完成 Dust2 有色 / 行业判断 6R 小样本验收，结论是条件通过。N49 已完成中文可读审计和回合信息层 / 局内行动层拆分第一版。N50 已生成离线金融事实库。N51 已把事实库按 PM / Macro / Commodity / Company / Risk 五类专家角色切成 agentEvidenceSlice，并让开局信息卡引用各自的证据、缺口和边界。N52 已把回合信息层 / 局内行动层边界变成硬契约：compact request 不再发送完整金融长文本，phase action 必须引用当前 agent 自己的信息卡，复述完整开局论点或行动理由明显超长会进入拒绝 / 降级路径。下一阶段继续处理裁判证据采信和真实样本级中文验收。
 
 ```text
 N42：Finance Evidence + Finance Duel 契约。（已完成）
@@ -81,7 +81,7 @@ N48：Dust2 有色 / 行业判断 6R 小样本验收。（条件通过）
 N49：中文可读审计 + 回合信息层 / 局内行动层拆分。（已完成第一版）
 N50：离线金融事实库。（已完成第一版）
 N51：专家证据切片与开局信息卡差异化。（已完成第一版）
-N52：回合信息层 / 局内行动层硬隔离。（下一步）
+N52：回合信息层 / 局内行动层硬隔离。（已完成第一版）
 N53：金融裁判证据采信事实化。（计划）
 N54：中文人类审计与真实样本验收。（计划）
 ```
@@ -122,5 +122,5 @@ FRED 和 BaoStock 已进入 `offline_observation_fact`。
 UN Comtrade 第一版为 optional unavailable observation。
 当前 generated round evidence pack 仍可保留 configured_proxy_fact 兜底。
 比赛运行时读到了 evidence pack，但不是实时 API 数据。
-N51 已按专家角色切片给 agent；N52-N54 再处理行动边界、裁判采信和人工审计。
+N51 已按专家角色切片给 agent；N52 已硬隔离行动边界；N53-N54 再处理裁判采信和人工审计。
 ```
