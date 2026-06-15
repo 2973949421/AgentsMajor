@@ -43,6 +43,8 @@ export interface HexValidatedAgentAction {
   verticalLinkIds: string[];
   pathSource: "pathfinding" | "none";
   businessIntent: string;
+  briefRefId?: string;
+  actionRationaleZh?: string;
   tacticalIntent?: string;
   riskNotes: string[];
   confidence?: number;
@@ -103,6 +105,12 @@ export function validateHexAgentActionDraft(input: ValidateHexAgentActionDraftIn
   }
   if (input.draft.tacticalIntent) {
     validated.tacticalIntent = input.draft.tacticalIntent;
+  }
+  if (input.draft.briefRefId) {
+    validated.briefRefId = input.draft.briefRefId;
+  }
+  if (input.draft.actionRationaleZh) {
+    validated.actionRationaleZh = input.draft.actionRationaleZh;
   }
   if (input.draft.confidence !== undefined) {
     validated.confidence = input.draft.confidence;

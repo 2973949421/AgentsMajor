@@ -16,6 +16,7 @@ import {
   calculateHexAgentCommandRequestSizeMetrics,
   normalizeHexAgentActionDraft
 } from "./hex-agent-command-boundary.js";
+import { buildHexRoundOpeningBrief } from "./hex-round-opening-brief.js";
 
 describe("Hex agent command boundary", () => {
   it("builds a compact request from phase memory without treating last-seen as current truth", () => {
@@ -218,7 +219,7 @@ describe("Hex agent command boundary", () => {
     expect(compact.targetCandidates.length).toBeLessThanOrEqual(8);
     expect(compact.businessDuel?.subthemeTitle).toBe(request.businessDuel?.subthemeTitle);
     expect(compact.businessDuel?.agentAssignment?.businessTask).toBe(request.businessAssignment?.businessTask);
-    expect(compact.outputSchema.semanticFieldsMustUseChinese).toEqual(["businessIntent", "tacticalIntent", "riskNotes"]);
+    expect(compact.outputSchema.semanticFieldsMustUseChinese).toEqual(["businessIntent", "actionRationaleZh", "tacticalIntent", "riskNotes"]);
     expect(compact.outputSchema.codeIdentifiersRemainEnglish).toContain("targetCellId");
     expect(metrics.compactRequestCharLength).toBeLessThan(metrics.fullRequestCharLength);
     expect(metrics.estimatedReductionRatio).toBeGreaterThan(0.4);
@@ -264,10 +265,60 @@ describe("Hex agent command boundary", () => {
 
     expect(request.financeDuel?.topicKey).toBe("global_metal_price_signal");
     expect(request.financeAssignment?.agentId).toBe("t_0");
+    expect(request.agentOpeningBrief?.briefId).toBe("opening_1_t_0");
+    expect(request.agentOpeningBrief?.roundTaskZh).toContain("质疑");
     expect(compact.financeDuel?.topicKey).toBe("global_metal_price_signal");
-    expect(compact.financeDuel?.agentAssignment?.financeTask).toContain("质疑");
+    expect(compact.financeDuel?.defenseSummaryZh).toContain("守方自证");
+    expect(compact.financeDuel?.attackSummaryZh).toContain("攻方质疑");
+    expect(compact.agentOpeningBrief?.briefId).toBe(request.agentOpeningBrief?.briefId);
+    expect(JSON.stringify(compact)).not.toContain("promptFacts");
+    expect(JSON.stringify(compact)).not.toContain("missingEvidence");
     expect(compact.businessDuel).toBeUndefined();
     expect(compact.hardConstraints.some((line) => line.includes("businessIntent"))).toBe(true);
+  });
+
+  it("builds deterministic round opening briefs for all agents without extra LLM calls", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset),
+      bombCarrierAgentId: "t_0"
+    });
+    const economyContext = buildHexRoundEconomyContext({
+      memory,
+      teamEconomyPlans: {
+        t: buildPlan("t", "rifle_buy", "fullBuy", ["t_0", "t_1", "t_2", "t_3", "t_4"]),
+        ct: buildPlan("ct", "eco", "eco", ["ct_0", "ct_1", "ct_2", "ct_3", "ct_4"])
+      }
+    });
+    const financeDuel = buildHexRoundFinanceDuel({
+      roundNumber: 1,
+      attackTeamId: "t",
+      defenseTeamId: "ct",
+      agents: memory.agents.map((agent) => ({
+        agentId: agent.agentId,
+        teamId: agent.teamId,
+        side: agent.side,
+        role: agent.agentId === "t_0" ? "portfolio_manager" : "sector_specialist"
+      }))
+    });
+
+    const brief = buildHexRoundOpeningBrief({
+      financeDuel,
+      economyContext,
+      agents: memory.agents.map((agent) => ({
+        agentId: agent.agentId,
+        teamId: agent.teamId,
+        side: agent.side,
+        role: agent.agentId === "t_0" ? "portfolio_manager" : "sector_specialist"
+      }))
+    });
+
+    expect(brief.agentBriefs).toHaveLength(10);
+    expect(brief.defenseSummaryZh).toContain("守方自证");
+    expect(brief.attackSummaryZh).toContain("攻方质疑");
+    expect(brief.agentBriefs.find((item) => item.agentId === "t_0")?.proofOrChallengeZh).toContain(financeDuel.attackChallenge.thesis);
+    expect(brief.agentBriefs.find((item) => item.agentId === "ct_0")?.buyConstraintZh).toContain("资源 low");
   });
 
   it("includes occupied and reserved cells while deprioritizing blocked target candidates", () => {
@@ -424,6 +475,7 @@ describe("Hex agent command boundary", () => {
       targetCellId: "h_02_01_l0",
       actionType: "move",
       businessIntent: "用中路推进质疑对手的渠道护城河，并为队友制造交叉火力。",
+      actionRationaleZh: "引用开局信息卡，选择能验证风险边界的点位。",
       tacticalIntent: "靠近 A 小道入口但不把 lastSeen 当作真实位置。",
       riskNotes: ["避免进入队友预占格"]
     });
@@ -442,6 +494,7 @@ describe("Hex agent command boundary", () => {
     expect(zh.languageMismatch).toBe(false);
     expect(en.semanticLanguage).toBe("en");
     expect(en.languageMismatch).toBe(true);
+    expect(zh.inspectedSemanticFields).toEqual(["businessIntent", "actionRationaleZh", "tacticalIntent", "riskNotes.0"]);
     expect(en.inspectedSemanticFields).toEqual(["businessIntent", "tacticalIntent", "riskNotes.0"]);
   });
 });

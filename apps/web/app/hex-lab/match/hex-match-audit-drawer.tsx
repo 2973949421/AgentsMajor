@@ -24,7 +24,7 @@ export function HexMatchAuditDrawer(props: HexMatchAuditDrawerProps) {
     <aside className={styles.auditDrawer} aria-label="Hex 审计详情">
       <div className={styles.drawerHeader}>
         <div>
-          <span>Audit drawer</span>
+          <span>中文审计</span>
           <h2>金融攻防 / LLM / 战斗 / 经济 / 硬胜负审计</h2>
         </div>
         <button type="button" onClick={props.onClose}>关闭</button>
@@ -56,6 +56,81 @@ export function HexMatchAuditDrawer(props: HexMatchAuditDrawerProps) {
 }
 
 function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; phase: HexMatchLabPhaseSummary | undefined }) {
+  const humanAudit = props.trace?.humanAudit;
+  if (humanAudit) {
+    const phaseStory = humanAudit.phaseStories.find((story) => story.phaseIndex === props.phase?.phaseIndex) ?? humanAudit.phaseStories[0];
+    return (
+      <div className={styles.auditStack}>
+        <article className={styles.auditCard}>
+          <h3>{humanAudit.roundStoryZh}</h3>
+          <p>{humanAudit.defenseSummaryZh}</p>
+          <p>{humanAudit.attackSummaryZh}</p>
+          <p>{humanAudit.evidenceBoundaryZh}</p>
+        </article>
+
+        <article className={styles.auditCard}>
+          <h3>本局开局信息卡</h3>
+          <ul>
+            {humanAudit.agentOpeningBriefs.map((brief) => (
+              <li key={brief.briefId}>
+                <strong>{brief.displayName}</strong> / {brief.teamSide} / {brief.role}：
+                {brief.roundTaskZh}
+                <br />
+                <span>{brief.proofOrChallengeZh}</span>
+                <br />
+                <small>{brief.buyConstraintZh} {brief.actionHintZh}</small>
+              </li>
+            ))}
+          </ul>
+        </article>
+
+        {phaseStory ? (
+          <article className={styles.auditCard}>
+            <h3>{phaseStory.phaseLabel ?? `P${phaseStory.phaseIndex}`}：本阶段行动</h3>
+            <p>{phaseStory.summaryZh}</p>
+            {phaseStory.actionStories.length > 0 ? (
+              <ul>
+                {phaseStory.actionStories.map((action) => (
+                  <li key={`${phaseStory.phaseIndex}_${action.agentId}`}>
+                    <strong>{action.displayName}</strong>：{action.actionSummaryZh}
+                    {action.repairSummaryZh ? `；${action.repairSummaryZh}` : ""}
+                  </li>
+                ))}
+              </ul>
+            ) : <p>当前阶段没有 LLM 行动。</p>}
+            <h4>战斗裁判</h4>
+            {phaseStory.combatStories.length > 0 ? (
+              <ul>
+                {phaseStory.combatStories.map((combat) => (
+                  <li key={combat.contactId}>
+                    <strong>{combat.verdictZh}</strong>：{combat.impactZh}
+                    {combat.reasonsZh.length > 0 ? (
+                      <span> 理由：{combat.reasonsZh.join("；")}</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : <p>当前阶段没有战斗裁定。</p>}
+          </article>
+        ) : null}
+
+        {humanAudit.winnerSummaryZh ? (
+          <article className={styles.auditCard}>
+            <h3>硬胜负</h3>
+            <p>{humanAudit.winnerSummaryZh}</p>
+          </article>
+        ) : null}
+
+        <details className={styles.auditCard}>
+          <summary>技术细节</summary>
+          <p>request artifacts: {humanAudit.technicalRefs.requestArtifactIds.join(", ") || "未记录"}</p>
+          <p>response artifacts: {humanAudit.technicalRefs.responseArtifactIds.join(", ") || "未记录"}</p>
+          <p>raw reason count: {humanAudit.technicalRefs.rawReasonCount}</p>
+          <pre className={styles.rawJson}>{JSON.stringify({ humanAudit, selectedPhase: props.phase }, null, 2)}</pre>
+        </details>
+      </div>
+    );
+  }
   const financeReview = props.trace?.financeReview;
   if (financeReview) {
     const phaseStory = financeReview.phaseStories.find((story) => story.phaseIndex === props.phase?.phaseIndex) ?? financeReview.phaseStories[0];
@@ -226,22 +301,25 @@ function LlmAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; phase
           <p>质疑点: {duel.attackChallenge.challengePoints.join("; ") || "无"}</p>
         </article>
       ) : null}
-      <MetricLine label="provider" value={audit.providerMode ?? "unknown"} />
-      <MetricLine label="model" value={audit.modelId ?? "未记录"} />
-      <MetricLine label="strategy variant" value={audit.strategyVariant ?? "未记录"} />
-      <MetricLine label="strategy seed" value={audit.roundStrategySeed ?? "未记录"} />
-      <MetricLine label="expected / attempted" value={`${audit.expectedCalls} / ${audit.totalLlmCallsAttempted}`} />
-      <MetricLine label="accepted / rejected / fallback" value={`${audit.acceptedDrafts} / ${audit.rejectedDrafts} / ${audit.fallbackCount}`} />
-      <MetricLine label="compact requests" value={`${audit.compactRequestCount}`} />
-      <MetricLine label="avg request reduction" value={formatPercent(audit.averageRequestReductionRatio)} />
-      <MetricLine label="prompt tokens" value={audit.promptTokenTotal !== undefined ? String(audit.promptTokenTotal) : "provider 未返回"} />
-      <MetricLine label="semantic languages" value={audit.semanticLanguages.join(", ") || "未记录"} />
-      <MetricLine label="language mismatch" value={`${audit.languageMismatchCount}`} />
-      <MetricLine label="request artifacts" value={audit.requestArtifactIds.join(", ") || "当前 trace 未记录"} />
-      <MetricLine label="response artifacts" value={audit.responseArtifactIds.join(", ") || "当前 trace 未记录"} />
-      <MetricLine label="repaired fields" value={audit.repairedFields.join(", ") || "无"} />
-      <MetricLine label="fallback reasons" value={audit.fallbackReasons.join("; ") || "无"} />
-      <MetricLine label="provider errors" value={audit.providerErrors.join("; ") || "无"} />
+      <MetricLine label="供应器" value={audit.providerMode ?? "unknown"} />
+      <MetricLine label="模型" value={audit.modelId ?? "未记录"} />
+      <MetricLine label="战术变化" value={audit.strategyVariant ?? "未记录"} />
+      <MetricLine label="策略种子" value={audit.roundStrategySeed ?? "未记录"} />
+      <MetricLine label="预期 / 实际调用" value={`${audit.expectedCalls} / ${audit.totalLlmCallsAttempted}`} />
+      <MetricLine label="接受 / 拒绝 / 降级" value={`${audit.acceptedDrafts} / ${audit.rejectedDrafts} / ${audit.fallbackCount}`} />
+      <MetricLine label="紧凑请求数量" value={`${audit.compactRequestCount}`} />
+      <MetricLine label="平均请求压缩" value={formatPercent(audit.averageRequestReductionRatio)} />
+      <MetricLine label="提示词 token" value={audit.promptTokenTotal !== undefined ? String(audit.promptTokenTotal) : "provider 未返回"} />
+      <MetricLine label="语义语言" value={audit.semanticLanguages.join(", ") || "未记录"} />
+      <MetricLine label="语言不匹配" value={`${audit.languageMismatchCount}`} />
+      <details className={styles.auditCard}>
+        <summary>技术细节</summary>
+        <MetricLine label="request artifacts" value={audit.requestArtifactIds.join(", ") || "当前 trace 未记录"} />
+        <MetricLine label="response artifacts" value={audit.responseArtifactIds.join(", ") || "当前 trace 未记录"} />
+        <MetricLine label="repaired fields" value={audit.repairedFields.join(", ") || "无"} />
+        <MetricLine label="fallback reasons" value={audit.fallbackReasons.join("; ") || "无"} />
+        <MetricLine label="provider errors" value={audit.providerErrors.join("; ") || "无"} />
+      </details>
       <p className={styles.guardText}>
         模型只输出行动草案。winner、kill、damage、economyDelta 和 DB fact 都不会从 LLM 直接进入事实层。
       </p>

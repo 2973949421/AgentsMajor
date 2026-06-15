@@ -176,6 +176,53 @@ N45 起，Hex real provider 的 `compact_match` 请求必须优先消费 `financ
 - compact request 不应同时把旧 `businessDuel` 作为主语义发送给模型。
 - 模型不能新增事实、不能补全缺失数据、不能把代理事实写成完整行业判断。
 
+### 5.6 N49 回合信息层 / 局内行动层拆分
+
+N49 起，Hex 金融对抗的 `agent_action` 必须区分两层：
+
+```text
+回合信息层：roundOpeningBrief / agentOpeningBrief
+局内行动层：当前 phase 的行动草案
+```
+
+`roundOpeningBrief` 第一版由系统确定性生成，不新增额外 LLM 调用。来源只能是：
+
+- `financeDuel.topic`
+- `financeDuel.defenseThesis`
+- `financeDuel.attackChallenge`
+- `financeDuel.agentAssignments`
+- `economyContext`
+- agent role / team / side
+
+每名 agent 的 `agentOpeningBrief` 必须包含：
+
+- 本 round 金融职责。
+- 自证或质疑摘要。
+- 证据边界。
+- 按经济买型裁剪后的行动约束。
+- 局内行动提示。
+
+局内 `agent_action` 不再负责重写完整 `financeDuel`。它只能输出：
+
+- `actionType`
+- `targetCellId`
+- `businessIntent`：兼容字段名，只表示本阶段行动理由。
+- 可选 `briefRefId`
+- 可选 `actionRationaleZh`
+- 可选 `tacticalIntent / riskNotes / confidence`
+
+当请求包含 `agentOpeningBrief` 时：
+
+- `businessIntent` 必须引用该信息卡的任务、证据边界或行动约束。
+- 不得重新生成完整守方自证、攻方质疑或全局金融论文。
+- 如果模型在 phase 内大段复述开局信息，代码必须记录 `phase_repeated_round_thesis` 审计警告。
+
+审计展示规则：
+
+- Web 主审计默认展示中文人类投影，不直接展示 raw enum、agentId、cellId 或 artifactId。
+- 技术字段必须完整保留在折叠的“技术细节”中。
+- 未识别 reason 不允许静默丢弃，必须显示为“未翻译技术原因”并保留原文。
+
 ## 6. Judge Scorecard v6
 
 `judge_verdict` 必须输出 `judgeScorecard`。评分标准由代码生成并写入输入中的 `rubricProfile`，LLM 只能消费，不能修改。

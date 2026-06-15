@@ -195,10 +195,75 @@ export interface HexMatchLabRoundTraceDetail extends HexMatchLabRoundSummary {
   phaseSummaries: HexMatchLabPhaseSummary[];
   audit: HexMatchLabLlmAuditSummary;
   economySummary: HexMatchLabEconomySummary[];
+  humanAudit?: HexMatchLabHumanAudit | undefined;
   financeDuel?: HexMatchLabFinanceDuelSummary | undefined;
   financeReview?: HexMatchLabFinanceReview | undefined;
   businessDuel?: HexMatchLabBusinessDuelSummary | undefined;
   businessReview?: HexMatchLabBusinessReview | undefined;
+}
+
+export interface HexMatchLabHumanAudit {
+  roundStoryZh: string;
+  defenseSummaryZh: string;
+  attackSummaryZh: string;
+  evidenceBoundaryZh: string;
+  winnerSummaryZh?: string | undefined;
+  agentOpeningBriefs: HexMatchLabHumanAgentOpeningBrief[];
+  phaseStories: HexMatchLabHumanPhaseStory[];
+  technicalRefs: {
+    requestArtifactIds: string[];
+    responseArtifactIds: string[];
+    rawReasonCount: number;
+  };
+}
+
+export interface HexMatchLabHumanAgentOpeningBrief {
+  briefId: string;
+  agentId: string;
+  displayName: string;
+  teamSide: string;
+  role: string;
+  roundTaskZh: string;
+  proofOrChallengeZh: string;
+  evidenceBoundaryZh: string;
+  buyConstraintZh: string;
+  actionHintZh: string;
+}
+
+export interface HexMatchLabHumanPhaseStory {
+  phaseId: string;
+  phaseIndex: number;
+  phaseLabel?: string | undefined;
+  summaryZh: string;
+  actionStories: HexMatchLabHumanActionStory[];
+  combatStories: HexMatchLabHumanCombatStory[];
+}
+
+export interface HexMatchLabHumanActionStory {
+  agentId: string;
+  displayName: string;
+  actionSummaryZh: string;
+  openingBriefRef?: string | undefined;
+  repairSummaryZh?: string | undefined;
+  technicalRefs: {
+    targetCellId?: string | undefined;
+    requestArtifactId?: string | undefined;
+    responseArtifactId?: string | undefined;
+    validationErrors: string[];
+  };
+}
+
+export interface HexMatchLabHumanCombatStory {
+  contactId: string;
+  verdictZh: string;
+  impactZh: string;
+  reasonsZh: string[];
+  technicalRefs: {
+    participants: string[];
+    rawFinanceVerdict?: string | undefined;
+    rawBusinessVerdict?: string | undefined;
+    rawReasons: string[];
+  };
 }
 
 export interface HexMatchLabFinanceDuelSummary {
@@ -467,6 +532,8 @@ export interface HexMatchLabActionSummary {
   fallbackReason?: string | undefined;
   validationErrors: string[];
   businessIntent?: string | undefined;
+  briefRefId?: string | undefined;
+  actionRationaleZh?: string | undefined;
   requestArtifactId?: string | undefined;
   responseArtifactId?: string | undefined;
 }
@@ -1201,13 +1268,24 @@ function summarizeTrace(
   const businessDuel = summarizeBusinessDuel(trace);
   const financeDuel = summarizeFinanceDuel(trace);
   const finalHardCondition = summarizeHardCondition(trace.finalWinCondition);
+  const audit = summarizeTraceAudit(trace);
   return {
     ...roundSummary,
     hexTraceArtifactId: artifactId,
     source: "hex_round_engine_committed",
     phaseSummaries,
-    audit: summarizeTraceAudit(trace),
+    audit,
     economySummary,
+    humanAudit: financeDuel
+      ? buildHumanAudit({
+        financeDuel,
+        phaseSummaries,
+        finalHardCondition,
+        economySummary,
+        agentIdentities,
+        audit
+      })
+      : undefined,
     financeDuel,
     financeReview: financeDuel
       ? buildFinanceReview({
@@ -1300,6 +1378,245 @@ function summarizeFinanceDuel(trace: HexRoundTrace): HexMatchLabFinanceDuelSumma
       linkedChallengeId: assignment.linkedChallengeId
     }))
   };
+}
+
+function buildHumanAudit(input: {
+  financeDuel: HexMatchLabFinanceDuelSummary;
+  phaseSummaries: HexMatchLabPhaseSummary[];
+  finalHardCondition?: HexMatchLabHardConditionSummary | undefined;
+  economySummary: HexMatchLabEconomySummary[];
+  agentIdentities: Map<string, AgentIdentity>;
+  audit: HexMatchLabLlmAuditSummary;
+}): HexMatchLabHumanAudit {
+  const openingBriefs = buildHumanAgentOpeningBriefs(input.financeDuel, input.economySummary, input.agentIdentities);
+  const openingBriefsByAgentId = new Map(openingBriefs.map((brief) => [brief.agentId, brief]));
+  const rawReasonCount = input.phaseSummaries.reduce(
+    (sum, phase) => sum + phase.combats.reduce((inner, combat) => inner + combat.financeReasons.length + combat.csReasons.length + combat.businessReasons.length, 0),
+    0
+  );
+  return {
+    roundStoryZh: `本 round 小主题：${input.financeDuel.topicTitle}。`,
+    defenseSummaryZh: `守方自证：${input.financeDuel.defenseThesis.thesis}`,
+    attackSummaryZh: `攻方质疑：${input.financeDuel.attackChallenge.thesis}`,
+    evidenceBoundaryZh: buildHumanEvidenceBoundary(input.financeDuel),
+    winnerSummaryZh: input.finalHardCondition ? humanizeHardWinner(input.finalHardCondition) : undefined,
+    agentOpeningBriefs: openingBriefs,
+    phaseStories: input.phaseSummaries.map((phase) => buildHumanPhaseStory(phase, openingBriefsByAgentId, input.agentIdentities)),
+    technicalRefs: {
+      requestArtifactIds: [...input.audit.requestArtifactIds],
+      responseArtifactIds: [...input.audit.responseArtifactIds],
+      rawReasonCount
+    }
+  };
+}
+
+function buildHumanAgentOpeningBriefs(
+  financeDuel: HexMatchLabFinanceDuelSummary,
+  economySummary: HexMatchLabEconomySummary[],
+  agentIdentities: Map<string, AgentIdentity>
+): HexMatchLabHumanAgentOpeningBrief[] {
+  const evidenceBoundaryZh = buildHumanEvidenceBoundary(financeDuel);
+  return financeDuel.assignments.map((assignment) => {
+    const identity = agentIdentities.get(assignment.agentId);
+    const economy = economySummary.flatMap((team) => team.agents).find((agent) => agent.agentId === assignment.agentId);
+    const side = assignment.side === "defense" ? "守方" : "攻方";
+    const proofOrChallengeZh = assignment.side === "defense"
+      ? financeDuel.defenseThesis.thesis
+      : financeDuel.attackChallenge.thesis;
+    return {
+      briefId: `opening_${financeDuel.mirrorRoundNumber}_${assignment.agentId}`,
+      agentId: assignment.agentId,
+      displayName: identity?.displayName ?? assignment.agentId,
+      teamSide: side,
+      role: identity?.roleLabel ?? assignment.role,
+      roundTaskZh: assignment.financeTask,
+      proofOrChallengeZh,
+      evidenceBoundaryZh,
+      buyConstraintZh: humanizeBuyConstraint(economy),
+      actionHintZh: assignment.side === "defense"
+        ? "局内行动应守住自证链条，用位置、交叉火力和回防回应攻方质疑。"
+        : "局内行动应服务质疑链条，用推进、信息或压迫验证守方风险边界。"
+    };
+  });
+}
+
+function buildHumanPhaseStory(
+  phase: HexMatchLabPhaseSummary,
+  openingBriefsByAgentId: Map<string, HexMatchLabHumanAgentOpeningBrief>,
+  agentIdentities: Map<string, AgentIdentity>
+): HexMatchLabHumanPhaseStory {
+  const actionStories = phase.actions.map((action) => {
+    const brief = openingBriefsByAgentId.get(action.agentId);
+    const displayName = brief?.displayName ?? agentIdentities.get(action.agentId)?.displayName ?? action.agentId;
+    const actionSummaryZh = [
+      `${displayName} 本阶段${humanizeActionType(action.actionType)}`,
+      action.actionRationaleZh || action.businessIntent ? `理由：${action.actionRationaleZh ?? action.businessIntent}` : "理由：未记录",
+      brief ? `引用开局信息卡：${brief.roundTaskZh}` : "未记录开局信息卡引用"
+    ].join("；");
+    const repairSummaryZh = action.fallbackReason
+      ? `本行动被降级：${humanizeReason(action.fallbackReason)}`
+      : action.validationErrors.length > 0
+        ? `本行动被拒绝：${action.validationErrors.map(humanizeReason).join("、")}`
+        : undefined;
+    return {
+      agentId: action.agentId,
+      displayName,
+      actionSummaryZh,
+      openingBriefRef: action.briefRefId ?? brief?.briefId,
+      repairSummaryZh,
+      technicalRefs: {
+        targetCellId: action.targetCellId,
+        requestArtifactId: action.requestArtifactId,
+        responseArtifactId: action.responseArtifactId,
+        validationErrors: [...action.validationErrors]
+      }
+    };
+  });
+  return {
+    phaseId: phase.phaseId,
+    phaseIndex: phase.phaseIndex,
+    ...(phase.phaseLabel ? { phaseLabel: phase.phaseLabel } : {}),
+    summaryZh: phase.isSetupPhase
+      ? "准备阶段：展示出生、经济、C4 和本局信息卡，不产生 LLM 调用。"
+      : `本阶段接受 ${phase.acceptedActionCount} 个行动，拒绝 ${phase.rejectedDraftCount} 个草案，降级 ${phase.fallbackActionCount} 个行动，形成 ${phase.combatResolutionCount} 个战斗裁定。`,
+    actionStories,
+    combatStories: phase.combats.map((combat) => buildHumanCombatStory(combat, agentIdentities))
+  };
+}
+
+function buildHumanCombatStory(
+  combat: HexMatchLabCombatSummary,
+  agentIdentities: Map<string, AgentIdentity>
+): HexMatchLabHumanCombatStory {
+  const killText = combat.killAttributions.length > 0
+    ? combat.killAttributions.map((item) => {
+      const killer = item.killerAgentId ? formatAgentName(item.killerAgentId, agentIdentities) : "未分配击杀者";
+      const target = formatAgentName(item.targetAgentId, agentIdentities);
+      const assists = item.assisterAgentIds.length > 0
+        ? `，助攻：${item.assisterAgentIds.map((agentId) => formatAgentName(agentId, agentIdentities)).join("、")}`
+        : "";
+      return `${killer} 击倒 ${target}${assists}`;
+    }).join("；")
+    : combat.suppressions.length > 0
+      ? `形成压制：${combat.suppressions.map((item) => humanizeSuppression(item, agentIdentities)).join("、")}`
+      : "没有形成击杀或压制事实";
+  return {
+    contactId: combat.contactId,
+    verdictZh: humanizeFinanceVerdict(combat.financeVerdict ?? combat.businessVerdict),
+    impactZh: `${killText}。${combat.regionControlHint ? `控图倾向：${combat.regionControlHint}。` : ""}`,
+    reasonsZh: [
+      ...combat.financeReasons.slice(0, 3).map(humanizeReason),
+      ...combat.csReasons.slice(0, 3).map(humanizeReason)
+    ],
+    technicalRefs: {
+      participants: [...combat.participants],
+      rawFinanceVerdict: combat.financeVerdict,
+      rawBusinessVerdict: combat.businessVerdict,
+      rawReasons: [...combat.financeReasons, ...combat.businessReasons, ...combat.csReasons]
+    }
+  };
+}
+
+function buildHumanEvidenceBoundary(financeDuel: HexMatchLabFinanceDuelSummary): string {
+  const missing = financeDuel.evidence.missingEvidence.length > 0
+    ? `缺失证据：${financeDuel.evidence.missingEvidence.slice(0, 4).join("、")}。`
+    : "缺失证据：当前未记录。";
+  const caps = financeDuel.evidence.scoreCaps.length > 0
+    ? `评分上限：${financeDuel.evidence.scoreCaps.slice(0, 3).map((cap) => `${cap.condition} 最高 ${cap.maxScore}`).join("；")}。`
+    : "评分上限：当前未记录。";
+  return `${financeDuel.defenseThesis.riskBoundary} ${missing}${caps}`.trim();
+}
+
+function humanizeBuyConstraint(economy: HexMatchLabEconomySummary["agents"][number] | undefined): string {
+  if (!economy) {
+    return "经济未记录；按保守行动处理。";
+  }
+  const base = `买型 ${economy.buyType ?? "未知"}，资源 ${economy.resourceTier ?? "未知"}，当前经济 ${economy.currentEconomy ?? economy.tokenBankAfterDrop ?? "未记录"}，本局花费 ${economy.spend ?? 0}。`;
+  if (economy.resourceTier === "high") {
+    return `${base} 可以承担主攻或主防论证。`;
+  }
+  if (economy.resourceTier === "medium") {
+    return `${base} 适合关键配合和局部论证。`;
+  }
+  if (economy.resourceTier === "forced") {
+    return `${base} 只适合有限执行和风险暴露。`;
+  }
+  if (economy.resourceTier === "low") {
+    return `${base} 只适合窄问题试探、信息收集或保守挑战。`;
+  }
+  return base;
+}
+
+function humanizeActionType(actionType: string): string {
+  const labels: Record<string, string> = {
+    hold_position: "留守当前位置",
+    move: "移动到目标点位",
+    watch_angle: "架住角度",
+    peek: "主动试探",
+    gather_info: "收集信息",
+    use_utility: "尝试使用道具",
+    map_control: "争夺地图控制",
+    prepare_trade: "准备补枪配合",
+    seek_duel: "主动寻找对抗",
+    execute_site: "执行进点",
+    plant_bomb: "尝试下包",
+    defuse_bomb: "尝试拆包",
+    retake: "尝试回防",
+    rotate: "转点支援",
+    save: "保守保存",
+    lurk: "潜伏牵制",
+    fake: "假打牵制",
+    boost: "尝试双架"
+  };
+  return labels[actionType] ?? `执行未翻译行动 ${actionType}`;
+}
+
+function humanizeFinanceVerdict(value: string | undefined): string {
+  const labels: Record<string, string> = {
+    challenge_landed: "攻方质疑成立",
+    thesis_defended: "守方自证守住",
+    contested_no_finance_resolution: "金融攻防未分胜负",
+    proof_rebutted_challenge: "守方自证驳回质疑",
+    challenge_succeeded: "攻方质疑成功",
+    contested_no_business_resolution: "攻防争夺未分胜负"
+  };
+  return value ? labels[value] ?? `未翻译裁定：${value}` : "未记录金融裁定";
+}
+
+function humanizeReason(reason: string): string {
+  const labels: Record<string, string> = {
+    challenge_landed: "攻方质疑成立",
+    thesis_defended: "守方自证守住",
+    contested_no_finance_resolution: "金融攻防未分胜负",
+    decisive_combat_margin: "战斗优势明显，形成击杀",
+    contested_combat: "交火僵持，形成压制",
+    target_bombsite_exposure: "目标暴露在包点交火区",
+    validated_ap_path: "行动路径和 AP 合法",
+    finance_intent_present: "行动理由已引用金融攻防任务",
+    finance_score_cap_applied_without_evidence_reference: "证据引用不足，金融得分被封顶",
+    target_cell_occupied: "目标格已被占用",
+    max_llm_calls_reached: "已达到本阶段 LLM 调用上限",
+    dead_agent_skipped: "选手已阵亡，跳过行动",
+    economy_disallows_action: "经济约束不允许该行动"
+  };
+  return labels[reason] ?? `未翻译技术原因：${reason}`;
+}
+
+function humanizeSuppression(value: string, agentIdentities: Map<string, AgentIdentity>): string {
+  const [agentId, result] = value.split(":");
+  const name = agentId ? formatAgentName(agentId, agentIdentities) : "未知选手";
+  return `${name}${result ? ` ${humanizeReason(result)}` : ""}`;
+}
+
+function humanizeHardWinner(condition: HexMatchLabHardConditionSummary): string {
+  const winner = condition.winnerTeamId ? `胜方 ${condition.winnerTeamId}` : "尚无胜方";
+  const winType = condition.roundWinType ?? condition.judgeRoundWinType ?? "未记录胜利方式";
+  const reason = condition.reason ? humanizeReason(condition.reason) : "未记录原因";
+  return `硬胜负：${winner}，方式 ${winType}，原因 ${reason}。最终胜负不由 LLM 或前端决定。`;
+}
+
+function formatAgentName(agentId: string, agentIdentities: Map<string, AgentIdentity>): string {
+  return agentIdentities.get(agentId)?.displayName ?? agentId;
 }
 
 function buildFinanceReview(input: {
@@ -1589,6 +1906,8 @@ function summarizePhase(
       fallbackReason: action.fallbackReason,
       validationErrors: action.validationErrors,
       businessIntent: action.businessIntent,
+      briefRefId: action.briefRefId,
+      actionRationaleZh: action.actionRationaleZh,
       requestArtifactId: audit?.requestArtifactId,
       responseArtifactId: audit?.responseArtifactId
     };

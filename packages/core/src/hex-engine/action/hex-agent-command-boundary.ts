@@ -4,6 +4,7 @@ import { getHexAgentEconomyContext, type HexRoundEconomyContext } from "../econo
 import { getHexAgentFinanceAssignment, type HexAgentFinanceAssignment, type HexRoundFinanceDuel } from "../finance/index.js";
 import { buildHexPathGraph, calculateHexApCost } from "../path/index.js";
 import { buildHexAgentMemoryContext, type HexAgentMemoryPromptContext, type HexPhaseId, type HexRoundMemory, type HexSide } from "../state/index.js";
+import { buildHexAgentOpeningBrief, type HexAgentOpeningBrief } from "./hex-round-opening-brief.js";
 
 export const hexAgentActionTypes = [
   "hold_position",
@@ -82,6 +83,7 @@ export interface HexAgentCommandRequest {
   tacticalPlan?: HexRoundTacticalPlan;
   financeDuel?: HexAgentFinanceDuelPromptContext;
   financeAssignment?: HexAgentFinanceAssignment;
+  agentOpeningBrief?: HexAgentOpeningBrief;
   businessDuel?: HexAgentBusinessDuelPromptContext;
   businessAssignment?: HexAgentBusinessAssignment;
   objectiveHints: string[];
@@ -108,8 +110,8 @@ export interface HexAgentCompactCommandRequest {
   };
   outputSchema: {
     requiredFields: readonly ["agentId", "phaseId", "currentCellId", "targetCellId", "actionType", "businessIntent"];
-    optionalFields: readonly ["tacticalIntent", "riskNotes", "confidence"];
-    semanticFieldsMustUseChinese: readonly ["businessIntent", "tacticalIntent", "riskNotes"];
+    optionalFields: readonly ["briefRefId", "actionRationaleZh", "tacticalIntent", "riskNotes", "confidence"];
+    semanticFieldsMustUseChinese: readonly ["businessIntent", "actionRationaleZh", "tacticalIntent", "riskNotes"];
     codeIdentifiersRemainEnglish: readonly ["agentId", "phaseId", "currentCellId", "targetCellId", "actionType"];
   };
   agent: {
@@ -141,22 +143,10 @@ export interface HexAgentCompactCommandRequest {
   financeDuel?: {
     topicKey: string;
     topicTitle: string;
-    defenseThesis: string;
-    attackChallenge: string;
-    riskBoundary: string;
-    promptFacts: Array<{
-      factId: string;
-      shortText: string;
-      evidenceId: string;
-    }>;
-    missingEvidence: string[];
-    scoreCaps: Array<{
-      condition: string;
-      maxScore: number;
-      reason: string;
-    }>;
-    agentAssignment?: Pick<HexAgentFinanceAssignment, "agentId" | "teamId" | "side" | "role" | "financeTask" | "linkedThesisId" | "linkedChallengeId"> | undefined;
+    defenseSummaryZh: string;
+    attackSummaryZh: string;
   } | undefined;
+  agentOpeningBrief?: HexAgentOpeningBrief | undefined;
   tacticalPlan?: {
     roundNumber: number;
     attackVariant: string;
@@ -285,6 +275,8 @@ export interface HexAgentActionDraft {
   targetCellId: string;
   actionType: HexAgentActionType;
   businessIntent: string;
+  briefRefId?: string;
+  actionRationaleZh?: string;
   tacticalIntent?: string;
   riskNotes?: string[];
   confidence?: number;
@@ -317,6 +309,8 @@ const allowedDraftFields = new Set([
   "targetCellId",
   "actionType",
   "businessIntent",
+  "briefRefId",
+  "actionRationaleZh",
   "tacticalIntent",
   "riskNotes",
   "confidence"
@@ -385,6 +379,18 @@ export function buildHexAgentCommandRequest(input: {
         agentId: input.agentId
       })
     : undefined;
+  const agentOpeningBrief = input.financeDuel
+    ? buildHexAgentOpeningBrief({
+        financeDuel: input.financeDuel,
+        agent: {
+          agentId: context.agent.agentId,
+          teamId: context.agent.teamId,
+          side: context.agent.side,
+          role: readOptionalAgentRoleLabel(context.agent)
+        },
+        economy
+      })
+    : undefined;
   const request: HexAgentCommandRequest = {
     schemaVersion: 1,
     phaseId: input.memory.phaseId,
@@ -402,6 +408,7 @@ export function buildHexAgentCommandRequest(input: {
     ...(input.tacticalPlan ? { tacticalPlan: input.tacticalPlan } : {}),
     ...(input.financeDuel ? { financeDuel: summarizeFinanceDuelForRequest(input.financeDuel) } : {}),
     ...(financeAssignment ? { financeAssignment } : {}),
+    ...(agentOpeningBrief ? { agentOpeningBrief } : {}),
     ...(input.businessDuel ? { businessDuel: summarizeBusinessDuelForRequest(input.businessDuel) } : {}),
     ...(businessAssignment ? { businessAssignment } : {}),
     objectiveHints,
@@ -418,10 +425,11 @@ export function buildHexAgentCommandRequest(input: {
       "Do not choose occupiedCellIds or reservedCellIds when they are friendly occupied or reserved cells; enemy occupied cells indicate possible contact, not an automatic fallback.",
       "A move action must change position. Use hold_position, watch_angle, or save when staying on the current cell is intentional.",
       "currentCellId must match the agent currentCellId.",
-      "businessIntent is required and must explain the business-plan purpose of the CS action.",
-      "businessIntent must connect the phaseObjective, role responsibility, and selected target.",
-      "When financeDuel is present, businessIntent is a legacy field name and must carry the finance thesis/challenge intent in Chinese.",
-      "When financeAssignment is present, businessIntent must carry that finance assignment and cite evidence boundaries; do not invent financial facts.",
+      "businessIntent is required and must explain the phase action purpose in Chinese.",
+      "businessIntent must connect the phaseObjective, role responsibility, selected target, and agentOpeningBrief when present.",
+      "When financeDuel is present, businessIntent is a legacy field name; use it as a short phase action rationale, not a full thesis rewrite.",
+      "When agentOpeningBrief is present, cite the brief idea briefly and do not restate the whole defense thesis or attack challenge.",
+      "When financeAssignment is present, businessIntent must respect that assignment and evidence boundaries; do not invent financial facts.",
       "When businessAssignment is present, businessIntent must carry that assignment; do not rewrite proof, challenge, assignment, team ids, or agent ids.",
       "lastSeenEnemies are historical hints, not current enemy truth.",
       "The code validates movement, AP, C4 legality, and final game facts."
@@ -481,8 +489,8 @@ export function buildHexAgentCompactCommandRequest(request: HexAgentCommandReque
     },
     outputSchema: {
       requiredFields: ["agentId", "phaseId", "currentCellId", "targetCellId", "actionType", "businessIntent"],
-      optionalFields: ["tacticalIntent", "riskNotes", "confidence"],
-      semanticFieldsMustUseChinese: ["businessIntent", "tacticalIntent", "riskNotes"],
+      optionalFields: ["briefRefId", "actionRationaleZh", "tacticalIntent", "riskNotes", "confidence"],
+      semanticFieldsMustUseChinese: ["businessIntent", "actionRationaleZh", "tacticalIntent", "riskNotes"],
       codeIdentifiersRemainEnglish: ["agentId", "phaseId", "currentCellId", "targetCellId", "actionType"]
     },
     agent: {
@@ -523,7 +531,9 @@ export function buildHexAgentCompactCommandRequest(request: HexAgentCommandReque
     objectiveHints: request.objectiveHints.slice(0, 6),
     hardConstraints: [
       "只输出一个 JSON object，不要输出数组，除非系统明确要求。",
-      "businessIntent、tacticalIntent、riskNotes 必须用中文表达商业攻防语义。",
+      "businessIntent、tacticalIntent、riskNotes 必须用中文表达本阶段行动理由。",
+      "如果有 agentOpeningBrief，businessIntent 必须引用该信息卡的任务或证据边界，但不要复述完整金融主张。",
+      "可以输出 briefRefId 和 actionRationaleZh；briefRefId 必须等于 agentOpeningBrief.briefId。",
       "JSON 字段名、actionType、cell id、phaseId、agentId 必须保持给定英文标识。",
       "targetCellId 必须从 targetCandidates 中选择；不要选择 friendly occupied/reserved cell。",
       "lastSeenEnemies 是历史信息，不是当前敌人真实位置。",
@@ -555,28 +565,15 @@ export function buildHexAgentCompactCommandRequest(request: HexAgentCommandReque
     };
   }
   if (request.financeDuel) {
-    const compactAssignment = request.financeAssignment
-      ? {
-          agentId: request.financeAssignment.agentId,
-          teamId: request.financeAssignment.teamId,
-          side: request.financeAssignment.side,
-          role: request.financeAssignment.role,
-          financeTask: request.financeAssignment.financeTask,
-          ...(request.financeAssignment.linkedThesisId ? { linkedThesisId: request.financeAssignment.linkedThesisId } : {}),
-          ...(request.financeAssignment.linkedChallengeId ? { linkedChallengeId: request.financeAssignment.linkedChallengeId } : {})
-        }
-      : undefined;
     compact.financeDuel = {
       topicKey: request.financeDuel.topicKey,
       topicTitle: request.financeDuel.topicTitle,
-      defenseThesis: request.financeDuel.defenseThesis.thesis,
-      attackChallenge: request.financeDuel.attackChallenge.thesis,
-      riskBoundary: request.financeDuel.defenseThesis.riskBoundary,
-      promptFacts: request.financeDuel.evidence.promptFacts.slice(0, 5).map((fact) => ({ ...fact })),
-      missingEvidence: request.financeDuel.evidence.missingEvidence.slice(0, 5),
-      scoreCaps: request.financeDuel.evidence.scoreCaps.slice(0, 3).map((cap) => ({ ...cap })),
-      ...(compactAssignment ? { agentAssignment: compactAssignment } : {})
+      defenseSummaryZh: `守方自证：${request.financeDuel.defenseThesis.thesis}`,
+      attackSummaryZh: `攻方质疑：${request.financeDuel.attackChallenge.thesis}`
     };
+    if (request.agentOpeningBrief) {
+      compact.agentOpeningBrief = { ...request.agentOpeningBrief };
+    }
     delete compact.businessDuel;
   }
   if (request.tacticalPlan) {
@@ -630,6 +627,9 @@ export function auditHexAgentDraftSemanticLanguage(draft: HexAgentActionDraft | 
   const inspected: Array<[string, string]> = [];
   if (draft?.businessIntent) {
     inspected.push(["businessIntent", draft.businessIntent]);
+  }
+  if (draft?.actionRationaleZh) {
+    inspected.push(["actionRationaleZh", draft.actionRationaleZh]);
   }
   if (draft?.tacticalIntent) {
     inspected.push(["tacticalIntent", draft.tacticalIntent]);
@@ -925,8 +925,14 @@ export function normalizeHexAgentActionDraft(input: NormalizeHexAgentActionDraft
   if (containsGarbledText(businessIntent) || containsGarbledText(readOptionalString(rawDraft.tacticalIntent) ?? "")) {
     errors.push("draft:garbled_text");
   }
+  if (containsGarbledText(readOptionalString(rawDraft.actionRationaleZh) ?? "")) {
+    errors.push("draft:garbled_text");
+  }
   if (readStringArray(rawDraft.riskNotes).some(containsGarbledText)) {
     errors.push("draft:garbled_text");
+  }
+  if (input.request.agentOpeningBrief && repeatsRoundOpeningBrief(businessIntent, input.request.agentOpeningBrief)) {
+    repairedFields.push("phase_repeated_round_thesis");
   }
 
   if (errors.length > 0) {
@@ -945,6 +951,14 @@ export function normalizeHexAgentActionDraft(input: NormalizeHexAgentActionDraft
     actionType: actionType as HexAgentActionType,
     businessIntent
   };
+  const briefRefId = readOptionalString(rawDraft.briefRefId);
+  if (briefRefId) {
+    draft.briefRefId = briefRefId;
+  }
+  const actionRationaleZh = readOptionalString(rawDraft.actionRationaleZh);
+  if (actionRationaleZh) {
+    draft.actionRationaleZh = actionRationaleZh;
+  }
   const tacticalIntent = readOptionalString(rawDraft.tacticalIntent);
   if (tacticalIntent) {
     draft.tacticalIntent = tacticalIntent;
@@ -963,6 +977,21 @@ export function normalizeHexAgentActionDraft(input: NormalizeHexAgentActionDraft
     ignoredFields,
     repairedFields
   };
+}
+
+function repeatsRoundOpeningBrief(text: string, brief: HexAgentOpeningBrief): boolean {
+  const normalized = text.replace(/\s+/g, "");
+  if (normalized.length < 120) {
+    return false;
+  }
+  const candidates = [
+    brief.proofOrChallengeZh,
+    brief.evidenceBoundaryZh,
+    brief.roundTaskZh
+  ]
+    .map((value) => value.replace(/\s+/g, "").slice(0, 24))
+    .filter((value) => value.length >= 12);
+  return candidates.some((candidate) => normalized.includes(candidate));
 }
 
 export function isHexAgentActionType(value: string): value is HexAgentActionType {

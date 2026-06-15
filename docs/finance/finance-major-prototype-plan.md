@@ -164,6 +164,55 @@ riskAmplifier：风险放大点
 requiredDefense：守方必须回答的问题
 ```
 
+## 4.1 N49 回合信息层与局内行动层
+
+N49 起，金融对抗不再让每个 phase 的 agent 重新写一遍完整金融论点。每 round 开始时，由系统根据 `financeDuel`、agent assignment、经济买型和队伍阵营，确定性生成 10 张开局信息卡。
+
+开局信息卡不是新的 LLM 调用。它只是把已经存在的回合信息整理成人类和模型都能引用的短卡片。
+
+每张信息卡至少包含：
+
+```text
+选手名 / 队伍 / 角色
+本 round 金融职责
+自证或质疑摘要
+证据边界
+按经济买型裁剪后的行动约束
+局内行动提示
+```
+
+局内 phase 的 LLM 行动只处理：
+
+```text
+当前局势
+当前位置
+AP
+C4
+lastSeen 历史提示
+targetCandidates
+occupied / reserved cells
+当前 agent 的开局信息卡摘要
+```
+
+局内行动输出的 `businessIntent` 是兼容字段名，只能表示“本阶段行动理由”。它不能再承载完整金融论文，也不能重写守方自证或攻方质疑。模型可以输出 `briefRefId` 和 `actionRationaleZh` 来说明引用了哪张开局信息卡。
+
+如果模型在 phase 内大段复述完整 round 论点，系统应记录 `phase_repeated_round_thesis`，这是上下文污染信号，不应被视为更强金融证据。
+
+Web 验收默认阅读顺序调整为：
+
+```text
+本 round 小主题
+守方自证
+攻方质疑
+10 名选手开局信息卡
+本 phase 行动摘要
+战斗裁判中文解释
+硬胜负中文解释
+技术细节折叠
+```
+
+主视图不应直接暴露 `agentId`、`cellId`、artifact id 或英文 reason；这些必须保留在“技术细节”中，方便排查但不干扰人工验收。
+
 ## 5. 队伍资产改造原则
 
 本次切换是替换，不是叠加。

@@ -76,16 +76,19 @@ describe("Hex Match Lab", () => {
     expect(timeline).toContain("Round / Phase 回放控制");
     expect(timeline).toContain("播放 trace");
     expect(drawer).toContain("金融攻防 / LLM / 战斗 / 经济 / 硬胜负审计");
+    expect(drawer).toContain("中文审计");
     expect(drawer).toContain("function BusinessAudit");
+    expect(drawer).toContain("本局开局信息卡");
+    expect(drawer).toContain("本阶段行动");
     expect(drawer).toContain("守方投资主张");
     expect(drawer).toContain("攻方反证质疑");
     expect(drawer).toContain("金融裁判链路");
     expect(drawer).toContain("旧商业轨迹，只读兼容");
     expect(drawer).toContain("最终胜负只来自 hard condition");
     expect(drawer).toContain("repaired fields");
-    expect(drawer).toContain("compact requests");
-    expect(drawer).toContain("language mismatch");
-    expect(drawer).toContain("semantic languages");
+    expect(drawer).toContain("紧凑请求数量");
+    expect(drawer).toContain("语言不匹配");
+    expect(drawer).toContain("语义语言");
     expect(drawer).toContain("最终 winner 只来自 hard condition");
 
     expect(css).toContain(".board");
@@ -134,6 +137,9 @@ describe("Hex Match Lab", () => {
     expect(server).toContain("buildBusinessReview");
     expect(server).toContain("buildPhaseBusinessStory");
     expect(server).toContain("buildCombatStorySummary");
+    expect(server).toContain("humanAudit");
+    expect(server).toContain("buildHumanAudit");
+    expect(server).toContain("buildHumanAgentOpeningBriefs");
     expect(server).toContain("repairedFields");
     expect(server).toContain("languageMismatchCount");
     expect(server).toContain("averageRequestReductionRatio");
