@@ -46,7 +46,7 @@ Node/Sector 实验线：已退役并清理 active mode / runtime / Web progress 
 
 ## 3. 近期优先级
 
-### P0：N42-N50，Finance Major 原型（当前）
+### P0：N42-N54，Finance Major 原型（当前）
 
 目标是保留 HexGrid 工程骨架，把旧 business duel 语义替换为 finance duel：
 
@@ -59,7 +59,11 @@ N46：金融裁判替换商业裁判。（已完成第一版）
 N47：金融 Web 验收台改造。（已完成第一版）
 N48：Dust2 有色 / 行业判断 6R 小样本验收。（条件通过）
 N49：中文可读审计 + 回合信息层 / 局内行动层拆分。（已完成第一版）
-N50：离线金融事实库与专家证据切片。（下一步）
+N50：离线金融事实库。（下一步）
+N51：专家证据切片与开局信息卡差异化。（计划）
+N52：回合信息层 / 局内行动层硬隔离。（计划）
+N53：金融裁判证据采信事实化。（计划）
+N54：中文人类审计与真实样本验收。（计划）
 ```
 
 当前测试落点：
@@ -107,13 +111,14 @@ N49 暴露出的新问题是：
 5. roundOpeningBrief 缺少按 PM / Macro / Commodity / Company / Risk 切分的证据。
 ```
 
-因此 N50 的下一步是：
+因此下一步必须拆成 N50-N54：
 
 ```text
-不要求 agent 临场拉 API。
-先用用户准备的免费接口离线生成宏微观事实库。
-再从事实库生成 round evidence pack 和 agent evidence slice。
-最后让 10 名 agent 的开局信息卡按专家角色读取不同证据。
+N50 不要求 agent 临场拉 API，只负责用用户准备的免费接口离线生成宏微观事实库。
+N51 从事实库生成 round evidence pack 和 agent evidence slice，让 10 名 agent 的开局信息卡按专家角色读取不同证据。
+N52 把回合信息层和局内行动层硬隔离，避免每个 phase 重新写金融论文。
+N53 让金融裁判明确采信 / 拒绝 / 降权哪些证据，不能用字段存在冒充机制生效。
+N54 用中文 Web 审计和真实 round 样本证明链路可人工验收。
 ```
 
 当前必须承认的边界：
@@ -133,10 +138,14 @@ CNINFO、国家统计局、工信部、SHFE、SMM 等先作为后置证据锚点
 data/materials/processed/finance/
 ```
 
-N50 固定计划：
+N50-N54 固定计划：
 
 ```text
 docs/finance/n50-offline-finance-fact-bank-plan.md
+docs/finance/n51-agent-evidence-slice-plan.md
+docs/finance/n52-information-action-boundary-plan.md
+docs/finance/n53-judge-evidence-adoption-plan.md
+docs/finance/n54-human-audit-validation-plan.md
 ```
 
 正式本地环境入口：

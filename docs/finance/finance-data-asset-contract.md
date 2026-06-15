@@ -186,7 +186,7 @@ data/materials/scripts/validate-finance-evidence.mjs
 
 当前脚本先生成 configured proxy facts，不在没有稳定 live adapter（实时适配器）时伪造市场数值。N45 runtime 应优先读取 `round-evidence-packs.json`，而不是重新扫描 source registry 或直接调用外部 API。
 
-## 9. N50 离线事实库补充契约
+## 9. N50-N54 离线事实库与证据链补充契约
 
 N49 后的审计结论是：当前金融数据接口已经完成登记，但尚未真正把 API 观测值转化为比赛事实。`round-evidence-packs.json` 已经被 runtime 消费，但其中大量事实仍是：
 
@@ -196,14 +196,14 @@ period = configured
 value = null
 ```
 
-N50 不改变“比赛时不临场联网”的原则。新的数据路线是：
+N50 不改变“比赛时不临场联网”的原则。新的数据路线必须分阶段落地：
 
 ```text
-先离线采集。
-再归一化成 fact bank。
-再生成 round evidence pack。
-再按专家角色切成 agent evidence slice。
-最后由 roundOpeningBrief / agentOpeningBrief 消费。
+N50：先离线采集，再归一化成 fact bank。
+N51：从 fact bank / round evidence pack 切成 agent evidence slice。
+N52：agent 在局内只引用信息卡，不重新生成整段金融论点。
+N53：裁判明确采信 / 拒绝 / 降权哪些证据。
+N54：Web 用中文人类审计展示真实样本。
 ```
 
 新增事实类型建议：
@@ -264,3 +264,5 @@ data/materials/generated/finance/maps/dust2-nonferrous/round-evidence-packs.json
 ```
 
 但这个 evidence pack 应由 fact bank 派生，而不是只由配置文件派生。后续 agent 看到 `configured_proxy_fact` 时，必须理解它只是兜底脚手架，不代表用户准备的金融数据接口已经真正进入比赛事实层。
+
+N51 以后，`agentOpeningBrief` 不应直接复制 round thesis，而应引用 `agentEvidenceSlice`。N53 以后，裁判不能只因为 evidence 字段存在就给正向金融分，必须输出采信 / 拒绝 / 缺失证据链。

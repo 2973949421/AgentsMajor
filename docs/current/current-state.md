@@ -9,7 +9,7 @@
 当前进度：N20-N49 已完成第一版验收。
 当前入口：/hex-lab/match。
 当前底层事实：official Dust2 Hex map、Hex phase memory、Hex action/combat/economy/round runner、Hex map runner、Hex trace artifacts。
-下一阶段候选：N50 离线金融事实库与专家证据切片。
+下一阶段候选：N50-N54 金融事实链与审计连续收口。
 ```
 
 HexGrid 现在是新的比赛事实主线。它负责地图可走性、AP、阶段记忆、agent action、局部 combat、economy evidence、单回合提交、完整 Dust2 地图灰度和 Web 验收。
@@ -68,7 +68,7 @@ apps/web/.next-dev-3001.err.log
 
 ## 5. 下一步候选
 
-当前下一步不建议继续修旧泛商业文案，也不建议立刻做结构封板第二轮。N35-N41 已经证明 HexGrid 工程骨架可运行、可提交、可 Web 验收，但旧 business duel（商业攻防）语义层容易输出空泛内容。N42-N47 已经把 Finance Major（金融投资对抗）原型接入到证据包、队伍资产、运行时 financeDuel、战斗金融裁判和 Web 金融审计。N48 已完成 Dust2 有色 / 行业判断 6R 小样本验收，结论是条件通过。N49 已完成中文可读审计和回合信息层 / 局内行动层拆分第一版，但最新审计暴露出更底层的问题：金融 API 只登记和生成配置型代理事实，尚未形成真实离线事实库；同队 5 名 agent 的开局信息卡仍高度重复。下一阶段候选是 N50 离线金融事实库与专家证据切片。
+当前下一步不建议继续修旧泛商业文案，也不建议立刻做结构封板第二轮。N35-N41 已经证明 HexGrid 工程骨架可运行、可提交、可 Web 验收，但旧 business duel（商业攻防）语义层容易输出空泛内容。N42-N47 已经把 Finance Major（金融投资对抗）原型接入到证据包、队伍资产、运行时 financeDuel、战斗金融裁判和 Web 金融审计。N48 已完成 Dust2 有色 / 行业判断 6R 小样本验收，结论是条件通过。N49 已完成中文可读审计和回合信息层 / 局内行动层拆分第一版，但最新审计暴露出更底层的问题：金融 API 只登记和生成配置型代理事实，尚未形成真实离线事实库；同队 5 名 agent 的开局信息卡仍高度重复；phase action 仍可能复述完整金融论点；裁判还需要证明自己采信了哪些证据；Web 需要真实样本级中文验收。因此下一阶段必须拆成 N50-N54，不能再用一个 N50 覆盖所有问题。
 
 ```text
 N42：Finance Evidence + Finance Duel 契约。（已完成）
@@ -79,7 +79,11 @@ N46：金融裁判替换商业裁判。（已完成第一版）
 N47：金融 Web 验收台改造。（已完成第一版）
 N48：Dust2 有色 / 行业判断 6R 小样本验收。（条件通过）
 N49：中文可读审计 + 回合信息层 / 局内行动层拆分。（已完成第一版）
-N50：离线金融事实库与专家证据切片。（下一步）
+N50：离线金融事实库。（下一步）
+N51：专家证据切片与开局信息卡差异化。（计划）
+N52：回合信息层 / 局内行动层硬隔离。（计划）
+N53：金融裁判证据采信事实化。（计划）
+N54：中文人类审计与真实样本验收。（计划）
 ```
 
 Finance Major 的核心不是重写 HexGrid，而是保留最新 Hex 工程骨架，把旧商业语义替换为金融研究攻防。第一版测试范围固定为 `Dust2 有色 / 行业判断 / 6 round`。N48 只证明了结构链路条件通过，尚未证明真实模型金融样本质量达标。
@@ -109,11 +113,11 @@ data/materials/processed/finance/
 
 它只管理 source registry、evidence policy、Dust2 有色主题绑定、回合证据模板和数据源 universe，不承载 Hex cell / region / point 等地图空间事实。
 
-当前必须承认的 N50 前置事实：
+当前必须承认的 N50-N54 前置事实：
 
 ```text
 FRED / BaoStock / UN Comtrade / AKShare 已被登记。
 当前 generated evidence pack 主要仍是 configured_proxy_fact。
 比赛运行时读到了 evidence pack，但不是实时 API 数据。
-下一步要先离线生成充足、低 token、可审计的宏微观事实库，再按专家角色切片给 agent。
+N50 只负责离线生成充足、低 token、可审计的宏微观事实库；N51 才按专家角色切片给 agent；N52-N54 再处理行动边界、裁判采信和人工审计。
 ```
