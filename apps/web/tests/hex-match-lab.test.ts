@@ -79,6 +79,9 @@ describe("Hex Match Lab", () => {
     expect(drawer).toContain("中文审计");
     expect(drawer).toContain("function BusinessAudit");
     expect(drawer).toContain("本局开局信息卡");
+    expect(drawer).toContain("可用事实");
+    expect(drawer).toContain("证据缺口");
+    expect(drawer).toContain("证据切片技术细节");
     expect(drawer).toContain("本阶段行动");
     expect(drawer).toContain("守方投资主张");
     expect(drawer).toContain("攻方反证质疑");
@@ -140,6 +143,10 @@ describe("Hex Match Lab", () => {
     expect(server).toContain("humanAudit");
     expect(server).toContain("buildHumanAudit");
     expect(server).toContain("buildHumanAgentOpeningBriefs");
+    expect(server).toContain("buildHexAgentEvidenceSlices");
+    expect(server).toContain("roleQuestionZh");
+    expect(server).toContain("usableFactsZh");
+    expect(server).toContain("evidenceRefs");
     expect(server).toContain("repairedFields");
     expect(server).toContain("languageMismatchCount");
     expect(server).toContain("averageRequestReductionRatio");

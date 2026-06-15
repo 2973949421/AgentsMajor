@@ -191,12 +191,17 @@ N49 起，Hex 金融对抗的 `agent_action` 必须区分两层：
 - `financeDuel.defenseThesis`
 - `financeDuel.attackChallenge`
 - `financeDuel.agentAssignments`
+- `agentEvidenceSlice`
 - `economyContext`
 - agent role / team / side
 
 每名 agent 的 `agentOpeningBrief` 必须包含：
 
 - 本 round 金融职责。
+- 专家角色：PM / Macro / Commodity / Company / Risk。
+- `sliceId` 和当前 agent 的证据切片摘要。
+- `roleQuestionZh`：该专家本局要回答的问题。
+- `usableFactsZh` 和 `evidenceRefs`：可用事实和证据引用。
 - 自证或质疑摘要。
 - 证据边界。
 - 按经济买型裁剪后的行动约束。
@@ -215,7 +220,27 @@ N49 起，Hex 金融对抗的 `agent_action` 必须区分两层：
 
 - `businessIntent` 必须引用该信息卡的任务、证据边界或行动约束。
 - 不得重新生成完整守方自证、攻方质疑或全局金融论文。
+- 不得引用不属于该 agent 的证据切片来伪造专家差异。
 - 如果模型在 phase 内大段复述开局信息，代码必须记录 `phase_repeated_round_thesis` 审计警告。
+
+### 5.7 N51 专家证据切片
+
+N51 起，`agentOpeningBrief` 不能只复制 team thesis。每个 round 必须先生成 10 份 `agentEvidenceSlice`：
+
+```text
+PM / IGL：配置强度、风险收益、组合观点。
+Macro / AWPer：FRED 全球金属价格、宏观和周期锚。
+Commodity / entry：供需、品种、UN Comtrade 贸易线索或 unavailable observation。
+Company / star rifler：BaoStock 公司行情、估值代理和市场反应。
+Risk / support：missingEvidence、scoreCaps、反证、止损和仓位降级。
+```
+
+约束：
+
+- `financeRole` 不得默认为 `unknown`；无法从 team asset 解析时，必须用 CS role 或 roster slot fallback，并记录 `roleFallbackReason`。
+- 同队 5 张信息卡的 `roleQuestionZh / usableFactsZh / evidenceRefs` 不应完全相同。
+- AKShare 仍为 registered collector，不作为最终事实切片来源。
+- fact bank 不完整时，必须显示 missing evidence 和 score cap，不能让 LLM 补事实。
 
 审计展示规则：
 

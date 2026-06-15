@@ -3,11 +3,14 @@ import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 
 import {
+  buildHexAgentEvidenceSlices,
   commitDust2HexRoundExperimental,
   loadOfficialDust2HexMap,
   runDust2HexMapExperimental,
+  type HexAgentEvidenceSlice,
   type HexAgentCommandProgressEvent,
   type HexMapExperimentalSummary,
+  type HexRoundFinanceDuel,
   type HexRoundTrace
 } from "@agent-major/core";
 import { createSqliteRepositories, defaultSqlitePath, type SqliteRepositoryBundle } from "@agent-major/db";
@@ -223,6 +226,15 @@ export interface HexMatchLabHumanAgentOpeningBrief {
   displayName: string;
   teamSide: string;
   role: string;
+  financeRole?: string | undefined;
+  financeRoleCn?: string | undefined;
+  sliceId?: string | undefined;
+  roleQuestionZh?: string | undefined;
+  usableFactsZh: string[];
+  evidenceRefs: string[];
+  missingEvidenceZh: string[];
+  scoreCapRefs: string[];
+  roleFallbackReason?: string | undefined;
   roundTaskZh: string;
   proofOrChallengeZh: string;
   evidenceBoundaryZh: string;
@@ -267,6 +279,7 @@ export interface HexMatchLabHumanCombatStory {
 }
 
 export interface HexMatchLabFinanceDuelSummary {
+  roundNumber: number;
   topicKey: string;
   topicTitle: string;
   defenseThesisFocus: string;
@@ -1342,6 +1355,7 @@ function summarizeFinanceDuel(trace: HexRoundTrace): HexMatchLabFinanceDuelSumma
   const duel = trace.financeDuel;
   if (!duel) return undefined;
   return {
+    roundNumber: duel.roundNumber,
     topicKey: duel.topic.roundKey,
     topicTitle: duel.topic.topicTitle,
     defenseThesisFocus: duel.topic.defenseThesisFocus,
@@ -1416,6 +1430,21 @@ function buildHumanAgentOpeningBriefs(
   agentIdentities: Map<string, AgentIdentity>
 ): HexMatchLabHumanAgentOpeningBrief[] {
   const evidenceBoundaryZh = buildHumanEvidenceBoundary(financeDuel);
+  const slices = buildHexAgentEvidenceSlices({
+    financeDuel: toCoreFinanceDuel(financeDuel),
+    agents: financeDuel.assignments.map((assignment) => {
+      const identity = agentIdentities.get(assignment.agentId);
+      return {
+        agentId: assignment.agentId,
+        teamId: assignment.teamId,
+        side: assignment.side === "defense" ? "defense" : "attack",
+        ...(identity?.displayName ? { displayName: identity.displayName } : {}),
+        role: assignment.role,
+        ...(identity?.roleLabel ? { roleLabel: identity.roleLabel } : {})
+      };
+    })
+  });
+  const slicesByAgentId = new Map(slices.map((slice) => [slice.agentId, slice]));
   return financeDuel.assignments.map((assignment) => {
     const identity = agentIdentities.get(assignment.agentId);
     const economy = economySummary.flatMap((team) => team.agents).find((agent) => agent.agentId === assignment.agentId);
@@ -1423,21 +1452,133 @@ function buildHumanAgentOpeningBriefs(
     const proofOrChallengeZh = assignment.side === "defense"
       ? financeDuel.defenseThesis.thesis
       : financeDuel.attackChallenge.thesis;
+    const slice = slicesByAgentId.get(assignment.agentId);
     return {
       briefId: `opening_${financeDuel.mirrorRoundNumber}_${assignment.agentId}`,
       agentId: assignment.agentId,
       displayName: identity?.displayName ?? assignment.agentId,
       teamSide: side,
-      role: identity?.roleLabel ?? assignment.role,
-      roundTaskZh: assignment.financeTask,
+      role: slice?.financeRoleCn ?? identity?.roleLabel ?? assignment.role,
+      ...(slice ? {
+        financeRole: slice.financeRole,
+        financeRoleCn: slice.financeRoleCn,
+        sliceId: slice.sliceId,
+        roleQuestionZh: slice.roleQuestionZh,
+        usableFactsZh: [...slice.usableFactsZh],
+        evidenceRefs: [...slice.evidenceRefs],
+        missingEvidenceZh: [...slice.missingEvidenceZh],
+        scoreCapRefs: [...slice.scoreCapRefs],
+        ...(slice.roleFallbackReason ? { roleFallbackReason: slice.roleFallbackReason } : {})
+      } : {
+        usableFactsZh: [],
+        evidenceRefs: [],
+        missingEvidenceZh: [],
+        scoreCapRefs: []
+      }),
+      roundTaskZh: slice?.roleQuestionZh ?? assignment.financeTask,
       proofOrChallengeZh,
-      evidenceBoundaryZh,
+      evidenceBoundaryZh: slice
+        ? [
+            evidenceBoundaryZh,
+            slice.missingEvidenceZh.length > 0 ? `专家缺口：${slice.missingEvidenceZh.slice(0, 2).join("；")}` : "",
+            slice.scoreCapRefs.length > 0 ? `专家评分边界：${slice.scoreCapRefs.slice(0, 2).join("；")}` : ""
+          ].filter(Boolean).join(" ")
+        : evidenceBoundaryZh,
       buyConstraintZh: humanizeBuyConstraint(economy),
-      actionHintZh: assignment.side === "defense"
+      actionHintZh: slice?.actionBoundaryZh ?? (assignment.side === "defense"
         ? "局内行动应守住自证链条，用位置、交叉火力和回防回应攻方质疑。"
-        : "局内行动应服务质疑链条，用推进、信息或压迫验证守方风险边界。"
+        : "局内行动应服务质疑链条，用推进、信息或压迫验证守方风险边界。")
     };
   });
+}
+
+function toCoreFinanceDuel(summary: HexMatchLabFinanceDuelSummary): HexRoundFinanceDuel {
+  return {
+    schemaVersion: 1,
+    source: "hex_round_finance_duel",
+    roundNumber: summary.roundNumber,
+    halfIndex: summary.halfIndex,
+    roundInHalf: summary.roundInHalf,
+    mirrorRoundNumber: summary.mirrorRoundNumber,
+    overtimeUnsupported: false,
+    attackTeamId: summary.attackChallenge.teamId,
+    defenseTeamId: summary.defenseThesis.teamId,
+    topic: {
+      roundNumber: summary.roundInHalf,
+      roundKey: summary.topicKey,
+      topicTitle: summary.topicTitle,
+      defenseThesisFocus: summary.defenseThesisFocus,
+      attackChallengeFocus: summary.attackChallengeFocus
+    },
+    defenseThesis: {
+      thesisId: `web_finance_thesis_${summary.roundNumber}_${summary.defenseThesis.teamId}_${summary.topicKey}`,
+      teamId: summary.defenseThesis.teamId,
+      side: "defense",
+      topicKey: summary.topicKey,
+      thesis: summary.defenseThesis.thesis,
+      keyAssumptions: [...summary.defenseThesis.keyAssumptions],
+      evidenceRefs: [...summary.defenseThesis.evidenceRefs],
+      riskBoundary: summary.defenseThesis.riskBoundary
+    },
+    attackChallenge: {
+      challengeId: `web_finance_challenge_${summary.roundNumber}_${summary.attackChallenge.teamId}_${summary.topicKey}`,
+      teamId: summary.attackChallenge.teamId,
+      side: "attack",
+      topicKey: summary.topicKey,
+      thesis: summary.attackChallenge.thesis,
+      challengePoints: [...summary.attackChallenge.challengePoints],
+      requiredDefense: [...summary.attackChallenge.requiredDefense],
+      evidenceRefs: [...summary.attackChallenge.evidenceRefs]
+    },
+    agentAssignments: summary.assignments.map((assignment) => ({
+      assignmentId: `web_finance_assignment_${assignment.agentId}_${summary.topicKey}`,
+      agentId: assignment.agentId,
+      teamId: assignment.teamId,
+      side: assignment.side === "defense" ? "defense" : "attack",
+      role: assignment.role,
+      topicKey: summary.topicKey,
+      ...(assignment.side === "defense"
+        ? { linkedThesisId: `web_finance_thesis_${summary.roundNumber}_${summary.defenseThesis.teamId}_${summary.topicKey}` }
+        : { linkedChallengeId: `web_finance_challenge_${summary.roundNumber}_${summary.attackChallenge.teamId}_${summary.topicKey}` }),
+      financeTask: assignment.financeTask,
+      evidenceRules: [
+        "Web projection uses this assignment for human audit only."
+      ]
+    })),
+    evidencePackRef: {
+      mapBindingId: "web_projection",
+      financeMapSlug: "dust2-nonferrous",
+      generatedAt: "",
+      aggregateEvidencePath: ""
+    },
+    evidence: {
+      facts: summary.evidence.promptFacts.map((fact) => ({
+        factId: fact.factId,
+        statement: fact.shortText,
+        metricName: "web_prompt_fact",
+        source: "FINANCE_DUEL_SUMMARY",
+        sourceType: "web_projection",
+        evidenceId: fact.evidenceId,
+        confidence: 0.5,
+        dataMode: "trace_summary"
+      })),
+      promptFacts: summary.evidence.promptFacts.map((fact) => ({ ...fact })),
+      missingEvidence: [...summary.evidence.missingEvidence],
+      scoreCaps: summary.evidence.scoreCaps.map((cap) => ({ ...cap })),
+      judgeLedger: {
+        allowedClaims: [],
+        cappedClaims: [],
+        prohibitedClaims: []
+      },
+      sourceWarnings: []
+    },
+    sideSwapPolicy: {},
+    sourceAudit: {
+      mode: "generated_evidence_pack",
+      materialPaths: {},
+      notes: ["web_projection_for_agent_evidence_slice"]
+    }
+  };
 }
 
 function buildHumanPhaseStory(

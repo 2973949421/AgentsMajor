@@ -162,6 +162,8 @@ function buildHexRunnerAgents(input: {
       agentId: agent.id,
       teamId: agent.teamId,
       side,
+      displayName: agent.displayName,
+      role: agent.role,
       carryingC4
     };
   });

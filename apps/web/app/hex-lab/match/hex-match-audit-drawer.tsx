@@ -74,11 +74,30 @@ function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; 
             {humanAudit.agentOpeningBriefs.map((brief) => (
               <li key={brief.briefId}>
                 <strong>{brief.displayName}</strong> / {brief.teamSide} / {brief.role}：
-                {brief.roundTaskZh}
+                {brief.roleQuestionZh ?? brief.roundTaskZh}
                 <br />
                 <span>{brief.proofOrChallengeZh}</span>
                 <br />
+                {brief.usableFactsZh.length > 0 ? (
+                  <>
+                    <span>可用事实：{brief.usableFactsZh.slice(0, 2).join("；")}</span>
+                    <br />
+                  </>
+                ) : null}
+                {brief.missingEvidenceZh.length > 0 ? (
+                  <>
+                    <span>证据缺口：{brief.missingEvidenceZh.slice(0, 2).join("；")}</span>
+                    <br />
+                  </>
+                ) : null}
                 <small>{brief.buyConstraintZh} {brief.actionHintZh}</small>
+                <details>
+                  <summary>证据切片技术细节</summary>
+                  <p>slice: {brief.sliceId ?? "旧 trace 未记录"}</p>
+                  <p>evidence refs: {brief.evidenceRefs.join(", ") || "未记录"}</p>
+                  <p>score caps: {brief.scoreCapRefs.join("; ") || "未记录"}</p>
+                  {brief.roleFallbackReason ? <p>role fallback: {brief.roleFallbackReason}</p> : null}
+                </details>
               </li>
             ))}
           </ul>

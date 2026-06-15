@@ -1,4 +1,5 @@
 import type { HexAgentEconomyContext, HexRoundEconomyContext, HexResourceTier } from "../economy/index.js";
+import { buildHexAgentEvidenceSlices, type HexAgentEvidenceSlice, type HexFinanceFactBankSnapshot, type HexFinanceTeamProfile } from "../finance/index.js";
 import type { HexRoundFinanceDuel } from "../finance/index.js";
 import type { HexSide } from "../state/index.js";
 
@@ -10,6 +11,7 @@ export interface HexRoundOpeningBrief {
   defenseSummaryZh: string;
   attackSummaryZh: string;
   evidenceBoundaryZh: string;
+  agentEvidenceSlices: HexAgentEvidenceSlice[];
   agentBriefs: HexAgentOpeningBrief[];
 }
 
@@ -20,6 +22,12 @@ export interface HexAgentOpeningBrief {
   teamId: string;
   teamSide: HexSide;
   role: string;
+  financeRole?: string;
+  financeRoleCn?: string;
+  sliceId?: string;
+  roleQuestionZh?: string;
+  usableFactsZh?: string[];
+  evidenceRefs?: string[];
   roundTaskZh: string;
   proofOrChallengeZh: string;
   evidenceBoundaryZh: string;
@@ -36,11 +44,30 @@ export interface BuildHexRoundOpeningBriefInput {
     side: HexSide;
     displayName?: string | undefined;
     role?: string | undefined;
+    roleLabel?: string | undefined;
   }>;
+  factBank?: HexFinanceFactBankSnapshot | undefined;
+  teamProfiles?: HexFinanceTeamProfile[] | undefined;
+  workspaceRoot?: string | undefined;
 }
 
 export function buildHexRoundOpeningBrief(input: BuildHexRoundOpeningBriefInput): HexRoundOpeningBrief {
   const evidenceBoundaryZh = buildEvidenceBoundary(input.financeDuel);
+  const agents = input.agents.map((agent) => {
+    const assignment = input.financeDuel.agentAssignments.find((candidate) => candidate.agentId === agent.agentId);
+    return {
+      ...agent,
+      role: agent.role ?? assignment?.role
+    };
+  });
+  const agentEvidenceSlices = buildHexAgentEvidenceSlices({
+    financeDuel: input.financeDuel,
+    economyContext: input.economyContext,
+    agents,
+    ...(input.factBank ? { factBank: input.factBank } : {}),
+    ...(input.teamProfiles ? { teamProfiles: input.teamProfiles } : {}),
+    ...(input.workspaceRoot ? { workspaceRoot: input.workspaceRoot } : {})
+  });
   return {
     schemaVersion: 1,
     source: "hex_round_opening_brief",
@@ -49,11 +76,16 @@ export function buildHexRoundOpeningBrief(input: BuildHexRoundOpeningBriefInput)
     defenseSummaryZh: `守方自证：${input.financeDuel.defenseThesis.thesis}`,
     attackSummaryZh: `攻方质疑：${input.financeDuel.attackChallenge.thesis}`,
     evidenceBoundaryZh,
-    agentBriefs: input.agents.map((agent) => buildHexAgentOpeningBrief({
+    agentEvidenceSlices,
+    agentBriefs: agents.map((agent) => buildHexAgentOpeningBrief({
       financeDuel: input.financeDuel,
       evidenceBoundaryZh,
       agent,
-      economy: input.economyContext?.agents.find((candidate) => candidate.agentId === agent.agentId)
+      economy: input.economyContext?.agents.find((candidate) => candidate.agentId === agent.agentId),
+      agentEvidenceSlice: agentEvidenceSlices.find((slice) => slice.agentId === agent.agentId),
+      ...(input.factBank ? { factBank: input.factBank } : {}),
+      ...(input.teamProfiles ? { teamProfiles: input.teamProfiles } : {}),
+      ...(input.workspaceRoot ? { workspaceRoot: input.workspaceRoot } : {})
     }))
   };
 }
@@ -67,8 +99,13 @@ export function buildHexAgentOpeningBrief(input: {
     side: HexSide;
     displayName?: string | undefined;
     role?: string | undefined;
+    roleLabel?: string | undefined;
   };
   economy?: HexAgentEconomyContext | undefined;
+  agentEvidenceSlice?: HexAgentEvidenceSlice | undefined;
+  factBank?: HexFinanceFactBankSnapshot | undefined;
+  teamProfiles?: HexFinanceTeamProfile[] | undefined;
+  workspaceRoot?: string | undefined;
 }): HexAgentOpeningBrief {
   const assignment = input.financeDuel.agentAssignments.find((candidate) => candidate.agentId === input.agent.agentId);
   const side = assignment?.side ?? input.agent.side;
@@ -78,7 +115,21 @@ export function buildHexAgentOpeningBrief(input: {
   const evidenceBoundaryZh = input.evidenceBoundaryZh ?? buildEvidenceBoundary(input.financeDuel);
   const roundTaskZh = assignment?.financeTask
     ?? (side === "defense" ? input.financeDuel.topic.defenseThesisFocus : input.financeDuel.topic.attackChallengeFocus);
-  const role = input.agent.role ?? assignment?.role ?? "role unknown";
+  const agentEvidenceSlice = input.agentEvidenceSlice ?? buildHexAgentEvidenceSlices({
+    financeDuel: input.financeDuel,
+    agents: [{
+      agentId: input.agent.agentId,
+      teamId: input.agent.teamId,
+      side,
+      ...(input.agent.displayName ? { displayName: input.agent.displayName } : {}),
+      ...((input.agent.role ?? assignment?.role) ? { role: input.agent.role ?? assignment?.role } : {}),
+      ...(input.agent.roleLabel ? { roleLabel: input.agent.roleLabel } : {})
+    }],
+    ...(input.factBank ? { factBank: input.factBank } : {}),
+    ...(input.teamProfiles ? { teamProfiles: input.teamProfiles } : {}),
+    ...(input.workspaceRoot ? { workspaceRoot: input.workspaceRoot } : {})
+  })[0];
+  const role = agentEvidenceSlice?.financeRoleCn ?? input.agent.role ?? assignment?.role ?? "role unknown";
   const economy = input.economy;
   const resourceTier = economy?.resourceTier;
   return {
@@ -88,11 +139,27 @@ export function buildHexAgentOpeningBrief(input: {
     teamId: input.agent.teamId,
     teamSide: side,
     role,
-    roundTaskZh,
+    ...(agentEvidenceSlice ? {
+      financeRole: agentEvidenceSlice.financeRole,
+      financeRoleCn: agentEvidenceSlice.financeRoleCn,
+      sliceId: agentEvidenceSlice.sliceId,
+      roleQuestionZh: agentEvidenceSlice.roleQuestionZh,
+      usableFactsZh: [...agentEvidenceSlice.usableFactsZh],
+      evidenceRefs: [...agentEvidenceSlice.evidenceRefs]
+    } : {}),
+    roundTaskZh: agentEvidenceSlice?.roleQuestionZh ?? roundTaskZh,
     proofOrChallengeZh,
-    evidenceBoundaryZh,
+    evidenceBoundaryZh: agentEvidenceSlice
+      ? [
+          evidenceBoundaryZh,
+          agentEvidenceSlice.missingEvidenceZh.length > 0 ? `专家缺口：${agentEvidenceSlice.missingEvidenceZh.slice(0, 2).join("；")}` : "",
+          agentEvidenceSlice.scoreCapRefs.length > 0 ? `专家评分边界：${agentEvidenceSlice.scoreCapRefs.slice(0, 2).join("；")}` : ""
+        ].filter(Boolean).join(" ")
+      : evidenceBoundaryZh,
     buyConstraintZh: buildBuyConstraintZh(economy),
-    actionHintZh: buildActionHintZh({
+    actionHintZh: agentEvidenceSlice
+      ? `${agentEvidenceSlice.actionBoundaryZh} ${agentEvidenceSlice.coachConstraintZh}`
+      : buildActionHintZh({
       side,
       resourceTier,
       carryingMainClaim: assignment?.linkedThesisId !== undefined || assignment?.linkedChallengeId !== undefined

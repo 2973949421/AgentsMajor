@@ -755,7 +755,7 @@ UN Comtrade：已生成 optional unavailable_observation。
 AKShare：仍为 registered_collector_not_used。
 ```
 
-### N51：专家证据切片与开局信息卡差异化（计划）
+### N51：专家证据切片与开局信息卡差异化（本轮实施）
 
 目标：
 
@@ -763,6 +763,19 @@ AKShare：仍为 registered_collector_not_used。
 - 修复 finance role 识别不足和 `unknown` 问题。
 - 让 10 张开局信息卡不再同队复制。
 - Web 能展示每名 agent 的证据切片、角色问题、证据边界和可用事实。
+
+N51 的固定口径：
+
+```text
+PM：综合 FRED + BaoStock + scoreCaps，负责配置强度和风险收益。
+Macro：优先 FRED 全球金属价格，负责宏观和周期锚。
+Commodity：优先 UN Comtrade；不可用时明确暴露贸易 / 库存证据缺失。
+Company：优先 BaoStock 公司行情、估值和市场反应代理。
+Risk：优先 missingEvidence、scoreCaps、UN unavailable 和仓位降级边界。
+Coach：不作为第 11/12 个战斗 agent；coachDoctrine 进入每名 agent 的行动约束。
+```
+
+N51 不重新拉 API，不新增 agent 临场 API 调用，不改 Hex AP / combat / economy / winner。AKShare 仍只作为 registered collector，不进入事实切片。
 
 详细计划：
 

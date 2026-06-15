@@ -271,8 +271,11 @@ describe("Hex agent command boundary", () => {
     expect(compact.financeDuel?.defenseSummaryZh).toContain("守方自证");
     expect(compact.financeDuel?.attackSummaryZh).toContain("攻方质疑");
     expect(compact.agentOpeningBrief?.briefId).toBe(request.agentOpeningBrief?.briefId);
+    expect(compact.agentOpeningBrief?.sliceId).toBeDefined();
+    expect(compact.agentOpeningBrief?.financeRoleCn).toBeDefined();
+    expect(compact.agentOpeningBrief?.usableFactsZh?.length).toBeGreaterThan(0);
     expect(JSON.stringify(compact)).not.toContain("promptFacts");
-    expect(JSON.stringify(compact)).not.toContain("missingEvidence");
+    expect(JSON.stringify(compact)).not.toContain("\"scoreCaps\"");
     expect(compact.businessDuel).toBeUndefined();
     expect(compact.hardConstraints.some((line) => line.includes("businessIntent"))).toBe(true);
   });
@@ -315,10 +318,13 @@ describe("Hex agent command boundary", () => {
     });
 
     expect(brief.agentBriefs).toHaveLength(10);
+    expect(brief.agentEvidenceSlices).toHaveLength(10);
     expect(brief.defenseSummaryZh).toContain("守方自证");
     expect(brief.attackSummaryZh).toContain("攻方质疑");
     expect(brief.agentBriefs.find((item) => item.agentId === "t_0")?.proofOrChallengeZh).toContain(financeDuel.attackChallenge.thesis);
     expect(brief.agentBriefs.find((item) => item.agentId === "ct_0")?.buyConstraintZh).toContain("资源 low");
+    expect(brief.agentBriefs.find((item) => item.agentId === "t_0")?.sliceId).toBeDefined();
+    expect(brief.agentBriefs.find((item) => item.agentId === "t_0")?.roleQuestionZh).toContain("配置");
   });
 
   it("includes occupied and reserved cells while deprioritizing blocked target candidates", () => {

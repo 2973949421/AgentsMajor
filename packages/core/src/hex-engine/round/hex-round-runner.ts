@@ -56,6 +56,8 @@ export interface HexRoundRunnerAgentInput {
   agentId: string;
   teamId: string;
   side: HexSide;
+  displayName?: string;
+  role?: string;
   startCellId?: string;
   carryingC4?: boolean;
 }

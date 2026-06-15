@@ -8,7 +8,7 @@ N50 解决离线金融事实库。N51 解决另一个根问题：同一队伍 5 
 
 最终结果：
 
-- 将 fact bank（事实库）切成专家可用的 evidence slice（证据切片）。
+- 将 N50 fact bank（事实库）切成专家可用的 evidence slice（证据切片）。
 - 每名 agent 获得符合自身金融职责的开局信息卡。
 - 同队 5 人不能复制同一句自证 / 质疑。
 - Web 能看到每名 agent 拿到哪些证据、负责什么问题。
@@ -48,7 +48,7 @@ N51 完成后必须满足：
 In scope：
 
 - 新增 `agentEvidenceSlice` 生成逻辑。
-- 从 team asset 的 `finance_agent_profile` 读取角色。
+- 从 team asset 的 `financeAgentRoster` 读取角色；缺失时用 CS role fallback。
 - 改造 `agentOpeningBrief` 生成。
 - Web 展示 agent 证据切片摘要。
 - 增加重复度和角色识别测试。
@@ -83,15 +83,17 @@ roleFallbackReason
 
 ### B. 证据切片
 
-从 round evidence pack 中按角色选择事实：
+从 N50 fact bank 和 round evidence pack 中按角色选择事实：
 
 ```text
-PM：综合证据、风险收益、配置上限。
-Macro：FRED、宏观变量、价格趋势。
-Commodity：品种供需、进出口、库存缺口代理。
+PM：综合 FRED + BaoStock + scoreCaps，形成配置强度和风险收益问题。
+Macro：FRED 全球金属价格、宏观变量、价格趋势。
+Commodity：UN Comtrade 贸易线索；不可用时明确写贸易 / 库存证据缺失。
 Company：BaoStock 公司、估值、市场反应。
-Risk：missingEvidence、scoreCaps、反证、止损。
+Risk：missingEvidence、scoreCaps、UN unavailable、反证、止损。
 ```
+
+AKShare 第一版只允许保留为 `registered_collector_not_used`，不能进入最终事实切片。
 
 ### C. 开局信息卡
 
@@ -99,13 +101,15 @@ Risk：missingEvidence、scoreCaps、反证、止损。
 
 ```text
 financeRole
+financeRoleCn
+sliceId
 roleQuestionZh
 evidenceRefs
 usableFactsZh
 evidenceBoundaryZh
 proofOrChallengeZh
 actionHintZh
-sliceId
+roleFallbackReason
 ```
 
 ## 6. 分阶段执行步骤
@@ -123,7 +127,7 @@ sliceId
    确认每类角色拿到不同证据类型。
 
 5. 实现 `agentEvidenceSlice`
-   从 round evidence pack 切出 10 份角色证据。
+   从 N50 fact bank、round evidence pack、team asset 和 economy context 切出 10 份角色证据。
 
 6. 改造 opening brief
    让信息卡引用 slice。
@@ -183,7 +187,9 @@ packages/core/src/hex-engine/finance/hex-agent-evidence-slice.test.ts
 
 ```powershell
 node node_modules/vitest/vitest.mjs run packages/core/src/hex-engine/action/hex-round-opening-brief.test.ts packages/core/src/hex-engine/finance/hex-round-finance-duel.test.ts
+node node_modules/vitest/vitest.mjs run packages/core/src/hex-engine/finance/hex-agent-evidence-slice.test.ts
 node node_modules/vitest/vitest.mjs run apps/web/tests/hex-match-lab.test.ts
+node data/materials/scripts/validate-finance-evidence.mjs --map dust2-nonferrous --fact-bank
 node node_modules/typescript/bin/tsc -p tsconfig.json --noEmit
 ```
 
@@ -192,6 +198,9 @@ node node_modules/typescript/bin/tsc -p tsconfig.json --noEmit
 - 10 名 agent 都有 `agentEvidenceSlice`。
 - 同队 5 张信息卡不是完全复制。
 - finance role 不应全部 unknown。
+- Macro 切片必须可见 FRED 事实。
+- Company 切片必须可见 BaoStock 事实。
+- Commodity / Risk 必须能消费 UN unavailable 和 missingEvidence。
 - missingEvidence 能进入 Risk / support 切片。
 
 ## 10. 人工验收流程
