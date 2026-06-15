@@ -185,3 +185,82 @@ data/materials/scripts/validate-finance-evidence.mjs
 ```
 
 当前脚本先生成 configured proxy facts，不在没有稳定 live adapter（实时适配器）时伪造市场数值。N45 runtime 应优先读取 `round-evidence-packs.json`，而不是重新扫描 source registry 或直接调用外部 API。
+
+## 9. N50 离线事实库补充契约
+
+N49 后的审计结论是：当前金融数据接口已经完成登记，但尚未真正把 API 观测值转化为比赛事实。`round-evidence-packs.json` 已经被 runtime 消费，但其中大量事实仍是：
+
+```text
+dataMode = configured_proxy_fact
+period = configured
+value = null
+```
+
+N50 不改变“比赛时不临场联网”的原则。新的数据路线是：
+
+```text
+先离线采集。
+再归一化成 fact bank。
+再生成 round evidence pack。
+再按专家角色切成 agent evidence slice。
+最后由 roundOpeningBrief / agentOpeningBrief 消费。
+```
+
+新增事实类型建议：
+
+```text
+offline_observation_fact
+```
+
+它必须至少包含：
+
+```text
+factId
+statement
+metricName
+value
+unit
+period
+source
+sourceType
+collector
+evidenceId
+confidence
+rawHash
+parserVersion
+originalLocation
+policyNotes
+dataMode
+observedAt 或 generatedAt
+```
+
+如果某个 API 未能取回数据，不允许静默写空值。必须写入：
+
+```text
+dataMode = unavailable_observation
+unavailableReason
+sourceWarning
+```
+
+N50 的第一版默认策略：
+
+| 数据源 | N50 状态 | 说明 |
+|---|---|---|
+| FRED | 必通主路径 | 全球金属价格和宏观代理事实 |
+| BaoStock | 必通主路径 | A 股代表公司行情、成交和估值代理 |
+| UN Comtrade | 可选 | 进出口滞后线索，失败不阻塞 |
+| AKShare | 登记采集器 | 不作为最终事实源，第一版可不启用 |
+
+N50 生成的事实库建议放在：
+
+```text
+data/materials/generated/finance/fact-bank/
+```
+
+比赛运行时仍读取：
+
+```text
+data/materials/generated/finance/maps/dust2-nonferrous/round-evidence-packs.json
+```
+
+但这个 evidence pack 应由 fact bank 派生，而不是只由配置文件派生。后续 agent 看到 `configured_proxy_fact` 时，必须理解它只是兜底脚手架，不代表用户准备的金融数据接口已经真正进入比赛事实层。

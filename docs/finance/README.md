@@ -24,6 +24,7 @@ Finance Major 复用最新 HexGrid 工程骨架。
 docs/finance/finance-major-prototype-plan.md
 docs/finance/finance-evidence-mvp.md
 docs/finance/finance-data-asset-contract.md
+docs/finance/n50-offline-finance-fact-bank-plan.md
 docs/current/priority-roadmap.md
 docs/hex/phase-2.0-pre-hex-engine-runtime-contract.md
 docs/hex/phase-2.0-pre-prompt-contract.md
@@ -100,6 +101,14 @@ FRED + BaoStock + 可选 UN Comtrade
 ```text
 docs/finance/finance-evidence-mvp.md
 docs/finance/finance-data-asset-contract.md
+```
+
+N49 后暴露出的关键问题是：FRED / BaoStock / UN Comtrade / AKShare 已经完成 source registry（数据源登记）和依赖记录，但当前比赛实际消费的主要仍是 `configured_proxy_fact`（配置型代理事实），不是 API 实际观测数据。下一步 N50 不要求 agent 临场拉 API，而是先用接口离线生成低频、可审计、低 token 的金融事实库，再按专家角色切片给 10 名 agent 使用。
+
+N50 固定计划见：
+
+```text
+docs/finance/n50-offline-finance-fact-bank-plan.md
 ```
 
 ## 数据资产入口

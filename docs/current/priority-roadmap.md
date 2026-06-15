@@ -46,7 +46,7 @@ Node/Sector 实验线：已退役并清理 active mode / runtime / Web progress 
 
 ## 3. 近期优先级
 
-### P0：N42-N49，Finance Major 原型（当前）
+### P0：N42-N50，Finance Major 原型（当前）
 
 目标是保留 HexGrid 工程骨架，把旧 business duel 语义替换为 finance duel：
 
@@ -58,7 +58,8 @@ N45：Finance Duel Runtime 接入。（已完成第一版）
 N46：金融裁判替换商业裁判。（已完成第一版）
 N47：金融 Web 验收台改造。（已完成第一版）
 N48：Dust2 有色 / 行业判断 6R 小样本验收。（条件通过）
-N49：Finance real 6R 样本与成本/语义质量修复。（下一步）
+N49：中文可读审计 + 回合信息层 / 局内行动层拆分。（已完成第一版）
+N50：离线金融事实库与专家证据切片。（下一步）
 ```
 
 当前测试落点：
@@ -87,14 +88,32 @@ data/materials/generated/finance/maps/dust2-nonferrous/round-evidence-packs.json
 
 N45 已读取这份 evidence pack，生成 round-level financeDuel，并写入 Hex trace。N46 已让 combat 裁判优先消费 financeDuel，并保留旧 business 字段作为兼容别名。N47 已让 `/hex-lab/match` 的审计抽屉优先展示金融小主题、投资主张、反证质疑、证据编号、缺失证据、评分上限、金融裁判和 hard condition 分离链路。N48 已完成 Dust2 有色 / 行业判断 6R 小样本验收，结论是条件通过：fixture 结构链路通过，real provider 金融样本尚未通过。
 
-N49 的下一步是修复 real provider 金融 6R 样本和成本/语义质量，重点包括：
+N49 已完成第一版中文审计和信息层拆分，重点结果是：
 
 ```text
-1. 生成新的 financeDuel real 6R 样本，而不是沿用旧 businessDuel real trace。
-2. 降低 request artifact 体积，避免 300KB+ 单次请求继续污染成本。
-3. 让真实模型输出围绕投资主张、反证质疑、证据编号和缺失证据。
-4. 将 fixture 文案从旧 business-plan action 改为金融兼容表达。
-5. 解释或修复连续 timeout_no_plant 的样本单调问题。
+1. Web 审计默认中文摘要优先，不再强迫用户先读 raw enum / artifact id。
+2. 每 round 生成 roundOpeningBrief 和 10 张 agentOpeningBrief。
+3. phase action 消费开局信息卡和当前局势，不应继续重写完整金融论文。
+4. 技术细节仍折叠保留，方便排查。
+```
+
+N49 暴露出的新问题是：
+
+```text
+1. FRED / BaoStock / UN Comtrade / AKShare 只完成 source registry 和依赖登记。
+2. 当前 evidence pack 主要仍是 configured_proxy_fact，不是真实 API 观测数据。
+3. generate-finance-evidence.mjs 只读取配置文件，没有真正调用 FRED / BaoStock / Comtrade / AKShare。
+4. 同队 5 名 agent 的开局信息卡高度重复，finance role 仍可能是 unknown。
+5. roundOpeningBrief 缺少按 PM / Macro / Commodity / Company / Risk 切分的证据。
+```
+
+因此 N50 的下一步是：
+
+```text
+不要求 agent 临场拉 API。
+先用用户准备的免费接口离线生成宏微观事实库。
+再从事实库生成 round evidence pack 和 agent evidence slice。
+最后让 10 名 agent 的开局信息卡按专家角色读取不同证据。
 ```
 
 当前必须承认的边界：
@@ -112,6 +131,12 @@ CNINFO、国家统计局、工信部、SHFE、SMM 等先作为后置证据锚点
 
 ```text
 data/materials/processed/finance/
+```
+
+N50 固定计划：
+
+```text
+docs/finance/n50-offline-finance-fact-bank-plan.md
 ```
 
 正式本地环境入口：
