@@ -109,4 +109,78 @@ describe("sqlite repositories", () => {
       rmSync(tempDir, { recursive: true, force: true });
     }
   });
+
+  it("skips retired Node/Sector simulation runs when reading history", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "agent-major-db-"));
+    const repositories = createSqliteRepositories(join(tempDir, "test.sqlite"));
+    try {
+      repositories.sqlite
+        .prepare("INSERT INTO tournaments (id, name, status, format, created_at) VALUES (?, ?, ?, ?, ?)")
+        .run("t_runs", "Runs", "running", "single_elimination_16", "2026-05-01T00:00:00.000Z");
+      repositories.sqlite
+        .prepare("INSERT INTO teams (id, tournament_id, display_name, short_name, seed, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+        .run("team_runs_a", "t_runs", "Runs A", "RSA", 1, "2026-05-01T00:00:00.000Z");
+      repositories.sqlite
+        .prepare("INSERT INTO teams (id, tournament_id, display_name, short_name, seed, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+        .run("team_runs_b", "t_runs", "Runs B", "RSB", 2, "2026-05-01T00:00:00.000Z");
+      repositories.sqlite
+        .prepare(
+          `INSERT INTO matches (
+            id, tournament_id, round_name, team_a_id, team_b_id, status, best_of, scheduled_order, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+        .run("match_runs", "t_runs", "Round", "team_runs_a", "team_runs_b", "running", 1, 1, "2026-05-01T00:00:00.000Z");
+      repositories.sqlite
+        .prepare(
+          `INSERT INTO matches (
+            id, tournament_id, round_name, team_a_id, team_b_id, status, best_of, scheduled_order, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+        .run("match_runs_retired", "t_runs", "Round", "team_runs_a", "team_runs_b", "failed", 1, 2, "2026-05-01T00:00:00.000Z");
+
+      const insertRun = repositories.sqlite.prepare(
+        `INSERT INTO simulation_runs (
+          id, fixture_id, status, requested_mode, runtime_match_id, baseline_completed_rounds,
+          estimated_total_rounds, expected_total_calls, latest_committed_round_number, has_fresh_replay, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      );
+      insertRun.run(
+        "run_retired_node",
+        "fixture_runs",
+        "failed",
+        "phase20_node_round_experimental",
+        "match_runs_retired",
+        0,
+        1,
+        0,
+        0,
+        0,
+        "2026-05-01T00:00:01.000Z"
+      );
+      insertRun.run(
+        "run_hex",
+        "fixture_runs",
+        "completed",
+        "phase20_hex_round_experimental",
+        "match_runs",
+        0,
+        1,
+        0,
+        1,
+        1,
+        "2026-05-01T00:00:02.000Z"
+      );
+
+      await expect(repositories.simulationRuns.getById("run_retired_node")).resolves.toBeNull();
+      await expect(repositories.simulationRuns.listByFixtureId("fixture_runs")).resolves.toMatchObject([
+        {
+          id: "run_hex",
+          requestedMode: "phase20_hex_round_experimental"
+        }
+      ]);
+    } finally {
+      repositories.close();
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
 });

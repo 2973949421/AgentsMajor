@@ -700,7 +700,7 @@ class SimulationRunSqliteRepository implements SimulationRunRepository {
 
   async getById(id: string): Promise<SimulationRun | null> {
     const row = this.sqlite.prepare("SELECT * FROM simulation_runs WHERE id = ?").get(id) as Row | undefined;
-    return row ? simulationRunSchema.parse(mapSimulationRun(row)) : null;
+    return row ? parseSimulationRunRow(row) : null;
   }
 
   async listByFixtureId(fixtureId: string): Promise<SimulationRun[]> {
@@ -708,12 +708,12 @@ class SimulationRunSqliteRepository implements SimulationRunRepository {
       this.sqlite
         .prepare("SELECT * FROM simulation_runs WHERE fixture_id = ? ORDER BY created_at DESC, id DESC")
         .all(fixtureId) as Row[]
-    ).map((row) => simulationRunSchema.parse(mapSimulationRun(row)));
+    ).map(parseSimulationRunRow).filter((run): run is SimulationRun => run !== null);
   }
 
   async getByRuntimeMatchId(runtimeMatchId: string): Promise<SimulationRun | null> {
     const row = this.sqlite.prepare("SELECT * FROM simulation_runs WHERE runtime_match_id = ?").get(runtimeMatchId) as Row | undefined;
-    return row ? simulationRunSchema.parse(mapSimulationRun(row)) : null;
+    return row ? parseSimulationRunRow(row) : null;
   }
 
     async save(entity: SimulationRun): Promise<void> {
@@ -1337,6 +1337,22 @@ function mapSimulationRun(row: Row) {
     startedAt: nullableString(row.started_at),
     completedAt: nullableString(row.completed_at)
   });
+}
+
+function parseSimulationRunRow(row: Row): SimulationRun | null {
+  const mapped = mapSimulationRun(row);
+  const parsed = simulationRunSchema.safeParse(mapped);
+  if (parsed.success) {
+    return parsed.data;
+  }
+  if (isRetiredNodeSimulationMode(mapped.requestedMode)) {
+    return null;
+  }
+  throw parsed.error;
+}
+
+function isRetiredNodeSimulationMode(value: unknown): boolean {
+  return value === "phase20_node_round_experimental" || value === "phase20_node_map_experimental";
 }
 
 function mapMapGame(row: Row) {
