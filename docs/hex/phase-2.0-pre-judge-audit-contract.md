@@ -420,3 +420,26 @@ proxyFactWarning
 - 前端可直接读懂
 
 才算真正进入后续 `经济系统 + 击杀判断` 的增强阶段。
+
+### 8.5 N53 金融证据采信链
+
+N53 起，Finance Major（金融投资对抗）的局部 combat 裁判不能只输出 `financeVerdict` 或 `financeReasons`。裁判必须把 evidence adoption（证据采信）写成 trace fact（轨迹事实），至少包含：
+
+- `acceptedEvidenceRefs`：本次局部裁定正向采信的证据。
+- `rejectedEvidenceRefs`：出现但未被采信的证据，例如不存在、不可用、越权、来自 fallback。
+- `missingEvidenceApplied`：实际影响裁定的缺失证据。
+- `scoreCapRefs`：触发降权或评分上限的证据边界。
+- `financeReasonZh`：中文金融裁判理由。
+- `csReasonZh`：中文 CS 执行理由。
+
+固定规则：
+
+- `challenge_landed` 必须能说明攻方质疑击中了哪条证据、假设或缺口。
+- `thesis_defended` 必须能说明守方用哪些证据、边界或风险承认守住质疑。
+- 没有有效证据采信时，金融分必须被封顶或降权。
+- fallback、invalid action、复述开局论点、行动理由明显超长，都不能形成正向金融证据。
+- `configured_proxy_fact` 只能作为弱代理事实，并触发 score cap 或边界提示。
+- `unavailable_observation` 不能被写成真实事实。
+- Web 可以翻译和组织采信链，但不能替 trace 编造采信理由。
+
+KDA / killLedger（击杀记录）仍只能消费 combat trace 中的 `killerAgentId / targetAgentId / assisterAgentIds`。金融采信可以解释局部击杀、压制、退让和控图的贡献，但不能写 hard winner（硬胜负）。

@@ -66,7 +66,14 @@ describe("Hex combat resolver", () => {
     expect(resolution.scores.attack.financeScore).toBeGreaterThan(resolution.scores.defense.financeScore ?? 0);
     expect(resolution.financeReasons).toEqual(expect.arrayContaining([
       "attack:finance_evidence_reference_used",
+      "attack:finance_missing_evidence_applied",
       "finance_verdict:challenge_landed"
+    ]));
+    expect(resolution.financeEvidenceAdoption?.attack.acceptedEvidenceRefs).toEqual(expect.arrayContaining(["F001", "F002"]));
+    expect(resolution.financeEvidenceAdoption?.attack.missingEvidenceApplied).toContain("domestic_inventory");
+    expect(resolution.financeEvidenceAdoption?.attack.scoreCapRefs).toContain("proxy_fact_boundary");
+    expect(resolution.financeReasonZh).toEqual(expect.arrayContaining([
+      expect.stringContaining("攻方采信证据")
     ]));
     expect(resolution.casualties[0]).toEqual(expect.objectContaining({
       targetAgentId: "ct_0",
@@ -116,13 +123,64 @@ describe("Hex combat resolver", () => {
     expect(resolution.businessVerdict).toBe("proof_rebutted_challenge");
     expect(resolution.financeReasons).toEqual(expect.arrayContaining([
       "attack:finance_fallback_not_positive_evidence",
+      "attack:finance_no_accepted_evidence",
       "defense:finance_evidence_reference_used",
       "finance_verdict:thesis_defended"
     ]));
+    expect(resolution.financeEvidenceAdoption?.attack.acceptedEvidenceRefs).toEqual([]);
+    expect(resolution.financeEvidenceAdoption?.attack.rejectionReasons).toContain("fallback_not_positive_finance_evidence");
+    expect(resolution.financeEvidenceAdoption?.defense.acceptedEvidenceRefs).toContain("F001");
+    expect(resolution.financeEvidenceAdoption?.defense.missingEvidenceApplied).toContain("domestic_inventory");
     expect(resolution.casualties[0]).toEqual(expect.objectContaining({
       targetAgentId: "t_0",
       killerAgentId: "ct_0"
     }));
+  });
+
+  it("rejects unknown or unavailable finance evidence refs instead of treating field presence as adoption", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [attackCell, defenseCell] = findCellsInRegion(asset, "a_site", 2);
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_0", side: "attack", cellId: attackCell!.cellId },
+      { agentId: "ct_0", side: "defense", cellId: defenseCell!.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({
+        memory,
+        agentId: "t_0",
+        actionType: "execute_site",
+        targetCellId: defenseCell!.cellId,
+        businessIntent: "质疑引用 F999 和 domestic_inventory，但没有有效事实编号，不能只靠字段存在获得采信。"
+      }),
+      buildCombatAction({
+        memory,
+        agentId: "ct_0",
+        actionType: "hold_position",
+        targetCellId: defenseCell!.cellId,
+        businessIntent: "守方只保持位置。"
+      })
+    ];
+    const financeDuel = buildHexRoundFinanceDuel({
+      roundNumber: 1,
+      attackTeamId: "t",
+      defenseTeamId: "ct",
+      agents: [
+        { agentId: "t_0", teamId: "t", side: "attack", role: "entry" },
+        { agentId: "ct_0", teamId: "ct", side: "defense", role: "anchor" }
+      ]
+    });
+    const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
+
+    const resolution = resolveHexCombat({ asset, memory, contact, actions, financeDuel });
+
+    expect(resolution.financeEvidenceAdoption?.attack.acceptedEvidenceRefs).toEqual([]);
+    expect(resolution.financeEvidenceAdoption?.attack.rejectedEvidenceRefs).toContain("F999:unknown_evidence_ref");
+    expect(resolution.financeEvidenceAdoption?.attack.missingEvidenceApplied).toContain("domestic_inventory");
+    expect(resolution.scores.attack.financeScore).toBeLessThan(65);
+    expect(resolution.financeReasons).toEqual(expect.arrayContaining([
+      "attack:finance_evidence_ref_rejected",
+      "attack:finance_score_cap_applied_without_evidence_reference"
+    ]));
   });
 
   it("lets business evidence dominate the first deterministic combat verdict", () => {

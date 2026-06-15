@@ -801,7 +801,7 @@ docs/finance/n51-agent-evidence-slice-plan.md
 docs/finance/n52-information-action-boundary-plan.md
 ```
 
-### N53：金融裁判证据采信事实化（计划）
+### N53：金融裁判证据采信事实化（已完成第一版）
 
 目标：
 
@@ -814,6 +814,19 @@ docs/finance/n52-information-action-boundary-plan.md
 
 ```text
 docs/finance/n53-judge-evidence-adoption-plan.md
+```
+
+N53 第一版落地口径：
+
+```text
+combat resolution 已输出 financeEvidenceAdoption。
+attack / defense 两侧分别记录 acceptedEvidenceRefs、rejectedEvidenceRefs、missingEvidenceApplied、scoreCapRefs、adoptionReasons、rejectionReasons。
+financeReasonZh / csReasonZh 进入 trace 和 Web humanAudit。
+fallback、invalid action、复述开局论点或行动理由超长的 action 不产生正向金融证据。
+unknown evidence ref 会进入 rejectedEvidenceRefs。
+unavailable_observation 不会被当作真实事实采信。
+configured_proxy_fact 可作为弱代理事实，但触发 score cap 或降权边界。
+Web 审计展示“采信证据 / 未采信证据 / 缺失证据影响 / 金融裁判理由 / CS 执行理由”。
 ```
 
 ### N54：中文人类审计与真实样本验收（计划）

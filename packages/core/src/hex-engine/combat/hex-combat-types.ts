@@ -68,6 +68,7 @@ export interface HexCombatSideEvidence {
   csScore: number;
   totalScore: number;
   reasons: string[];
+  financeEvidenceAdoption?: HexCombatFinanceEvidenceAdoption;
 }
 
 export interface HexCombatScoreboard {
@@ -135,6 +136,17 @@ export interface HexCombatAudit {
   }>;
 }
 
+export interface HexCombatFinanceEvidenceAdoption {
+  side: HexSide;
+  acceptedEvidenceRefs: string[];
+  rejectedEvidenceRefs: string[];
+  missingEvidenceApplied: string[];
+  scoreCapRefs: string[];
+  adoptionReasons: string[];
+  rejectionReasons: string[];
+  financeReasonZh: string[];
+}
+
 export interface HexCombatEconomyAudit {
   economyEvidenceApplied: boolean;
   attack: HexEconomyCombatEvidence;
@@ -151,6 +163,12 @@ export interface HexCombatResolutionCore {
   advantage: HexCombatAdvantage;
   businessVerdict: HexCombatBusinessVerdict;
   financeVerdict?: HexCombatFinanceVerdict;
+  financeEvidenceAdoption?: {
+    attack: HexCombatFinanceEvidenceAdoption;
+    defense: HexCombatFinanceEvidenceAdoption;
+  };
+  financeReasonZh?: string[];
+  csReasonZh?: string[];
   businessReasons: string[];
   financeReasons?: string[];
   csReasons: string[];

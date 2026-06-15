@@ -13,6 +13,7 @@ import type {
   HexCombatCasualty,
   HexCombatContact,
   HexCombatControlHint,
+  HexCombatFinanceEvidenceAdoption,
   HexCombatFinanceVerdict,
   HexCombatParticipant,
   HexCombatResolution,
@@ -102,6 +103,12 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
       ? "attack"
       : "defense";
   const financeVerdict = input.financeDuel ? buildFinanceVerdict(advantage, adjustedScores) : undefined;
+  const financeEvidenceAdoption = input.financeDuel
+    ? {
+        attack: adjustedScores.attack.financeEvidenceAdoption ?? buildEmptyFinanceEvidenceAdoption("attack"),
+        defense: adjustedScores.defense.financeEvidenceAdoption ?? buildEmptyFinanceEvidenceAdoption("defense")
+      }
+    : undefined;
   const businessVerdict = financeVerdict ? mapFinanceVerdictToBusinessVerdict(financeVerdict) : buildBusinessVerdict(advantage, adjustedScores);
   const verdict = buildVerdict(margin);
   const attributionScores = buildAttributionScores({
@@ -131,6 +138,10 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
     ...adjustedScores.attack.reasons.filter((reason) => !reason.includes(":business") && !reason.includes(":finance")),
     ...adjustedScores.defense.reasons.filter((reason) => !reason.includes(":business") && !reason.includes(":finance"))
   ];
+  const financeReasonZh = financeEvidenceAdoption
+    ? buildFinanceReasonZh(financeVerdict, financeEvidenceAdoption)
+    : undefined;
+  const csReasonZh = buildCsReasonZh(csReasons);
   const audit: HexCombatAudit = {
     businessWeight,
     financeWeight,
@@ -179,6 +190,9 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
     advantage,
     businessVerdict,
     ...(financeVerdict ? { financeVerdict } : {}),
+    ...(financeEvidenceAdoption ? { financeEvidenceAdoption } : {}),
+    ...(financeReasonZh ? { financeReasonZh } : {}),
+    csReasonZh,
     businessReasons,
     ...(financeReasons ? { financeReasons } : {}),
     csReasons,
@@ -252,8 +266,16 @@ function scoreSide(input: {
     return Boolean(agent?.currentRegionId && contactRegionIds.has(agent.currentRegionId))
       || participants.some((participant) => participant.agentId === action.agentId);
   });
+  const financeEvidenceAdoption = input.financeDuel
+    ? buildFinanceEvidenceAdoption({
+        side: input.side,
+        participants,
+        sideActionsNearContact,
+        financeDuel: input.financeDuel
+      })
+    : undefined;
   const financeScore = input.financeDuel
-    ? scoreFinanceEvidence(input.side, participants, sideActionsNearContact, input.memory, input.financeDuel)
+    ? scoreFinanceEvidence(input.side, participants, sideActionsNearContact, input.memory, input.financeDuel, financeEvidenceAdoption)
     : undefined;
   const businessScore = financeScore ?? scoreBusinessEvidence(input.side, participants, sideActionsNearContact, input.memory, input.businessDuel);
   const csScore = scoreCsEvidence(input.side, participants, input.contact, sideActionsNearContact, input.economyEvidence);
@@ -264,10 +286,11 @@ function scoreSide(input: {
     totalScore: roundScore(businessScore + csScore),
     reasons: [
       ...(input.financeDuel
-        ? buildFinanceReasons(input.side, participants, sideActionsNearContact, input.memory, input.financeDuel)
+        ? buildFinanceReasons(input.side, participants, sideActionsNearContact, input.memory, input.financeDuel, financeEvidenceAdoption)
         : buildBusinessReasons(input.side, participants, sideActionsNearContact, input.memory, input.businessDuel)),
       ...buildCsReasons(input.side, participants, input.contact, sideActionsNearContact, input.economyEvidence)
-    ]
+    ],
+    ...(financeEvidenceAdoption ? { financeEvidenceAdoption } : {})
   };
 }
 
@@ -353,13 +376,16 @@ function scoreFinanceEvidence(
   participants: HexCombatParticipant[],
   sideActionsNearContact: HexValidatedAgentAction[],
   memory: HexRoundMemory,
-  financeDuel: HexRoundFinanceDuel
+  financeDuel: HexRoundFinanceDuel,
+  adoption: HexCombatFinanceEvidenceAdoption | undefined
 ): number {
   let score = 0;
   const validActions = sideActionsNearContact.filter((action) => action.valid && !action.fallbackReason);
   const financeTexts = validActions.map((action) => action.businessIntent).filter((text) => text.trim().length > 0);
+  const acceptedEvidenceCount = adoption?.acceptedEvidenceRefs.length ?? 0;
+  const missingEvidenceCount = adoption?.missingEvidenceApplied.length ?? 0;
   if (financeTexts.length > 0) {
-    score += 10;
+    score += 6;
   }
   if (validActions.some((action) => action.actionType !== "hold_position")) {
     score += 8;
@@ -374,13 +400,13 @@ function scoreFinanceEvidence(
     score += 12;
   }
   if (financeTexts.some((text) => matchesRoundFinanceLanguage(side, text, financeDuel))) {
-    score += 10;
+    score += acceptedEvidenceCount > 0 || missingEvidenceCount > 0 ? 10 : 4;
   }
-  if (financeTexts.some((text) => referencesFinanceEvidence(text, financeDuel))) {
-    score += 10;
+  if (acceptedEvidenceCount > 0) {
+    score += Math.min(18, 8 + acceptedEvidenceCount * 4);
   }
-  if (financeTexts.some((text) => mentionsFinanceRiskBoundary(text, financeDuel))) {
-    score += 5;
+  if (missingEvidenceCount > 0) {
+    score += side === "attack" ? Math.min(14, 6 + missingEvidenceCount * 3) : Math.min(8, 3 + missingEvidenceCount * 2);
   }
   if (participants.some((participant) => {
     const agent = memory.agents.find((candidate) => candidate.agentId === participant.agentId);
@@ -388,9 +414,14 @@ function scoreFinanceEvidence(
   })) {
     score += 5;
   }
-  if (financeDuel.evidence.scoreCaps.length > 0 && !financeTexts.some((text) => referencesFinanceEvidence(text, financeDuel))) {
+  const shouldApplyCap = financeDuel.evidence.scoreCaps.length > 0
+    && (acceptedEvidenceCount === 0 || (adoption?.scoreCapRefs.length ?? 0) > 0);
+  if (shouldApplyCap) {
     const cap = Math.min(...financeDuel.evidence.scoreCaps.map((candidate) => candidate.maxScore));
     score = Math.min(score, Math.max(0, Math.min(financeWeight, Math.round((cap / 100) * financeWeight))));
+  }
+  if (acceptedEvidenceCount === 0 && missingEvidenceCount === 0) {
+    score = Math.min(score, 20);
   }
   return Math.min(financeWeight, score);
 }
@@ -400,7 +431,8 @@ function buildFinanceReasons(
   participants: HexCombatParticipant[],
   sideActionsNearContact: HexValidatedAgentAction[],
   memory: HexRoundMemory,
-  financeDuel: HexRoundFinanceDuel
+  financeDuel: HexRoundFinanceDuel,
+  adoption: HexCombatFinanceEvidenceAdoption | undefined
 ): string[] {
   const reasons: string[] = [];
   const validActions = sideActionsNearContact.filter((action) => action.valid && !action.fallbackReason);
@@ -422,16 +454,25 @@ function buildFinanceReasons(
   if (validActions.some((action) => matchesRoundFinanceLanguage(side, action.businessIntent, financeDuel))) {
     reasons.push(`${side}:finance_duel_topic_referenced`);
   }
-  if (validActions.some((action) => referencesFinanceEvidence(action.businessIntent, financeDuel))) {
+  if ((adoption?.acceptedEvidenceRefs.length ?? 0) > 0) {
     reasons.push(`${side}:finance_evidence_reference_used`);
   }
-  if (validActions.some((action) => mentionsFinanceRiskBoundary(action.businessIntent, financeDuel))) {
+  if ((adoption?.missingEvidenceApplied.length ?? 0) > 0) {
+    reasons.push(`${side}:finance_missing_evidence_applied`);
+  }
+  if (validActions.some((action) => mentionsFinanceRiskBoundary(collectActionFinanceText(action), financeDuel))) {
     reasons.push(`${side}:finance_risk_boundary_acknowledged`);
   }
   if (sideActionsNearContact.some((action) => action.fallbackReason)) {
     reasons.push(`${side}:finance_fallback_not_positive_evidence`);
   }
-  if (financeDuel.evidence.scoreCaps.length > 0 && !validActions.some((action) => referencesFinanceEvidence(action.businessIntent, financeDuel))) {
+  if ((adoption?.rejectedEvidenceRefs.length ?? 0) > 0) {
+    reasons.push(`${side}:finance_evidence_ref_rejected`);
+  }
+  if ((adoption?.acceptedEvidenceRefs.length ?? 0) === 0 && (adoption?.missingEvidenceApplied.length ?? 0) === 0) {
+    reasons.push(`${side}:finance_no_accepted_evidence`);
+  }
+  if (financeDuel.evidence.scoreCaps.length > 0 && ((adoption?.scoreCapRefs.length ?? 0) > 0 || (adoption?.acceptedEvidenceRefs.length ?? 0) === 0)) {
     reasons.push(`${side}:finance_score_cap_applied_without_evidence_reference`);
   }
   if (participants.some((participant) => {
@@ -441,6 +482,278 @@ function buildFinanceReasons(
     reasons.push(`${side}:previous_phase_summary_supports_finance_action`);
   }
   return reasons;
+}
+
+interface FinanceEvidenceRefInfo {
+  ref: string;
+  factId?: string;
+  evidenceId?: string;
+  dataMode?: string;
+  source?: string;
+}
+
+function buildFinanceEvidenceAdoption(input: {
+  side: HexSide;
+  participants: HexCombatParticipant[];
+  sideActionsNearContact: HexValidatedAgentAction[];
+  financeDuel: HexRoundFinanceDuel;
+}): HexCombatFinanceEvidenceAdoption {
+  const acceptedEvidenceRefs = new Set<string>();
+  const rejectedEvidenceRefs = new Set<string>();
+  const missingEvidenceApplied = new Set<string>();
+  const scoreCapRefs = new Set<string>();
+  const adoptionReasons = new Set<string>();
+  const rejectionReasons = new Set<string>();
+  const evidenceIndex = buildFinanceEvidenceIndex(input.financeDuel);
+
+  for (const action of input.sideActionsNearContact) {
+    const actionText = collectActionFinanceText(action);
+    const referencedInfos = collectReferencedFinanceEvidenceInfos(actionText, evidenceIndex);
+    const unknownRefs = collectUnknownEvidenceRefs(actionText, evidenceIndex);
+    const actionEligible = actionIsPositiveFinanceEvidence(action);
+    if (!actionEligible) {
+      const reason = action.fallbackReason ? "fallback_not_positive_finance_evidence" : "invalid_action_not_positive_finance_evidence";
+      for (const info of referencedInfos) {
+        rejectedEvidenceRefs.add(`${info.ref}:${reason}`);
+      }
+      for (const ref of unknownRefs) {
+        rejectedEvidenceRefs.add(`${ref}:${reason}`);
+      }
+      if (action.fallbackReason || action.validationErrors.length > 0) {
+        rejectionReasons.add(reason);
+      }
+      continue;
+    }
+
+    for (const ref of unknownRefs) {
+      rejectedEvidenceRefs.add(`${ref}:unknown_evidence_ref`);
+      rejectionReasons.add("unknown_evidence_ref");
+    }
+
+    for (const info of referencedInfos) {
+      if (info.dataMode === "unavailable_observation") {
+        rejectedEvidenceRefs.add(`${info.ref}:unavailable_observation_not_positive_fact`);
+        missingEvidenceApplied.add(info.ref);
+        rejectionReasons.add("unavailable_observation_not_positive_fact");
+        continue;
+      }
+      acceptedEvidenceRefs.add(info.ref);
+      if (info.dataMode === "configured_proxy_fact") {
+        adoptionReasons.add(`${info.ref}:configured_proxy_fact_adopted_with_score_cap`);
+        addDefaultScoreCaps(input.financeDuel, scoreCapRefs);
+      } else {
+        adoptionReasons.add(`${info.ref}:evidence_adopted`);
+      }
+    }
+
+    for (const missing of collectMissingEvidenceApplied(actionText, input.financeDuel)) {
+      missingEvidenceApplied.add(missing);
+      adoptionReasons.add(`${missing}:missing_evidence_applied`);
+    }
+    for (const cap of collectScoreCapsApplied(actionText, input.financeDuel)) {
+      scoreCapRefs.add(cap);
+      adoptionReasons.add(`${cap}:score_cap_applied`);
+    }
+  }
+
+  if (acceptedEvidenceRefs.size === 0 && missingEvidenceApplied.size === 0) {
+    rejectionReasons.add("no_accepted_finance_evidence");
+    addDefaultScoreCaps(input.financeDuel, scoreCapRefs);
+  }
+  return {
+    side: input.side,
+    acceptedEvidenceRefs: [...acceptedEvidenceRefs],
+    rejectedEvidenceRefs: [...rejectedEvidenceRefs],
+    missingEvidenceApplied: [...missingEvidenceApplied],
+    scoreCapRefs: [...scoreCapRefs],
+    adoptionReasons: [...adoptionReasons],
+    rejectionReasons: [...rejectionReasons],
+    financeReasonZh: buildFinanceAdoptionReasonZh({
+      side: input.side,
+      acceptedEvidenceRefs,
+      rejectedEvidenceRefs,
+      missingEvidenceApplied,
+      scoreCapRefs
+    })
+  };
+}
+
+function buildEmptyFinanceEvidenceAdoption(side: HexSide): HexCombatFinanceEvidenceAdoption {
+  return {
+    side,
+    acceptedEvidenceRefs: [],
+    rejectedEvidenceRefs: [],
+    missingEvidenceApplied: [],
+    scoreCapRefs: [],
+    adoptionReasons: [],
+    rejectionReasons: ["missing_finance_evidence_adoption"],
+    financeReasonZh: [`${side === "attack" ? "攻方" : "守方"}未记录金融证据采信链。`]
+  };
+}
+
+function buildFinanceEvidenceIndex(financeDuel: HexRoundFinanceDuel): {
+  infos: FinanceEvidenceRefInfo[];
+  byToken: Map<string, FinanceEvidenceRefInfo>;
+  knownFactRefs: Set<string>;
+} {
+  const byRef = new Map<string, FinanceEvidenceRefInfo>();
+  for (const fact of financeDuel.evidence.facts) {
+    byRef.set(fact.factId, {
+      ref: fact.factId,
+      factId: fact.factId,
+      evidenceId: fact.evidenceId,
+      dataMode: fact.dataMode,
+      source: fact.source
+    });
+  }
+  for (const fact of financeDuel.evidence.promptFacts) {
+    byRef.set(fact.factId, {
+      ...(byRef.get(fact.factId) ?? { ref: fact.factId, factId: fact.factId }),
+      evidenceId: byRef.get(fact.factId)?.evidenceId ?? fact.evidenceId
+    });
+  }
+  for (const ref of [...financeDuel.defenseThesis.evidenceRefs, ...financeDuel.attackChallenge.evidenceRefs]) {
+    if (!byRef.has(ref)) {
+      byRef.set(ref, { ref });
+    }
+  }
+
+  const infos = [...byRef.values()];
+  const byToken = new Map<string, FinanceEvidenceRefInfo>();
+  for (const info of infos) {
+    for (const token of [info.ref, info.factId, info.evidenceId, info.source]) {
+      const normalized = normalizeFinanceText(token ?? "");
+      if (normalized.length >= 2) {
+        byToken.set(normalized, info);
+      }
+    }
+  }
+  return {
+    infos,
+    byToken,
+    knownFactRefs: new Set(infos.map((info) => info.ref.toUpperCase()))
+  };
+}
+
+function collectReferencedFinanceEvidenceInfos(
+  text: string,
+  index: ReturnType<typeof buildFinanceEvidenceIndex>
+): FinanceEvidenceRefInfo[] {
+  const normalized = normalizeFinanceText(text);
+  const refs = new Map<string, FinanceEvidenceRefInfo>();
+  for (const [token, info] of index.byToken) {
+    if (normalized.includes(token)) {
+      refs.set(info.ref, info);
+    }
+  }
+  return [...refs.values()];
+}
+
+function collectUnknownEvidenceRefs(text: string, index: ReturnType<typeof buildFinanceEvidenceIndex>): string[] {
+  const refs = new Set<string>();
+  for (const match of text.matchAll(/\bF\d{3,}\b/gi)) {
+    const ref = match[0].toUpperCase();
+    if (!index.knownFactRefs.has(ref)) {
+      refs.add(ref);
+    }
+  }
+  return [...refs];
+}
+
+function collectMissingEvidenceApplied(text: string, financeDuel: HexRoundFinanceDuel): string[] {
+  const normalized = normalizeFinanceText(text);
+  return uniqueStrings(financeDuel.evidence.missingEvidence.filter((item) => {
+    const token = normalizeFinanceText(item);
+    return token.length >= 2 && normalized.includes(token);
+  }));
+}
+
+function collectScoreCapsApplied(text: string, financeDuel: HexRoundFinanceDuel): string[] {
+  const normalized = normalizeFinanceText(text);
+  return uniqueStrings(financeDuel.evidence.scoreCaps.filter((cap) => {
+    const condition = normalizeFinanceText(cap.condition);
+    const reason = normalizeFinanceText(cap.reason);
+    return (condition.length >= 2 && normalized.includes(condition)) || (reason.length >= 4 && normalized.includes(reason.slice(0, 16)));
+  }).map((cap) => cap.condition));
+}
+
+function addDefaultScoreCaps(financeDuel: HexRoundFinanceDuel, scoreCapRefs: Set<string>): void {
+  for (const cap of financeDuel.evidence.scoreCaps) {
+    scoreCapRefs.add(cap.condition);
+  }
+}
+
+function actionIsPositiveFinanceEvidence(action: HexValidatedAgentAction): boolean {
+  return action.valid
+    && !action.fallbackReason
+    && !action.validationErrors.some((error) => ["phase_repeated_round_thesis", "phase_action_reason_too_long"].includes(error));
+}
+
+function collectActionFinanceText(action: HexValidatedAgentAction): string {
+  return [
+    action.businessIntent,
+    action.actionRationaleZh,
+    action.tacticalIntent,
+    ...action.riskNotes
+  ].filter(Boolean).join(" ");
+}
+
+function buildFinanceAdoptionReasonZh(input: {
+  side: HexSide;
+  acceptedEvidenceRefs: Set<string>;
+  rejectedEvidenceRefs: Set<string>;
+  missingEvidenceApplied: Set<string>;
+  scoreCapRefs: Set<string>;
+}): string[] {
+  const sideLabel = input.side === "attack" ? "攻方" : "守方";
+  const reasons: string[] = [];
+  if (input.acceptedEvidenceRefs.size > 0) {
+    reasons.push(`${sideLabel}采信证据：${[...input.acceptedEvidenceRefs].join("、")}。`);
+  } else {
+    reasons.push(`${sideLabel}没有被采信的正向证据。`);
+  }
+  if (input.rejectedEvidenceRefs.size > 0) {
+    reasons.push(`${sideLabel}未采信引用：${[...input.rejectedEvidenceRefs].join("、")}。`);
+  }
+  if (input.missingEvidenceApplied.size > 0) {
+    reasons.push(`${sideLabel}应用缺失证据约束：${[...input.missingEvidenceApplied].join("、")}。`);
+  }
+  if (input.scoreCapRefs.size > 0) {
+    reasons.push(`${sideLabel}受到评分上限约束：${[...input.scoreCapRefs].join("、")}。`);
+  }
+  return reasons;
+}
+
+function buildFinanceReasonZh(
+  verdict: HexCombatFinanceVerdict | undefined,
+  adoption: { attack: HexCombatFinanceEvidenceAdoption; defense: HexCombatFinanceEvidenceAdoption }
+): string[] {
+  const verdictText = verdict === "challenge_landed"
+    ? "攻方质疑成立。"
+    : verdict === "thesis_defended"
+      ? "守方自证守住。"
+      : "金融攻防未分胜负。";
+  return [
+    verdictText,
+    ...adoption.attack.financeReasonZh,
+    ...adoption.defense.financeReasonZh
+  ];
+}
+
+function buildCsReasonZh(csReasons: string[]): string[] {
+  return uniqueStrings(csReasons.map((reason) => {
+    const core = reason.includes(":") ? reason.split(":").at(-1)! : reason;
+    const labels: Record<string, string> = {
+      numbers_or_trade_support: "人数或补枪结构支持该方。",
+      close_cell_distance: "双方距离足够近，形成有效交火。",
+      validated_ap_path: "行动路径和 AP 校验通过。",
+      map_flag_context: "地图点位或地形标记提供执行证据。",
+      active_action_pressure: "行动类型对目标区域形成主动压力。",
+      "economy:low_resource_constraint": "经济资源较低，执行强度受限。",
+      "economy:high_resource_support": "经济资源支持更高执行强度。"
+    };
+    return labels[core] ?? `未翻译 CS 技术原因：${reason}`;
+  }));
 }
 
 function scoreCsEvidence(
@@ -589,6 +902,7 @@ function buildAttributionScores(input: {
   financeDuel: HexRoundFinanceDuel | undefined;
 }): Map<string, HexCombatAttributionScore> {
   const actionByAgent = new Map(input.actions.map((action) => [action.agentId, action]));
+  const financeEvidenceIndex = input.financeDuel ? buildFinanceEvidenceIndex(input.financeDuel) : undefined;
   const scores = new Map<string, HexCombatAttributionScore>();
   for (const participant of input.contact.participants) {
     const action = actionByAgent.get(participant.agentId) ?? participant.action;
@@ -626,10 +940,16 @@ function buildAttributionScores(input: {
       assistScore += 3;
       reasons.push(input.financeDuel ? "finance_duel_language_match" : "business_duel_language_match");
     }
-    if (input.financeDuel && referencesFinanceEvidence(action.businessIntent, input.financeDuel)) {
+    const acceptedFinanceRefs = input.financeDuel && financeEvidenceIndex && actionIsPositiveFinanceEvidence(action)
+      ? collectReferencedFinanceEvidenceInfos(collectActionFinanceText(action), financeEvidenceIndex)
+        .filter((info) => info.dataMode !== "unavailable_observation")
+        .map((info) => info.ref)
+      : [];
+    if (acceptedFinanceRefs.length > 0) {
       killerScore += 2;
       assistScore += 2;
       reasons.push("finance_evidence_reference_used");
+      reasons.push(...acceptedFinanceRefs.slice(0, 2).map((ref) => `accepted_finance_evidence:${ref}`));
     }
     if (participant.targetFlags.includes("bombsite_a") || participant.targetFlags.includes("bombsite_b") || participant.currentFlags.includes("cover")) {
       killerScore += 2;
@@ -976,4 +1296,8 @@ function roundScore(value: number): number {
 
 function clampScore(value: number): number {
   return Math.max(0, Math.min(100, roundScore(value)));
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.filter((value) => value.trim().length > 0))];
 }

@@ -271,6 +271,11 @@ export interface HexMatchLabHumanCombatStory {
   verdictZh: string;
   impactZh: string;
   reasonsZh: string[];
+  acceptedEvidenceZh: string[];
+  rejectedEvidenceZh: string[];
+  missingEvidenceZh: string[];
+  financeReasonZh: string[];
+  csReasonZh: string[];
   technicalRefs: {
     participants: string[];
     rawFinanceVerdict?: string | undefined;
@@ -563,6 +568,9 @@ export interface HexMatchLabCombatSummary {
   businessReasons: string[];
   financeReasons: string[];
   csReasons: string[];
+  financeEvidenceAdoption?: HexMatchLabFinanceEvidenceAdoptionSummary | undefined;
+  financeReasonZh: string[];
+  csReasonZh: string[];
   casualties: string[];
   killAttributions: Array<{
     killerAgentId?: string | undefined;
@@ -594,6 +602,22 @@ export interface HexMatchLabCombatSummary {
     scoreDelta: number;
     reasons: string[];
   }>;
+}
+
+export interface HexMatchLabFinanceEvidenceAdoptionSummary {
+  attack: HexMatchLabFinanceEvidenceAdoptionSideSummary;
+  defense: HexMatchLabFinanceEvidenceAdoptionSideSummary;
+}
+
+export interface HexMatchLabFinanceEvidenceAdoptionSideSummary {
+  side: string;
+  acceptedEvidenceRefs: string[];
+  rejectedEvidenceRefs: string[];
+  missingEvidenceApplied: string[];
+  scoreCapRefs: string[];
+  adoptionReasons: string[];
+  rejectionReasons: string[];
+  financeReasonZh: string[];
 }
 
 export interface HexMatchLabEconomySummary {
@@ -1651,16 +1675,43 @@ function buildHumanCombatStory(
     verdictZh: humanizeFinanceVerdict(combat.financeVerdict ?? combat.businessVerdict),
     impactZh: `${killText}。${combat.regionControlHint ? `控图倾向：${combat.regionControlHint}。` : ""}`,
     reasonsZh: [
+      ...combat.financeReasonZh.slice(0, 3),
+      ...combat.csReasonZh.slice(0, 3),
       ...combat.financeReasons.slice(0, 3).map(humanizeReason),
       ...combat.csReasons.slice(0, 3).map(humanizeReason)
     ],
+    acceptedEvidenceZh: buildEvidenceAdoptionListZh(combat.financeEvidenceAdoption, "accepted"),
+    rejectedEvidenceZh: buildEvidenceAdoptionListZh(combat.financeEvidenceAdoption, "rejected"),
+    missingEvidenceZh: buildEvidenceAdoptionListZh(combat.financeEvidenceAdoption, "missing"),
+    financeReasonZh: combat.financeReasonZh,
+    csReasonZh: combat.csReasonZh,
     technicalRefs: {
       participants: [...combat.participants],
       rawFinanceVerdict: combat.financeVerdict,
       rawBusinessVerdict: combat.businessVerdict,
-      rawReasons: [...combat.financeReasons, ...combat.businessReasons, ...combat.csReasons]
+      rawReasons: [...combat.financeReasons, ...combat.businessReasons, ...combat.csReasons, ...combat.financeReasonZh, ...combat.csReasonZh]
     }
   };
+}
+
+function buildEvidenceAdoptionListZh(
+  adoption: HexMatchLabFinanceEvidenceAdoptionSummary | undefined,
+  kind: "accepted" | "rejected" | "missing"
+): string[] {
+  if (!adoption) {
+    return ["旧 trace 未记录证据采信链。"];
+  }
+  const sides = [adoption.attack, adoption.defense];
+  return sides.flatMap((side) => {
+    const sideLabel = side.side === "attack" ? "攻方" : "守方";
+    if (kind === "accepted") {
+      return side.acceptedEvidenceRefs.length > 0 ? [`${sideLabel}采信：${side.acceptedEvidenceRefs.join("、")}`] : [`${sideLabel}没有被采信的正向证据。`];
+    }
+    if (kind === "rejected") {
+      return side.rejectedEvidenceRefs.length > 0 ? [`${sideLabel}未采信：${side.rejectedEvidenceRefs.join("、")}`] : [];
+    }
+    return side.missingEvidenceApplied.length > 0 ? [`${sideLabel}缺失证据影响：${side.missingEvidenceApplied.join("、")}`] : [];
+  });
 }
 
 function buildHumanEvidenceBoundary(financeDuel: HexMatchLabFinanceDuelSummary): string {
@@ -2096,6 +2147,12 @@ function summarizePhase(
       businessReasons: resolution.businessReasons ?? [],
       financeReasons: resolution.financeReasons ?? [],
       csReasons: resolution.csReasons ?? [],
+      financeEvidenceAdoption: resolution.financeEvidenceAdoption ? {
+        attack: cloneFinanceEvidenceAdoptionSide(resolution.financeEvidenceAdoption.attack),
+        defense: cloneFinanceEvidenceAdoptionSide(resolution.financeEvidenceAdoption.defense)
+      } : undefined,
+      financeReasonZh: resolution.financeReasonZh ?? [],
+      csReasonZh: resolution.csReasonZh ?? [],
       casualties: resolution.casualties.map((casualty) => `${casualty.targetAgentId ?? casualty.agentId}:${casualty.result}`),
       killAttributions: resolution.casualties.map((casualty) => ({
         killerAgentId: casualty.killerAgentId,
@@ -2307,6 +2364,19 @@ function materializeLiveRunStatus(record: LiveRunRecord): HexMatchLabLiveRunStat
     expectedCalls: record.expectedCalls,
     slots: [...record.slots].sort((a, b) => a.phaseIndex - b.phaseIndex || a.callIndex - b.callIndex || a.agentId.localeCompare(b.agentId)),
     progress: record.progress
+  };
+}
+
+function cloneFinanceEvidenceAdoptionSide(value: HexMatchLabFinanceEvidenceAdoptionSideSummary): HexMatchLabFinanceEvidenceAdoptionSideSummary {
+  return {
+    side: value.side,
+    acceptedEvidenceRefs: [...value.acceptedEvidenceRefs],
+    rejectedEvidenceRefs: [...value.rejectedEvidenceRefs],
+    missingEvidenceApplied: [...value.missingEvidenceApplied],
+    scoreCapRefs: [...value.scoreCapRefs],
+    adoptionReasons: [...value.adoptionReasons],
+    rejectionReasons: [...value.rejectionReasons],
+    financeReasonZh: [...value.financeReasonZh]
   };
 }
 

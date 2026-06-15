@@ -8,6 +8,7 @@ import type {
 import styles from "./hex-match-lab.module.css";
 
 type AuditTab = "business" | "llm" | "combat" | "economy" | "winner" | "raw";
+type FinanceEvidenceAdoptionSide = NonNullable<NonNullable<HexMatchLabPhaseSummary["combats"][number]["financeEvidenceAdoption"]>["attack"]>;
 
 interface HexMatchAuditDrawerProps {
   open: boolean;
@@ -124,6 +125,15 @@ function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; 
                 {phaseStory.combatStories.map((combat) => (
                   <li key={combat.contactId}>
                     <strong>{combat.verdictZh}</strong>：{combat.impactZh}
+                    {combat.acceptedEvidenceZh.length > 0 ? (
+                      <span> 采信证据：{combat.acceptedEvidenceZh.join("；")}</span>
+                    ) : null}
+                    {combat.rejectedEvidenceZh.length > 0 ? (
+                      <span> 未采信证据：{combat.rejectedEvidenceZh.join("；")}</span>
+                    ) : null}
+                    {combat.missingEvidenceZh.length > 0 ? (
+                      <span> 缺失证据影响：{combat.missingEvidenceZh.join("；")}</span>
+                    ) : null}
                     {combat.reasonsZh.length > 0 ? (
                       <span> 理由：{combat.reasonsZh.join("；")}</span>
                     ) : null}
@@ -380,6 +390,17 @@ function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
             trade: {combat.tradeOpportunity ? "yes" : "no"}
           </p>
           <p>finance A/D {combat.financeScoreAttack ?? combat.businessScoreAttack ?? 0}/{combat.financeScoreDefense ?? combat.businessScoreDefense ?? 0}; CS A/D {combat.csScoreAttack ?? 0}/{combat.csScoreDefense ?? 0}</p>
+          <p>
+            采信证据: {formatAdoptionSide(combat.financeEvidenceAdoption?.attack, "攻方")}；{formatAdoptionSide(combat.financeEvidenceAdoption?.defense, "守方")}
+          </p>
+          <p>
+            未采信证据: {formatRejectedEvidence(combat.financeEvidenceAdoption?.attack, "攻方")}；{formatRejectedEvidence(combat.financeEvidenceAdoption?.defense, "守方")}
+          </p>
+          <p>
+            缺失证据影响: {formatMissingEvidence(combat.financeEvidenceAdoption?.attack, "攻方")}；{formatMissingEvidence(combat.financeEvidenceAdoption?.defense, "守方")}
+          </p>
+          <p>金融裁判理由: {combat.financeReasonZh.join("；") || "旧 trace 未记录证据采信链"}</p>
+          <p>CS 执行理由: {combat.csReasonZh.join("；") || "未记录中文 CS 理由"}</p>
           <p>finance reasons: {combat.financeReasons.join("; ") || "无"}</p>
           <p>compat business reasons: {combat.businessReasons.join("; ") || "无"}</p>
           <p>CS reasons: {combat.csReasons.join("; ") || "无"}</p>
@@ -389,6 +410,30 @@ function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
       {combats.length === 0 ? <p className={styles.emptyInline}>当前 phase 没有 combat resolution。</p> : null}
     </div>
   );
+}
+
+function formatAdoptionSide(
+  side: FinanceEvidenceAdoptionSide | undefined,
+  label: string
+): string {
+  if (!side) return `${label}旧 trace 未记录`;
+  return side.acceptedEvidenceRefs.length > 0 ? `${label}${side.acceptedEvidenceRefs.join("、")}` : `${label}无正向采信`;
+}
+
+function formatRejectedEvidence(
+  side: FinanceEvidenceAdoptionSide | undefined,
+  label: string
+): string {
+  if (!side) return `${label}旧 trace 未记录`;
+  return side.rejectedEvidenceRefs.length > 0 ? `${label}${side.rejectedEvidenceRefs.join("、")}` : `${label}无`;
+}
+
+function formatMissingEvidence(
+  side: FinanceEvidenceAdoptionSide | undefined,
+  label: string
+): string {
+  if (!side) return `${label}旧 trace 未记录`;
+  return side.missingEvidenceApplied.length > 0 ? `${label}${side.missingEvidenceApplied.join("、")}` : `${label}无`;
 }
 
 function EconomyAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined }) {

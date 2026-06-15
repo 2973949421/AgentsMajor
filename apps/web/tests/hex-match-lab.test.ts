@@ -84,6 +84,11 @@ describe("Hex Match Lab", () => {
     expect(drawer).toContain("证据切片技术细节");
     expect(drawer).toContain("本阶段行动");
     expect(drawer).toContain("引用开局信息卡");
+    expect(drawer).toContain("采信证据");
+    expect(drawer).toContain("未采信证据");
+    expect(drawer).toContain("缺失证据影响");
+    expect(drawer).toContain("金融裁判理由");
+    expect(drawer).toContain("CS 执行理由");
     expect(drawer).toContain("repairSummaryZh");
     expect(drawer).toContain("守方投资主张");
     expect(drawer).toContain("攻方反证质疑");
@@ -144,6 +149,10 @@ describe("Hex Match Lab", () => {
     expect(server).toContain("buildCombatStorySummary");
     expect(server).toContain("humanAudit");
     expect(server).toContain("buildHumanAudit");
+    expect(server).toContain("financeEvidenceAdoption");
+    expect(server).toContain("acceptedEvidenceRefs");
+    expect(server).toContain("missingEvidenceApplied");
+    expect(server).toContain("buildEvidenceAdoptionListZh");
     expect(server).toContain("buildHumanAgentOpeningBriefs");
     expect(server).toContain("buildHexAgentEvidenceSlices");
     expect(server).toContain("roleQuestionZh");
