@@ -6,9 +6,9 @@
 
 ```text
 当前主线：HexGrid（蜂巢格）Phase 2.0-pre 路线。
-当前进度：N20-N41 已完成 HexGrid 运行链路、Web 验收和商业攻防质量打磨第一轮；旧 Node/Sector 实验线已退役并清理 active 入口。
+当前进度：N20-N55 已完成 HexGrid、Finance Major、中文审计和 phase0 真实开局输出收口第一版；旧 Node/Sector 实验线已退役并清理 active 入口。
 保留兼容线：Phase18 replay / live replay 仍保留，不属于旧 Node/Sector runtime。
-下一步：N42 起准备 Finance Major（金融投资对抗）原型，保留 HexGrid 工程骨架，但把旧泛商业语义层替换为金融研究攻防。
+下一步：先做用户人工 Web 审计和文档 / 结构清理，再决定是否进入 N56。
 ```
 
 ## 推荐阅读顺序
@@ -18,11 +18,11 @@
 2. docs/current/current-state.md
 3. docs/hex/phase-2.0-pre-hex-engine-implementation-plan.md
 4. docs/hex/phase-2.0-pre-hex-engine-runtime-contract.md
-5. docs/hex/phase-2.0-pre-n38-n41-match-quality-plan.md
-6. docs/finance/finance-major-prototype-plan.md
-7. docs/finance/finance-evidence-mvp.md
-8. docs/finance/finance-data-asset-contract.md
-9. 按任务阅读 contracts、backlog 或 archive
+5. docs/finance/finance-major-prototype-plan.md
+6. docs/finance/finance-evidence-mvp.md
+7. docs/finance/finance-data-asset-contract.md
+8. docs/finance/finance-n48-n55-iteration-log.md
+9. 按任务阅读 contracts、hex、backlog 或 archive
 ```
 
 ## 文档分层

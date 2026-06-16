@@ -24,26 +24,21 @@ docs/hex/phase-2.0-pre-llm-field-stability-addendum.md
 
 这些文档定义当前 HexGrid route、runtime contract、Web 验收、旧 Node/Sector 清理、N38-N41 对局质量打磨和已冻结的真实性问题。
 
-## 3. Finance Major 下一阶段
+## 3. Finance Major 当前原型
 
 ```text
 docs/finance/README.md
 docs/finance/finance-major-prototype-plan.md
 docs/finance/finance-evidence-mvp.md
 docs/finance/finance-data-asset-contract.md
-docs/finance/n50-offline-finance-fact-bank-plan.md
-docs/finance/n51-agent-evidence-slice-plan.md
-docs/finance/n52-information-action-boundary-plan.md
-docs/finance/n53-judge-evidence-adoption-plan.md
-docs/finance/n54-human-audit-validation-plan.md
-docs/finance/n55-agent-output-audit-plan.md
+docs/finance/finance-n48-n55-iteration-log.md
 ```
 
-N42 起，下一阶段候选方向是 Finance Major（金融投资对抗）原型：保留 HexGrid 工程骨架，把旧泛商业攻防语义替换为金融研究攻防。当前测试范围是 `Dust2 有色 / 行业判断 / 6 round`。N43 已把 Falcon-7B 与 VitaLLMty 两队资产改造成金融投资风格 + 多专家 Agent 团队。
+N42 起，Finance Major（金融投资对抗）原型已经成为 HexGrid 上的当前语义主线：保留 HexGrid 工程骨架，把旧泛商业攻防语义替换为金融研究攻防。当前测试范围是 `Dust2 有色 / 行业判断 / 6 round`。N43 已把 Falcon-7B 与 VitaLLMty 两队资产改造成金融投资风格 + 多专家 Agent 团队。
 
 数据层第一版是“免费 API 代理事实版”：默认只自动接入 FRED、BaoStock 和可选 UN Comtrade；CNINFO、国家统计局、工信部、SHFE、SMM 等先作为后置证据锚点或商业化替换源。后续 agent 必须先读 `finance-evidence-mvp.md`，不能把代理事实冒充完整中国有色基本面系统。
 
-N50-N55 前必须注意：当前 FRED / BaoStock / UN Comtrade / AKShare 已经进入离线事实库第一版，但真实模型输出审计也必须和系统输入卡隔离。这组计划必须分步落地，不能再把所有问题塞进一个 N：
+N50-N55 已完成第一版收口：FRED / BaoStock / UN Comtrade / AKShare 已经进入离线事实库第一版，真实模型输出审计也已经和系统输入卡隔离。详细推进记录已经汇总到 `finance-n48-n55-iteration-log.md`，不要再从散落的单个 N 文档找当前口径：
 
 ```text
 N50：离线金融事实库，只解决真实观测事实。
@@ -52,6 +47,7 @@ N52：回合信息层 / 局内行动层硬隔离，只解决 phase action 复述
 N53：金融裁判证据采信事实化，只解决“证据是否真正进入裁判”的问题。
 N54：中文人类审计与真实样本验收，只解决人工能否读懂真实样本的问题。
 N55：真实 LLM 输出人类审计摘要，只解决“系统输入卡不能冒充 agent 输出”的问题。
+N55 收口修正：phase0 真实开局输出层，只解决“开局真实输出和局内行动分离”的问题。
 ```
 
 这不是让 agent 在比赛中临场拉 API，而是先离线生成可审计事实库，再逐层进入证据切片、行动边界、裁判采信和 Web 审计。

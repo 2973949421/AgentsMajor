@@ -142,16 +142,10 @@ CNINFO、国家统计局、工信部、SHFE、SMM 等先作为后置证据锚点
 data/materials/processed/finance/
 ```
 
-N50-N55 固定计划：
+N48-N55 推进记录：
 
 ```text
-docs/finance/n50-offline-finance-fact-bank-plan.md
-docs/finance/n51-agent-evidence-slice-plan.md
-docs/finance/n52-information-action-boundary-plan.md
-docs/finance/n53-judge-evidence-adoption-plan.md
-docs/finance/n54-human-audit-validation-plan.md
-docs/finance/n54-human-audit-validation-report.md
-docs/finance/n55-agent-output-audit-plan.md
+docs/finance/finance-n48-n55-iteration-log.md
 ```
 
 正式本地环境入口：

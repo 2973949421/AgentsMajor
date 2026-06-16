@@ -48,10 +48,7 @@ docs/hex/phase-2.0-pre-hex-engine-runtime-contract.md：Hex runtime 契约。
 docs/finance/finance-major-prototype-plan.md：Finance Major 原型路线。
 docs/finance/finance-evidence-mvp.md：免费 API 代理事实版证据层契约。
 docs/finance/finance-data-asset-contract.md：金融数据资产、环境变量和地图绑定隔离契约。
-docs/finance/n48-dust2-nonferrous-6r-validation.md：N48 Dust2 有色 6R 条件通过验收报告。
-docs/finance/n54-human-audit-validation-report.md：N54 中文审计与 real 样本阻塞报告。
-docs/finance/n55-agent-output-audit-plan.md：N55 真实 LLM 输出人类审计摘要计划。
-docs/finance/n55-round-start-output-correction-plan.md：N55 收口修正，phase0 真实开局输出层与局内行动隔离计划。
+docs/finance/finance-n48-n55-iteration-log.md：N48-N55 条件验收、事实库、证据切片、审计和 phase0 开局输出收口日志。
 ```
 
 旧 Phase 1.x 计划、早期技术总览和 superseded Node/Sector 计划已经移入 archive。生态、新闻、奖项、统计、完整 16 队赛事等长期想法移入 backlog。
