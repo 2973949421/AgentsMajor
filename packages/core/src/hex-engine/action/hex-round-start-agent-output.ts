@@ -346,7 +346,10 @@ export function buildRealHexRoundStartAgentOutputMessages(request: HexRoundStart
   ];
 }
 
-export function normalizeHexRoundStartAgentOutputDraft(rawDraft: unknown): {
+export function normalizeHexRoundStartAgentOutputDraft(
+  rawDraft: unknown,
+  options?: { allowedEvidenceRefs?: readonly string[] }
+): {
   draft?: HexRoundStartAgentOutputDraft;
   errors: string[];
   repairedFields: string[];
