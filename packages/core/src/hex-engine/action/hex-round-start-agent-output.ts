@@ -12,7 +12,8 @@ import type { HexAgentOpeningBrief, HexRoundOpeningBrief } from "./hex-round-ope
 export type HexRoundStartAgentOutputSource =
   | "llm_response_artifact"
   | "fixture_response"
-  | "provider_error";
+  | "provider_error"
+  | "invalid_response";
 
 export interface HexRoundStartAgentOutputRequest {
   schemaVersion: 1;
@@ -66,6 +67,7 @@ export interface HexRoundStartAgentOutputDraft {
 export interface HexRoundStartAgentOutputForAction {
   outputId: string;
   agentId: string;
+  usableForPhaseAction: boolean;
   openingStatementZh: string;
   evidenceRefs: string[];
   riskBoundaryZh: string;
@@ -153,7 +155,9 @@ export async function runHexRoundStartAgentOutputHarness(
     });
     try {
       const providerResult = normalizeRoundStartProviderResult(await input.provider(request));
-      const normalized = normalizeHexRoundStartAgentOutputDraft(providerResult.rawDraft);
+      const normalized = normalizeHexRoundStartAgentOutputDraft(providerResult.rawDraft, {
+        allowedEvidenceRefs: request.systemInputCard.evidenceRefs ?? []
+      });
       const responseArtifactId = await writeRoundStartArtifact(input, {
         callId,
         agentId: brief.agentId,
@@ -347,6 +351,15 @@ export function normalizeHexRoundStartAgentOutputDraft(rawDraft: unknown): {
   errors: string[];
   repairedFields: string[];
   ignoredFields: string[];
+};
+export function normalizeHexRoundStartAgentOutputDraft(
+  rawDraft: unknown,
+  options: { allowedEvidenceRefs?: readonly string[] } = {}
+): {
+  draft?: HexRoundStartAgentOutputDraft;
+  errors: string[];
+  repairedFields: string[];
+  ignoredFields: string[];
 } {
   const errors: string[] = [];
   const repairedFields: string[] = [];
@@ -362,6 +375,8 @@ export function normalizeHexRoundStartAgentOutputDraft(rawDraft: unknown): {
   }
   const openingStatementZh = readString(draftObject.openingStatementZh);
   const evidenceRefs = readStringArray(draftObject.evidenceRefs);
+  const allowedEvidenceRefs = new Set(options.allowedEvidenceRefs ?? []);
+  const invalidEvidenceRefs = evidenceRefs.filter((ref) => !allowedEvidenceRefs.has(ref));
   const riskBoundaryZh = readString(draftObject.riskBoundaryZh);
   const buyConstraintAppliedZh = readString(draftObject.buyConstraintAppliedZh);
   const phaseActionCarryoverZh = readString(draftObject.phaseActionCarryoverZh);
@@ -371,6 +386,9 @@ export function normalizeHexRoundStartAgentOutputDraft(rawDraft: unknown): {
   if (!phaseActionCarryoverZh) errors.push("round_start:missing_phaseActionCarryoverZh");
   if (containsGarbledText(openingStatementZh) || containsGarbledText(riskBoundaryZh) || containsGarbledText(buyConstraintAppliedZh) || containsGarbledText(phaseActionCarryoverZh)) {
     errors.push("round_start:garbled_text");
+  }
+  for (const ref of invalidEvidenceRefs) {
+    errors.push(`round_start:rejected_invalid_round_start_evidence_ref:${ref}`);
   }
   if (openingStatementZh.replace(/\s+/g, "").length > 420) {
     errors.push("round_start:opening_statement_too_long");
@@ -402,9 +420,11 @@ function buildRoundStartOutput(input: {
   const draft = input.normalized.draft;
   const fallbackDraft = buildFallbackDraft(input.request, input.normalized.errors);
   const effectiveDraft = draft ?? fallbackDraft;
-  const source: HexRoundStartAgentOutputSource = input.providerResult.providerMode === "fixture"
-    ? "fixture_response"
-    : "llm_response_artifact";
+  const source: HexRoundStartAgentOutputSource = draft
+    ? input.providerResult.providerMode === "fixture"
+      ? "fixture_response"
+      : "llm_response_artifact"
+    : "invalid_response";
   return {
     outputId: `round_start_${input.request.roundNumber}_${input.request.agent.agentId}`,
     roundNumber: input.request.roundNumber,
@@ -416,6 +436,7 @@ function buildRoundStartOutput(input: {
     buyType: input.request.economy?.buyType,
     resourceTier: input.request.economy?.resourceTier,
     source,
+    usableForPhaseAction: isUsableRoundStartAgentOutputSource(source, input.responseArtifactId, input.normalized.errors),
     requestArtifactId: input.requestArtifactId,
     responseArtifactId: input.responseArtifactId,
     rawOutputSummaryZh: draft
@@ -461,6 +482,7 @@ function buildProviderErrorOutput(input: {
     buyType: input.request.economy?.buyType,
     resourceTier: input.request.economy?.resourceTier,
     source: "provider_error",
+    usableForPhaseAction: false,
     requestArtifactId: input.requestArtifactId,
     rawOutputSummaryZh: `开局真实模型调用失败：${input.message}`,
     openingStatementZh: fallbackDraft.openingStatementZh,
@@ -477,6 +499,30 @@ function buildProviderErrorOutput(input: {
       modelId: input.modelId
     }
   };
+}
+
+export function isUsableRoundStartAgentOutput(
+  output: HexRoundStartAgentOutputForAction | undefined
+): output is HexRoundStartAgentOutputForAction {
+  return Boolean(
+    output
+    && output.usableForPhaseAction === true
+    && (output.source === "fixture_response" || output.source === "llm_response_artifact")
+  );
+}
+
+function isUsableRoundStartAgentOutputSource(
+  source: HexRoundStartAgentOutputSource,
+  responseArtifactId: string | undefined,
+  errors: readonly string[]
+): boolean {
+  if (errors.length > 0) {
+    return false;
+  }
+  if (source === "fixture_response") {
+    return true;
+  }
+  return source === "llm_response_artifact" && Boolean(responseArtifactId);
 }
 
 function buildFallbackDraft(request: HexRoundStartAgentOutputRequest, errors: readonly string[]): HexRoundStartAgentOutputDraft {

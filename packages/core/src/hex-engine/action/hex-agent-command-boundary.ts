@@ -5,7 +5,7 @@ import { getHexAgentFinanceAssignment, type HexAgentFinanceAssignment, type HexR
 import { buildHexPathGraph, calculateHexApCost } from "../path/index.js";
 import { buildHexAgentMemoryContext, type HexAgentMemoryPromptContext, type HexPhaseId, type HexRoundMemory, type HexSide } from "../state/index.js";
 import { buildHexAgentOpeningBrief, type HexAgentOpeningBrief } from "./hex-round-opening-brief.js";
-import type { HexRoundStartAgentOutputForAction } from "./hex-round-start-agent-output.js";
+import { isUsableRoundStartAgentOutput, type HexRoundStartAgentOutputForAction } from "./hex-round-start-agent-output.js";
 
 export const hexAgentActionTypes = [
   "hold_position",
@@ -402,7 +402,9 @@ export function buildHexAgentCommandRequest(input: {
         economy
       })
     : undefined;
-  const roundStartAgentOutput = input.roundStartAgentOutputs?.find((output) => output.agentId === input.agentId);
+  const roundStartAgentOutput = input.roundStartAgentOutputs?.find((output) =>
+    output.agentId === input.agentId && isUsableRoundStartAgentOutput(output)
+  );
   const request: HexAgentCommandRequest = {
     schemaVersion: 1,
     phaseId: input.memory.phaseId,
@@ -971,6 +973,10 @@ export function normalizeHexAgentActionDraft(input: NormalizeHexAgentActionDraft
     });
     errors.push(...phaseBoundaryErrors);
   }
+  const rawRoundStartOutputId = readOptionalString(rawDraft.roundStartOutputId);
+  if (rawRoundStartOutputId && !input.request.roundStartAgentOutput) {
+    errors.push("draft:invalid_roundStartOutputId");
+  }
 
   if (errors.length > 0) {
     return {
@@ -999,7 +1005,6 @@ export function normalizeHexAgentActionDraft(input: NormalizeHexAgentActionDraft
   } else if (rawBriefRefId) {
     draft.briefRefId = rawBriefRefId;
   }
-  const rawRoundStartOutputId = readOptionalString(rawDraft.roundStartOutputId);
   if (input.request.roundStartAgentOutput) {
     if (!rawRoundStartOutputId) {
       repairedFields.push("repaired_missing_roundStartOutputId");

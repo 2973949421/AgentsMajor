@@ -82,7 +82,7 @@ function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; 
 
         <article className={styles.auditCard}>
           <h3>本局真实开局输出</h3>
-          <p className={styles.guardText}>这里展示每名选手在 round-start（开局真实输出层）里的真实模型输出摘要。系统输入卡只作为后面的提示材料折叠展示，不能冒充这里的内容。</p>
+          <p className={styles.guardText}>这里只展示可消费的 round-start（开局真实输出层）模型输出摘要；provider 失败、结构无效或非法证据引用不会计入这里。</p>
           {humanAudit.roundStartOutputDigests.length > 0 ? (
             <ul>
               {humanAudit.roundStartOutputDigests.map((output) => (
@@ -119,7 +119,35 @@ function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; 
                 </li>
               ))}
             </ul>
-          ) : <p>旧 trace 未记录本局真实开局输出。</p>}
+          ) : <p>旧 trace 未记录本局真实开局输出，或本 round 没有可消费真实开局输出。</p>}
+        </article>
+
+        <article className={styles.auditCard}>
+          <h3>开局输出失败</h3>
+          <p className={styles.guardText}>这里展示不可消费的开局输出：它们会保留审计痕迹，但不会进入后续 phase 行动，也不会冒充 agent 真实输出。</p>
+          {humanAudit.roundStartOutputFailures.length > 0 ? (
+            <ul>
+              {humanAudit.roundStartOutputFailures.map((output) => (
+                <li key={output.outputId}>
+                  <strong>{output.displayName}</strong> / {output.teamSide ?? "side unknown"}：
+                  {output.rawOutputSummaryZh}
+                  <br />
+                  <span>{output.validationSummaryZh}</span>
+                  <br />
+                  <span>失败原因：{output.technicalRefs.errors.join("；") || "未记录具体错误"}</span>
+                  <details>
+                    <summary>失败输出技术细节</summary>
+                    <p>source: {output.source}</p>
+                    <p>usableForPhaseAction: {String(output.usableForPhaseAction)}</p>
+                    <p>request artifact: {output.requestArtifactId ?? "未记录"}</p>
+                    <p>response artifact: {output.responseArtifactId ?? "未记录"}</p>
+                    <p>raw draft preview: {output.technicalRefs.rawDraftPreview ?? "未记录"}</p>
+                    <p>normalized draft preview: {output.technicalRefs.normalizedDraftPreview ?? "未记录"}</p>
+                  </details>
+                </li>
+              ))}
+            </ul>
+          ) : <p>当前 round 没有开局输出失败记录。</p>}
         </article>
 
         <article className={styles.auditCard}>

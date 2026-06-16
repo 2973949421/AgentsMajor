@@ -478,8 +478,11 @@ Web human audit 的默认解释顺序必须是：
 审计硬规则：
 
 - 如果某名 agent 没有 `roundStartAgentOutput` response artifact，主视图必须显示“本局没有真实开局输出”，不能用系统输入卡、fallback 文案或 phase 行动摘要补写。
+- 如果 `roundStartAgentOutput` 的 `source` 是 `provider_error` 或 `invalid_response`，或其 `usableForPhaseAction` 为 false，Web 必须把它显示为“开局输出失败”，不能计入“本局真实开局输出”成功数。
+- 非法 `evidenceRefs` 必须作为失败原因展示；Web 可以翻译错误原因，但不能删除失败痕迹或把非法引用当作可采信证据。
 - phase1+ 行动必须能追溯 `roundStartOutputId`；缺失或错写的修复只能指向当前 agent 自己的开局输出，并且要保留：
   - `repaired_missing_roundStartOutputId`
   - `repaired_invalid_roundStartOutputId`
+- 如果当前 agent 没有可消费 `roundStartAgentOutput`，phase1+ 不得把失败输出、系统输入卡或 fallback 文案绑定成 `roundStartOutputId`。
 - phase1+ 如果大段复述 phase0 输出，必须在审计中显示 `phase_repeated_round_thesis`，并明确这是被拒绝或降级的原因，而不是“更完整的 agent 发言”。
 - 系统输入卡在主视图必须明确标注“非 agent 输出”，避免再次把输入材料和真实输出混淆。

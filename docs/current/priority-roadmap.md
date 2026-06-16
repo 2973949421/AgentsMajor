@@ -65,7 +65,7 @@ N52：回合信息层 / 局内行动层硬隔离。（已完成第一版）
 N53：金融裁判证据采信事实化。（已完成第一版）
 N54：中文人类审计与真实样本验收。（Web 收口完成；real 成功样本 blocked）
 N55：真实 LLM 输出人类审计摘要与系统输入卡隔离。（已完成第一版）
-N55 收口修正：phase0 真实开局输出层与局内行动隔离。（已完成）
+N55 收口修正：phase0 真实开局输出层、失败态隔离与局内行动隔离。（已完成）
 ```
 
 当前测试落点：
@@ -122,7 +122,7 @@ N52 已把回合信息层和局内行动层硬隔离：compact request 不再发
 N53 已让金融裁判明确采信 / 拒绝 / 降权哪些证据，不能用字段存在冒充机制生效。combat trace 现在记录 `acceptedEvidenceRefs / rejectedEvidenceRefs / missingEvidenceApplied / scoreCapRefs / financeReasonZh / csReasonZh`，fallback、invalid action、复述开局论点和明显超长行动理由不产生正向金融证据。
 N54 已完成中文 Web 审计主链路和失败报告。当前环境中的 real provider 成功样本因外部出站风险被阻断，因此不能宣称真实对局已通过。
 
-N55 进一步修正审计来源：主审计展示真实 `hex_llm_response` artifact 的人工可读摘要，系统生成的 `agentOpeningBrief` 只能作为“系统输入卡（非 agent 输出）”折叠展示。没有 response artifact 时必须显示“没有真实模型输出”，不能用系统预置词或 fallback 文案补成 agent 输出。N55 收口修正再把真实输出层前置到运行时：每 round 先生成 10 条 `roundStartAgentOutputs`，phase1+ 只允许引用当前 agent 自己的真实开局输出，不再把系统卡或局内行动混成“本局观点”。
+N55 进一步修正审计来源：主审计展示真实 `hex_llm_response` artifact 的人工可读摘要，系统生成的 `agentOpeningBrief` 只能作为“系统输入卡（非 agent 输出）”折叠展示。没有 response artifact 时必须显示“没有真实模型输出”，不能用系统预置词或 fallback 文案补成 agent 输出。N55 收口修正再把真实输出层前置到运行时：每 round 先生成 10 条 `roundStartAgentOutputs`，phase1+ 只允许引用当前 agent 自己的可消费真实开局输出；provider 失败、无效响应或非法证据引用只能作为失败审计展示，不得进入后续行动请求，也不得计入真实输出成功数。
 ```
 
 当前必须承认的边界：

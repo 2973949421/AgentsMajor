@@ -296,6 +296,9 @@ phase1+：局内行动层
 - 每个新 round 开始前，10 名 agent 都必须各生成一次 `roundStartAgentOutput`。
 - `roundStartAgentOutput` 必须来自真实 response artifact 或 fixture response，不能由 `agentOpeningBrief`、`agentEvidenceSlice` 或 Web 摘要冒充。
 - `agentOpeningBrief` 继续存在，但它只作为系统输入卡，用来提示 phase0 模型生成本局开局输出。
+- `roundStartAgentOutput` 只有在 `source` 为 `llm_response_artifact` 或 `fixture_response`、存在成功响应、结构校验通过、证据引用合法时，才允许进入后续 phase action。
+- `provider_error`、`invalid_response`、非法 `evidenceRefs` 或 normalization / validation 失败的开局输出只能作为失败审计保存，不得进入 compact request，也不得计入“真实开局输出”成功数。
+- `evidenceRefs` 必须来自当前 agent 系统输入卡的证据白名单；模型编造的证据编号必须记录 `rejected_invalid_round_start_evidence_ref` 或等价错误，并使该开局输出不可消费。
 - `roundStartAgentOutput` 至少要包含：
   - `openingStatementZh`
   - `evidenceRefs`

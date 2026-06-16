@@ -6,7 +6,7 @@
 
 ```text
 当前主线：HexGrid（蜂巢格）Phase 2.0-pre。
-当前进度：N20-N55 已完成第一版 Web 中文审计收口；N55 收口修正已新增 phase0 真实开局输出层，并把后续 phase 行动改成只引用开局输出。
+当前进度：N20-N55 已完成第一版 Web 中文审计收口；N55 收口修正已新增 phase0 真实开局输出层，并把后续 phase 行动改成只引用可消费开局输出。provider 失败、无效响应或非法证据引用只能作为失败审计保存，不能进入局内行动层。
 当前入口：/hex-lab/match。
 当前底层事实：official Dust2 Hex map、Hex phase memory、Hex action/combat/economy/round runner、Hex map runner、Hex trace artifacts。
 下一阶段候选：先做用户人工验收与大审计大清理；之后再决定是否进入 N56。
@@ -85,7 +85,7 @@ N52：回合信息层 / 局内行动层硬隔离。（已完成第一版）
 N53：金融裁判证据采信事实化。（已完成第一版）
 N54：中文人类审计与真实样本验收。（Web 收口完成；real 成功样本 blocked）
 N55：真实 LLM 输出人类审计摘要与系统输入卡隔离。（已完成第一版）
-N55 收口修正：phase0 真实开局输出层与局内行动隔离。（已完成）
+N55 收口修正：phase0 真实开局输出层、失败态隔离与局内行动隔离。（已完成）
 ```
 
 Finance Major 的核心不是重写 HexGrid，而是保留最新 Hex 工程骨架，把旧商业语义替换为金融研究攻防。第一版测试范围固定为 `Dust2 有色 / 行业判断 / 6 round`。N48 只证明了结构链路条件通过，尚未证明真实模型金融样本质量达标。N55 进一步明确：主审计只能展示真实 response artifact 的人工摘要，系统输入卡不得冒充 agent 输出。N55 收口修正又把这个边界推进到运行时：phase0 会为 10 名 agent 各生成一次真实开局输出，后续 phase 的 compact request 只带当前 agent 自己的开局输出摘要和当前局势。
@@ -125,5 +125,5 @@ UN Comtrade 第一版为 optional unavailable observation。
 当前 generated round evidence pack 仍可保留 configured_proxy_fact 兜底。
 比赛运行时读到了 evidence pack，但不是实时 API 数据。
 N51 已按专家角色切片给 agent；N52 已硬隔离行动边界；N53 已完成裁判采信链第一版；N54 已处理中文人工审计；N55 已隔离真实 LLM 输出摘要和系统输入卡；真实成功样本未通过当前环境。
-N55 收口修正已新增 `roundStartAgentOutputs`，它们是真实 phase0 开局输出；`agentOpeningBrief` 继续存在，但只作为系统输入卡。
+N55 收口修正已新增 `roundStartAgentOutputs`，它们是真实 phase0 开局输出；`agentOpeningBrief` 继续存在，但只作为系统输入卡。只有 `llm_response_artifact` 或 `fixture_response` 且校验通过、证据引用合法的输出可以进入后续 phase；`provider_error`、`invalid_response` 和非法 evidence refs 只能作为失败审计展示。
 ```

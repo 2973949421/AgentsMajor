@@ -43,6 +43,7 @@ import {
   buildHexRoundOpeningBrief,
   runHexAgentPhaseCommandHarness,
   runHexRoundStartAgentOutputHarness,
+  isUsableRoundStartAgentOutput,
   type HexValidatedAgentAction,
   type HexAgentCommandProvider,
   type HexAgentCommandProviderMode,
@@ -196,6 +197,7 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
     ...(input.artifactStore ? { artifactStore: input.artifactStore } : {}),
     ...(artifactOwner ? { artifactOwner } : {})
   });
+  const usableRoundStartAgentOutputs = roundStartAgentOutputs.filter(isUsableRoundStartAgentOutput);
   const phases: HexRoundPhaseTrace[] = [];
   let finalWinCondition: HexWinConditionResult | undefined;
 
@@ -227,7 +229,7 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
       tacticalPlan,
       businessDuel,
       financeDuel,
-      roundStartAgentOutputs,
+      roundStartAgentOutputs: usableRoundStartAgentOutputs,
       callIdPrefix: `hex_${input.roundId}_${phaseIndex}`
     });
     const acceptedActions = commandResult.acceptedActions;

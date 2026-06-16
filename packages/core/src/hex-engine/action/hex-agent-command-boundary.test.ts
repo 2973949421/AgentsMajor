@@ -376,6 +376,7 @@ describe("Hex agent command boundary", () => {
     const roundStartAgentOutputs = roundOpeningBrief.agentBriefs.map((brief) => ({
       outputId: `round_start_${brief.agentId}`,
       agentId: brief.agentId,
+      usableForPhaseAction: true,
       openingStatementZh: `${brief.roleQuestionZh ?? brief.roundTaskZh}，本局先给出开局判断。`,
       evidenceRefs: [...(brief.evidenceRefs ?? [])],
       riskBoundaryZh: brief.evidenceBoundaryZh,
@@ -414,6 +415,64 @@ describe("Hex agent command boundary", () => {
     expect(repaired.errors).toEqual([]);
     expect(repaired.draft?.roundStartOutputId).toBe("round_start_t_0");
     expect(repaired.repairedFields).toContain("repaired_invalid_roundStartOutputId");
+  });
+
+  it("does not attach failed round-start outputs to phase requests or preserve invalid output references", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset),
+      bombCarrierAgentId: "t_0"
+    });
+    const financeDuel = buildHexRoundFinanceDuel({
+      roundNumber: 1,
+      attackTeamId: "t",
+      defenseTeamId: "ct",
+      agents: memory.agents.map((agent) => ({
+        agentId: agent.agentId,
+        teamId: agent.teamId,
+        side: agent.side,
+        role: agent.agentId === "t_0" ? "portfolio_manager" : "sector_specialist"
+      }))
+    });
+    const failedRoundStartOutput = {
+      outputId: "round_start_t_0",
+      agentId: "t_0",
+      usableForPhaseAction: false,
+      openingStatementZh: "本局没有可采信的真实开局输出。",
+      evidenceRefs: [],
+      riskBoundaryZh: "provider 失败。",
+      buyConstraintAppliedZh: "provider 失败。",
+      phaseActionCarryoverZh: "不能引用失败开局输出。",
+      source: "provider_error" as const
+    };
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_0",
+      financeDuel,
+      roundStartAgentOutputs: [failedRoundStartOutput]
+    });
+    const compact = buildHexAgentCompactCommandRequest(request);
+    const result = normalizeHexAgentActionDraft({
+      request,
+      rawDraft: {
+        agentId: "t_0",
+        phaseId: request.phaseId,
+        currentCellId: request.agent.currentCellId,
+        targetCellId: request.targetCandidates[0]!.targetCellId,
+        actionType: "move",
+        briefRefId: request.agentOpeningBrief?.briefId,
+        roundStartOutputId: "round_start_t_0",
+        businessIntent: "执行本阶段移动验证，不引用失败开局输出。",
+        actionRationaleZh: "只做地图行动。"
+      }
+    });
+
+    expect(request.roundStartAgentOutput).toBeUndefined();
+    expect(compact.roundStartAgentOutput).toBeUndefined();
+    expect(result.draft).toBeUndefined();
+    expect(result.errors).toContain("draft:invalid_roundStartOutputId");
   });
 
   it("rejects phase action drafts that repeat the full opening thesis or exceed action bounds", () => {
@@ -520,6 +579,7 @@ describe("Hex agent command boundary", () => {
       roundStartAgentOutputs: [{
         outputId: "round_start_t_0",
         agentId: "t_0",
+        usableForPhaseAction: true,
         openingStatementZh: "本局基于全球有色价格上行，只能给出有限置信度配置结论，同时承认国内库存和贸易证据缺口。",
         evidenceRefs: ["FRED_COPPER", "FRED_ALUMINUM"],
         riskBoundaryZh: "不能把全球价格代理直接当作中国国内供需事实。",

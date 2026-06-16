@@ -215,6 +215,7 @@ export interface HexMatchLabHumanAudit {
   sampleQualityWarningsZh: string[];
   winnerSummaryZh?: string | undefined;
   roundStartOutputDigests: HexMatchLabRoundStartAgentOutput[];
+  roundStartOutputFailures: HexMatchLabRoundStartAgentOutput[];
   agentOutputDigests: HexMatchLabAgentOutputDigest[];
   agentOpeningBriefs: HexMatchLabHumanAgentOpeningBrief[];
   phaseStories: HexMatchLabHumanPhaseStory[];
@@ -235,6 +236,7 @@ export interface HexMatchLabRoundStartAgentOutput {
   buyType?: string | undefined;
   resourceTier?: string | undefined;
   source: string;
+  usableForPhaseAction: boolean;
   requestArtifactId?: string | undefined;
   responseArtifactId?: string | undefined;
   rawOutputSummaryZh: string;
@@ -1553,6 +1555,7 @@ function summarizeRoundStartAgentOutputs(
     buyType: output.buyType,
     resourceTier: output.resourceTier,
     source: output.source,
+    usableForPhaseAction: isUsableHexMatchLabRoundStartOutputSource(output),
     requestArtifactId: output.requestArtifactId,
     responseArtifactId: output.responseArtifactId,
     rawOutputSummaryZh: output.rawOutputSummaryZh,
@@ -1575,6 +1578,18 @@ function summarizeRoundStartAgentOutputs(
   }));
 }
 
+function isUsableHexMatchLabRoundStartOutput(output: HexMatchLabRoundStartAgentOutput): boolean {
+  return isUsableHexMatchLabRoundStartOutputSource(output);
+}
+
+function isUsableHexMatchLabRoundStartOutputSource(output: {
+  source?: string | undefined;
+  usableForPhaseAction?: boolean | undefined;
+}): boolean {
+  return output.usableForPhaseAction === true
+    && (output.source === "fixture_response" || output.source === "llm_response_artifact");
+}
+
 function buildHumanAudit(input: {
   financeDuel: HexMatchLabFinanceDuelSummary;
   phaseSummaries: HexMatchLabPhaseSummary[];
@@ -1587,7 +1602,9 @@ function buildHumanAudit(input: {
 }): HexMatchLabHumanAudit {
   const openingBriefs = buildHumanAgentOpeningBriefs(input.financeDuel, input.economySummary, input.agentIdentities);
   const openingBriefsByAgentId = new Map(openingBriefs.map((brief) => [brief.agentId, brief]));
-  const roundStartOutputsByOutputId = new Map(input.roundStartAgentOutputs.map((output) => [output.outputId, output]));
+  const usableRoundStartOutputs = input.roundStartAgentOutputs.filter(isUsableHexMatchLabRoundStartOutput);
+  const failedRoundStartOutputs = input.roundStartAgentOutputs.filter((output) => !isUsableHexMatchLabRoundStartOutput(output));
+  const roundStartOutputsByOutputId = new Map(usableRoundStartOutputs.map((output) => [output.outputId, output]));
   const rawReasonCount = input.phaseSummaries.reduce(
     (sum, phase) => sum + phase.combats.reduce((inner, combat) => inner + combat.financeReasons.length + combat.csReasons.length + combat.businessReasons.length, 0),
     0
@@ -1596,7 +1613,8 @@ function buildHumanAudit(input: {
     phaseSummaries: input.phaseSummaries,
     audit: input.audit,
     openingBriefs,
-    roundStartAgentOutputs: input.roundStartAgentOutputs,
+    roundStartAgentOutputs: usableRoundStartOutputs,
+    failedRoundStartOutputCount: failedRoundStartOutputs.length,
     finalHardCondition: input.finalHardCondition
   });
   return {
@@ -1608,11 +1626,13 @@ function buildHumanAudit(input: {
       audit: input.audit,
       phaseSummaries: input.phaseSummaries,
       openingBriefCount: openingBriefs.length,
-      roundStartOutputCount: input.roundStartAgentOutputs.length
+      usableRoundStartOutputCount: usableRoundStartOutputs.length,
+      failedRoundStartOutputCount: failedRoundStartOutputs.length
     }),
     sampleQualityWarningsZh,
     winnerSummaryZh: input.finalHardCondition ? humanizeHardWinner(input.finalHardCondition) : undefined,
-    roundStartOutputDigests: input.roundStartAgentOutputs,
+    roundStartOutputDigests: usableRoundStartOutputs,
+    roundStartOutputFailures: failedRoundStartOutputs,
     agentOutputDigests: buildAgentOutputDigests({
       phaseSummaries: input.phaseSummaries,
       openingBriefsByAgentId,
@@ -1638,7 +1658,8 @@ function buildHumanRoundValidationSummary(input: {
   audit: HexMatchLabLlmAuditSummary;
   phaseSummaries: HexMatchLabPhaseSummary[];
   openingBriefCount: number;
-  roundStartOutputCount: number;
+  usableRoundStartOutputCount: number;
+  failedRoundStartOutputCount: number;
 }): string {
   const provider = input.audit.providerMode === "real"
     ? "真实 provider"
@@ -1647,7 +1668,7 @@ function buildHumanRoundValidationSummary(input: {
     (sum, phase) => sum + phase.combats.filter((combat) => combat.financeEvidenceAdoption).length,
     0
   );
-  return `样本审计：${provider}，${input.phaseSummaries.length} 个 phase，${input.roundStartOutputCount} 条真实开局输出，${input.openingBriefCount} 张系统输入卡，${adoptionCount} 条证据采信链。`;
+  return `样本审计：${provider}，${input.phaseSummaries.length} 个 phase，${input.usableRoundStartOutputCount} 条可消费真实开局输出，${input.failedRoundStartOutputCount} 条开局输出失败，${input.openingBriefCount} 张系统输入卡，${adoptionCount} 条证据采信链。`;
 }
 
 function buildHumanSampleQualityWarnings(input: {
@@ -1655,6 +1676,7 @@ function buildHumanSampleQualityWarnings(input: {
   audit: HexMatchLabLlmAuditSummary;
   openingBriefs: HexMatchLabHumanAgentOpeningBrief[];
   roundStartAgentOutputs: HexMatchLabRoundStartAgentOutput[];
+  failedRoundStartOutputCount: number;
   finalHardCondition?: HexMatchLabHardConditionSummary | undefined;
 }): string[] {
   const warnings: string[] = [];
@@ -1664,8 +1686,8 @@ function buildHumanSampleQualityWarnings(input: {
   if (input.roundStartAgentOutputs.length < 10) {
     warnings.push(`真实开局输出不足 10 条，当前只有 ${input.roundStartAgentOutputs.length} 条。`);
   }
-  if (input.roundStartAgentOutputs.some((output) => output.source === "provider_error")) {
-    warnings.push("本 round 至少有一条真实开局输出调用失败，需检查 round-start provider 审计。");
+  if (input.failedRoundStartOutputCount > 0) {
+    warnings.push(`本 round 有 ${input.failedRoundStartOutputCount} 条开局输出不可消费，需检查 round-start 审计。`);
   }
   if (input.openingBriefs.length < 10) {
     warnings.push(`开局信息卡不足 10 张，当前只有 ${input.openingBriefs.length} 张。`);

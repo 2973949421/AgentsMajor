@@ -84,6 +84,9 @@ describe("Hex Match Lab", () => {
     expect(drawer).toContain("当前 round 未发现 N54 样本质量警告");
     expect(drawer).toContain("本局真实开局输出");
     expect(drawer).toContain("roundStartOutputDigests");
+    expect(drawer).toContain("开局输出失败");
+    expect(drawer).toContain("roundStartOutputFailures");
+    expect(drawer).toContain("不会进入后续 phase 行动");
     expect(drawer).toContain("真实开局输出技术细节");
     expect(drawer).toContain("旧 trace 未记录本局真实开局输出");
     expect(drawer).toContain("真实 LLM 输出摘要");

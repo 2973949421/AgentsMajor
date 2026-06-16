@@ -124,6 +124,8 @@ docs/finance/finance-data-asset-contract.md
 
 - `agentOpeningBrief` 是系统输入卡，不能冒充 agent 输出。
 - `roundStartAgentOutput` 是本局真实开局输出，必须来自 response artifact 或 fixture response。
+- `roundStartAgentOutput` 必须通过结构校验和证据白名单校验，才可进入后续 phase action。
+- provider 失败、无效响应、非法证据引用和 fallback 文案只能作为失败审计保存，不能冒充真实输出。
 - phase1+ 只允许引用当前 agent 自己的 phase0 输出，不允许重写完整金融论文。
 - 裁判必须记录采信证据、未采信证据、缺失证据和 score cap。
 - hard winner 仍只来自硬条件，不来自 LLM、金融解释或前端。

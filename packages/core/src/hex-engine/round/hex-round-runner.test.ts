@@ -93,6 +93,51 @@ describe("Hex round runner", () => {
     expect(JSON.stringify(trace.finalWinCondition)).not.toContain("winnerFromDraft");
   });
 
+  it("keeps invalid round-start outputs out of phase action requests", async () => {
+    const observedRoundStartRefs: Array<string | undefined> = [];
+    const trace = await runDust2HexRound({
+      roundId: "round_hex_invalid_round_start",
+      roundNumber: 1,
+      attackTeamId: "team_t",
+      defenseTeamId: "team_ct",
+      activeAgents: createAgents(),
+      teamEconomyPlans: buildEconomyPlans(),
+      roundStartProvider: () => ({
+        providerMode: "fixture",
+        modelId: "invalid_round_start_fixture",
+        rawDraft: {
+          openingStatementZh: "本局尝试引用不存在的证据编号来形成开局观点。",
+          evidenceRefs: ["MADE_UP_FACT"],
+          riskBoundaryZh: "风险边界不应允许编造证据。",
+          buyConstraintAppliedZh: "halfBuy 只能承担有限验证。",
+          phaseActionCarryoverZh: "后续不应引用这条无效开局输出。"
+        }
+      }),
+      provider: (request) => {
+        observedRoundStartRefs.push(request.roundStartAgentOutput?.outputId);
+        return {
+          providerMode: "fixture",
+          modelId: "phase_without_invalid_round_start_fixture",
+          rawDraft: {
+            agentId: request.agent.agentId,
+            phaseId: request.phaseId,
+            currentCellId: request.agent.currentCellId,
+            targetCellId: request.targetCandidates[0]?.targetCellId ?? request.agent.currentCellId,
+            actionType: request.targetCandidates[0] ? "move" : "hold_position",
+            businessIntent: "执行本阶段地图行动，不引用失败的开局输出。"
+          }
+        };
+      },
+      providerMode: "fixture",
+      maxLlmCallsPerPhase: 10
+    });
+
+    expect(trace.roundStartAgentOutputs).toHaveLength(10);
+    expect(trace.roundStartAgentOutputs.every((output) => output.source === "invalid_response")).toBe(true);
+    expect(trace.roundStartAgentOutputs.every((output) => output.usableForPhaseAction === false)).toBe(true);
+    expect(observedRoundStartRefs.every((outputId) => outputId === undefined)).toBe(true);
+  });
+
   it("resets AP at the start of each phase while preserving the previous phase snapshot", async () => {
     const trace = await runDust2HexRound({
       roundId: "round_hex_fixture_ap_reset",
