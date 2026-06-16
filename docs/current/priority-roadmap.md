@@ -63,7 +63,7 @@ N50：离线金融事实库。（已完成第一版）
 N51：专家证据切片与开局信息卡差异化。（已完成第一版）
 N52：回合信息层 / 局内行动层硬隔离。（已完成第一版）
 N53：金融裁判证据采信事实化。（已完成第一版）
-N54：中文人类审计与真实样本验收。（计划）
+N54：中文人类审计与真实样本验收。（Web 收口完成；real 成功样本 blocked）
 ```
 
 当前测试落点：
@@ -118,7 +118,7 @@ N50 已用用户准备的免费接口生成离线宏微观事实库，FRED / Bao
 N51 已从事实库生成 agent evidence slice，让 10 名 agent 的开局信息卡按专家角色读取不同证据、证据缺口和评分边界。
 N52 已把回合信息层和局内行动层硬隔离：compact request 不再发送完整金融长文本，briefRefId 缺失或错写只能修到当前 agent 自己的信息卡，复述完整开局论点或行动理由明显超长会拒绝 / 降级。
 N53 已让金融裁判明确采信 / 拒绝 / 降权哪些证据，不能用字段存在冒充机制生效。combat trace 现在记录 `acceptedEvidenceRefs / rejectedEvidenceRefs / missingEvidenceApplied / scoreCapRefs / financeReasonZh / csReasonZh`，fallback、invalid action、复述开局论点和明显超长行动理由不产生正向金融证据。
-N54 用中文 Web 审计和真实 round 样本证明链路可人工验收。
+N54 已完成中文 Web 审计主链路和失败报告。当前环境中的 real provider 成功样本因外部出站风险被阻断，因此不能宣称真实对局已通过；N55 需要先决定是否批准外部模型出站补真实成功样本，或改做离线 / fixture 审计质量门槛。
 ```
 
 当前必须承认的边界：
@@ -146,6 +146,7 @@ docs/finance/n51-agent-evidence-slice-plan.md
 docs/finance/n52-information-action-boundary-plan.md
 docs/finance/n53-judge-evidence-adoption-plan.md
 docs/finance/n54-human-audit-validation-plan.md
+docs/finance/n54-human-audit-validation-report.md
 ```
 
 正式本地环境入口：

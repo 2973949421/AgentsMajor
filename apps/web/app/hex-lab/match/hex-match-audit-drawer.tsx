@@ -67,6 +67,14 @@ function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; 
           <p>{humanAudit.defenseSummaryZh}</p>
           <p>{humanAudit.attackSummaryZh}</p>
           <p>{humanAudit.evidenceBoundaryZh}</p>
+          <p>{humanAudit.roundValidationSummaryZh}</p>
+          {humanAudit.sampleQualityWarningsZh.length > 0 ? (
+            <ul>
+              {humanAudit.sampleQualityWarningsZh.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          ) : <p>当前 round 未发现 N54 样本质量警告。</p>}
         </article>
 
         <article className={styles.auditCard}>
@@ -108,6 +116,7 @@ function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; 
           <article className={styles.auditCard}>
             <h3>{phaseStory.phaseLabel ?? `P${phaseStory.phaseIndex}`}：本阶段行动</h3>
             <p>{phaseStory.summaryZh}</p>
+            <p>{phaseStory.phaseValidationSummaryZh}</p>
             <h4>行动与引用开局信息卡</h4>
             {phaseStory.actionStories.length > 0 ? (
               <ul>
@@ -115,6 +124,15 @@ function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; 
                   <li key={`${phaseStory.phaseIndex}_${action.agentId}`}>
                     <strong>{action.displayName}</strong>：{action.actionSummaryZh}
                     {action.repairSummaryZh ? `；${action.repairSummaryZh}` : ""}
+                    <details>
+                      <summary>行动技术细节</summary>
+                      <p>opening brief: {action.openingBriefRef ?? "旧 trace 未记录"}</p>
+                      <p>target cell: {action.technicalRefs.targetCellId ?? "未记录"}</p>
+                      <p>request artifact: {action.technicalRefs.requestArtifactId ?? "未记录"}</p>
+                      <p>response artifact: {action.technicalRefs.responseArtifactId ?? "未记录"}</p>
+                      <p>validation errors: {action.technicalRefs.validationErrors.join("; ") || "无"}</p>
+                      <p>repaired fields: {action.technicalRefs.repairedFields.join("; ") || "无"}</p>
+                    </details>
                   </li>
                 ))}
               </ul>
@@ -363,33 +381,14 @@ function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
     <div className={styles.auditStack}>
       {combats.map((combat) => (
         <article key={combat.contactId} className={styles.auditCard}>
-          <h3>{combat.contactId}</h3>
-          <p>{combat.advantage ?? "unknown"} / {combat.verdict ?? "no verdict"}</p>
-          <p>金融裁定: {combat.financeVerdict ?? "未记录"}</p>
-          <p>兼容商业裁定: {combat.businessVerdict ?? "未记录"}</p>
-          <p>participants: {combat.participants.join(", ")}</p>
-          <p>casualties: {combat.casualties.join(", ") || "none"}</p>
-          <p>接触保留原因: {combat.contactRetentionReasons.join("; ") || "未记录"}{combat.prunedCandidateCount ? `；本 phase 裁剪候选 ${combat.prunedCandidateCount} 个` : ""}</p>
+          <h3>战斗裁定</h3>
+          <p>金融裁定: {formatFinanceVerdict(combat.financeVerdict)}</p>
+          <p>战斗结论: {combat.killAttributions.length > 0 ? "形成击杀" : combat.suppressions.length > 0 ? "形成压制" : "未形成击杀或压制"}</p>
           <p>
-            kill attribution: {combat.killAttributions.map((item) =>
-              `${item.killerAgentId ?? "unassigned"} -> ${item.targetAgentId}${item.assisterAgentIds.length > 0 ? ` (+${item.assisterAgentIds.join(",")})` : ""}`
-            ).join("; ") || "none"}
+            击杀归因: {combat.killAttributions.map((item) =>
+              `${item.killerAgentId ?? "未分配"} 击倒 ${item.targetAgentId}${item.assisterAgentIds.length > 0 ? `，助攻 ${item.assisterAgentIds.join("、")}` : ""}`
+            ).join("；") || "无"}
           </p>
-          <p>
-            归因理由: {combat.killAttributions.flatMap((item) => [...item.attributionReasons, ...item.targetSelectionReasons]).join("; ") || "无"}
-          </p>
-          <p>
-            角色贡献: {combat.roleContributions.map((item) =>
-              `${item.agentId}/${item.roleLabel}/${item.contributionType}:${item.scoreDelta}(${item.reasons.join(",")})`
-            ).join("; ") || "未记录"}
-          </p>
-          <p>suppression: {combat.suppressions.join(", ") || "none"}</p>
-          <p>
-            site pressure: {combat.sitePressure ? "yes" : "no"};
-            plant denied: {combat.plantDenied ? "yes" : "no"};
-            trade: {combat.tradeOpportunity ? "yes" : "no"}
-          </p>
-          <p>finance A/D {combat.financeScoreAttack ?? combat.businessScoreAttack ?? 0}/{combat.financeScoreDefense ?? combat.businessScoreDefense ?? 0}; CS A/D {combat.csScoreAttack ?? 0}/{combat.csScoreDefense ?? 0}</p>
           <p>
             采信证据: {formatAdoptionSide(combat.financeEvidenceAdoption?.attack, "攻方")}；{formatAdoptionSide(combat.financeEvidenceAdoption?.defense, "守方")}
           </p>
@@ -401,10 +400,32 @@ function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
           </p>
           <p>金融裁判理由: {combat.financeReasonZh.join("；") || "旧 trace 未记录证据采信链"}</p>
           <p>CS 执行理由: {combat.csReasonZh.join("；") || "未记录中文 CS 理由"}</p>
-          <p>finance reasons: {combat.financeReasons.join("; ") || "无"}</p>
-          <p>compat business reasons: {combat.businessReasons.join("; ") || "无"}</p>
-          <p>CS reasons: {combat.csReasons.join("; ") || "无"}</p>
-          <p>economy evidence: {combat.economyEvidenceApplied ? "applied" : "not applied"}; variance: {combat.varianceApplied ? "applied" : "off"}</p>
+          <details>
+            <summary>战斗技术细节</summary>
+            <p>contact id: {combat.contactId}</p>
+            <p>{combat.advantage ?? "unknown"} / {combat.verdict ?? "no verdict"}</p>
+            <p>兼容商业裁定: {combat.businessVerdict ?? "未记录"}</p>
+            <p>participants: {combat.participants.join(", ")}</p>
+            <p>casualties: {combat.casualties.join(", ") || "none"}</p>
+            <p>接触保留原因: {combat.contactRetentionReasons.join("; ") || "未记录"}{combat.prunedCandidateCount ? `；本 phase 裁剪候选 ${combat.prunedCandidateCount} 个` : ""}</p>
+            <p>归因理由: {combat.killAttributions.flatMap((item) => [...item.attributionReasons, ...item.targetSelectionReasons]).join("; ") || "无"}</p>
+            <p>
+              角色贡献: {combat.roleContributions.map((item) =>
+                `${item.agentId}/${item.roleLabel}/${item.contributionType}:${item.scoreDelta}(${item.reasons.join(",")})`
+              ).join("; ") || "未记录"}
+            </p>
+            <p>suppression: {combat.suppressions.join(", ") || "none"}</p>
+            <p>
+              site pressure: {combat.sitePressure ? "yes" : "no"};
+              plant denied: {combat.plantDenied ? "yes" : "no"};
+              trade: {combat.tradeOpportunity ? "yes" : "no"}
+            </p>
+            <p>finance A/D {combat.financeScoreAttack ?? combat.businessScoreAttack ?? 0}/{combat.financeScoreDefense ?? combat.businessScoreDefense ?? 0}; CS A/D {combat.csScoreAttack ?? 0}/{combat.csScoreDefense ?? 0}</p>
+            <p>finance reasons: {combat.financeReasons.join("; ") || "无"}</p>
+            <p>compat business reasons: {combat.businessReasons.join("; ") || "无"}</p>
+            <p>CS reasons: {combat.csReasons.join("; ") || "无"}</p>
+            <p>economy evidence: {combat.economyEvidenceApplied ? "applied" : "not applied"}; variance: {combat.varianceApplied ? "applied" : "off"}</p>
+          </details>
         </article>
       ))}
       {combats.length === 0 ? <p className={styles.emptyInline}>当前 phase 没有 combat resolution。</p> : null}
@@ -434,6 +455,13 @@ function formatMissingEvidence(
 ): string {
   if (!side) return `${label}旧 trace 未记录`;
   return side.missingEvidenceApplied.length > 0 ? `${label}${side.missingEvidenceApplied.join("、")}` : `${label}无`;
+}
+
+function formatFinanceVerdict(value: string | undefined): string {
+  if (value === "challenge_landed") return "攻方质疑成立";
+  if (value === "thesis_defended") return "守方自证守住";
+  if (value === "contested_no_finance_resolution") return "金融攻防未分胜负";
+  return value ?? "未记录";
 }
 
 function EconomyAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined }) {

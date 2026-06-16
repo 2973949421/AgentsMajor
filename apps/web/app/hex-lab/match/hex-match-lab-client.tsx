@@ -517,7 +517,7 @@ export function HexMatchLabClient() {
 }
 
 function auditLabel(tab: AuditTab): string {
-  if (tab === "business") return "商业攻防";
+  if (tab === "business") return "金融攻防";
   if (tab === "llm") return "LLM 调用";
   if (tab === "combat") return "战斗裁定";
   if (tab === "economy") return "经济证据";

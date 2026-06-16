@@ -210,6 +210,8 @@ export interface HexMatchLabHumanAudit {
   defenseSummaryZh: string;
   attackSummaryZh: string;
   evidenceBoundaryZh: string;
+  roundValidationSummaryZh: string;
+  sampleQualityWarningsZh: string[];
   winnerSummaryZh?: string | undefined;
   agentOpeningBriefs: HexMatchLabHumanAgentOpeningBrief[];
   phaseStories: HexMatchLabHumanPhaseStory[];
@@ -247,6 +249,7 @@ export interface HexMatchLabHumanPhaseStory {
   phaseIndex: number;
   phaseLabel?: string | undefined;
   summaryZh: string;
+  phaseValidationSummaryZh: string;
   actionStories: HexMatchLabHumanActionStory[];
   combatStories: HexMatchLabHumanCombatStory[];
 }
@@ -1434,11 +1437,23 @@ function buildHumanAudit(input: {
     (sum, phase) => sum + phase.combats.reduce((inner, combat) => inner + combat.financeReasons.length + combat.csReasons.length + combat.businessReasons.length, 0),
     0
   );
+  const sampleQualityWarningsZh = buildHumanSampleQualityWarnings({
+    phaseSummaries: input.phaseSummaries,
+    audit: input.audit,
+    openingBriefs,
+    finalHardCondition: input.finalHardCondition
+  });
   return {
     roundStoryZh: `本 round 小主题：${input.financeDuel.topicTitle}。`,
     defenseSummaryZh: `守方自证：${input.financeDuel.defenseThesis.thesis}`,
     attackSummaryZh: `攻方质疑：${input.financeDuel.attackChallenge.thesis}`,
     evidenceBoundaryZh: buildHumanEvidenceBoundary(input.financeDuel),
+    roundValidationSummaryZh: buildHumanRoundValidationSummary({
+      audit: input.audit,
+      phaseSummaries: input.phaseSummaries,
+      openingBriefCount: openingBriefs.length
+    }),
+    sampleQualityWarningsZh,
     winnerSummaryZh: input.finalHardCondition ? humanizeHardWinner(input.finalHardCondition) : undefined,
     agentOpeningBriefs: openingBriefs,
     phaseStories: input.phaseSummaries.map((phase) => buildHumanPhaseStory(phase, openingBriefsByAgentId, input.agentIdentities)),
@@ -1448,6 +1463,62 @@ function buildHumanAudit(input: {
       rawReasonCount
     }
   };
+}
+
+function buildHumanRoundValidationSummary(input: {
+  audit: HexMatchLabLlmAuditSummary;
+  phaseSummaries: HexMatchLabPhaseSummary[];
+  openingBriefCount: number;
+}): string {
+  const provider = input.audit.providerMode === "real"
+    ? "真实 provider"
+    : input.audit.providerMode ? `${input.audit.providerMode} provider` : "未记录 provider";
+  const adoptionCount = input.phaseSummaries.reduce(
+    (sum, phase) => sum + phase.combats.filter((combat) => combat.financeEvidenceAdoption).length,
+    0
+  );
+  return `样本审计：${provider}，${input.phaseSummaries.length} 个 phase，${input.openingBriefCount} 张开局信息卡，${adoptionCount} 条证据采信链。`;
+}
+
+function buildHumanSampleQualityWarnings(input: {
+  phaseSummaries: HexMatchLabPhaseSummary[];
+  audit: HexMatchLabLlmAuditSummary;
+  openingBriefs: HexMatchLabHumanAgentOpeningBrief[];
+  finalHardCondition?: HexMatchLabHardConditionSummary | undefined;
+}): string[] {
+  const warnings: string[] = [];
+  if (input.audit.providerMode !== "real") {
+    warnings.push("当前样本不是 real provider，不能作为真实模型验收样本。");
+  }
+  if (input.openingBriefs.length < 10) {
+    warnings.push(`开局信息卡不足 10 张，当前只有 ${input.openingBriefs.length} 张。`);
+  }
+  if (input.audit.providerErrors.length > 0) {
+    warnings.push(`provider 失败：${input.audit.providerErrors.map(humanizeReason).join("；")}`);
+  }
+  if (input.audit.fallbackCount > 0) {
+    warnings.push(`本 round 有 ${input.audit.fallbackCount} 个行动降级，需展开阶段行动查看原因。`);
+  }
+  if (input.audit.rejectedDrafts > 0) {
+    warnings.push(`本 round 有 ${input.audit.rejectedDrafts} 个草案被拒绝，需检查 action / schema / evidence 约束。`);
+  }
+  const combats = input.phaseSummaries.flatMap((phase) => phase.combats);
+  if (combats.length > 0 && combats.every((combat) => !combat.financeEvidenceAdoption)) {
+    warnings.push("本 round 的战斗裁定没有记录 N53 证据采信链。");
+  }
+  const acceptedEvidenceCount = combats.reduce(
+    (sum, combat) => sum
+      + (combat.financeEvidenceAdoption?.attack.acceptedEvidenceRefs.length ?? 0)
+      + (combat.financeEvidenceAdoption?.defense.acceptedEvidenceRefs.length ?? 0),
+    0
+  );
+  if (combats.length > 0 && acceptedEvidenceCount === 0) {
+    warnings.push("本 round 没有任何正向采信证据，金融裁判不能视为充分生效。");
+  }
+  if (!input.finalHardCondition?.isRoundOver) {
+    warnings.push("本 round 尚未产生硬胜负，不能作为完整胜负验收样本。");
+  }
+  return warnings;
 }
 
 function buildHumanAgentOpeningBriefs(
@@ -1617,6 +1688,7 @@ function buildHumanPhaseStory(
     const displayName = brief?.displayName ?? agentIdentities.get(action.agentId)?.displayName ?? action.agentId;
     const actionSummaryZh = [
       `${displayName} 本阶段${humanizeActionType(action.actionType)}`,
+      action.targetCellId ? "目标格已记录，具体 cell id 见技术细节" : "目标未记录",
       action.actionRationaleZh || action.businessIntent ? `理由：${action.actionRationaleZh ?? action.businessIntent}` : "理由：未记录",
       brief ? `引用开局信息卡：${brief.roleQuestionZh ?? brief.roundTaskZh}` : "未记录开局信息卡引用"
     ].join("；");
@@ -1649,9 +1721,27 @@ function buildHumanPhaseStory(
     summaryZh: phase.isSetupPhase
       ? "准备阶段：展示出生、经济、C4 和本局信息卡，不产生 LLM 调用。"
       : `本阶段接受 ${phase.acceptedActionCount} 个行动，拒绝 ${phase.rejectedDraftCount} 个草案，降级 ${phase.fallbackActionCount} 个行动，形成 ${phase.combatResolutionCount} 个战斗裁定。`,
+    phaseValidationSummaryZh: buildHumanPhaseValidationSummary(phase),
     actionStories,
     combatStories: phase.combats.map((combat) => buildHumanCombatStory(combat, agentIdentities))
   };
+}
+
+function buildHumanPhaseValidationSummary(phase: HexMatchLabPhaseSummary): string {
+  if (phase.isSetupPhase) {
+    return "准备阶段不调用 LLM，只展示出生、经济、C4 与开局信息卡。";
+  }
+  const warnings = [
+    phase.rejectedDraftCount > 0 ? `拒绝 ${phase.rejectedDraftCount} 个草案` : "",
+    phase.fallbackActionCount > 0 ? `降级 ${phase.fallbackActionCount} 个行动` : "",
+    phase.llmAudit.providerErrors.length > 0 ? `provider 失败 ${phase.llmAudit.providerErrors.length} 条` : "",
+    phase.combats.length > 0 && phase.combats.every((combat) => !combat.financeEvidenceAdoption)
+      ? "战斗未记录证据采信链"
+      : ""
+  ].filter(Boolean);
+  return warnings.length > 0
+    ? `本阶段可验收，但存在：${warnings.join("；")}。`
+    : "本阶段行动、证据采信和战斗裁定字段完整。";
 }
 
 function buildHumanCombatStory(
@@ -1795,6 +1885,15 @@ function humanizeReason(reason: string): string {
     phase_action_reason_too_long: "阶段行动理由过长，疑似重新写金融作文",
     repaired_missing_briefRefId: "已补齐开局信息卡引用",
     repaired_invalid_briefRefId: "已修正为当前选手自己的开局信息卡",
+    provider_error: "真实模型供应器失败",
+    external_blocked: "外部调用被阻断",
+    no_accepted_finance_evidence: "没有被裁判正向采信的金融证据",
+    fallback_not_positive_finance_evidence: "降级行动不能作为正向金融证据",
+    invalid_action_not_positive_finance_evidence: "无效行动不能作为正向金融证据",
+    unknown_evidence_ref: "引用了不存在的证据编号",
+    unavailable_observation_not_adopted_as_fact: "不可用观测不能当作真实事实采信",
+    configured_proxy_fact_score_cap: "配置型代理事实触发评分上限",
+    proxy_fact_boundary: "代理事实只能作为弱证据",
     target_cell_occupied: "目标格已被占用",
     max_llm_calls_reached: "已达到本阶段 LLM 调用上限",
     dead_agent_skipped: "选手已阵亡，跳过行动",
