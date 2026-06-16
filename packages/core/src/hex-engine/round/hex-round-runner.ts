@@ -37,13 +37,19 @@ import {
 } from "../state/index.js";
 import {
   createEnvHexAgentCommandProvider,
+  createEnvHexRoundStartAgentOutputProvider,
   createFixtureHexAgentCommandProvider,
+  createFixtureHexRoundStartAgentOutputProvider,
+  buildHexRoundOpeningBrief,
   runHexAgentPhaseCommandHarness,
+  runHexRoundStartAgentOutputHarness,
   type HexValidatedAgentAction,
   type HexAgentCommandProvider,
   type HexAgentCommandProviderMode,
   type HexAgentPhaseCommandHarnessResult,
   type HexAgentCommandProgressSink,
+  type HexRoundStartAgentOutput,
+  type HexRoundStartAgentOutputProvider,
   type HexRoundTacticalPlan
 } from "../action/index.js";
 import {
@@ -70,6 +76,7 @@ export interface RunDust2HexRoundInput {
   activeAgents: HexRoundRunnerAgentInput[];
   teamEconomyPlans: Record<string, TeamEconomyPlan>;
   provider?: HexAgentCommandProvider;
+  roundStartProvider?: HexRoundStartAgentOutputProvider;
   providerMode?: HexAgentCommandProviderMode;
   modelId?: string;
   maxLlmCallsPerPhase?: number;
@@ -108,6 +115,7 @@ export interface HexRoundTrace {
   businessDuel: HexRoundBusinessDuel;
   financeDuel: HexRoundFinanceDuel;
   economyContext: HexRoundEconomyContext;
+  roundStartAgentOutputs: HexRoundStartAgentOutput[];
   phases: HexRoundPhaseTrace[];
   finalWinCondition: HexWinConditionResult;
   audit: {
@@ -115,6 +123,7 @@ export interface HexRoundTrace {
     modelId?: string;
     totalLlmCallsAttempted: number;
     fallbackCount: number;
+    roundStartLlmCallsAttempted: number;
     combatResolutionCount: number;
     rejectedEventCount: number;
     roundStrategySeed: string;
@@ -155,6 +164,38 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
     agents: input.activeAgents
   });
   const tacticalPlan = buildRoundTacticalPlan(input.roundNumber);
+  const roundOpeningBrief = buildHexRoundOpeningBrief({
+    financeDuel,
+    economyContext,
+    agents: input.activeAgents.map((agent) => ({
+      agentId: agent.agentId,
+      teamId: agent.teamId,
+      side: agent.side,
+      ...(agent.displayName ? { displayName: agent.displayName } : {}),
+      ...(agent.role ? { role: agent.role } : {})
+    }))
+  });
+  const roundStartProviderSetup = resolveRoundStartProvider(input, providerSetup);
+  const artifactOwner = input.artifactStore
+    ? {
+        ownerType: "round",
+        ownerId: input.roundId,
+        ...(input.artifactOwner?.tournamentId ? { tournamentId: input.artifactOwner.tournamentId } : {}),
+        ...(input.artifactOwner?.matchId ? { matchId: input.artifactOwner.matchId } : {}),
+        ...(input.artifactOwner?.mapGameId ? { mapGameId: input.artifactOwner.mapGameId } : {}),
+        roundId: input.roundId
+      }
+    : undefined;
+  const roundStartAgentOutputs = await runHexRoundStartAgentOutputHarness({
+    roundId: input.roundId,
+    roundOpeningBrief,
+    economyContext,
+    provider: roundStartProviderSetup.provider,
+    providerMode: roundStartProviderSetup.providerMode,
+    ...(roundStartProviderSetup.modelId ? { modelId: roundStartProviderSetup.modelId } : {}),
+    ...(input.artifactStore ? { artifactStore: input.artifactStore } : {}),
+    ...(artifactOwner ? { artifactOwner } : {})
+  });
   const phases: HexRoundPhaseTrace[] = [];
   let finalWinCondition: HexWinConditionResult | undefined;
 
@@ -186,6 +227,7 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
       tacticalPlan,
       businessDuel,
       financeDuel,
+      roundStartAgentOutputs,
       callIdPrefix: `hex_${input.roundId}_${phaseIndex}`
     });
     const acceptedActions = commandResult.acceptedActions;
@@ -292,13 +334,15 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
     businessDuel,
     financeDuel,
     economyContext,
+    roundStartAgentOutputs,
     phases,
     finalWinCondition,
     audit: {
       providerMode: providerSetup.providerMode,
       ...(providerSetup.modelId ? { modelId: providerSetup.modelId } : {}),
-      totalLlmCallsAttempted: phases.reduce((sum, phase) => sum + phase.commandResult.totalCallsAttempted, 0),
+      totalLlmCallsAttempted: roundStartAgentOutputs.length + phases.reduce((sum, phase) => sum + phase.commandResult.totalCallsAttempted, 0),
       fallbackCount: phases.reduce((sum, phase) => sum + phase.commandResult.fallbackCount, 0),
+      roundStartLlmCallsAttempted: roundStartAgentOutputs.length,
       combatResolutionCount: phases.reduce((sum, phase) => sum + phase.combatResolutions.length, 0),
       rejectedEventCount: phases.reduce((sum, phase) => sum + phase.memoryAfter.rejectedEvents.length, 0),
       roundStrategySeed: buildRoundStrategySeed(input.roundId, input.roundNumber, tacticalPlan.attackVariant, financeDuel.topic.roundKey),
@@ -351,6 +395,39 @@ function resolveProvider(input: RunDust2HexRoundInput): {
     provider: createFixtureHexAgentCommandProvider(),
     providerMode: "fixture",
     modelId: input.modelId ?? "fixture_hex_agent_command"
+  };
+}
+
+function resolveRoundStartProvider(
+  input: RunDust2HexRoundInput,
+  phaseProviderSetup: {
+    providerMode: HexAgentCommandProviderMode;
+    modelId?: string;
+  }
+): {
+  provider: HexRoundStartAgentOutputProvider;
+  providerMode: HexAgentCommandProviderMode;
+  modelId?: string;
+} {
+  if (input.roundStartProvider) {
+    return {
+      provider: input.roundStartProvider,
+      providerMode: input.providerMode ?? phaseProviderSetup.providerMode,
+      ...(input.modelId ?? phaseProviderSetup.modelId ? { modelId: input.modelId ?? phaseProviderSetup.modelId } : {})
+    };
+  }
+  if (phaseProviderSetup.providerMode === "real") {
+    const setup = createEnvHexRoundStartAgentOutputProvider(input.env ?? process.env);
+    return {
+      provider: setup.provider,
+      providerMode: setup.providerMode,
+      modelId: setup.modelId
+    };
+  }
+  return {
+    provider: createFixtureHexRoundStartAgentOutputProvider(),
+    providerMode: "fixture",
+    modelId: input.modelId ?? phaseProviderSetup.modelId ?? "fixture_hex_round_start_agent_output"
   };
 }
 

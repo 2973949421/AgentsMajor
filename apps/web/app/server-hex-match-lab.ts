@@ -195,6 +195,7 @@ export interface HexMatchLabRoundSummary {
 
 export interface HexMatchLabRoundTraceDetail extends HexMatchLabRoundSummary {
   source: "hex_round_engine_committed";
+  roundStartAgentOutputs: HexMatchLabRoundStartAgentOutput[];
   phaseSummaries: HexMatchLabPhaseSummary[];
   audit: HexMatchLabLlmAuditSummary;
   economySummary: HexMatchLabEconomySummary[];
@@ -213,6 +214,7 @@ export interface HexMatchLabHumanAudit {
   roundValidationSummaryZh: string;
   sampleQualityWarningsZh: string[];
   winnerSummaryZh?: string | undefined;
+  roundStartOutputDigests: HexMatchLabRoundStartAgentOutput[];
   agentOutputDigests: HexMatchLabAgentOutputDigest[];
   agentOpeningBriefs: HexMatchLabHumanAgentOpeningBrief[];
   phaseStories: HexMatchLabHumanPhaseStory[];
@@ -220,6 +222,37 @@ export interface HexMatchLabHumanAudit {
     requestArtifactIds: string[];
     responseArtifactIds: string[];
     rawReasonCount: number;
+  };
+}
+
+export interface HexMatchLabRoundStartAgentOutput {
+  outputId: string;
+  agentId: string;
+  displayName: string;
+  teamSide?: string | undefined;
+  financeRole?: string | undefined;
+  financeRoleCn?: string | undefined;
+  buyType?: string | undefined;
+  resourceTier?: string | undefined;
+  source: string;
+  requestArtifactId?: string | undefined;
+  responseArtifactId?: string | undefined;
+  rawOutputSummaryZh: string;
+  openingStatementZh: string;
+  evidenceRefs: string[];
+  riskBoundaryZh: string;
+  buyConstraintAppliedZh: string;
+  phaseActionCarryoverZh: string;
+  normalizationSummaryZh: string;
+  validationSummaryZh: string;
+  technicalRefs: {
+    rawTextPreview?: string | undefined;
+    rawDraftPreview?: string | undefined;
+    normalizedDraftPreview?: string | undefined;
+    errors: string[];
+    repairedFields: string[];
+    providerMode?: string | undefined;
+    modelId?: string | undefined;
   };
 }
 
@@ -245,6 +278,7 @@ export interface HexMatchLabAgentOutputDigest {
     actionType?: string | undefined;
     targetCellId?: string | undefined;
     briefRefId?: string | undefined;
+    roundStartOutputId?: string | undefined;
     rawTextPreview?: string | undefined;
     rawDraftPreview?: string | undefined;
     normalizedDraftPreview?: string | undefined;
@@ -289,11 +323,13 @@ export interface HexMatchLabHumanActionStory {
   displayName: string;
   actionSummaryZh: string;
   openingBriefRef?: string | undefined;
+  roundStartOutputRef?: string | undefined;
   repairSummaryZh?: string | undefined;
   technicalRefs: {
     targetCellId?: string | undefined;
     requestArtifactId?: string | undefined;
     responseArtifactId?: string | undefined;
+    roundStartOutputId?: string | undefined;
     validationErrors: string[];
     repairedFields: string[];
   };
@@ -586,6 +622,7 @@ export interface HexMatchLabActionSummary {
   repairedFields: string[];
   businessIntent?: string | undefined;
   briefRefId?: string | undefined;
+  roundStartOutputId?: string | undefined;
   actionRationaleZh?: string | undefined;
   requestArtifactId?: string | undefined;
   responseArtifactId?: string | undefined;
@@ -1385,10 +1422,12 @@ function summarizeTrace(
   const financeDuel = summarizeFinanceDuel(trace);
   const finalHardCondition = summarizeHardCondition(trace.finalWinCondition);
   const audit = summarizeTraceAudit(trace);
+  const roundStartAgentOutputs = summarizeRoundStartAgentOutputs(trace, agentIdentities);
   return {
     ...roundSummary,
     hexTraceArtifactId: artifactId,
     source: "hex_round_engine_committed",
+    roundStartAgentOutputs,
     phaseSummaries,
     audit,
     economySummary,
@@ -1400,7 +1439,8 @@ function summarizeTrace(
         economySummary,
         agentIdentities,
         audit,
-        llmResponseArtifacts
+        llmResponseArtifacts,
+        roundStartAgentOutputs
       })
       : undefined,
     financeDuel,
@@ -1498,6 +1538,43 @@ function summarizeFinanceDuel(trace: HexRoundTrace): HexMatchLabFinanceDuelSumma
   };
 }
 
+function summarizeRoundStartAgentOutputs(
+  trace: HexRoundTrace,
+  agentIdentities: Map<string, AgentIdentity>
+): HexMatchLabRoundStartAgentOutput[] {
+  const outputs = Array.isArray(trace.roundStartAgentOutputs) ? trace.roundStartAgentOutputs : [];
+  return outputs.map((output) => ({
+    outputId: output.outputId,
+    agentId: output.agentId,
+    displayName: output.displayName || formatAgentName(output.agentId, agentIdentities),
+    teamSide: output.teamSide === "defense" ? "守方" : output.teamSide === "attack" ? "攻方" : output.teamSide,
+    financeRole: output.financeRole,
+    financeRoleCn: output.financeRoleCn,
+    buyType: output.buyType,
+    resourceTier: output.resourceTier,
+    source: output.source,
+    requestArtifactId: output.requestArtifactId,
+    responseArtifactId: output.responseArtifactId,
+    rawOutputSummaryZh: output.rawOutputSummaryZh,
+    openingStatementZh: output.openingStatementZh,
+    evidenceRefs: [...output.evidenceRefs],
+    riskBoundaryZh: output.riskBoundaryZh,
+    buyConstraintAppliedZh: output.buyConstraintAppliedZh,
+    phaseActionCarryoverZh: output.phaseActionCarryoverZh,
+    normalizationSummaryZh: output.normalizationSummaryZh,
+    validationSummaryZh: output.validationSummaryZh,
+    technicalRefs: {
+      rawTextPreview: output.technicalRefs.rawTextPreview,
+      rawDraftPreview: output.technicalRefs.rawDraftPreview,
+      normalizedDraftPreview: output.technicalRefs.normalizedDraftPreview,
+      errors: [...output.technicalRefs.errors],
+      repairedFields: [...output.technicalRefs.repairedFields],
+      providerMode: output.technicalRefs.providerMode,
+      modelId: output.technicalRefs.modelId
+    }
+  }));
+}
+
 function buildHumanAudit(input: {
   financeDuel: HexMatchLabFinanceDuelSummary;
   phaseSummaries: HexMatchLabPhaseSummary[];
@@ -1506,9 +1583,11 @@ function buildHumanAudit(input: {
   agentIdentities: Map<string, AgentIdentity>;
   audit: HexMatchLabLlmAuditSummary;
   llmResponseArtifacts: Map<string, HexLlmResponseArtifactSummary>;
+  roundStartAgentOutputs: HexMatchLabRoundStartAgentOutput[];
 }): HexMatchLabHumanAudit {
   const openingBriefs = buildHumanAgentOpeningBriefs(input.financeDuel, input.economySummary, input.agentIdentities);
   const openingBriefsByAgentId = new Map(openingBriefs.map((brief) => [brief.agentId, brief]));
+  const roundStartOutputsByOutputId = new Map(input.roundStartAgentOutputs.map((output) => [output.outputId, output]));
   const rawReasonCount = input.phaseSummaries.reduce(
     (sum, phase) => sum + phase.combats.reduce((inner, combat) => inner + combat.financeReasons.length + combat.csReasons.length + combat.businessReasons.length, 0),
     0
@@ -1517,6 +1596,7 @@ function buildHumanAudit(input: {
     phaseSummaries: input.phaseSummaries,
     audit: input.audit,
     openingBriefs,
+    roundStartAgentOutputs: input.roundStartAgentOutputs,
     finalHardCondition: input.finalHardCondition
   });
   return {
@@ -1527,10 +1607,12 @@ function buildHumanAudit(input: {
     roundValidationSummaryZh: buildHumanRoundValidationSummary({
       audit: input.audit,
       phaseSummaries: input.phaseSummaries,
-      openingBriefCount: openingBriefs.length
+      openingBriefCount: openingBriefs.length,
+      roundStartOutputCount: input.roundStartAgentOutputs.length
     }),
     sampleQualityWarningsZh,
     winnerSummaryZh: input.finalHardCondition ? humanizeHardWinner(input.finalHardCondition) : undefined,
+    roundStartOutputDigests: input.roundStartAgentOutputs,
     agentOutputDigests: buildAgentOutputDigests({
       phaseSummaries: input.phaseSummaries,
       openingBriefsByAgentId,
@@ -1538,7 +1620,12 @@ function buildHumanAudit(input: {
       responseArtifacts: input.llmResponseArtifacts
     }),
     agentOpeningBriefs: openingBriefs,
-    phaseStories: input.phaseSummaries.map((phase) => buildHumanPhaseStory(phase, openingBriefsByAgentId, input.agentIdentities)),
+    phaseStories: input.phaseSummaries.map((phase) => buildHumanPhaseStory(
+      phase,
+      openingBriefsByAgentId,
+      roundStartOutputsByOutputId,
+      input.agentIdentities
+    )),
     technicalRefs: {
       requestArtifactIds: [...input.audit.requestArtifactIds],
       responseArtifactIds: [...input.audit.responseArtifactIds],
@@ -1551,6 +1638,7 @@ function buildHumanRoundValidationSummary(input: {
   audit: HexMatchLabLlmAuditSummary;
   phaseSummaries: HexMatchLabPhaseSummary[];
   openingBriefCount: number;
+  roundStartOutputCount: number;
 }): string {
   const provider = input.audit.providerMode === "real"
     ? "真实 provider"
@@ -1559,18 +1647,25 @@ function buildHumanRoundValidationSummary(input: {
     (sum, phase) => sum + phase.combats.filter((combat) => combat.financeEvidenceAdoption).length,
     0
   );
-  return `样本审计：${provider}，${input.phaseSummaries.length} 个 phase，${input.openingBriefCount} 张开局信息卡，${adoptionCount} 条证据采信链。`;
+  return `样本审计：${provider}，${input.phaseSummaries.length} 个 phase，${input.roundStartOutputCount} 条真实开局输出，${input.openingBriefCount} 张系统输入卡，${adoptionCount} 条证据采信链。`;
 }
 
 function buildHumanSampleQualityWarnings(input: {
   phaseSummaries: HexMatchLabPhaseSummary[];
   audit: HexMatchLabLlmAuditSummary;
   openingBriefs: HexMatchLabHumanAgentOpeningBrief[];
+  roundStartAgentOutputs: HexMatchLabRoundStartAgentOutput[];
   finalHardCondition?: HexMatchLabHardConditionSummary | undefined;
 }): string[] {
   const warnings: string[] = [];
   if (input.audit.providerMode !== "real") {
     warnings.push("当前样本不是 real provider，不能作为真实模型验收样本。");
+  }
+  if (input.roundStartAgentOutputs.length < 10) {
+    warnings.push(`真实开局输出不足 10 条，当前只有 ${input.roundStartAgentOutputs.length} 条。`);
+  }
+  if (input.roundStartAgentOutputs.some((output) => output.source === "provider_error")) {
+    warnings.push("本 round 至少有一条真实开局输出调用失败，需检查 round-start provider 审计。");
   }
   if (input.openingBriefs.length < 10) {
     warnings.push(`开局信息卡不足 10 张，当前只有 ${input.openingBriefs.length} 张。`);
@@ -1684,6 +1779,7 @@ function buildAgentOutputDigests(input: {
           actionType: readString(draft?.actionType) ?? readString(normalizedDraft?.actionType) ?? action.actionType,
           targetCellId: readString(draft?.targetCellId) ?? readString(normalizedDraft?.targetCellId) ?? action.targetCellId,
           briefRefId: readString(draft?.briefRefId) ?? readString(normalizedDraft?.briefRefId) ?? action.briefRefId,
+          roundStartOutputId: readString(draft?.roundStartOutputId) ?? readString(normalizedDraft?.roundStartOutputId) ?? action.roundStartOutputId,
           rawTextPreview: response?.rawTextPreview,
           rawDraftPreview: previewRecord(response?.rawDraft),
           normalizedDraftPreview: previewRecord(response?.normalizedDraft),
@@ -1981,16 +2077,22 @@ function toCoreFinanceDuel(summary: HexMatchLabFinanceDuelSummary): HexRoundFina
 function buildHumanPhaseStory(
   phase: HexMatchLabPhaseSummary,
   openingBriefsByAgentId: Map<string, HexMatchLabHumanAgentOpeningBrief>,
+  roundStartOutputsByOutputId: Map<string, HexMatchLabRoundStartAgentOutput>,
   agentIdentities: Map<string, AgentIdentity>
 ): HexMatchLabHumanPhaseStory {
   const actionStories = phase.actions.map((action) => {
     const brief = openingBriefsByAgentId.get(action.agentId);
+    const roundStartOutput = action.roundStartOutputId ? roundStartOutputsByOutputId.get(action.roundStartOutputId) : undefined;
     const displayName = brief?.displayName ?? agentIdentities.get(action.agentId)?.displayName ?? action.agentId;
     const actionSummaryZh = [
       `${displayName} 本阶段${humanizeActionType(action.actionType)}`,
       action.targetCellId ? "目标格已记录，具体 cell id 见技术细节" : "目标未记录",
       action.actionRationaleZh || action.businessIntent ? `理由：${action.actionRationaleZh ?? action.businessIntent}` : "理由：未记录",
-      brief ? `引用开局信息卡：${brief.roleQuestionZh ?? brief.roundTaskZh}` : "未记录开局信息卡引用"
+      roundStartOutput
+        ? `引用真实开局输出：${roundStartOutput.openingStatementZh}`
+        : brief
+          ? `引用系统输入卡：${brief.roleQuestionZh ?? brief.roundTaskZh}`
+          : "未记录开局引用"
     ].join("；");
     const repairSummaryZh = action.fallbackReason
       ? `本行动被降级：${humanizeReason(action.fallbackReason)}`
@@ -2004,11 +2106,13 @@ function buildHumanPhaseStory(
       displayName,
       actionSummaryZh,
       openingBriefRef: action.briefRefId ?? brief?.briefId,
+      roundStartOutputRef: action.roundStartOutputId ?? roundStartOutput?.outputId,
       repairSummaryZh,
       technicalRefs: {
         targetCellId: action.targetCellId,
         requestArtifactId: action.requestArtifactId,
         responseArtifactId: action.responseArtifactId,
+        roundStartOutputId: action.roundStartOutputId,
         validationErrors: [...action.validationErrors],
         repairedFields: [...action.repairedFields]
       }
@@ -2185,6 +2289,8 @@ function humanizeReason(reason: string): string {
     phase_action_reason_too_long: "阶段行动理由过长，疑似重新写金融作文",
     repaired_missing_briefRefId: "已补齐开局信息卡引用",
     repaired_invalid_briefRefId: "已修正为当前选手自己的开局信息卡",
+    repaired_missing_roundStartOutputId: "已补齐真实开局输出引用",
+    repaired_invalid_roundStartOutputId: "已修正为当前选手自己的真实开局输出",
     provider_error: "真实模型供应器失败",
     external_blocked: "外部调用被阻断",
     no_accepted_finance_evidence: "没有被裁判正向采信的金融证据",
@@ -2508,6 +2614,7 @@ function summarizePhase(
       repairedFields: audit?.repairedFields ?? [],
       businessIntent: action.businessIntent,
       briefRefId: action.briefRefId,
+      roundStartOutputId: action.roundStartOutputId,
       actionRationaleZh: action.actionRationaleZh,
       requestArtifactId: audit?.requestArtifactId,
       responseArtifactId: audit?.responseArtifactId

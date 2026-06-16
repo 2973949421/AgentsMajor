@@ -23,6 +23,7 @@ import {
   type HexAgentSemanticLanguageAudit,
   type HexRoundTacticalPlan
 } from "./hex-agent-command-boundary.js";
+import type { HexRoundStartAgentOutputForAction } from "./hex-round-start-agent-output.js";
 import {
   buildHexAgentFallbackAction,
   validateHexAgentActionDraft,
@@ -100,6 +101,7 @@ export interface RunHexAgentPhaseCommandHarnessInput {
   tacticalPlan?: HexRoundTacticalPlan;
   businessDuel?: HexRoundBusinessDuel;
   financeDuel?: HexRoundFinanceDuel;
+  roundStartAgentOutputs?: readonly HexRoundStartAgentOutputForAction[];
 }
 
 export interface HexAgentCommandAudit {
@@ -235,6 +237,7 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
       ...(input.tacticalPlan ? { tacticalPlan: input.tacticalPlan } : {}),
       ...(input.businessDuel ? { businessDuel: input.businessDuel } : {}),
       ...(input.financeDuel ? { financeDuel: input.financeDuel } : {}),
+      ...(input.roundStartAgentOutputs ? { roundStartAgentOutputs: input.roundStartAgentOutputs } : {}),
       ...(input.economyContext ? { economyContext: input.economyContext } : {})
     });
     const compactRequest = buildHexAgentCompactCommandRequest(request);
@@ -740,7 +743,8 @@ export function buildRealHexAgentCommandMessages(request: HexAgentCompactCommand
         "只输出一个 JSON object。",
         "businessIntent、tacticalIntent、riskNotes 必须使用中文。",
         "businessIntent 是兼容字段名，内容只写本阶段行动理由，不要重写整段金融自证或质疑。",
-        "如果请求包含 agentOpeningBrief，优先引用该信息卡；可以输出 briefRefId 和 actionRationaleZh。",
+        "如果请求包含 roundStartAgentOutput，优先引用真实开局输出；输出 roundStartOutputId 和 actionRationaleZh，但不要复述完整开局判断。",
+        "如果请求只有 agentOpeningBrief，它只是系统输入卡；可以短句引用 briefRefId，但不能冒充 agent 开局输出。",
         "tacticalIntent、riskNotes 也必须使用中文。",
         "如果请求包含 financeDuel，只把它当作本回合小主题摘要；局内行动必须根据当前局势、AP、目标候选和信息卡决策。",
         "JSON 字段名、actionType、phaseId、agentId、cell id 必须严格保持请求里的英文标识。",

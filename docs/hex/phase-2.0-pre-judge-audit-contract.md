@@ -454,3 +454,32 @@ N55 起，Web human audit（人类审计）必须区分“系统输入”和“a
 - 真实输出摘要可以做确定性微处理，例如提取行动、理由、风险、证据引用、修复、拒绝和采信状态。
 - Web 不能调用新的 LLM 来总结 agent 输出，避免形成二次黑箱。
 - raw JSON、artifact id、agent id、cell id 和英文枚举可以折叠保留，但不能作为主审计入口。
+
+### 8.7 N55 收口修正：phase0 真实开局输出审计
+
+N55 收口修正后，审计链必须再往前推进一层：
+
+- 每个新 round 都要记录 10 条 `roundStartAgentOutputs`。
+- 这些输出是真实 phase0 开局输出，必须来源于 response artifact 或 fixture response。
+- `agentOpeningBrief`、`agentEvidenceSlice` 只能作为生成 phase0 输出的系统输入材料，不能在主视图里冒充“本局观点”。
+
+Web human audit 的默认解释顺序必须是：
+
+```text
+本局真实开局输出
+-> phase1+ 行动如何引用开局输出
+-> 金融裁判采信 / 未采信 / 缺失证据
+-> CS 执行理由
+-> hard winner
+-> 系统输入卡（折叠）
+-> 技术细节（折叠）
+```
+
+审计硬规则：
+
+- 如果某名 agent 没有 `roundStartAgentOutput` response artifact，主视图必须显示“本局没有真实开局输出”，不能用系统输入卡、fallback 文案或 phase 行动摘要补写。
+- phase1+ 行动必须能追溯 `roundStartOutputId`；缺失或错写的修复只能指向当前 agent 自己的开局输出，并且要保留：
+  - `repaired_missing_roundStartOutputId`
+  - `repaired_invalid_roundStartOutputId`
+- phase1+ 如果大段复述 phase0 输出，必须在审计中显示 `phase_repeated_round_thesis`，并明确这是被拒绝或降级的原因，而不是“更完整的 agent 发言”。
+- 系统输入卡在主视图必须明确标注“非 agent 输出”，避免再次把输入材料和真实输出混淆。

@@ -282,6 +282,48 @@ Web 审计默认展示中文行动摘要：
 
 raw `briefRefId`、`agentId`、`cellId`、artifact id 和英文枚举仍必须保留在技术细节中，不能为了中文展示而删除审计事实。
 
+### 5.9 N55 收口修正：phase0 真实开局输出层
+
+N55 收口修正起，Hex 金融对抗必须显式区分：
+
+```text
+phase0 / round-start：真实开局输出层
+phase1+：局内行动层
+```
+
+固定规则：
+
+- 每个新 round 开始前，10 名 agent 都必须各生成一次 `roundStartAgentOutput`。
+- `roundStartAgentOutput` 必须来自真实 response artifact 或 fixture response，不能由 `agentOpeningBrief`、`agentEvidenceSlice` 或 Web 摘要冒充。
+- `agentOpeningBrief` 继续存在，但它只作为系统输入卡，用来提示 phase0 模型生成本局开局输出。
+- `roundStartAgentOutput` 至少要包含：
+  - `openingStatementZh`
+  - `evidenceRefs`
+  - `riskBoundaryZh`
+  - `buyConstraintAppliedZh`
+  - `phaseActionCarryoverZh`
+- `openingStatementZh` 是本局真实开局判断，不是局内行动，也不能输出地图 cell、击杀、胜负或经济变化。
+
+后续 phase 的 `agent_action` compact request 只允许发送：
+
+- 当前局势。
+- 当前 agent 自己的 `roundStartAgentOutput` 摘要。
+- 极短的 round 主题提示。
+
+后续 phase 不得重新生成完整金融论文：
+
+- 如果 `businessIntent / actionRationaleZh` 大段复述 `roundStartAgentOutput`，必须记录 `phase_repeated_round_thesis` 并拒绝或降级。
+- 当 `roundStartAgentOutput` 存在时，阶段行动必须带 `roundStartOutputId`。
+- 缺失或错写 `roundStartOutputId` 时，只能修复为当前 agent 自己的输出，并记录：
+  - `repaired_missing_roundStartOutputId`
+  - `repaired_invalid_roundStartOutputId`
+
+审计层口径固定为：
+
+- phase0 主视图展示“本局真实开局输出”。
+- `agentOpeningBrief` 只能显示为“系统输入卡（非 agent 输出）”。
+- 没有 round-start response artifact 时，不得用系统输入卡、fallback 文案或 Web 文案伪装成 agent 已输出。
+
 ## 6. Judge Scorecard v6
 
 `judge_verdict` 必须输出 `judgeScorecard`。评分标准由代码生成并写入输入中的 `rubricProfile`，LLM 只能消费，不能修改。

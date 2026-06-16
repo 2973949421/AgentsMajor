@@ -81,6 +81,48 @@ function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; 
         </article>
 
         <article className={styles.auditCard}>
+          <h3>本局真实开局输出</h3>
+          <p className={styles.guardText}>这里展示每名选手在 round-start（开局真实输出层）里的真实模型输出摘要。系统输入卡只作为后面的提示材料折叠展示，不能冒充这里的内容。</p>
+          {humanAudit.roundStartOutputDigests.length > 0 ? (
+            <ul>
+              {humanAudit.roundStartOutputDigests.map((output) => (
+                <li key={output.outputId}>
+                  <strong>{output.displayName}</strong> / {output.teamSide ?? "side unknown"} / {output.financeRoleCn ?? output.financeRole ?? "角色未记录"}：
+                  {output.openingStatementZh}
+                  <br />
+                  <span>买型裁剪：{output.buyConstraintAppliedZh}</span>
+                  <br />
+                  <span>后续行动引用：{output.phaseActionCarryoverZh}</span>
+                  <br />
+                  <span>风险边界：{output.riskBoundaryZh}</span>
+                  <br />
+                  <span>证据引用：{output.evidenceRefs.join("、") || "未记录可识别证据"}</span>
+                  <br />
+                  <span>{output.normalizationSummaryZh}</span>
+                  <br />
+                  <span>{output.validationSummaryZh}</span>
+                  <details>
+                    <summary>真实开局输出技术细节</summary>
+                    <p>source: {output.source}</p>
+                    <p>buy type: {output.buyType ?? "未记录"}</p>
+                    <p>resource tier: {output.resourceTier ?? "未记录"}</p>
+                    <p>request artifact: {output.requestArtifactId ?? "未记录"}</p>
+                    <p>response artifact: {output.responseArtifactId ?? "未记录"}</p>
+                    <p>errors: {output.technicalRefs.errors.join("；") || "无"}</p>
+                    <p>repaired fields: {output.technicalRefs.repairedFields.join("；") || "无"}</p>
+                    <p>provider: {output.technicalRefs.providerMode ?? "未记录"}</p>
+                    <p>model: {output.technicalRefs.modelId ?? "未记录"}</p>
+                    {output.technicalRefs.rawTextPreview ? <p>raw text preview: {output.technicalRefs.rawTextPreview}</p> : null}
+                    {output.technicalRefs.rawDraftPreview ? <p>raw draft preview: {output.technicalRefs.rawDraftPreview}</p> : null}
+                    {output.technicalRefs.normalizedDraftPreview ? <p>normalized draft preview: {output.technicalRefs.normalizedDraftPreview}</p> : null}
+                  </details>
+                </li>
+              ))}
+            </ul>
+          ) : <p>旧 trace 未记录本局真实开局输出。</p>}
+        </article>
+
+        <article className={styles.auditCard}>
           <h3>真实 LLM 输出摘要</h3>
           <p className={styles.guardText}>这里展示 response artifact 中真实模型输出的微处理版本；没有 response artifact 时不会用系统输入卡或降级文案冒充。</p>
           {selectedOutputDigests.length > 0 ? (
@@ -124,7 +166,7 @@ function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; 
         </article>
 
         <details className={styles.auditCard}>
-          <summary>系统输入卡（非 agent 输出）</summary>
+          <summary>开局输出输入材料（系统卡，非 agent 输出）</summary>
           <p className={styles.guardText}>以下内容由系统根据 financeDuel、证据切片和经济上下文确定性生成，只是模型输入上下文，不是 agent 自己说的话。</p>
           <ul>
             {humanAudit.agentOpeningBriefs.map((brief) => (
@@ -164,7 +206,7 @@ function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; 
             <h3>{phaseStory.phaseLabel ?? `P${phaseStory.phaseIndex}`}：本阶段行动</h3>
             <p>{phaseStory.summaryZh}</p>
             <p>{phaseStory.phaseValidationSummaryZh}</p>
-            <h4>行动与引用开局信息卡</h4>
+            <h4>行动与引用真实开局输出</h4>
             {phaseStory.actionStories.length > 0 ? (
               <ul>
                 {phaseStory.actionStories.map((action) => (
@@ -173,10 +215,12 @@ function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; 
                     {action.repairSummaryZh ? `；${action.repairSummaryZh}` : ""}
                     <details>
                       <summary>行动技术细节</summary>
+                      <p>真实开局输出: {action.roundStartOutputRef ?? "旧 trace 未记录"}</p>
                       <p>opening brief: {action.openingBriefRef ?? "旧 trace 未记录"}</p>
                       <p>target cell: {action.technicalRefs.targetCellId ?? "未记录"}</p>
                       <p>request artifact: {action.technicalRefs.requestArtifactId ?? "未记录"}</p>
                       <p>response artifact: {action.technicalRefs.responseArtifactId ?? "未记录"}</p>
+                      <p>round-start output id: {action.technicalRefs.roundStartOutputId ?? "未记录"}</p>
                       <p>validation errors: {action.technicalRefs.validationErrors.join("; ") || "无"}</p>
                       <p>repaired fields: {action.technicalRefs.repairedFields.join("; ") || "无"}</p>
                     </details>

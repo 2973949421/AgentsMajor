@@ -871,6 +871,29 @@ docs/finance/n54-human-audit-validation-report.md
 docs/finance/n55-agent-output-audit-plan.md
 ```
 
+### N55 收口修正：phase0 真实开局输出层与局内行动隔离（已完成）
+
+目标：
+
+- phase0 先让 10 名 agent 基于资料、队伍资产、round 任务、专家角色和经济买型，各生成一次真实“本局开局输出”。
+- phase1+ 只处理队伍行动、移动、交火和风险判断，最多短句引用 phase0 输出。
+- Web 主审计先展示真实 phase0 开局输出，再展示后续行动如何引用它。
+- `agentOpeningBrief` 继续存在，但只能作为 phase0 的系统输入卡，不能冒充 agent 本局真实发言。
+
+当前落地口径：
+
+- 每个新 round 都会生成 `roundStartAgentOutputs`。
+- 每条 `roundStartAgentOutput` 都带 request / response artifact 或 fixture 来源。
+- phase1+ compact request 只带当前 agent 自己的开局输出摘要和当前局势。
+- phase action 若大段复述 phase0 输出，会记录 `phase_repeated_round_thesis` 并进入拒绝 / 降级路径。
+- 审计台默认优先展示“本局真实开局输出”，系统输入卡折叠为“非 agent 输出”。
+
+详细计划：
+
+```text
+docs/finance/n55-round-start-output-correction-plan.md
+```
+
 ## 11. 最小化与回滚策略
 
 - N42 只写文档，不改 runtime。
@@ -887,6 +910,7 @@ docs/finance/n55-agent-output-audit-plan.md
 - N53 才补裁判证据采信链。
 - N54 才做中文人工审计和真实样本验收。
 - N55 才把真实 LLM 输出摘要与系统输入卡隔离，不能用输入卡冒充 agent 输出。
+- N55 收口修正再把真实开局输出层前移到 phase0，后续 phase 只引用，不再混写本局观点。
 
 如果 finance 原型失败：
 

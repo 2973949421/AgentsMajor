@@ -212,6 +212,7 @@ function minimalTrace(agentA: Agent, attackTeamId: string, defenseTeamId: string
       ]
     }),
     economyContext: { teams: [], agents: [], warnings: [] },
+    roundStartAgentOutputs: [],
     phases: [
       {
         phaseId: "first_contact",
@@ -280,6 +281,7 @@ function minimalTrace(agentA: Agent, attackTeamId: string, defenseTeamId: string
       modelId: "fixture_hex_agent_command",
       totalLlmCallsAttempted: 1,
       fallbackCount: 0,
+      roundStartLlmCallsAttempted: 0,
       combatResolutionCount: 0,
       rejectedEventCount: 0,
       roundStrategySeed: "fixture_round_1_seed",
