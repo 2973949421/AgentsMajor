@@ -46,7 +46,7 @@ Node/Sector 实验线：已退役并清理 active mode / runtime / Web progress 
 
 ## 3. 近期优先级
 
-### P0：N42-N54，Finance Major 原型（当前）
+### P0：N42-N55，Finance Major 原型（当前）
 
 目标是保留 HexGrid 工程骨架，把旧 business duel 语义替换为 finance duel：
 
@@ -64,6 +64,7 @@ N51：专家证据切片与开局信息卡差异化。（已完成第一版）
 N52：回合信息层 / 局内行动层硬隔离。（已完成第一版）
 N53：金融裁判证据采信事实化。（已完成第一版）
 N54：中文人类审计与真实样本验收。（Web 收口完成；real 成功样本 blocked）
+N55：真实 LLM 输出人类审计摘要与系统输入卡隔离。（已完成第一版）
 ```
 
 当前测试落点：
@@ -111,14 +112,16 @@ N49 暴露出的新问题是：
 5. roundOpeningBrief 缺少按 PM / Macro / Commodity / Company / Risk 切分的证据。
 ```
 
-因此下一步必须拆成 N50-N54：
+因此下一步必须拆成 N50-N55：
 
 ```text
 N50 已用用户准备的免费接口生成离线宏微观事实库，FRED / BaoStock 为观测事实，UN Comtrade 为 optional unavailable。
 N51 已从事实库生成 agent evidence slice，让 10 名 agent 的开局信息卡按专家角色读取不同证据、证据缺口和评分边界。
 N52 已把回合信息层和局内行动层硬隔离：compact request 不再发送完整金融长文本，briefRefId 缺失或错写只能修到当前 agent 自己的信息卡，复述完整开局论点或行动理由明显超长会拒绝 / 降级。
 N53 已让金融裁判明确采信 / 拒绝 / 降权哪些证据，不能用字段存在冒充机制生效。combat trace 现在记录 `acceptedEvidenceRefs / rejectedEvidenceRefs / missingEvidenceApplied / scoreCapRefs / financeReasonZh / csReasonZh`，fallback、invalid action、复述开局论点和明显超长行动理由不产生正向金融证据。
-N54 已完成中文 Web 审计主链路和失败报告。当前环境中的 real provider 成功样本因外部出站风险被阻断，因此不能宣称真实对局已通过；N55 需要先决定是否批准外部模型出站补真实成功样本，或改做离线 / fixture 审计质量门槛。
+N54 已完成中文 Web 审计主链路和失败报告。当前环境中的 real provider 成功样本因外部出站风险被阻断，因此不能宣称真实对局已通过。
+
+N55 进一步修正审计来源：主审计展示真实 `hex_llm_response` artifact 的人工可读摘要，系统生成的 `agentOpeningBrief` 只能作为“系统输入卡（非 agent 输出）”折叠展示。没有 response artifact 时必须显示“没有真实模型输出”，不能用系统预置词或 fallback 文案补成 agent 输出。
 ```
 
 当前必须承认的边界：
@@ -138,7 +141,7 @@ CNINFO、国家统计局、工信部、SHFE、SMM 等先作为后置证据锚点
 data/materials/processed/finance/
 ```
 
-N50-N54 固定计划：
+N50-N55 固定计划：
 
 ```text
 docs/finance/n50-offline-finance-fact-bank-plan.md
@@ -147,6 +150,7 @@ docs/finance/n52-information-action-boundary-plan.md
 docs/finance/n53-judge-evidence-adoption-plan.md
 docs/finance/n54-human-audit-validation-plan.md
 docs/finance/n54-human-audit-validation-report.md
+docs/finance/n55-agent-output-audit-plan.md
 ```
 
 正式本地环境入口：

@@ -6,10 +6,10 @@
 
 ```text
 当前主线：HexGrid（蜂巢格）Phase 2.0-pre。
-当前进度：N20-N54 已完成第一版 Web 中文审计收口；real provider 成功样本因外部出站风险未通过当前环境验收。
+当前进度：N20-N55 已完成第一版 Web 中文审计收口；N55 已把系统输入卡与真实 LLM 输出摘要隔离。
 当前入口：/hex-lab/match。
 当前底层事实：official Dust2 Hex map、Hex phase memory、Hex action/combat/economy/round runner、Hex map runner、Hex trace artifacts。
-下一阶段候选：N55 根据用户是否批准 real provider 外部出站，选择补真实成功样本或先做离线 / fixture 审计质量门槛。
+下一阶段候选：N56 视用户验收结果决定是否新增 round-start agent 输出，或继续做真实 provider 成功样本质量门槛。
 ```
 
 HexGrid 现在是新的比赛事实主线。它负责地图可走性、AP、阶段记忆、agent action、局部 combat、economy evidence、单回合提交、完整 Dust2 地图灰度和 Web 验收。
@@ -50,6 +50,7 @@ docs/finance/finance-evidence-mvp.md：免费 API 代理事实版证据层契约
 docs/finance/finance-data-asset-contract.md：金融数据资产、环境变量和地图绑定隔离契约。
 docs/finance/n48-dust2-nonferrous-6r-validation.md：N48 Dust2 有色 6R 条件通过验收报告。
 docs/finance/n54-human-audit-validation-report.md：N54 中文审计与 real 样本阻塞报告。
+docs/finance/n55-agent-output-audit-plan.md：N55 真实 LLM 输出人类审计摘要计划。
 ```
 
 旧 Phase 1.x 计划、早期技术总览和 superseded Node/Sector 计划已经移入 archive。生态、新闻、奖项、统计、完整 16 队赛事等长期想法移入 backlog。
@@ -85,9 +86,10 @@ N51：专家证据切片与开局信息卡差异化。（已完成第一版）
 N52：回合信息层 / 局内行动层硬隔离。（已完成第一版）
 N53：金融裁判证据采信事实化。（已完成第一版）
 N54：中文人类审计与真实样本验收。（Web 收口完成；real 成功样本 blocked）
+N55：真实 LLM 输出人类审计摘要与系统输入卡隔离。（已完成第一版）
 ```
 
-Finance Major 的核心不是重写 HexGrid，而是保留最新 Hex 工程骨架，把旧商业语义替换为金融研究攻防。第一版测试范围固定为 `Dust2 有色 / 行业判断 / 6 round`。N48 只证明了结构链路条件通过，尚未证明真实模型金融样本质量达标。
+Finance Major 的核心不是重写 HexGrid，而是保留最新 Hex 工程骨架，把旧商业语义替换为金融研究攻防。第一版测试范围固定为 `Dust2 有色 / 行业判断 / 6 round`。N48 只证明了结构链路条件通过，尚未证明真实模型金融样本质量达标。N55 进一步明确：主审计只能展示真实 response artifact 的人工摘要，系统输入卡不得冒充 agent 输出。
 
 数据层口径必须保持克制：
 
@@ -114,7 +116,7 @@ data/materials/processed/finance/
 
 它只管理 source registry、evidence policy、Dust2 有色主题绑定、回合证据模板和数据源 universe，不承载 Hex cell / region / point 等地图空间事实。
 
-当前必须承认的 N51-N54 前置事实：
+当前必须承认的 N51-N55 前置事实：
 
 ```text
 FRED / BaoStock / UN Comtrade / AKShare 已被登记。
@@ -123,5 +125,5 @@ FRED 和 BaoStock 已进入 `offline_observation_fact`。
 UN Comtrade 第一版为 optional unavailable observation。
 当前 generated round evidence pack 仍可保留 configured_proxy_fact 兜底。
 比赛运行时读到了 evidence pack，但不是实时 API 数据。
-N51 已按专家角色切片给 agent；N52 已硬隔离行动边界；N53 已完成裁判采信链第一版；N54 已处理中文人工审计；真实成功样本未通过当前环境。
+N51 已按专家角色切片给 agent；N52 已硬隔离行动边界；N53 已完成裁判采信链第一版；N54 已处理中文人工审计；N55 已隔离真实 LLM 输出摘要和系统输入卡；真实成功样本未通过当前环境。
 ```

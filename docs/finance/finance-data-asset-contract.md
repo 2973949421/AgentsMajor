@@ -186,7 +186,7 @@ data/materials/scripts/validate-finance-evidence.mjs
 
 当前脚本先生成 configured proxy facts，不在没有稳定 live adapter（实时适配器）时伪造市场数值。N45 runtime 应优先读取 `round-evidence-packs.json`，而不是重新扫描 source registry 或直接调用外部 API。
 
-## 9. N50-N54 离线事实库与证据链补充契约
+## 9. N50-N55 离线事实库、证据链与真实输出审计补充契约
 
 N49 后的审计结论是：当前金融数据接口已经完成登记，但尚未真正把 API 观测值转化为比赛事实。`round-evidence-packs.json` 已经被 runtime 消费，但其中大量事实仍是：
 
@@ -204,6 +204,7 @@ N51：从 fact bank / round evidence pack 切成 agent evidence slice。
 N52：agent 在局内只引用信息卡，不重新生成整段金融论点。
 N53：裁判明确采信 / 拒绝 / 降权哪些证据。
 N54：Web 用中文人类审计展示真实样本。
+N55：Web 主审计只展示真实 response artifact 摘要，系统输入卡不得冒充 agent 输出。
 ```
 
 新增事实类型建议：

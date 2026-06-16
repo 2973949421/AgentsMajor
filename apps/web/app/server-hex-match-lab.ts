@@ -213,12 +213,42 @@ export interface HexMatchLabHumanAudit {
   roundValidationSummaryZh: string;
   sampleQualityWarningsZh: string[];
   winnerSummaryZh?: string | undefined;
+  agentOutputDigests: HexMatchLabAgentOutputDigest[];
   agentOpeningBriefs: HexMatchLabHumanAgentOpeningBrief[];
   phaseStories: HexMatchLabHumanPhaseStory[];
   technicalRefs: {
     requestArtifactIds: string[];
     responseArtifactIds: string[];
     rawReasonCount: number;
+  };
+}
+
+export interface HexMatchLabAgentOutputDigest {
+  agentId: string;
+  displayName: string;
+  teamSide?: string | undefined;
+  phaseIndex: number;
+  phaseLabel?: string | undefined;
+  source: "llm_response_artifact" | "missing_response_artifact" | "provider_error" | "fixture_response" | "old_trace_missing";
+  responseArtifactId?: string | undefined;
+  requestArtifactId?: string | undefined;
+  rawOutputSummaryZh: string;
+  declaredActionZh: string;
+  declaredReasonZh: string;
+  declaredEvidenceRefs: string[];
+  declaredRiskNotesZh: string[];
+  semanticLanguageSummaryZh: string;
+  normalizationSummaryZh: string;
+  validationSummaryZh: string;
+  judgeAdoptionSummaryZh: string;
+  technicalRefs: {
+    actionType?: string | undefined;
+    targetCellId?: string | undefined;
+    briefRefId?: string | undefined;
+    rawTextPreview?: string | undefined;
+    rawDraftPreview?: string | undefined;
+    normalizedDraftPreview?: string | undefined;
+    responseReadError?: string | undefined;
   };
 }
 
@@ -687,6 +717,21 @@ export interface HexMatchLabHardConditionSummary {
   reason?: string | undefined;
 }
 
+interface HexLlmResponseArtifactSummary {
+  artifactId: string;
+  callId?: string | undefined;
+  source: "llm_response_artifact" | "fixture_response" | "old_trace_missing";
+  rawTextPreview?: string | undefined;
+  rawDraft?: Record<string, unknown> | undefined;
+  normalizedDraft?: Record<string, unknown> | undefined;
+  normalizedErrors: string[];
+  normalizedRepairedFields: string[];
+  semanticLanguage?: string | undefined;
+  languageMismatch?: boolean | undefined;
+  inspectedSemanticFields: string[];
+  readError?: string | undefined;
+}
+
 interface ReadProgressInput {
   mapGameId?: string | null;
   summaryArtifactId?: string | null;
@@ -1124,10 +1169,38 @@ async function readRoundTraceDetail(
     const trace = unwrapHexRoundTrace(raw);
     const fallbackSummary = summaries.find((round) => round.hexTraceArtifactId === artifactId);
     const preRoundKda = await buildPreRoundKdaByAgent(repositories, projectRoot, summaries, trace.roundNumber, artifactId);
-    return summarizeTrace(artifactId, trace, fallbackSummary, loadOfficialDust2HexMap(), agentIdentities, preRoundKda);
+    const llmResponseArtifacts = await readHexLlmResponseArtifactSummaries(repositories, projectRoot, trace);
+    return summarizeTrace(artifactId, trace, fallbackSummary, loadOfficialDust2HexMap(), agentIdentities, preRoundKda, llmResponseArtifacts);
   } catch {
     return undefined;
   }
+}
+
+async function readHexLlmResponseArtifactSummaries(
+  repositories: SqliteRepositoryBundle,
+  projectRoot: string,
+  trace: HexRoundTrace
+): Promise<Map<string, HexLlmResponseArtifactSummary>> {
+  const responseArtifactIds = uniqueStrings(trace.phases.flatMap((phase) =>
+    phase.commandResult.audits.map((audit) => audit.responseArtifactId)
+  ));
+  const summaries = new Map<string, HexLlmResponseArtifactSummary>();
+  for (const artifactId of responseArtifactIds) {
+    try {
+      const parsed = JSON.parse(await readArtifactText(repositories, projectRoot, artifactId)) as unknown;
+      summaries.set(artifactId, summarizeHexLlmResponseArtifact(artifactId, parsed));
+    } catch (error) {
+      summaries.set(artifactId, {
+        artifactId,
+        source: "old_trace_missing",
+        normalizedErrors: [],
+        normalizedRepairedFields: [],
+        inspectedSemanticFields: [],
+        readError: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+  return summaries;
 }
 
 async function buildPreRoundKdaByAgent(
@@ -1284,7 +1357,8 @@ function summarizeTrace(
   fallbackSummary: HexMatchLabRoundSummary | undefined,
   asset: HexMapAsset,
   agentIdentities: Map<string, AgentIdentity>,
-  preRoundKdaByAgent: Map<string, HexKdaStat>
+  preRoundKdaByAgent: Map<string, HexKdaStat>,
+  llmResponseArtifacts: Map<string, HexLlmResponseArtifactSummary>
 ): HexMatchLabRoundTraceDetail {
   const roundSummary: HexMatchLabRoundSummary = fallbackSummary ?? {
     roundNumber: trace.roundNumber,
@@ -1325,7 +1399,8 @@ function summarizeTrace(
         finalHardCondition,
         economySummary,
         agentIdentities,
-        audit
+        audit,
+        llmResponseArtifacts
       })
       : undefined,
     financeDuel,
@@ -1430,6 +1505,7 @@ function buildHumanAudit(input: {
   economySummary: HexMatchLabEconomySummary[];
   agentIdentities: Map<string, AgentIdentity>;
   audit: HexMatchLabLlmAuditSummary;
+  llmResponseArtifacts: Map<string, HexLlmResponseArtifactSummary>;
 }): HexMatchLabHumanAudit {
   const openingBriefs = buildHumanAgentOpeningBriefs(input.financeDuel, input.economySummary, input.agentIdentities);
   const openingBriefsByAgentId = new Map(openingBriefs.map((brief) => [brief.agentId, brief]));
@@ -1455,6 +1531,12 @@ function buildHumanAudit(input: {
     }),
     sampleQualityWarningsZh,
     winnerSummaryZh: input.finalHardCondition ? humanizeHardWinner(input.finalHardCondition) : undefined,
+    agentOutputDigests: buildAgentOutputDigests({
+      phaseSummaries: input.phaseSummaries,
+      openingBriefsByAgentId,
+      agentIdentities: input.agentIdentities,
+      responseArtifacts: input.llmResponseArtifacts
+    }),
     agentOpeningBriefs: openingBriefs,
     phaseStories: input.phaseSummaries.map((phase) => buildHumanPhaseStory(phase, openingBriefsByAgentId, input.agentIdentities)),
     technicalRefs: {
@@ -1519,6 +1601,224 @@ function buildHumanSampleQualityWarnings(input: {
     warnings.push("本 round 尚未产生硬胜负，不能作为完整胜负验收样本。");
   }
   return warnings;
+}
+
+function summarizeHexLlmResponseArtifact(artifactId: string, value: unknown): HexLlmResponseArtifactSummary {
+  const record = parseRecord(value);
+  const normalized = parseRecord(record?.normalized);
+  const semanticLanguageAudit = parseRecord(record?.semanticLanguageAudit);
+  const providerDiagnostics = parseRecord(record?.providerDiagnostics);
+  return {
+    artifactId,
+    callId: readString(record?.callId),
+    source: readString(providerDiagnostics?.providerMode) === "fixture" ? "fixture_response" : "llm_response_artifact",
+    rawTextPreview: truncateText(readString(record?.rawText), 260),
+    rawDraft: readDraftRecord(record?.rawDraft),
+    normalizedDraft: readDraftRecord(normalized?.draft),
+    normalizedErrors: readStringArray(normalized?.errors),
+    normalizedRepairedFields: readStringArray(normalized?.repairedFields),
+    semanticLanguage: readString(semanticLanguageAudit?.semanticLanguage),
+    languageMismatch: typeof semanticLanguageAudit?.languageMismatch === "boolean" ? semanticLanguageAudit.languageMismatch : undefined,
+    inspectedSemanticFields: readStringArray(semanticLanguageAudit?.inspectedSemanticFields)
+  };
+}
+
+function buildAgentOutputDigests(input: {
+  phaseSummaries: HexMatchLabPhaseSummary[];
+  openingBriefsByAgentId: Map<string, HexMatchLabHumanAgentOpeningBrief>;
+  agentIdentities: Map<string, AgentIdentity>;
+  responseArtifacts: Map<string, HexLlmResponseArtifactSummary>;
+}): HexMatchLabAgentOutputDigest[] {
+  return input.phaseSummaries.flatMap((phase) =>
+    phase.actions.map((action) => {
+      const response = action.responseArtifactId ? input.responseArtifacts.get(action.responseArtifactId) : undefined;
+      const draft = response?.rawDraft;
+      const normalizedDraft = response?.normalizedDraft;
+      const brief = input.openingBriefsByAgentId.get(action.agentId);
+      const displayName = brief?.displayName ?? formatAgentName(action.agentId, input.agentIdentities);
+      const rawReason = firstText([
+        readString(draft?.actionRationaleZh),
+        readString(draft?.businessIntent),
+        readString(draft?.tacticalIntent),
+        readString(normalizedDraft?.actionRationaleZh),
+        readString(normalizedDraft?.businessIntent),
+        response?.rawTextPreview
+      ]);
+      const riskNotes = [
+        ...readStringArray(draft?.riskNotes),
+        ...readStringArray(normalizedDraft?.riskNotes)
+      ];
+      const actionTexts = [
+        readString(draft?.actionRationaleZh),
+        readString(draft?.businessIntent),
+        readString(draft?.tacticalIntent),
+        ...readStringArray(draft?.riskNotes),
+        response?.rawTextPreview
+      ];
+      const knownEvidenceRefs = collectKnownEvidenceRefs(brief);
+      const declaredEvidenceRefs = uniqueStrings([
+        ...readStringArray(draft?.evidenceRefs),
+        ...extractKnownRefsFromText(actionTexts.join(" "), knownEvidenceRefs)
+      ]);
+      return {
+        agentId: action.agentId,
+        displayName,
+        teamSide: brief?.teamSide ?? action.side,
+        phaseIndex: phase.phaseIndex,
+        ...(phase.phaseLabel ? { phaseLabel: phase.phaseLabel } : {}),
+        source: resolveOutputDigestSource(action, response),
+        responseArtifactId: action.responseArtifactId,
+        requestArtifactId: action.requestArtifactId,
+        rawOutputSummaryZh: buildRawOutputSummary(response, rawReason),
+        declaredActionZh: buildDeclaredActionSummary(action, draft, normalizedDraft),
+        declaredReasonZh: rawReason
+          ? truncateText(rawReason, 180) ?? "真实响应存在，但未提取到行动理由。"
+          : "真实响应没有可读行动理由；不能用系统输入卡补写。",
+        declaredEvidenceRefs,
+        declaredRiskNotesZh: uniqueStrings(riskNotes).slice(0, 3),
+        semanticLanguageSummaryZh: buildSemanticLanguageSummary(response),
+        normalizationSummaryZh: buildNormalizationSummary(response, action),
+        validationSummaryZh: buildValidationSummary(action),
+        judgeAdoptionSummaryZh: buildJudgeAdoptionSummary(action.agentId, phase.combats),
+        technicalRefs: {
+          actionType: readString(draft?.actionType) ?? readString(normalizedDraft?.actionType) ?? action.actionType,
+          targetCellId: readString(draft?.targetCellId) ?? readString(normalizedDraft?.targetCellId) ?? action.targetCellId,
+          briefRefId: readString(draft?.briefRefId) ?? readString(normalizedDraft?.briefRefId) ?? action.briefRefId,
+          rawTextPreview: response?.rawTextPreview,
+          rawDraftPreview: previewRecord(response?.rawDraft),
+          normalizedDraftPreview: previewRecord(response?.normalizedDraft),
+          responseReadError: response?.readError
+        }
+      };
+    })
+  );
+}
+
+function resolveOutputDigestSource(
+  action: HexMatchLabActionSummary,
+  response: HexLlmResponseArtifactSummary | undefined
+): HexMatchLabAgentOutputDigest["source"] {
+  if (response?.readError) {
+    return "old_trace_missing";
+  }
+  if (response) {
+    return response.source;
+  }
+  const reasons = [...action.validationErrors, action.fallbackReason ?? ""].join(" ");
+  return /provider_error|fetch failed|external|eacces/i.test(reasons) ? "provider_error" : "missing_response_artifact";
+}
+
+function buildRawOutputSummary(
+  response: HexLlmResponseArtifactSummary | undefined,
+  rawReason: string | undefined
+): string {
+  if (!response) {
+    return "本阶段没有真实模型 response artifact；不能展示 agent 原始输出。";
+  }
+  if (response.readError) {
+    return `本阶段记录了 response artifact，但读取失败：${response.readError}`;
+  }
+  if (rawReason) {
+    return `模型原始输出摘要：${truncateText(rawReason, 180)}`;
+  }
+  if (response.rawTextPreview) {
+    return `模型返回了非结构化文本预览：${response.rawTextPreview}`;
+  }
+  return "模型 response artifact 存在，但没有可提取的行动理由。";
+}
+
+function buildDeclaredActionSummary(
+  action: HexMatchLabActionSummary,
+  rawDraft: Record<string, unknown> | undefined,
+  normalizedDraft: Record<string, unknown> | undefined
+): string {
+  const rawActionType = readString(rawDraft?.actionType);
+  const normalizedActionType = readString(normalizedDraft?.actionType);
+  const targetCellId = readString(rawDraft?.targetCellId) ?? readString(normalizedDraft?.targetCellId) ?? action.targetCellId;
+  const actionText = humanizeActionType(rawActionType ?? normalizedActionType ?? action.actionType);
+  return targetCellId
+    ? `${actionText}，目标格见技术细节。`
+    : `${actionText}，模型未给出可读目标。`;
+}
+
+function buildSemanticLanguageSummary(response: HexLlmResponseArtifactSummary | undefined): string {
+  if (!response) {
+    return "没有真实响应，无法判断语义语言。";
+  }
+  if (response.languageMismatch) {
+    return `语义字段疑似不是稳定中文：${response.semanticLanguage ?? "unknown"}。`;
+  }
+  return `语义语言：${response.semanticLanguage ?? "unknown"}。`;
+}
+
+function buildNormalizationSummary(
+  response: HexLlmResponseArtifactSummary | undefined,
+  action: HexMatchLabActionSummary
+): string {
+  const repaired = uniqueStrings([
+    ...(response?.normalizedRepairedFields ?? []),
+    ...action.repairedFields
+  ]);
+  if (repaired.length > 0) {
+    return `系统修复：${repaired.map(humanizeReason).join("；")}。`;
+  }
+  if (response?.normalizedErrors.length) {
+    return `系统规范化失败：${response.normalizedErrors.map(humanizeReason).join("；")}。`;
+  }
+  return response ? "系统未记录修复。" : "没有真实响应，不能产生规范化摘要。";
+}
+
+function buildValidationSummary(action: HexMatchLabActionSummary): string {
+  if (action.fallbackReason) {
+    return `行动降级：${humanizeReason(action.fallbackReason)}。`;
+  }
+  if (action.validationErrors.length > 0) {
+    return `行动被拒绝：${action.validationErrors.map(humanizeReason).join("；")}。`;
+  }
+  return action.valid ? "行动通过后端校验。" : "行动未通过后端校验。";
+}
+
+function buildJudgeAdoptionSummary(agentId: string, combats: HexMatchLabCombatSummary[]): string {
+  const relatedCombats = combats.filter((combat) => combat.participants.includes(agentId));
+  if (relatedCombats.length === 0) {
+    return "本阶段该 agent 未进入战斗裁判采信链。";
+  }
+  return relatedCombats.map((combat) => {
+    const accepted = [
+      ...(combat.financeEvidenceAdoption?.attack.acceptedEvidenceRefs ?? []),
+      ...(combat.financeEvidenceAdoption?.defense.acceptedEvidenceRefs ?? [])
+    ];
+    const rejected = [
+      ...(combat.financeEvidenceAdoption?.attack.rejectedEvidenceRefs ?? []),
+      ...(combat.financeEvidenceAdoption?.defense.rejectedEvidenceRefs ?? [])
+    ];
+    const missing = [
+      ...(combat.financeEvidenceAdoption?.attack.missingEvidenceApplied ?? []),
+      ...(combat.financeEvidenceAdoption?.defense.missingEvidenceApplied ?? [])
+    ];
+    const verdict = formatFinanceVerdictForText(combat.financeVerdict);
+    return [
+      `${combat.contactId}：${verdict}`,
+      accepted.length > 0 ? `采信 ${uniqueStrings(accepted).join("、")}` : "无正向采信证据",
+      rejected.length > 0 ? `未采信 ${uniqueStrings(rejected).join("、")}` : "",
+      missing.length > 0 ? `缺失证据影响 ${uniqueStrings(missing).join("、")}` : ""
+    ].filter(Boolean).join("；");
+  }).join("。");
+}
+
+function collectKnownEvidenceRefs(brief: HexMatchLabHumanAgentOpeningBrief | undefined): Set<string> {
+  return new Set([
+    ...(brief?.evidenceRefs ?? []),
+    ...(brief?.scoreCapRefs ?? []),
+    ...(brief?.missingEvidenceZh ?? [])
+  ].filter(Boolean));
+}
+
+function extractKnownRefsFromText(text: string, knownRefs: Set<string>): string[] {
+  if (!text || knownRefs.size === 0) {
+    return [];
+  }
+  return [...knownRefs].filter((ref) => ref && text.includes(ref));
 }
 
 function buildHumanAgentOpeningBriefs(
@@ -2821,8 +3121,59 @@ function parseRecord(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
 }
 
+function readDraftRecord(value: unknown): Record<string, unknown> | undefined {
+  const record = parseRecord(value);
+  if (!record) {
+    return undefined;
+  }
+  const nestedDraft = parseRecord(record.draft);
+  if (nestedDraft) {
+    return nestedDraft;
+  }
+  const actions = Array.isArray(record.actions) ? record.actions : undefined;
+  const firstAction = actions && actions.length === 1 ? parseRecord(actions[0]) : undefined;
+  if (firstAction) {
+    return firstAction;
+  }
+  const drafts = Array.isArray(record.drafts) ? record.drafts : undefined;
+  const firstDraft = drafts && drafts.length === 1 ? parseRecord(drafts[0]) : undefined;
+  return firstDraft ?? record;
+}
+
 function readString(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function readStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.length > 0)
+    : [];
+}
+
+function firstText(values: Array<string | undefined>): string | undefined {
+  return values.find((value) => typeof value === "string" && value.trim().length > 0)?.trim();
+}
+
+function truncateText(value: string | undefined, maxLength: number): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const text = value.trim().replace(/\s+/g, " ");
+  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+}
+
+function previewRecord(value: Record<string, unknown> | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+  return truncateText(JSON.stringify(value), 420);
+}
+
+function formatFinanceVerdictForText(value: string | undefined): string {
+  if (value === "challenge_landed") return "攻方质疑成立";
+  if (value === "thesis_defended") return "守方自证守住";
+  if (value === "contested_no_finance_resolution") return "金融攻防未分胜负";
+  return value ? humanizeReason(value) : "未记录金融裁定";
 }
 
 function clampInteger(value: unknown, fallback: number, min: number, max: number): number {

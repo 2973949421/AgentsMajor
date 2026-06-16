@@ -60,6 +60,9 @@ function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; 
   const humanAudit = props.trace?.humanAudit;
   if (humanAudit) {
     const phaseStory = humanAudit.phaseStories.find((story) => story.phaseIndex === props.phase?.phaseIndex) ?? humanAudit.phaseStories[0];
+    const selectedOutputDigests = humanAudit.agentOutputDigests.filter((digest) =>
+      phaseStory ? digest.phaseIndex === phaseStory.phaseIndex : true
+    );
     return (
       <div className={styles.auditStack}>
         <article className={styles.auditCard}>
@@ -78,7 +81,51 @@ function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; 
         </article>
 
         <article className={styles.auditCard}>
-          <h3>本局开局信息卡</h3>
+          <h3>真实 LLM 输出摘要</h3>
+          <p className={styles.guardText}>这里展示 response artifact 中真实模型输出的微处理版本；没有 response artifact 时不会用系统输入卡或降级文案冒充。</p>
+          {selectedOutputDigests.length > 0 ? (
+            <ul>
+              {selectedOutputDigests.map((digest) => (
+                <li key={`${digest.phaseIndex}_${digest.agentId}_${digest.responseArtifactId ?? digest.source}`}>
+                  <strong>{digest.displayName}</strong> / {digest.teamSide ?? "side unknown"}：
+                  {digest.rawOutputSummaryZh}
+                  <br />
+                  <span>{digest.declaredActionZh}</span>
+                  <br />
+                  <span>理由：{digest.declaredReasonZh}</span>
+                  <br />
+                  <span>风险：{digest.declaredRiskNotesZh.join("；") || "模型未记录风险说明"}</span>
+                  <br />
+                  <span>证据引用：{digest.declaredEvidenceRefs.join("、") || "模型未引用可识别证据"}</span>
+                  <br />
+                  <span>{digest.normalizationSummaryZh}</span>
+                  <br />
+                  <span>{digest.validationSummaryZh}</span>
+                  <br />
+                  <span>{digest.judgeAdoptionSummaryZh}</span>
+                  <details>
+                    <summary>真实输出技术细节</summary>
+                    <p>source: {digest.source}</p>
+                    <p>request artifact: {digest.requestArtifactId ?? "未记录"}</p>
+                    <p>response artifact: {digest.responseArtifactId ?? "未记录"}</p>
+                    <p>action type: {digest.technicalRefs.actionType ?? "未记录"}</p>
+                    <p>target cell: {digest.technicalRefs.targetCellId ?? "未记录"}</p>
+                    <p>brief ref: {digest.technicalRefs.briefRefId ?? "未记录"}</p>
+                    <p>{digest.semanticLanguageSummaryZh}</p>
+                    {digest.technicalRefs.responseReadError ? <p>读取错误：{digest.technicalRefs.responseReadError}</p> : null}
+                    {digest.technicalRefs.rawTextPreview ? <p>raw text preview: {digest.technicalRefs.rawTextPreview}</p> : null}
+                    {digest.technicalRefs.rawDraftPreview ? <p>raw draft preview: {digest.technicalRefs.rawDraftPreview}</p> : null}
+                    {digest.technicalRefs.normalizedDraftPreview ? <p>normalized draft preview: {digest.technicalRefs.normalizedDraftPreview}</p> : null}
+                  </details>
+                </li>
+              ))}
+            </ul>
+          ) : <p>本阶段没有可审计的真实 agent 输出。</p>}
+        </article>
+
+        <details className={styles.auditCard}>
+          <summary>系统输入卡（非 agent 输出）</summary>
+          <p className={styles.guardText}>以下内容由系统根据 financeDuel、证据切片和经济上下文确定性生成，只是模型输入上下文，不是 agent 自己说的话。</p>
           <ul>
             {humanAudit.agentOpeningBriefs.map((brief) => (
               <li key={brief.briefId}>
@@ -110,7 +157,7 @@ function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; 
               </li>
             ))}
           </ul>
-        </article>
+        </details>
 
         {phaseStory ? (
           <article className={styles.auditCard}>

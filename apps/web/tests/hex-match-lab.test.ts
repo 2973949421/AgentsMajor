@@ -82,10 +82,15 @@ describe("Hex Match Lab", () => {
     expect(drawer).toContain("roundValidationSummaryZh");
     expect(drawer).toContain("sampleQualityWarningsZh");
     expect(drawer).toContain("当前 round 未发现 N54 样本质量警告");
-    expect(drawer).toContain("本局开局信息卡");
+    expect(drawer).toContain("真实 LLM 输出摘要");
+    expect(drawer).toContain("这里展示 response artifact 中真实模型输出的微处理版本");
+    expect(drawer).toContain("本阶段没有可审计的真实 agent 输出");
+    expect(drawer).toContain("系统输入卡（非 agent 输出）");
+    expect(drawer).toContain("不是 agent 自己说的话");
     expect(drawer).toContain("可用事实");
     expect(drawer).toContain("证据缺口");
     expect(drawer).toContain("证据切片技术细节");
+    expect(drawer).toContain("真实输出技术细节");
     expect(drawer).toContain("本阶段行动");
     expect(drawer).toContain("phaseValidationSummaryZh");
     expect(drawer).toContain("引用开局信息卡");
@@ -157,6 +162,10 @@ describe("Hex Match Lab", () => {
     expect(server).toContain("buildCombatStorySummary");
     expect(server).toContain("humanAudit");
     expect(server).toContain("buildHumanAudit");
+    expect(server).toContain("agentOutputDigests");
+    expect(server).toContain("readHexLlmResponseArtifactSummaries");
+    expect(server).toContain("buildAgentOutputDigests");
+    expect(server).toContain("本阶段没有真实模型 response artifact");
     expect(server).toContain("buildHumanRoundValidationSummary");
     expect(server).toContain("buildHumanSampleQualityWarnings");
     expect(server).toContain("buildHumanPhaseValidationSummary");
