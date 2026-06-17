@@ -3,7 +3,12 @@ import type { HexValidatedAgentAction } from "../action/index.js";
 import type { HexRoundBusinessDuel } from "../business/index.js";
 import { findHexPath } from "../path/index.js";
 import type { HexAgentPhaseMemory, HexRoundMemory } from "../state/index.js";
-import type { HexCombatContact, HexCombatParticipant, HexCombatTriggerReason } from "./hex-combat-types.js";
+import type {
+  HexCombatContact,
+  HexCombatContactThreatLevel,
+  HexCombatParticipant,
+  HexCombatTriggerReason
+} from "./hex-combat-types.js";
 
 const activeCombatActionTypes = new Set([
   "peek",
@@ -150,6 +155,13 @@ function buildPairContact(input: {
     defenseParticipant: input.defenseParticipant,
     ...(distance !== undefined ? { distance } : {})
   });
+  const threat = buildContactThreatAudit({
+    triggerReasons: retention.triggerReasons,
+    attackParticipant: input.attackParticipant,
+    defenseParticipant: input.defenseParticipant,
+    pointIds,
+    ...(distance !== undefined ? { distance } : {})
+  });
   const contact: HexCombatContact = {
     contactId: `hex_combat_${input.memory.phaseIndex}_${input.attackParticipant.agentId}_${input.defenseParticipant.agentId}`,
     phaseId: input.memory.phaseId,
@@ -160,6 +172,10 @@ function buildPairContact(input: {
     triggerReasons: retention.triggerReasons,
     regionIds: uniqueStrings(regionIds.length > 0 ? regionIds : [...collectRegions(input.attackParticipant), ...collectRegions(input.defenseParticipant)]),
     pointIds: uniqueStrings(pointIds),
+    contactThreatLevel: threat.contactThreatLevel,
+    lethalEligible: threat.lethalEligible,
+    lethalGateReasons: threat.lethalGateReasons,
+    lethalGateBlockedReasons: threat.lethalGateBlockedReasons,
     relevanceScore: retention.relevanceScore,
     retentionReasons: retention.retentionReasons
   };
@@ -167,6 +183,77 @@ function buildPairContact(input: {
     contact.minCellDistance = distance;
   }
   return contact;
+}
+
+function buildContactThreatAudit(input: {
+  triggerReasons: HexCombatTriggerReason[];
+  attackParticipant: HexCombatParticipant;
+  defenseParticipant: HexCombatParticipant;
+  pointIds: string[];
+  distance?: number;
+}): {
+  contactThreatLevel: HexCombatContactThreatLevel;
+  lethalEligible: boolean;
+  lethalGateReasons: string[];
+  lethalGateBlockedReasons: string[];
+} {
+  const reasons: string[] = [];
+  const blockedReasons: string[] = [];
+  const directActive = isActiveCombatAction(input.attackParticipant.action) || isActiveCombatAction(input.defenseParticipant.action);
+  const closeDistance = input.distance !== undefined && input.distance <= closeCellDistance;
+  const sharedPoint = input.pointIds.length > 0;
+  const objectiveActor = ["plant_bomb", "defuse_bomb"].includes(input.attackParticipant.action.actionType)
+    || ["plant_bomb", "defuse_bomb"].includes(input.defenseParticipant.action.actionType);
+  const closeSharedPoint = sharedPoint && input.distance !== undefined && input.distance <= closeCellDistance;
+  const closeObjectivePressure = objectiveActor && closeDistance;
+
+  if (directActive && closeDistance) {
+    reasons.push("close_active_duel");
+  }
+  if (directActive && closeSharedPoint) {
+    reasons.push("shared_point_active_duel");
+  }
+  if (directActive && closeObjectivePressure) {
+    reasons.push("objective_actor_close_pressure");
+  }
+
+  const lethalEligible = reasons.length > 0;
+  if (!directActive) {
+    blockedReasons.push("no_active_combat_action");
+  }
+  if (input.distance === undefined) {
+    blockedReasons.push("unknown_cell_distance");
+  } else if (input.distance > closeCellDistance && !closeSharedPoint) {
+    blockedReasons.push("distance_exceeds_lethal_gate");
+  }
+  if (input.triggerReasons.some((reason) => ["site_contest", "choke_contest", "known_enemy", "same_region"].includes(reason))
+    && !closeDistance
+    && !closeSharedPoint) {
+    blockedReasons.push("abstract_contact_only");
+  }
+  if (!sharedPoint && !closeDistance && !closeObjectivePressure) {
+    blockedReasons.push("no_close_or_shared_fight");
+  }
+
+  if (lethalEligible) {
+    return {
+      contactThreatLevel: "lethal",
+      lethalEligible,
+      lethalGateReasons: uniqueStrings(reasons),
+      lethalGateBlockedReasons: uniqueStrings(blockedReasons)
+    };
+  }
+
+  const suppressionThreat = closeDistance
+    || sharedPoint
+    || input.triggerReasons.some((reason) => ["plant_pressure", "dropped_bomb_contest"].includes(reason))
+    || (directActive && input.triggerReasons.some((reason) => ["site_contest", "choke_contest", "known_enemy", "same_region"].includes(reason)));
+  return {
+    contactThreatLevel: suppressionThreat ? "suppression" : "observation",
+    lethalEligible,
+    lethalGateReasons: [],
+    lethalGateBlockedReasons: uniqueStrings(blockedReasons)
+  };
 }
 
 function enrichContactWithSupport(input: {

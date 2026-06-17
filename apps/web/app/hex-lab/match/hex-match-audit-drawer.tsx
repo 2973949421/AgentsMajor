@@ -502,6 +502,7 @@ function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
         <article key={combat.contactId} className={styles.auditCard}>
           <h3>战斗裁定</h3>
           <p>金融裁定: {formatFinanceVerdict(combat.financeVerdict)}</p>
+          <p>接触强度: {formatContactThreat(combat.contactThreatLevel, combat.lethalEligible)}</p>
           <p>战斗结论: {combat.killAttributions.length > 0 ? "形成击杀" : combat.suppressions.length > 0 ? "形成压制" : "未形成击杀或压制"}</p>
           <p>
             击杀归因: {combat.killAttributions.map((item) =>
@@ -528,6 +529,8 @@ function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
             <p>casualties: {combat.casualties.join(", ") || "none"}</p>
             <p>接触保留原因: {combat.contactRetentionReasons.join("; ") || "未记录"}{combat.prunedCandidateCount ? `；本 phase 裁剪候选 ${combat.prunedCandidateCount} 个` : ""}</p>
             <p>归因理由: {combat.killAttributions.flatMap((item) => [...item.attributionReasons, ...item.targetSelectionReasons]).join("; ") || "无"}</p>
+            <p>致命门槛通过原因: {combat.lethalGateReasons.map(formatTechnicalReason).join("; ") || "无"}</p>
+            <p>致命门槛阻断原因: {combat.lethalGateBlockedReasons.map(formatTechnicalReason).join("; ") || "无"}</p>
             <p>
               角色贡献: {combat.roleContributions.map((item) =>
                 `${item.agentId}/${item.roleLabel}/${item.contributionType}:${item.scoreDelta}(${item.reasons.join(",")})`
@@ -550,6 +553,31 @@ function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
       {combats.length === 0 ? <p className={styles.emptyInline}>当前 phase 没有 combat resolution。</p> : null}
     </div>
   );
+}
+
+function formatContactThreat(level: string | undefined, lethalEligible: boolean | undefined): string {
+  const label = level === "lethal"
+    ? "致命接触"
+    : level === "suppression"
+      ? "压制接触"
+      : level === "observation"
+        ? "观察接触"
+        : "旧 trace 未记录";
+  return lethalEligible ? `${label}，允许伤亡判定` : `${label}，不允许直接击杀`;
+}
+
+function formatTechnicalReason(reason: string): string {
+  const labels: Record<string, string> = {
+    close_active_duel: "近距离主动交火",
+    shared_point_active_duel: "同点位主动交火",
+    objective_actor_close_pressure: "下包/拆包目标承受近距离压力",
+    no_active_combat_action: "缺少主动交火动作",
+    unknown_cell_distance: "缺少可审计距离",
+    distance_exceeds_lethal_gate: "距离超过致命门槛",
+    abstract_contact_only: "只有抽象区域或目标争夺",
+    no_close_or_shared_fight: "没有近距离或同点位交火"
+  };
+  return labels[reason] ?? reason;
 }
 
 function formatAdoptionSide(

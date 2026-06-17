@@ -340,6 +340,7 @@ export interface HexMatchLabHumanActionStory {
 export interface HexMatchLabHumanCombatStory {
   contactId: string;
   verdictZh: string;
+  contactThreatZh?: string | undefined;
   impactZh: string;
   reasonsZh: string[];
   acceptedEvidenceZh: string[];
@@ -635,6 +636,10 @@ export interface HexMatchLabCombatSummary {
   participants: string[];
   advantage?: string | undefined;
   verdict?: string | undefined;
+  contactThreatLevel?: string | undefined;
+  lethalEligible?: boolean | undefined;
+  lethalGateReasons: string[];
+  lethalGateBlockedReasons: string[];
   businessVerdict?: string | undefined;
   financeVerdict?: string | undefined;
   businessReasons: string[];
@@ -2189,8 +2194,10 @@ function buildHumanCombatStory(
   return {
     contactId: combat.contactId,
     verdictZh: humanizeFinanceVerdict(combat.financeVerdict ?? combat.businessVerdict),
+    contactThreatZh: humanizeContactThreat(combat),
     impactZh: `${killText}。${combat.regionControlHint ? `控图倾向：${combat.regionControlHint}。` : ""}`,
     reasonsZh: [
+      humanizeContactThreat(combat),
       ...combat.financeReasonZh.slice(0, 3),
       ...combat.csReasonZh.slice(0, 3),
       ...combat.financeReasons.slice(0, 3).map(humanizeReason),
@@ -2208,6 +2215,23 @@ function buildHumanCombatStory(
       rawReasons: [...combat.financeReasons, ...combat.businessReasons, ...combat.csReasons, ...combat.financeReasonZh, ...combat.csReasonZh]
     }
   };
+}
+
+function humanizeContactThreat(combat: HexMatchLabCombatSummary): string {
+  const threat = combat.contactThreatLevel === "lethal"
+    ? "致命接触"
+    : combat.contactThreatLevel === "suppression"
+      ? "压制接触"
+      : combat.contactThreatLevel === "observation"
+        ? "观察接触"
+        : "旧 trace 未记录接触强度";
+  if (combat.lethalEligible) {
+    return `${threat}，已通过致命门槛。`;
+  }
+  const blocked = combat.lethalGateBlockedReasons.length > 0
+    ? `原因：${combat.lethalGateBlockedReasons.map(humanizeReason).join("、")}`
+    : "原因未记录";
+  return `${threat}，未通过致命门槛，不能直接击杀。${blocked}。`;
 }
 
 function buildEvidenceAdoptionListZh(
@@ -2670,6 +2694,10 @@ function summarizePhase(
       participants: resolution.participants.map((participant) => participant.agentId),
       advantage: resolution.advantage,
       verdict: resolution.verdict,
+      contactThreatLevel: resolution.audit.contactThreat?.level,
+      lethalEligible: resolution.audit.contactThreat?.lethalEligible,
+      lethalGateReasons: resolution.audit.contactThreat?.lethalGateReasons ?? [],
+      lethalGateBlockedReasons: resolution.audit.contactThreat?.lethalGateBlockedReasons ?? [],
       businessVerdict: resolution.businessVerdict,
       financeVerdict: resolution.financeVerdict,
       businessReasons: resolution.businessReasons ?? [],

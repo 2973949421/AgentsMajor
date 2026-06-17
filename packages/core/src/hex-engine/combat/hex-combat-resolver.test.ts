@@ -4,6 +4,7 @@ import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
 import { buildFixtureHexRoundBusinessDuel } from "../business/index.js";
 import { buildHexRoundEconomyContext } from "../economy/index.js";
 import { buildHexRoundFinanceDuel } from "../finance/index.js";
+import { findHexPath } from "../path/index.js";
 import { buildHexCombatContacts } from "./hex-combat-contact-builder.js";
 import { applyHexCombatVariance, resolveHexCombat } from "./hex-combat-resolver.js";
 import {
@@ -183,6 +184,142 @@ describe("Hex combat resolver", () => {
     ]));
   });
 
+  it("does not present a finance winner when neither side has accepted or missing evidence adoption", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [attackCell, defenseCell] = findCellsInRegion(asset, "a_site", 2);
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_0", side: "attack", cellId: attackCell!.cellId },
+      { agentId: "ct_0", side: "defense", cellId: defenseCell!.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({
+        memory,
+        agentId: "t_0",
+        actionType: "execute_site",
+        targetCellId: defenseCell!.cellId,
+        businessIntent: "进攻方执行贴近点位的战术动作，但没有引用任何可采信金融证据或证据缺口。"
+      }),
+      buildCombatAction({
+        memory,
+        agentId: "ct_0",
+        actionType: "hold_position",
+        targetCellId: defenseCell!.cellId,
+        businessIntent: "守方保持位置，但没有引用任何可采信金融证据或证据缺口。"
+      })
+    ];
+    const financeDuel = buildHexRoundFinanceDuel({
+      roundNumber: 1,
+      attackTeamId: "t",
+      defenseTeamId: "ct",
+      agents: [
+        { agentId: "t_0", teamId: "t", side: "attack", role: "entry" },
+        { agentId: "ct_0", teamId: "ct", side: "defense", role: "anchor" }
+      ]
+    });
+    const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
+
+    const resolution = resolveHexCombat({ asset, memory, contact, actions, financeDuel });
+
+    expect(resolution.financeEvidenceAdoption?.attack.acceptedEvidenceRefs).toEqual([]);
+    expect(resolution.financeEvidenceAdoption?.defense.acceptedEvidenceRefs).toEqual([]);
+    expect(resolution.financeEvidenceAdoption?.attack.missingEvidenceApplied).toEqual([]);
+    expect(resolution.financeEvidenceAdoption?.defense.missingEvidenceApplied).toEqual([]);
+    expect(resolution.financeVerdict).toBe("contested_no_finance_resolution");
+    expect(resolution.businessVerdict).toBe("contested_no_business_resolution");
+    expect(resolution.financeReasons).toContain("finance_verdict:contested_no_finance_resolution");
+  });
+
+  it("blocks long-range abstract site contests from becoming kills even with a decisive score margin", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [attackSiteCell, defenseSiteCell] = findFarSameRegionCells(asset, "b_site");
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_0", side: "attack", cellId: attackSiteCell.cellId },
+      { agentId: "ct_0", side: "defense", cellId: defenseSiteCell.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({
+        memory,
+        agentId: "t_0",
+        actionType: "execute_site",
+        targetCellId: attackSiteCell.cellId,
+        businessIntent: "质疑全球铜价代理事实 F001 不能证明国内库存，挑战守方景气上行假设并远距离施压 A 点。"
+      }),
+      buildCombatAction({
+        memory,
+        agentId: "ct_0",
+        actionType: "hold_position",
+        targetCellId: defenseSiteCell.cellId,
+        businessIntent: "",
+        valid: false
+      })
+    ];
+    const financeDuel = buildHexRoundFinanceDuel({
+      roundNumber: 1,
+      attackTeamId: "t",
+      defenseTeamId: "ct",
+      agents: [
+        { agentId: "t_0", teamId: "t", side: "attack", role: "entry" },
+        { agentId: "ct_0", teamId: "ct", side: "defense", role: "anchor" }
+      ]
+    });
+    const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
+
+    const resolution = resolveHexCombat({ asset, memory, contact, actions, financeDuel });
+
+    expect(contact.minCellDistance).toBeGreaterThan(3);
+    expect(contact.lethalEligible).toBe(false);
+    expect(contact.contactThreatLevel).not.toBe("lethal");
+    expect(resolution.verdict).not.toBe("kill");
+    expect(resolution.casualties).toEqual([]);
+    expect(resolution.audit.contactThreat?.lethalGateBlockedReasons).toEqual(expect.arrayContaining([
+      "distance_exceeds_lethal_gate",
+      "abstract_contact_only"
+    ]));
+  });
+
+  it("upgrades close high-intensity contact into wound or forced-back instead of endless suppression", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [attackCell, defenseCell, supportCell] = findCellsInRegion(asset, "a_site", 3);
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_0", side: "attack", cellId: attackCell!.cellId },
+      { agentId: "t_1", side: "attack", cellId: supportCell!.cellId },
+      { agentId: "ct_0", side: "defense", cellId: defenseCell!.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({
+        memory,
+        agentId: "t_0",
+        actionType: "execute_site",
+        targetCellId: defenseCell!.cellId,
+        businessIntent: "Attack challenge takes direct space and applies a narrow but valid pressure point."
+      }),
+      buildCombatAction({
+        memory,
+        agentId: "t_1",
+        actionType: "prepare_trade",
+        targetCellId: defenseCell!.cellId,
+        businessIntent: "Attack challenge prepares limited trade support without becoming the primary duel."
+      }),
+      buildCombatAction({
+        memory,
+        agentId: "ct_0",
+        actionType: "hold_position",
+        targetCellId: defenseCell!.cellId,
+        businessIntent: "Defense holds the same point but contributes less active pressure."
+      })
+    ];
+    const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
+
+    const resolution = resolveHexCombat({ asset, memory, contact, actions });
+
+    expect(contact.lethalEligible).toBe(true);
+    expect(contact.contactThreatLevel).toBe("lethal");
+    expect(resolution.advantage).toBe("attack");
+    expect(resolution.verdict).not.toBe("contested_suppression");
+    expect(["wound_or_forced_back", "kill"]).toContain(resolution.verdict);
+    expect(resolution.casualties.length + resolution.suppressions.length).toBeGreaterThan(0);
+  });
+
   it("lets business evidence dominate the first deterministic combat verdict", () => {
     const asset = loadOfficialDust2HexMap();
     const [attackCell, defenseCell, supportCell] = findCellsInRegion(asset, "a_site", 3);
@@ -298,6 +435,7 @@ describe("Hex combat resolver", () => {
 
     const resolution = resolveHexCombat({ asset, memory, contact, actions, businessDuel });
 
+    expect(contact.participants.find((participant) => participant.agentId === "t_igl")?.supportParticipant).toBe(true);
     expect(resolution.casualties[0]).toEqual(expect.objectContaining({
       targetAgentId: "ct_anchor",
       killerAgentId: "t_awper",
@@ -491,4 +629,23 @@ function buildPlan(
       notes: []
     }))
   };
+}
+
+function findFarSameRegionCells(asset: ReturnType<typeof loadOfficialDust2HexMap>, regionId: string) {
+  const candidates = asset.cells.filter((cell) => cell.playable && cell.regionId === regionId);
+  for (const left of candidates) {
+    for (const right of candidates) {
+      if (left.cellId === right.cellId) {
+        continue;
+      }
+      if (left.pointIds.some((pointId) => right.pointIds.includes(pointId))) {
+        continue;
+      }
+      const path = findHexPath({ asset, fromCellId: left.cellId, toCellId: right.cellId });
+      if (path.reachable && path.cellDistance > 3) {
+        return [left, right] as const;
+      }
+    }
+  }
+  throw new Error(`No far ${regionId} cells found`);
 }

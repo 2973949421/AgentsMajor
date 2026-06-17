@@ -17,6 +17,7 @@ export type HexCombatTriggerReason =
   | "support_contact";
 export type HexCombatAdvantage = "attack" | "defense" | "contested";
 export type HexCombatVerdict = "kill" | "wound_or_forced_back" | "contested_suppression";
+export type HexCombatContactThreatLevel = "observation" | "suppression" | "lethal";
 export type HexCombatControlHint = "attack" | "defense" | "contested" | "neutral";
 export type HexCombatVarianceMode = "off" | "audited";
 export type HexCombatBusinessVerdict =
@@ -57,6 +58,10 @@ export interface HexCombatContact {
   regionIds: string[];
   pointIds: string[];
   minCellDistance?: number;
+  contactThreatLevel?: HexCombatContactThreatLevel;
+  lethalEligible?: boolean;
+  lethalGateReasons?: string[];
+  lethalGateBlockedReasons?: string[];
   relevanceScore?: number;
   retentionReasons?: string[];
   prunedCandidateCount?: number;
@@ -121,6 +126,12 @@ export interface HexCombatAudit {
   sitePressure?: boolean;
   plantDenied?: boolean;
   tradeOpportunity?: boolean;
+  contactThreat?: {
+    level: HexCombatContactThreatLevel;
+    lethalEligible: boolean;
+    lethalGateReasons: string[];
+    lethalGateBlockedReasons: string[];
+  };
   contactRetention?: {
     relevanceScore?: number;
     retentionReasons: string[];

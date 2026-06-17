@@ -23,6 +23,9 @@ export function buildHexCombatCasualties(
   if (advantage === "contested") {
     return [];
   }
+  if (!contact.lethalEligible) {
+    return [];
+  }
   const losingSide: HexSide = advantage === "attack" ? "defense" : "attack";
   const winningSide: HexSide = advantage;
   const targetSelection = chooseVulnerableParticipant(contact.participants.filter((participant) => participant.side === losingSide));
@@ -137,6 +140,7 @@ function buildAttribution(input: {
   winningSide: HexSide;
   attributionScores: ReadonlyMap<string, HexCombatAttributionScore>;
 }): { killerAgentId?: string; assisterAgentIds: string[]; attributionReasons: string[] } {
+  const participantById = new Map(input.participants.map((participant) => [participant.agentId, participant]));
   const contributors = input.participants
     .filter((participant) => participant.side === input.winningSide)
     .filter((participant) => participant.action.valid && !participant.action.fallbackReason)
@@ -147,7 +151,8 @@ function buildAttribution(input: {
       reasons: input.attributionScores.get(participant.agentId)?.reasons ?? ["fallback_attribution_score"]
     }))
     .sort((left, right) => right.killerScore - left.killerScore || left.agentId.localeCompare(right.agentId));
-  const killer = contributors[0];
+  const killerCandidates = contributors.filter((candidate) => !participantById.get(candidate.agentId)?.supportParticipant);
+  const killer = (killerCandidates.length > 0 ? killerCandidates : contributors)[0];
   const assisters = contributors
     .filter((candidate) => candidate.agentId !== killer?.agentId)
     .sort((left, right) => right.assistScore - left.assistScore || left.agentId.localeCompare(right.agentId))

@@ -56,6 +56,7 @@ const businessWeight = financeWeight;
 const csWeight = 35 as const;
 const decisiveMargin = 12;
 const pressureMargin = 6;
+const closePressureMargin = 3;
 const varianceThreshold = 5;
 const maxVarianceDelta = 3;
 
@@ -97,20 +98,16 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
   const variance = applyHexCombatVariance(varianceInput);
   const adjustedScores = buildScoreboard(attackEvidence, defenseEvidence, variance.attackScore, variance.defenseScore);
   const margin = Math.abs(adjustedScores.attack.totalScore - adjustedScores.defense.totalScore);
-  const advantage = margin < pressureMargin
-    ? "contested"
-    : adjustedScores.attack.totalScore > adjustedScores.defense.totalScore
-      ? "attack"
-      : "defense";
-  const financeVerdict = input.financeDuel ? buildFinanceVerdict(advantage, adjustedScores) : undefined;
+  const advantage = buildAdvantage(adjustedScores, input.contact);
   const financeEvidenceAdoption = input.financeDuel
     ? {
         attack: adjustedScores.attack.financeEvidenceAdoption ?? buildEmptyFinanceEvidenceAdoption("attack"),
         defense: adjustedScores.defense.financeEvidenceAdoption ?? buildEmptyFinanceEvidenceAdoption("defense")
       }
     : undefined;
+  const financeVerdict = input.financeDuel ? buildFinanceVerdict(advantage, adjustedScores, financeEvidenceAdoption) : undefined;
   const businessVerdict = financeVerdict ? mapFinanceVerdictToBusinessVerdict(financeVerdict) : buildBusinessVerdict(advantage, adjustedScores);
-  const verdict = buildVerdict(margin);
+  const verdict = buildVerdict(margin, input.contact);
   const attributionScores = buildAttributionScores({
     contact: input.contact,
     actions: input.actions,
@@ -136,7 +133,11 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
     : undefined;
   const csReasons = [
     ...adjustedScores.attack.reasons.filter((reason) => !reason.includes(":business") && !reason.includes(":finance")),
-    ...adjustedScores.defense.reasons.filter((reason) => !reason.includes(":business") && !reason.includes(":finance"))
+    ...adjustedScores.defense.reasons.filter((reason) => !reason.includes(":business") && !reason.includes(":finance")),
+    `contact:threat_level:${input.contact.contactThreatLevel ?? "observation"}`,
+    ...(input.contact.lethalEligible ? ["contact:lethal_gate_passed"] : ["contact:lethal_gate_blocked"]),
+    ...(input.contact.lethalGateReasons ?? []).map((reason) => `contact:${reason}`),
+    ...(input.contact.lethalGateBlockedReasons ?? []).map((reason) => `contact:${reason}`)
   ];
   const financeReasonZh = financeEvidenceAdoption
     ? buildFinanceReasonZh(financeVerdict, financeEvidenceAdoption)
@@ -154,6 +155,12 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
       attack: attackEconomyEvidence,
       defense: defenseEconomyEvidence,
       reasons: [...attackEconomyEvidence.reasons, ...defenseEconomyEvidence.reasons]
+    },
+    contactThreat: {
+      level: input.contact.contactThreatLevel ?? "observation",
+      lethalEligible: Boolean(input.contact.lethalEligible),
+      lethalGateReasons: [...(input.contact.lethalGateReasons ?? [])],
+      lethalGateBlockedReasons: [...(input.contact.lethalGateBlockedReasons ?? [])]
     },
     contactRetention: {
       ...(input.contact.relevanceScore !== undefined ? { relevanceScore: input.contact.relevanceScore } : {}),
@@ -749,6 +756,20 @@ function buildCsReasonZh(csReasons: string[]): string[] {
       validated_ap_path: "行动路径和 AP 校验通过。",
       map_flag_context: "地图点位或地形标记提供执行证据。",
       active_action_pressure: "行动类型对目标区域形成主动压力。",
+      support_assist_present: "支援者只提供协助和补枪压力，不直接放大主交火人数。",
+      observation: "本次只是观察接触，不能直接形成击杀。",
+      suppression: "本次是压制接触，可以形成压制或退让。",
+      lethal: "本次达到致命接触门槛，可以根据分差形成伤亡。",
+      lethal_gate_passed: "致命门槛通过。",
+      lethal_gate_blocked: "致命门槛未通过，不能直接击杀。",
+      close_active_duel: "近距离主动交火构成致命门槛。",
+      shared_point_active_duel: "同点位主动交火构成致命门槛。",
+      objective_actor_close_pressure: "下包或拆包目标在近距离压力下构成致命门槛。",
+      no_active_combat_action: "缺少主动交火动作。",
+      unknown_cell_distance: "缺少可审计距离，不能升级为致命接触。",
+      distance_exceeds_lethal_gate: "距离超过致命接触门槛。",
+      abstract_contact_only: "只有抽象区域或目标争夺，不足以直接击杀。",
+      no_close_or_shared_fight: "没有近距离或同点位交火。",
       "economy:low_resource_constraint": "经济资源较低，执行强度受限。",
       "economy:high_resource_support": "经济资源支持更高执行强度。"
     };
@@ -764,8 +785,12 @@ function scoreCsEvidence(
   economyEvidence: HexEconomyCombatEvidence
 ): number {
   let score = 0;
-  const opponentCount = contact.participants.filter((participant) => participant.side !== side).length;
-  score += participants.length >= opponentCount ? 10 : 5;
+  const directParticipants = participants.filter((participant) => !participant.supportParticipant);
+  const directOpponentCount = contact.participants.filter((participant) => participant.side !== side && !participant.supportParticipant).length;
+  score += directParticipants.length >= directOpponentCount ? 10 : 5;
+  if (participants.length > directParticipants.length) {
+    score += 2;
+  }
   score += contact.minCellDistance === undefined ? 2 : contact.minCellDistance <= 1 ? 7 : contact.minCellDistance <= 3 ? 4 : 2;
   if (participants.some((participant) => participant.action.valid)) {
     score += 5;
@@ -787,9 +812,13 @@ function buildCsReasons(
   economyEvidence: HexEconomyCombatEvidence
 ): string[] {
   const reasons: string[] = [];
-  const opponentCount = contact.participants.filter((participant) => participant.side !== side).length;
-  if (participants.length >= opponentCount) {
+  const directParticipants = participants.filter((participant) => !participant.supportParticipant);
+  const directOpponentCount = contact.participants.filter((participant) => participant.side !== side && !participant.supportParticipant).length;
+  if (directParticipants.length >= directOpponentCount) {
     reasons.push(`${side}:numbers_or_trade_support`);
+  }
+  if (participants.length > directParticipants.length) {
+    reasons.push(`${side}:support_assist_present`);
   }
   if (contact.minCellDistance !== undefined && contact.minCellDistance <= 3) {
     reasons.push(`${side}:close_cell_distance`);
@@ -846,11 +875,28 @@ function buildScoreboard(
   };
 }
 
-function buildVerdict(margin: number): HexCombatVerdict {
+function buildAdvantage(scores: HexCombatScoreboard, contact: HexCombatContact): "attack" | "defense" | "contested" {
+  const margin = Math.abs(scores.attack.totalScore - scores.defense.totalScore);
+  const threshold = contact.contactThreatLevel === "lethal" && contact.minCellDistance !== undefined && contact.minCellDistance <= 1
+    ? closePressureMargin
+    : pressureMargin;
+  if (margin < threshold) {
+    return "contested";
+  }
+  return scores.attack.totalScore > scores.defense.totalScore ? "attack" : "defense";
+}
+
+function buildVerdict(margin: number, contact: HexCombatContact): HexCombatVerdict {
+  if (!contact.lethalEligible) {
+    return margin >= pressureMargin ? "wound_or_forced_back" : "contested_suppression";
+  }
   if (margin >= decisiveMargin) {
     return "kill";
   }
-  if (margin >= pressureMargin) {
+  const pressureThreshold = contact.minCellDistance !== undefined && contact.minCellDistance <= 1
+    ? closePressureMargin
+    : pressureMargin;
+  if (margin >= pressureThreshold) {
     return "wound_or_forced_back";
   }
   return "contested_suppression";
@@ -873,9 +919,20 @@ function buildBusinessVerdict(advantage: "attack" | "defense" | "contested", sco
   return "contested_no_business_resolution";
 }
 
-function buildFinanceVerdict(advantage: "attack" | "defense" | "contested", scores: HexCombatScoreboard): HexCombatFinanceVerdict {
+function buildFinanceVerdict(
+  advantage: "attack" | "defense" | "contested",
+  scores: HexCombatScoreboard,
+  adoption: { attack: HexCombatFinanceEvidenceAdoption; defense: HexCombatFinanceEvidenceAdoption } | undefined
+): HexCombatFinanceVerdict {
   const attackFinanceScore = scores.attack.financeScore ?? scores.attack.businessScore;
   const defenseFinanceScore = scores.defense.financeScore ?? scores.defense.businessScore;
+  const attackAccepted = adoption?.attack.acceptedEvidenceRefs.length ?? 0;
+  const defenseAccepted = adoption?.defense.acceptedEvidenceRefs.length ?? 0;
+  const attackMissing = adoption?.attack.missingEvidenceApplied.length ?? 0;
+  const defenseMissing = adoption?.defense.missingEvidenceApplied.length ?? 0;
+  if (attackAccepted + defenseAccepted + attackMissing + defenseMissing === 0) {
+    return "contested_no_finance_resolution";
+  }
   if (advantage === "attack" && attackFinanceScore >= defenseFinanceScore) {
     return "challenge_landed";
   }
@@ -966,7 +1023,7 @@ function buildAttributionScores(input: {
     reasons.push(...roleContribution.reasons);
     if (participant.supportParticipant) {
       assistScore += 6;
-      killerScore = Math.max(0, killerScore - 4);
+      killerScore = 0;
       reasons.push("same_side_support_participant");
     }
     scores.set(participant.agentId, {
