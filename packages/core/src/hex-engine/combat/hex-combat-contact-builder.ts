@@ -21,9 +21,11 @@ const activeCombatActionTypes = new Set([
 ]);
 
 const closeCellDistance = 3;
+const openLineOfFireDistance = 6;
 const maxContactsPerPhase = 12;
 const maxContactsPerAgent = 3;
 const maxSupportParticipantsPerSide = 2;
+const movementDuelActionTypes = new Set(["move", "rotate"]);
 
 export interface BuildHexCombatContactsInput {
   asset: HexMapAsset;
@@ -176,6 +178,12 @@ function buildPairContact(input: {
     lethalEligible: threat.lethalEligible,
     lethalGateReasons: threat.lethalGateReasons,
     lethalGateBlockedReasons: threat.lethalGateBlockedReasons,
+    lineOfFireExposure: threat.lineOfFireExposure,
+    openSightNoCover: threat.openSightNoCover,
+    samePointExposure: threat.samePointExposure,
+    objectiveExposure: threat.objectiveExposure,
+    implicitDuelFromMovement: threat.implicitDuelFromMovement,
+    coverBlockedLethal: threat.coverBlockedLethal,
     relevanceScore: retention.relevanceScore,
     retentionReasons: retention.retentionReasons
   };
@@ -196,6 +204,12 @@ function buildContactThreatAudit(input: {
   lethalEligible: boolean;
   lethalGateReasons: string[];
   lethalGateBlockedReasons: string[];
+  lineOfFireExposure: boolean;
+  openSightNoCover: boolean;
+  samePointExposure: boolean;
+  objectiveExposure: boolean;
+  implicitDuelFromMovement: boolean;
+  coverBlockedLethal: boolean;
 } {
   const reasons: string[] = [];
   const blockedReasons: string[] = [];
@@ -206,6 +220,32 @@ function buildContactThreatAudit(input: {
     || ["plant_bomb", "defuse_bomb"].includes(input.defenseParticipant.action.actionType);
   const closeSharedPoint = sharedPoint && input.distance !== undefined && input.distance <= closeCellDistance;
   const closeObjectivePressure = objectiveActor && closeDistance;
+  const withinOpenLine = input.distance !== undefined && input.distance <= openLineOfFireDistance;
+  const hasAnyCover = participantHasCover(input.attackParticipant) || participantHasCover(input.defenseParticipant);
+  const sameCellOrNeighbor = input.distance !== undefined && input.distance <= 1;
+  const sameRegion = input.triggerReasons.includes("same_region");
+  const objectiveContact = objectiveActor
+    || input.triggerReasons.some((reason) => ["site_contest", "plant_pressure", "dropped_bomb_contest"].includes(reason))
+    || participantHasObjectiveFlag(input.attackParticipant)
+    || participantHasObjectiveFlag(input.defenseParticipant);
+  const chokeContact = input.triggerReasons.includes("choke_contest");
+  const samePointExposure = sharedPoint && withinOpenLine && (!hasAnyCover || closeDistance);
+  const objectiveExposure = objectiveContact && withinOpenLine && (!hasAnyCover || closeDistance || objectiveActor);
+  const openSightNoCover = withinOpenLine
+    && !hasAnyCover
+    && (sameRegion || sharedPoint || objectiveContact || chokeContact || closeDistance);
+  const lineOfFireExposure = sameCellOrNeighbor || samePointExposure || objectiveExposure || openSightNoCover;
+  const implicitDuelFromMovement = lineOfFireExposure
+    && (isMovementDuelAction(input.attackParticipant.action) || isMovementDuelAction(input.defenseParticipant.action));
+  const coverBlockedLethal = Boolean(
+    hasAnyCover
+    && input.distance !== undefined
+    && input.distance > closeCellDistance
+    && !sameCellOrNeighbor
+    && !closeObjectivePressure
+    && !objectiveActor
+    && !(sharedPoint && closeDistance)
+  );
 
   if (directActive && closeDistance) {
     reasons.push("close_active_duel");
@@ -216,22 +256,40 @@ function buildContactThreatAudit(input: {
   if (directActive && closeObjectivePressure) {
     reasons.push("objective_actor_close_pressure");
   }
+  if (lineOfFireExposure) {
+    reasons.push("line_of_fire_exposure");
+  }
+  if (openSightNoCover) {
+    reasons.push("open_sight_no_cover");
+  }
+  if (samePointExposure) {
+    reasons.push("same_point_exposure");
+  }
+  if (objectiveExposure) {
+    reasons.push("objective_exposure");
+  }
+  if (implicitDuelFromMovement) {
+    reasons.push("implicit_duel_from_movement");
+  }
 
-  const lethalEligible = reasons.length > 0;
-  if (!directActive) {
+  const lethalEligible = reasons.length > 0 && !coverBlockedLethal;
+  if (!directActive && !implicitDuelFromMovement) {
     blockedReasons.push("no_active_combat_action");
   }
   if (input.distance === undefined) {
     blockedReasons.push("unknown_cell_distance");
-  } else if (input.distance > closeCellDistance && !closeSharedPoint) {
+  } else if (input.distance > closeCellDistance && !samePointExposure && !objectiveExposure && !openSightNoCover) {
     blockedReasons.push("distance_exceeds_lethal_gate");
+  }
+  if (coverBlockedLethal) {
+    blockedReasons.push("cover_blocks_lethal");
   }
   if (input.triggerReasons.some((reason) => ["site_contest", "choke_contest", "known_enemy", "same_region"].includes(reason))
     && !closeDistance
-    && !closeSharedPoint) {
+    && !lineOfFireExposure) {
     blockedReasons.push("abstract_contact_only");
   }
-  if (!sharedPoint && !closeDistance && !closeObjectivePressure) {
+  if (!sharedPoint && !closeDistance && !closeObjectivePressure && !lineOfFireExposure) {
     blockedReasons.push("no_close_or_shared_fight");
   }
 
@@ -240,19 +298,32 @@ function buildContactThreatAudit(input: {
       contactThreatLevel: "lethal",
       lethalEligible,
       lethalGateReasons: uniqueStrings(reasons),
-      lethalGateBlockedReasons: uniqueStrings(blockedReasons)
+      lethalGateBlockedReasons: uniqueStrings(blockedReasons),
+      lineOfFireExposure,
+      openSightNoCover,
+      samePointExposure,
+      objectiveExposure,
+      implicitDuelFromMovement,
+      coverBlockedLethal
     };
   }
 
   const suppressionThreat = closeDistance
     || sharedPoint
+    || lineOfFireExposure
     || input.triggerReasons.some((reason) => ["plant_pressure", "dropped_bomb_contest"].includes(reason))
     || (directActive && input.triggerReasons.some((reason) => ["site_contest", "choke_contest", "known_enemy", "same_region"].includes(reason)));
   return {
     contactThreatLevel: suppressionThreat ? "suppression" : "observation",
     lethalEligible,
     lethalGateReasons: [],
-    lethalGateBlockedReasons: uniqueStrings(blockedReasons)
+    lethalGateBlockedReasons: uniqueStrings(blockedReasons),
+    lineOfFireExposure,
+    openSightNoCover,
+    samePointExposure,
+    objectiveExposure,
+    implicitDuelFromMovement,
+    coverBlockedLethal
   };
 }
 
@@ -389,6 +460,18 @@ function buildRetentionAudit(input: {
 
 function isActiveCombatAction(action: HexValidatedAgentAction): boolean {
   return action.valid && activeCombatActionTypes.has(action.actionType);
+}
+
+function isMovementDuelAction(action: HexValidatedAgentAction): boolean {
+  return action.valid && movementDuelActionTypes.has(action.actionType);
+}
+
+function participantHasCover(participant: HexCombatParticipant): boolean {
+  return [...participant.currentFlags, ...participant.targetFlags].includes("cover");
+}
+
+function participantHasObjectiveFlag(participant: HexCombatParticipant): boolean {
+  return hasBombsiteFlag(participant.currentFlags) || hasBombsiteFlag(participant.targetFlags);
 }
 
 function isSupportParticipantForContact(participant: HexCombatParticipant, contact: HexCombatContact, distanceBetween: DistanceCalculator): boolean {

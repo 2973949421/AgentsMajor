@@ -280,6 +280,9 @@ describe("Hex agent command boundary", () => {
     expect(JSON.stringify(compact)).not.toContain("\"scoreCaps\"");
     expect(compact.businessDuel).toBeUndefined();
     expect(compact.hardConstraints.some((line) => line.includes("businessIntent"))).toBe(true);
+    expect(compact.hardConstraints.some((line) => line.includes("phase0"))).toBe(true);
+    expect(compact.hardConstraints.some((line) => line.includes("想赢回合"))).toBe(true);
+    expect(compact.hardConstraints.some((line) => line.includes("开阔枪线"))).toBe(true);
   });
 
   it("repairs missing and invalid brief references to the current opening brief", () => {

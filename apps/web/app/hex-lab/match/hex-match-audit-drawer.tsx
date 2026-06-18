@@ -502,7 +502,7 @@ function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
         <article key={combat.contactId} className={styles.auditCard}>
           <h3>战斗裁定</h3>
           <p>金融裁定: {formatFinanceVerdict(combat.financeVerdict)}</p>
-          <p>接触强度: {formatContactThreat(combat.contactThreatLevel, combat.lethalEligible)}</p>
+          <p>接触强度: {formatContactThreat(combat)}</p>
           <p>战斗结论: {combat.killAttributions.length > 0 ? "形成击杀" : combat.suppressions.length > 0 ? "形成压制" : "未形成击杀或压制"}</p>
           <p>
             击杀归因: {combat.killAttributions.map((item) =>
@@ -555,15 +555,24 @@ function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
   );
 }
 
-function formatContactThreat(level: string | undefined, lethalEligible: boolean | undefined): string {
-  const label = level === "lethal"
+function formatContactThreat(combat: HexMatchLabPhaseSummary["combats"][number]): string {
+  const label = combat.contactThreatLevel === "lethal"
     ? "致命接触"
-    : level === "suppression"
+    : combat.contactThreatLevel === "suppression"
       ? "压制接触"
-      : level === "observation"
+      : combat.contactThreatLevel === "observation"
         ? "观察接触"
         : "旧 trace 未记录";
-  return lethalEligible ? `${label}，允许伤亡判定` : `${label}，不允许直接击杀`;
+  const details = [
+    combat.lineOfFireExposure ? "枪线暴露" : undefined,
+    combat.openSightNoCover ? "开阔无掩体" : undefined,
+    combat.samePointExposure ? "同点位暴露" : undefined,
+    combat.objectiveExposure ? "包点/下包/拆包暴露" : undefined,
+    combat.implicitDuelFromMovement ? "移动触发隐式交火" : undefined,
+    combat.coverBlockedLethal ? "掩体阻断致命升级" : undefined
+  ].filter((item): item is string => Boolean(item));
+  const suffix = details.length > 0 ? `；${details.join("、")}` : "";
+  return combat.lethalEligible ? `${label}，允许伤亡判定${suffix}` : `${label}，不允许直接击杀${suffix}`;
 }
 
 function formatTechnicalReason(reason: string): string {
@@ -571,6 +580,12 @@ function formatTechnicalReason(reason: string): string {
     close_active_duel: "近距离主动交火",
     shared_point_active_duel: "同点位主动交火",
     objective_actor_close_pressure: "下包/拆包目标承受近距离压力",
+    line_of_fire_exposure: "枪线暴露",
+    open_sight_no_cover: "开阔无掩体",
+    same_point_exposure: "同点位暴露",
+    objective_exposure: "包点/入口暴露",
+    implicit_duel_from_movement: "移动触发隐式交火",
+    cover_blocks_lethal: "掩体阻断致命升级",
     no_active_combat_action: "缺少主动交火动作",
     unknown_cell_distance: "缺少可审计距离",
     distance_exceeds_lethal_gate: "距离超过致命门槛",

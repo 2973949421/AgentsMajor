@@ -640,6 +640,12 @@ export interface HexMatchLabCombatSummary {
   lethalEligible?: boolean | undefined;
   lethalGateReasons: string[];
   lethalGateBlockedReasons: string[];
+  lineOfFireExposure?: boolean | undefined;
+  openSightNoCover?: boolean | undefined;
+  samePointExposure?: boolean | undefined;
+  objectiveExposure?: boolean | undefined;
+  implicitDuelFromMovement?: boolean | undefined;
+  coverBlockedLethal?: boolean | undefined;
   businessVerdict?: string | undefined;
   financeVerdict?: string | undefined;
   businessReasons: string[];
@@ -2225,13 +2231,22 @@ function humanizeContactThreat(combat: HexMatchLabCombatSummary): string {
       : combat.contactThreatLevel === "observation"
         ? "观察接触"
         : "旧 trace 未记录接触强度";
+  const exposureDetails = [
+    combat.lineOfFireExposure ? "枪线暴露" : undefined,
+    combat.openSightNoCover ? "开阔无掩体" : undefined,
+    combat.samePointExposure ? "同点位暴露" : undefined,
+    combat.objectiveExposure ? "包点/下包/拆包暴露" : undefined,
+    combat.implicitDuelFromMovement ? "移动触发隐式交火" : undefined,
+    combat.coverBlockedLethal ? "掩体阻断致命升级" : undefined
+  ].filter((item): item is string => Boolean(item));
+  const details = exposureDetails.length > 0 ? `接触细节：${exposureDetails.join("、")}。` : "";
   if (combat.lethalEligible) {
-    return `${threat}，已通过致命门槛。`;
+    return `${threat}，已通过致命门槛。${details}`;
   }
   const blocked = combat.lethalGateBlockedReasons.length > 0
     ? `原因：${combat.lethalGateBlockedReasons.map(humanizeReason).join("、")}`
     : "原因未记录";
-  return `${threat}，未通过致命门槛，不能直接击杀。${blocked}。`;
+  return `${threat}，未通过致命门槛，不能直接击杀。${details}${blocked}。`;
 }
 
 function buildEvidenceAdoptionListZh(
@@ -2329,6 +2344,12 @@ function humanizeReason(reason: string): string {
     contested_combat: "交火僵持，形成压制",
     target_bombsite_exposure: "目标暴露在包点交火区",
     validated_ap_path: "行动路径和 AP 合法",
+    line_of_fire_exposure: "双方处于可射击枪线暴露关系",
+    open_sight_no_cover: "双方在开阔无掩体位置相对",
+    same_point_exposure: "双方争夺同一战术点位",
+    objective_exposure: "包点、入口、下包或拆包附近暴露",
+    implicit_duel_from_movement: "移动或转点进入可射击关系，按隐式交火处理",
+    cover_blocks_lethal: "掩体或遮蔽阻断致命升级",
     finance_intent_present: "行动理由已引用金融攻防任务",
     finance_score_cap_applied_without_evidence_reference: "证据引用不足，金融得分被封顶",
     phase_repeated_round_thesis: "阶段行动复述了开局金融论点，已拒绝",
@@ -2698,6 +2719,12 @@ function summarizePhase(
       lethalEligible: resolution.audit.contactThreat?.lethalEligible,
       lethalGateReasons: resolution.audit.contactThreat?.lethalGateReasons ?? [],
       lethalGateBlockedReasons: resolution.audit.contactThreat?.lethalGateBlockedReasons ?? [],
+      lineOfFireExposure: resolution.audit.contactThreat?.lineOfFireExposure,
+      openSightNoCover: resolution.audit.contactThreat?.openSightNoCover,
+      samePointExposure: resolution.audit.contactThreat?.samePointExposure,
+      objectiveExposure: resolution.audit.contactThreat?.objectiveExposure,
+      implicitDuelFromMovement: resolution.audit.contactThreat?.implicitDuelFromMovement,
+      coverBlockedLethal: resolution.audit.contactThreat?.coverBlockedLethal,
       businessVerdict: resolution.businessVerdict,
       financeVerdict: resolution.financeVerdict,
       businessReasons: resolution.businessReasons ?? [],

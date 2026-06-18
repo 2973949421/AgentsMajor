@@ -160,7 +160,13 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
       level: input.contact.contactThreatLevel ?? "observation",
       lethalEligible: Boolean(input.contact.lethalEligible),
       lethalGateReasons: [...(input.contact.lethalGateReasons ?? [])],
-      lethalGateBlockedReasons: [...(input.contact.lethalGateBlockedReasons ?? [])]
+      lethalGateBlockedReasons: [...(input.contact.lethalGateBlockedReasons ?? [])],
+      lineOfFireExposure: Boolean(input.contact.lineOfFireExposure),
+      openSightNoCover: Boolean(input.contact.openSightNoCover),
+      samePointExposure: Boolean(input.contact.samePointExposure),
+      objectiveExposure: Boolean(input.contact.objectiveExposure),
+      implicitDuelFromMovement: Boolean(input.contact.implicitDuelFromMovement),
+      coverBlockedLethal: Boolean(input.contact.coverBlockedLethal)
     },
     contactRetention: {
       ...(input.contact.relevanceScore !== undefined ? { relevanceScore: input.contact.relevanceScore } : {}),
@@ -765,6 +771,12 @@ function buildCsReasonZh(csReasons: string[]): string[] {
       close_active_duel: "近距离主动交火构成致命门槛。",
       shared_point_active_duel: "同点位主动交火构成致命门槛。",
       objective_actor_close_pressure: "下包或拆包目标在近距离压力下构成致命门槛。",
+      line_of_fire_exposure: "双方处于可射击枪线暴露关系。",
+      open_sight_no_cover: "双方在开阔无掩体位置相对。",
+      same_point_exposure: "双方争夺同一战术点位。",
+      objective_exposure: "包点、入口、下包或拆包附近暴露。",
+      implicit_duel_from_movement: "移动或转点进入可射击关系，按隐式交火处理。",
+      cover_blocks_lethal: "掩体或遮蔽阻断致命升级。",
       no_active_combat_action: "缺少主动交火动作。",
       unknown_cell_distance: "缺少可审计距离，不能升级为致命接触。",
       distance_exceeds_lethal_gate: "距离超过致命接触门槛。",
@@ -877,7 +889,7 @@ function buildScoreboard(
 
 function buildAdvantage(scores: HexCombatScoreboard, contact: HexCombatContact): "attack" | "defense" | "contested" {
   const margin = Math.abs(scores.attack.totalScore - scores.defense.totalScore);
-  const threshold = contact.contactThreatLevel === "lethal" && contact.minCellDistance !== undefined && contact.minCellDistance <= 1
+  const threshold = contact.contactThreatLevel === "lethal" && isHighIntensityLethalContact(contact)
     ? closePressureMargin
     : pressureMargin;
   if (margin < threshold) {
@@ -893,13 +905,24 @@ function buildVerdict(margin: number, contact: HexCombatContact): HexCombatVerdi
   if (margin >= decisiveMargin) {
     return "kill";
   }
-  const pressureThreshold = contact.minCellDistance !== undefined && contact.minCellDistance <= 1
+  const pressureThreshold = isHighIntensityLethalContact(contact)
     ? closePressureMargin
     : pressureMargin;
   if (margin >= pressureThreshold) {
     return "wound_or_forced_back";
   }
   return "contested_suppression";
+}
+
+function isHighIntensityLethalContact(contact: HexCombatContact): boolean {
+  return Boolean(
+    contact.lethalEligible
+    && (contact.minCellDistance !== undefined && contact.minCellDistance <= 1
+      || contact.openSightNoCover
+      || contact.samePointExposure
+      || contact.objectiveExposure
+      || contact.implicitDuelFromMovement)
+  );
 }
 
 function buildControlHint(advantage: "attack" | "defense" | "contested", verdict: HexCombatVerdict): HexCombatControlHint {

@@ -295,6 +295,9 @@ describe("Hex agent command harness", () => {
     const userContent = messages[1]!.content;
 
     expect(messages[0]!.content).toContain("businessIntent、tacticalIntent、riskNotes 必须使用中文");
+    expect(messages[0]!.content).toContain("phase0 / roundStartAgentOutput 是本局材料依据");
+    expect(messages[0]!.content).toContain("你必须有赢回合意识");
+    expect(messages[0]!.content).toContain("move 或 rotate 不是散步");
     expect(userContent).toContain('"requestMode":"compact_match"');
     expect(userContent).toContain('"targetCandidates"');
     expect(userContent).not.toContain('"reachableCells"');

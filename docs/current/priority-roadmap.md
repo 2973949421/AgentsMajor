@@ -66,7 +66,7 @@ N53：金融裁判证据采信事实化。（已完成第一版）
 N54：中文人类审计与真实样本验收。（Web 收口完成；real 成功样本 blocked）
 N55：真实 LLM 输出人类审计摘要与系统输入卡隔离。（已完成第一版）
 N55 收口修正：phase0 真实开局输出层、失败态隔离与局内行动隔离。（已完成）
-N55 后 combat 窄修补丁：接触门槛与伤亡门槛分层，远距离抽象接触禁止击杀，近距离高强度接触允许受伤 / 退让 / 击杀。（已完成）
+N55 后 combat 窄修补丁：接触门槛与伤亡门槛分层，远距离抽象接触禁止击杀，近距离和开阔枪线暴露允许受伤 / 退让 / 击杀，move / rotate 进入暴露关系可触发隐式交火。（已完成）
 ```
 
 当前测试落点：
@@ -123,7 +123,7 @@ N52 已把回合信息层和局内行动层硬隔离：compact request 不再发
 N53 已让金融裁判明确采信 / 拒绝 / 降权哪些证据，不能用字段存在冒充机制生效。combat trace 现在记录 `acceptedEvidenceRefs / rejectedEvidenceRefs / missingEvidenceApplied / scoreCapRefs / financeReasonZh / csReasonZh`，fallback、invalid action、复述开局论点和明显超长行动理由不产生正向金融证据。
 N54 已完成中文 Web 审计主链路和失败报告。当前环境中的 real provider 成功样本因外部出站风险被阻断，因此不能宣称真实对局已通过。
 
-N55 进一步修正审计来源：主审计展示真实 `hex_llm_response` artifact 的人工可读摘要，系统生成的 `agentOpeningBrief` 只能作为“系统输入卡（非 agent 输出）”折叠展示。没有 response artifact 时必须显示“没有真实模型输出”，不能用系统预置词或 fallback 文案补成 agent 输出。N55 收口修正再把真实输出层前置到运行时：每 round 先生成 10 条 `roundStartAgentOutputs`，phase1+ 只允许引用当前 agent 自己的可消费真实开局输出；provider 失败、无效响应或非法证据引用只能作为失败审计展示，不得进入后续行动请求，也不得计入真实输出成功数。N55 后 combat 窄修补丁修正战斗行为门槛：远距离 `site_contest / choke_contest / known_enemy / same_region` 不再能直接击杀，只有通过 lethal gate 的近距离或同点位接触才能产生击杀；贴脸高强度接触至少可以形成受伤或退让；support 默认只贡献助攻和压制。
+N55 进一步修正审计来源：主审计展示真实 `hex_llm_response` artifact 的人工可读摘要，系统生成的 `agentOpeningBrief` 只能作为“系统输入卡（非 agent 输出）”折叠展示。没有 response artifact 时必须显示“没有真实模型输出”，不能用系统预置词或 fallback 文案补成 agent 输出。N55 收口修正再把真实输出层前置到运行时：每 round 先生成 10 条 `roundStartAgentOutputs`，phase1+ 只允许引用当前 agent 自己的可消费真实开局输出；provider 失败、无效响应或非法证据引用只能作为失败审计展示，不得进入后续行动请求，也不得计入真实输出成功数。N55 后 combat 窄修补丁修正战斗行为门槛：远距离 `site_contest / choke_contest / known_enemy / same_region` 不再能直接击杀；近距离、同点位、开阔无掩体、包点入口、下包 / 拆包附近可进入致命接触；`move / rotate` 进入可射击暴露关系时可触发隐式交火；support 默认只贡献助攻和压制。
 ```
 
 当前必须承认的边界：

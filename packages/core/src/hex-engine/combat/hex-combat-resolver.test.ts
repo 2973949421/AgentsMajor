@@ -320,6 +320,80 @@ describe("Hex combat resolver", () => {
     expect(resolution.casualties.length + resolution.suppressions.length).toBeGreaterThan(0);
   });
 
+  it("treats open line movement as an implicit lethal duel instead of harmless movement", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [attackCell, defenseCell] = findOpenSameRegionCells(asset, "a_site");
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_0", side: "attack", cellId: attackCell.cellId },
+      { agentId: "ct_0", side: "defense", cellId: defenseCell.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({
+        memory,
+        agentId: "t_0",
+        actionType: "move",
+        targetCellId: attackCell.cellId,
+        businessIntent: "进攻方移动进入开阔枪线，准备清点并争取换人。"
+      }),
+      buildCombatAction({
+        memory,
+        agentId: "ct_0",
+        actionType: "rotate",
+        targetCellId: defenseCell.cellId,
+        businessIntent: "守方转点进入同一开阔枪线，准备守住包点入口。"
+      })
+    ];
+
+    const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
+    const resolution = resolveHexCombat({ asset, memory, contact, actions });
+
+    expect(contact.minCellDistance).toBeGreaterThan(3);
+    expect(contact.minCellDistance).toBeLessThanOrEqual(6);
+    expect(contact.openSightNoCover).toBe(true);
+    expect(contact.implicitDuelFromMovement).toBe(true);
+    expect(contact.lethalEligible).toBe(true);
+    expect(contact.contactThreatLevel).toBe("lethal");
+    expect(resolution.audit.contactThreat?.lethalGateReasons).toEqual(expect.arrayContaining([
+      "open_sight_no_cover",
+      "implicit_duel_from_movement"
+    ]));
+  });
+
+  it("keeps covered same-region movement out of the lethal gate", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [attackCell, defenseCell] = findCoveredSameRegionCells(asset, "a_site");
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_0", side: "attack", cellId: attackCell.cellId },
+      { agentId: "ct_0", side: "defense", cellId: defenseCell.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({
+        memory,
+        agentId: "t_0",
+        actionType: "move",
+        targetCellId: attackCell.cellId,
+        businessIntent: "进攻方移动到有掩体的同区域位置，只形成压制试探。"
+      }),
+      buildCombatAction({
+        memory,
+        agentId: "ct_0",
+        actionType: "rotate",
+        targetCellId: defenseCell.cellId,
+        businessIntent: "守方借掩体转点，不暴露成可直接击杀的枪线。"
+      })
+    ];
+
+    const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
+    const resolution = resolveHexCombat({ asset, memory, contact, actions });
+
+    expect(contact.minCellDistance).toBeGreaterThan(3);
+    expect(contact.coverBlockedLethal).toBe(true);
+    expect(contact.lethalEligible).toBe(false);
+    expect(resolution.verdict).not.toBe("kill");
+    expect(resolution.casualties).toEqual([]);
+    expect(resolution.audit.contactThreat?.lethalGateBlockedReasons).toContain("cover_blocks_lethal");
+  });
+
   it("lets business evidence dominate the first deterministic combat verdict", () => {
     const asset = loadOfficialDust2HexMap();
     const [attackCell, defenseCell, supportCell] = findCellsInRegion(asset, "a_site", 3);
@@ -642,10 +716,50 @@ function findFarSameRegionCells(asset: ReturnType<typeof loadOfficialDust2HexMap
         continue;
       }
       const path = findHexPath({ asset, fromCellId: left.cellId, toCellId: right.cellId });
-      if (path.reachable && path.cellDistance > 3) {
+      if (path.reachable && path.cellDistance > 6) {
         return [left, right] as const;
       }
     }
   }
   throw new Error(`No far ${regionId} cells found`);
+}
+
+function findOpenSameRegionCells(asset: ReturnType<typeof loadOfficialDust2HexMap>, regionId: string) {
+  const candidates = asset.cells.filter((cell) =>
+    cell.playable && cell.regionId === regionId && !cell.flags.includes("cover")
+  );
+  for (const left of candidates) {
+    for (const right of candidates) {
+      if (left.cellId === right.cellId) {
+        continue;
+      }
+      const path = findHexPath({ asset, fromCellId: left.cellId, toCellId: right.cellId });
+      if (path.reachable && path.cellDistance > 3 && path.cellDistance <= 6) {
+        return [left, right] as const;
+      }
+    }
+  }
+  throw new Error(`No open same-region ${regionId} cells found`);
+}
+
+function findCoveredSameRegionCells(asset: ReturnType<typeof loadOfficialDust2HexMap>, regionId: string) {
+  const candidates = asset.cells.filter((cell) => cell.playable && cell.regionId === regionId);
+  for (const left of candidates) {
+    for (const right of candidates) {
+      if (left.cellId === right.cellId) {
+        continue;
+      }
+      if (!left.flags.includes("cover") && !right.flags.includes("cover")) {
+        continue;
+      }
+      if (left.pointIds.some((pointId) => right.pointIds.includes(pointId))) {
+        continue;
+      }
+      const path = findHexPath({ asset, fromCellId: left.cellId, toCellId: right.cellId });
+      if (path.reachable && path.cellDistance > 3 && path.cellDistance <= 6) {
+        return [left, right] as const;
+      }
+    }
+  }
+  throw new Error(`No covered same-region ${regionId} cells found`);
 }

@@ -62,6 +62,12 @@ export interface HexCombatContact {
   lethalEligible?: boolean;
   lethalGateReasons?: string[];
   lethalGateBlockedReasons?: string[];
+  lineOfFireExposure?: boolean;
+  openSightNoCover?: boolean;
+  samePointExposure?: boolean;
+  objectiveExposure?: boolean;
+  implicitDuelFromMovement?: boolean;
+  coverBlockedLethal?: boolean;
   relevanceScore?: number;
   retentionReasons?: string[];
   prunedCandidateCount?: number;
@@ -131,6 +137,12 @@ export interface HexCombatAudit {
     lethalEligible: boolean;
     lethalGateReasons: string[];
     lethalGateBlockedReasons: string[];
+    lineOfFireExposure?: boolean;
+    openSightNoCover?: boolean;
+    samePointExposure?: boolean;
+    objectiveExposure?: boolean;
+    implicitDuelFromMovement?: boolean;
+    coverBlockedLethal?: boolean;
   };
   contactRetention?: {
     relevanceScore?: number;

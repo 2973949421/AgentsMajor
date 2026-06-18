@@ -327,6 +327,31 @@ phase1+：局内行动层
 - `agentOpeningBrief` 只能显示为“系统输入卡（非 agent 输出）”。
 - 没有 round-start response artifact 时，不得用系统输入卡、fallback 文案或 Web 文案伪装成 agent 已输出。
 
+### 5.10 N55 后窄修：phase0 材料依据与 phase1+ 局内行动胜负欲
+
+N55 后的 combat 窄修固定两层分工：
+
+```text
+phase0 / roundStartAgentOutput：本局材料依据，包含资产、证据、角色判断、风险边界和经济买型裁剪。
+phase1+ / agent_action：局内行动执行，包含清点、抢枪线、补枪、换人、护包、拆包、转点、保枪和风险处理。
+```
+
+阶段行动提示词必须满足：
+
+- 可以短句引用 `roundStartAgentOutput`，但不得复述或重写完整金融材料。
+- `businessIntent` 仍是兼容字段名，只表示本阶段行动理由。
+- `actionRationaleZh` 必须解释行动如何服务赢回合，而不是抽象“完成验证”。
+- 当目标进入包点入口、开阔枪线、下包 / 拆包附近或已知敌人接近时，输出应说明如何清点、抢枪线、补枪、换人、护包、拆包或退让。
+- LLM 仍不得写 winner、kill、damage、economyDelta、hidden enemy truth 或 DB fact。
+
+事实边界固定为：
+
+```text
+Prompt 负责行动意图与胜负欲表达。
+Combat code 负责枪线暴露、掩体阻断、隐式交火、致命门槛和伤亡事实。
+前端只能展示 trace，不得补写战斗结果。
+```
+
 ## 6. Judge Scorecard v6
 
 `judge_verdict` 必须输出 `judgeScorecard`。评分标准由代码生成并写入输入中的 `rubricProfile`，LLM 只能消费，不能修改。
