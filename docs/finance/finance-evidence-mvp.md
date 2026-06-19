@@ -52,23 +52,25 @@ N44 第一版已经落地材料层证据包生成：
 collector（采集器） != source（事实来源） != evidence（证据） != prompt context（模型上下文）
 ```
 
-例如用社区库抓到 SHFE 相关数据时，社区库只是采集器，事实来源仍应登记为 SHFE：
+例如用 AKShare、BaoStock 或其他接入入口抓到数据时，接入入口和事实发布方都要写清。用 AKShare 抓到 SHFE 相关数据时，可以这样登记：
 
 ```json
 {
-  "collector": "akshare_shfe_adapter_v0.1",
-  "source": "SHFE",
+  "sourcePublisher": "SHFE",
+  "accessProvider": "AKShare",
+  "collector": "akshare_python_package_v0",
+  "endpoint": "futures_settle_shfe",
   "sourceType": "official_web_anchor",
-  "qualityTier": "official_anchor_not_api"
+  "qualityTier": "exchange_data_via_named_collector"
 }
 ```
 
-不得把社区库、爬虫封装或模型输出当作最终事实源。
+禁止的是省略来源链后只写“AKShare 证明了某事实”或“模型输出证明了某事实”。如果原始发布方、接入入口、endpoint、字段口径和时间都清楚，采集器取得的数据可以进入事实库。
 
 | 层级 | 含义 | 第一阶段策略 |
 |---|---|---|
 | 免费稳定 API | 有正式 API 或低维护类 API，适合自动接入 | 优先接 |
-| 社区类 API / 采集器 | 能拉数据，但不是最终事实源 | 可用但降权 |
+| 社区类 API / 采集入口 | 能拉数据，需记录发布方 / 接入方 / endpoint / 字段口径 | 可用；质量等级按具体 endpoint 判断 |
 | 官方证据锚点 | 权威但不稳定自动化 | 只存 URL / hash / 元数据 |
 | 后置源 | 有价值但第一阶段不碰 | 后续再接 |
 | 付费替换源 | 商业化后增强 | 暂不考虑 |
@@ -201,7 +203,7 @@ UN Comtrade 可支持“进出口趋势线索”。
 | SHFE | 商品价格 / 库存权威锚点 | 不默认免费稳定自动化，用户经验显示可能偏付费或受限 |
 | SMM | 授权后付费增强 | 未授权不抓取 |
 | TuShare Pro | 后置结构化增强 | 依赖 token / 积分权限 |
-| AKShare | 采集器，不是事实源 | 可后置作为抽取器，但不能当最终 source |
+| AKShare | 可用采集入口 | 可抽取 SHFE / INE / GFEX 等数据；必须保留原始发布方和 endpoint 字段口径 |
 | LME | 后置海外商品锚点 | 免费层有限，详细数据多需授权 |
 | 海关统计 | 后置官方锚点 | 自动化比 API 更复杂 |
 
@@ -233,16 +235,18 @@ SHFE 仓单变化。
 
 ## 6. Round 设计调整
 
-`Dust2 有色 / 行业判断` 第一版应从“完整基本面判断”降级为“代理事实判断”。
+`Dust2 有色 / 行业判断` 第一版应从“完整基本面判断”降级为“代理事实判断”。N56 起，round 进一步从“证明题”改成“投资决策题”，不预设看多或看空。
 
-| Round | 子命题 | 第一版证据 | 裁判限制 |
+| Round | 决策题 | 第一版证据 | 裁判限制 |
 |---|---|---|---|
-| R1 | 全球有色价格是否支持景气上行 | FRED 金属价格 | 不能证明中国国内供需 |
-| R2 | A 股有色代表公司是否已经反映价格预期 | BaoStock 股价、PE/PB | 不能证明行业基本面 |
-| R3 | 估值是否已经 price in | BaoStock 估值、收益率 | 缺少公司财报页码时不能做盈利弹性强结论 |
-| R4 | 进出口数据是否支持供需变化 | UN Comtrade 可选 | 缺少中国海关与库存时只算线索 |
-| R5 | 当前证据缺口下哪些结论不能下 | missingEvidence / scoreCaps | 主动暴露证据缺口 |
-| R6 | 基于有限证据的配置倾向与风险边界 | FRED + BaoStock + 可选 Comtrade | 只能给有限置信度配置建议 |
+| R1 | 当前全球金属价格趋势是否足以支持未来 1-3 个月 A 股有色相对超配？ | FRED 金属价格 | 不能证明中国国内供需，只能支持商品价格动量 |
+| R2 | A 股有色代表公司市场表现是否确认商品价格信号？ | BaoStock 股价、成交、PE/PB | 不能证明行业基本面，只能证明市场反应 |
+| R3 | 当前估值是否已经 price in 商品价格预期？ | BaoStock 估值、收益率 | 缺少公司财报页码时不能做盈利弹性强结论 |
+| R4 | 在贸易数据可用性有限时，进出口线索是否足以影响行业判断？ | UN Comtrade 可选 | 缺少中国海关与库存时只算弱线索 |
+| R5 | 当前证据缺口下，哪些结论必须被限制置信度？ | missingEvidence / scoreCaps | 缺失证据只能降权或限制结论，不能自动赢 |
+| R6 | 基于固定数据菜单，当前有色配置建议应如何落地？ | FRED + BaoStock + 可选 Comtrade | 只能给有限置信度配置建议和触发条件 |
+
+任何 round 都允许看多、看空、中性、结构性分化、条件判断或暂不交易。暂不交易必须给出触发条件，不能只写“无法判断”。
 
 ## 7. 裁判证据上限
 
@@ -267,6 +271,124 @@ SHFE 仓单变化。
 | FRED + BaoStock + UN Comtrade | 代理事实判断最高 75 |
 | 无 CNINFO 页码 | 公司深度最高 50-60 |
 | 无 SHFE / SMM / LME | 国内商品价格与库存判断最高 60-70 |
+
+## 7.1 N57 数据菜单扩充与 Fact Bank v2
+
+N57 不是单纯给 fact 增加字段。N57 的任务是根据 N56 的 `requiredEvidenceSchema` 补厚金融事实库。
+
+当前第一版实现已经覆盖升级原事实库入口：
+
+```text
+data/materials/generated/finance/fact-bank/dust2-nonferrous/latest.json
+```
+
+它没有新建平行 `fact-bank-v2` 目录。当前 Codex 环境外部网络受限，本次生成中 FRED / BaoStock 使用旧快照升级保底，SHFE / INE / World Bank / UN Comtrade 以 unavailable fact 记录失败原因。联网环境重跑 collector 后，这些事实会在同一路径被刷新。
+
+必须交付：
+
+```text
+dataMenu：当前 round 允许使用哪些数据类别和来源。
+factBankV2：结构化事实库。
+derivedMetrics：从原始观测派生出的变化率、分位、波动、回撤和相对表现。
+coverageReport：每个 requiredEvidenceKey 的覆盖、缺口和 score cap。
+```
+
+第一版优先做已有源深加工：
+
+```text
+FRED：
+  铜、铝、镍、锌价格。
+  如稳定可取，补美元、利率、通胀、全球宏观代理。
+  生成 1 / 3 / 6 / 12 个月变化、36 个月分位、波动和趋势。
+
+BaoStock：
+  有色公司池收益、成交、换手、PE/PB。
+  生成相对沪深300表现、估值分位、波动、回撤和公司池分化。
+
+UN Comtrade：
+  成功时只作为贸易线索。
+  失败时只作为 unavailableObservation 和 missingEvidence，不得当真实贸易事实。
+```
+
+第一版可验证的候选源：
+
+```text
+World Bank：长期宏观和国家指标，优先验证无 key 稳定 API。
+USGS：低频矿产供给背景，优先作为年度结构事实。
+NBS：权威中国宏观和工业数据，先验证接口或抓取稳定性。
+SHFE：有色价格、成交、持仓、仓单或库存锚点；若不免费稳定，先作为 missingEvidence 和后续候选源。
+```
+
+每个 round 的 `coverageReport` 至少说明：
+
+```text
+哪些 requiredEvidenceKey 已覆盖。
+每类覆盖了多少条 fact。
+哪些 fact 可支持 strong claim。
+哪些 fact 只能支持 proxy claim。
+哪些缺口触发 scoreCapPolicy。
+哪些 round 仍只能做弱判断。
+```
+
+如果 N57 没有生成新的派生指标和覆盖率报告，就不能进入 N58。
+
+## 7.2 Fact Bank v2 证据字段
+
+N57 起，每条 fact 不仅要说明数值，还要说明可用边界。建议最小字段：
+
+```text
+allowedClaimTypes：这条证据可以支持的主张类型。
+notAllowedClaimTypes：这条证据不能支持的主张类型。
+reliabilityTier：官方 API、社区采集、官方锚点、不可用事实等可靠性层级。
+interpretationHint：面向 agent 的解释提示。
+scoreCapPolicy：该证据触发或解除哪些评分上限。
+```
+
+示例：
+
+```json
+{
+  "factId": "FRED_COPPER_3M_MOMENTUM",
+  "source": "FRED",
+  "metricName": "Global price of Copper",
+  "allowedClaimTypes": ["commodity_price_momentum", "global_cycle_signal"],
+  "notAllowedClaimTypes": ["china_domestic_supply_demand", "company_earnings_confirmed"],
+  "reliabilityTier": "official_api",
+  "interpretationHint": "可支持全球铜价动量偏强，但不能单独证明中国国内供需或 A 股公司盈利改善。",
+  "scoreCapPolicy": ["domestic_supply_demand_cap", "company_earnings_cap"]
+}
+```
+
+裁判只能在 `claimType` 被 `allowedClaimTypes` 支持时采信该证据。若 agent 把证据用于 `notAllowedClaimTypes`，对应 claim 必须进入 rejected。
+
+## 7.3 Missing Evidence 定义
+
+`missingEvidence` 不能由 agent 临场发明。它必须来自当前 round 的 `requiredEvidenceSchema`。
+
+有效 missing evidence 必须包含：
+
+```text
+missingKey：缺失项。
+requiredForClaimTypes：它限制哪些主张类型。
+effect：置信度上限、score cap、可执行性降级或战斗投影限制。
+reason：为什么该缺口影响当前决策题。
+```
+
+固定规则：
+
+```text
+缺失证据不能自动让 challenge 方获胜。
+缺失证据不能作为正向事实。
+缺失证据只能限制结论强度、降低置信度或阻止强投影。
+```
+
+例如：
+
+```text
+没有国内库存数据 -> 可以限制“国内供需紧张”主张。
+不能推出“对方一定错误”。
+不能替代真实库存事实。
+```
 
 ## 8. Evidence ID
 

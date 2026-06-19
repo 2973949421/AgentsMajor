@@ -1,15 +1,107 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-06-14T16:10:10.840Z",
+  "generatedAt": "2026-06-19T09:28:52.826Z",
   "generator": "finance-evidence-generator-v1",
   "dataMode": "fixture-or-live",
   "mapBindingId": "dust2_nonferrous_industry_judgment_v1",
   "financeMapSlug": "dust2-nonferrous",
   "roundNumber": 6,
   "roundKey": "limited_allocation_conclusion",
-  "topicTitle": "基于有限证据的配置倾向与风险边界",
-  "defenseThesisFocus": "在证据边界内给出有限置信度的配置倾向、观察指标和降级条件。",
-  "attackChallengeFocus": "检验结论是否承认证据边界，是否具备可执行风险控制。",
+  "topicTitle": "固定数据菜单下的配置落地",
+  "decisionQuestion": "基于固定数据菜单，当前有色配置建议应如何落地：超配、低配、标配、结构性配置、条件触发还是暂不交易？",
+  "decisionObject": "A 股有色板块配置建议",
+  "horizon": "1-3个月",
+  "benchmark": "沪深300",
+  "allowedStance": [
+    "bullish",
+    "bearish",
+    "neutral",
+    "structural",
+    "conditional_bullish",
+    "conditional_bearish",
+    "no_trade"
+  ],
+  "requiredOutput": [
+    "选择最终配置立场",
+    "给出仓位强度或暂不交易触发条件",
+    "列出核心证据、缺口和 score cap",
+    "说明执行、止损和复核条件"
+  ],
+  "requiredEvidenceSchema": [
+    {
+      "requiredKey": "portfolio_stance_evidence_mix",
+      "requiredForClaimTypes": [
+        "portfolio_allocation",
+        "position_sizing"
+      ],
+      "minimumFactCount": 3,
+      "preferredSources": [
+        "FRED",
+        "BaoStock"
+      ],
+      "fallbackSources": [
+        "configured_proxy_fact"
+      ],
+      "missingEffect": "证据组合不足时，只能给低置信或不交易立场，不能给强仓位。",
+      "notWinCondition": true
+    },
+    {
+      "requiredKey": "risk_reward_boundary",
+      "requiredForClaimTypes": [
+        "risk_reward",
+        "executability",
+        "invalidating_condition"
+      ],
+      "minimumFactCount": 1,
+      "preferredSources": [
+        "scoreCapPolicy",
+        "marketRiskProxy"
+      ],
+      "fallbackSources": [
+        "judgeLedger"
+      ],
+      "missingEffect": "缺少风险收益边界时，配置建议必须降为观察或小仓位。",
+      "notWinCondition": true
+    },
+    {
+      "requiredKey": "missing_evidence_policy",
+      "requiredForClaimTypes": [
+        "confidence_cap",
+        "projection_limit"
+      ],
+      "minimumFactCount": 1,
+      "preferredSources": [
+        "requiredEvidenceSchema",
+        "scoreCapPolicy"
+      ],
+      "fallbackSources": [
+        "missingEvidence"
+      ],
+      "missingEffect": "缺口只能限制结论强度和战斗投影权限，不能直接赢。",
+      "notWinCondition": true
+    }
+  ],
+  "challengePolicy": {
+    "mustTargetClaimId": true,
+    "allowedChallengeTypes": [
+      "risk_reward_failure",
+      "reasoning_bridge_break",
+      "proxy_mismatch",
+      "evidence_gap",
+      "horizon_mismatch",
+      "alternative_explanation"
+    ],
+    "invalidChallengePatterns": [
+      "只说固定数据菜单不完整",
+      "不攻击具体 claimId",
+      "把暂不交易等同于没有回答"
+    ],
+    "missingEvidenceCanOnlyCap": true
+  },
+  "defenseThesisFocus": "立场方需要在固定数据菜单下给出可执行配置立场、仓位边界和触发条件。",
+  "attackChallengeFocus": "挑战方需要攻击具体配置主张的证据、推理桥、风险收益或时间窗口问题。",
+  "legacyDefenseThesisFocus": "在证据边界内给出有限置信度的配置倾向、观察指标和降级条件。",
+  "legacyAttackChallengeFocus": "检验结论是否承认证据边界，是否具备可执行风险控制。",
   "requiredSources": [
     "fred",
     "baostock"
@@ -19,151 +111,208 @@
   ],
   "facts": [
     {
-      "factId": "F001",
-      "statement": "FRED series PCOPPUSDM (Global price of Copper) is configured as a global copper price proxy for 基于有限证据的配置倾向与风险边界; it does not prove China domestic inventory, spot premium, or supply-demand tightness.",
+      "factId": "FRED001",
+      "statementZh": "FRED Global price of Copper 最近观测为 13483.8 USD per metric ton（2026-05-01），近 36 个有效观测趋势为 up。该事实只能作为全球价格代理，不能证明中国国内供需。",
       "metricName": "Global price of Copper",
-      "value": null,
+      "value": 13483.75153846154,
       "unit": "USD per metric ton",
-      "period": "configured",
+      "period": "2026-05-01",
       "source": "FRED",
       "sourceType": "official_api",
       "collector": "fred_http_api_v1",
-      "evidenceId": "EVID:FRED:commodity:PCOPPUSDM:global_price_of_copper:configured:PCOPPUSDM:ddd077aa",
+      "evidenceId": "EVID:FRED:commodity:PCOPPUSDM:global_price_of_copper:2026-05-01:PCOPPUSDM:351a511a",
       "confidence": 0.95,
-      "rawHash": "ddd077aa",
-      "parserVersion": "finance-evidence-generator-v1",
-      "originalLocation": "fred-series.json:PCOPPUSDM",
+      "rawHash": "351a511a",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "fred:PCOPPUSDM:2026-05-01",
       "policyNotes": [
         "These series are global price proxies.",
         "They do not directly prove China domestic supply-demand conditions."
       ],
-      "dataMode": "configured_proxy_fact"
+      "dataMode": "offline_observation_fact",
+      "observedAt": "2026-05-01",
+      "generatedAt": "2026-06-15T14:19:27Z",
+      "seriesId": "PCOPPUSDM",
+      "commodity": "copper",
+      "lookbackObservationCount": 36,
+      "trendDirection": "up",
+      "lookbackChangePct": 60.59,
+      "sourcePublisher": "FRED",
+      "accessProvider": "FRED API",
+      "endpoint": "legacy_snapshot:series/observations",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "official_api",
+      "allowedClaimTypes": [
+        "commodity_trend",
+        "commodity_price_momentum",
+        "valuation_vs_commodity_signal",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持全球商品价格动量，不能证明国内供需或公司盈利。",
+      "scoreCapPolicy": "legacy FRED snapshot caps domestic supply-demand and equity transmission claims unless paired with N57 facts.",
+      "legacySnapshotFallback": true,
+      "statement": "FRED Global price of Copper 最近观测为 13483.8 USD per metric ton（2026-05-01），近 36 个有效观测趋势为 up。该事实只能作为全球价格代理，不能证明中国国内供需。",
+      "factBankSource": "fact_bank_v2"
     },
     {
-      "factId": "F002",
-      "statement": "FRED series PALUMUSDM (Global price of Aluminum) is configured as a global aluminum price proxy for 基于有限证据的配置倾向与风险边界; it does not prove China domestic inventory, spot premium, or supply-demand tightness.",
+      "factId": "FRED002",
+      "statementZh": "FRED Global price of Aluminum 最近观测为 3654.02 USD per metric ton（2026-05-01），近 36 个有效观测趋势为 up。该事实只能作为全球价格代理，不能证明中国国内供需。",
       "metricName": "Global price of Aluminum",
-      "value": null,
+      "value": 3654.015384615385,
       "unit": "USD per metric ton",
-      "period": "configured",
+      "period": "2026-05-01",
       "source": "FRED",
       "sourceType": "official_api",
       "collector": "fred_http_api_v1",
-      "evidenceId": "EVID:FRED:commodity:PALUMUSDM:global_price_of_aluminum:configured:PALUMUSDM:f0aa978e",
+      "evidenceId": "EVID:FRED:commodity:PALUMUSDM:global_price_of_aluminum:2026-05-01:PALUMUSDM:086757c8",
       "confidence": 0.95,
-      "rawHash": "f0aa978e",
-      "parserVersion": "finance-evidence-generator-v1",
-      "originalLocation": "fred-series.json:PALUMUSDM",
+      "rawHash": "086757c8",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "fred:PALUMUSDM:2026-05-01",
       "policyNotes": [
         "These series are global price proxies.",
         "They do not directly prove China domestic supply-demand conditions."
       ],
-      "dataMode": "configured_proxy_fact"
+      "dataMode": "offline_observation_fact",
+      "observedAt": "2026-05-01",
+      "generatedAt": "2026-06-15T14:19:29Z",
+      "seriesId": "PALUMUSDM",
+      "commodity": "aluminum",
+      "lookbackObservationCount": 36,
+      "trendDirection": "up",
+      "lookbackChangePct": 67.25,
+      "sourcePublisher": "FRED",
+      "accessProvider": "FRED API",
+      "endpoint": "legacy_snapshot:series/observations",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "official_api",
+      "allowedClaimTypes": [
+        "commodity_trend",
+        "commodity_price_momentum",
+        "valuation_vs_commodity_signal",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持全球商品价格动量，不能证明国内供需或公司盈利。",
+      "scoreCapPolicy": "legacy FRED snapshot caps domestic supply-demand and equity transmission claims unless paired with N57 facts.",
+      "legacySnapshotFallback": true,
+      "statement": "FRED Global price of Aluminum 最近观测为 3654.02 USD per metric ton（2026-05-01），近 36 个有效观测趋势为 up。该事实只能作为全球价格代理，不能证明中国国内供需。",
+      "factBankSource": "fact_bank_v2"
     },
     {
-      "factId": "F003",
-      "statement": "紫金矿业 (sh.601899) is configured as a representative A-share nonferrous proxy with copper_gold exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
-      "metricName": "representative_company_market_proxy",
-      "value": null,
-      "unit": "",
-      "period": "configured",
-      "source": "BAOSTOCK",
-      "sourceType": "market_data_proxy",
-      "collector": "baostock_python_package_v0",
-      "evidenceId": "EVID:BAOSTOCK:stock:sh.601899:representative_company_market_proxy:configured:sh.601899:e5846c2c",
-      "confidence": 0.75,
-      "rawHash": "e5846c2c",
-      "parserVersion": "finance-evidence-generator-v1",
-      "originalLocation": "baostock-company-universe.json:sh.601899",
+      "factId": "FRED003",
+      "statementZh": "FRED Global price of Nickel 最近观测为 18879.2 USD per metric ton（2026-05-01），近 36 个有效观测趋势为 down。该事实只能作为全球价格代理，不能证明中国国内供需。",
+      "metricName": "Global price of Nickel",
+      "value": 18879.23461538462,
+      "unit": "USD per metric ton",
+      "period": "2026-05-01",
+      "source": "FRED",
+      "sourceType": "official_api",
+      "collector": "fred_http_api_v1",
+      "evidenceId": "EVID:FRED:commodity:PNICKUSDM:global_price_of_nickel:2026-05-01:PNICKUSDM:62d38773",
+      "confidence": 0.95,
+      "rawHash": "62d38773",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "fred:PNICKUSDM:2026-05-01",
       "policyNotes": [
-        "This universe supports market reaction and valuation proxy only.",
-        "Company inclusion does not imply official sector classification or verified product exposure."
+        "These series are global price proxies.",
+        "They do not directly prove China domestic supply-demand conditions."
       ],
-      "dataMode": "configured_proxy_fact"
+      "dataMode": "offline_observation_fact",
+      "observedAt": "2026-05-01",
+      "generatedAt": "2026-06-15T14:19:30Z",
+      "seriesId": "PNICKUSDM",
+      "commodity": "nickel",
+      "lookbackObservationCount": 36,
+      "trendDirection": "down",
+      "lookbackChangePct": -11.09,
+      "sourcePublisher": "FRED",
+      "accessProvider": "FRED API",
+      "endpoint": "legacy_snapshot:series/observations",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "official_api",
+      "allowedClaimTypes": [
+        "commodity_trend",
+        "commodity_price_momentum",
+        "valuation_vs_commodity_signal",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持全球商品价格动量，不能证明国内供需或公司盈利。",
+      "scoreCapPolicy": "legacy FRED snapshot caps domestic supply-demand and equity transmission claims unless paired with N57 facts.",
+      "legacySnapshotFallback": true,
+      "statement": "FRED Global price of Nickel 最近观测为 18879.2 USD per metric ton（2026-05-01），近 36 个有效观测趋势为 down。该事实只能作为全球价格代理，不能证明中国国内供需。",
+      "factBankSource": "fact_bank_v2"
     },
     {
-      "factId": "F004",
-      "statement": "江西铜业 (sh.600362) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
-      "metricName": "representative_company_market_proxy",
-      "value": null,
-      "unit": "",
-      "period": "configured",
-      "source": "BAOSTOCK",
-      "sourceType": "market_data_proxy",
-      "collector": "baostock_python_package_v0",
-      "evidenceId": "EVID:BAOSTOCK:stock:sh.600362:representative_company_market_proxy:configured:sh.600362:e6d26b68",
-      "confidence": 0.75,
-      "rawHash": "e6d26b68",
-      "parserVersion": "finance-evidence-generator-v1",
-      "originalLocation": "baostock-company-universe.json:sh.600362",
+      "factId": "FRED004",
+      "statementZh": "FRED Global price of Zinc 最近观测为 3458.04 USD per metric ton（2026-05-01），近 36 个有效观测趋势为 up。该事实只能作为全球价格代理，不能证明中国国内供需。",
+      "metricName": "Global price of Zinc",
+      "value": 3458.04,
+      "unit": "USD per metric ton",
+      "period": "2026-05-01",
+      "source": "FRED",
+      "sourceType": "official_api",
+      "collector": "fred_http_api_v1",
+      "evidenceId": "EVID:FRED:commodity:PZINCUSDM:global_price_of_zinc:2026-05-01:PZINCUSDM:cd2d4a96",
+      "confidence": 0.95,
+      "rawHash": "cd2d4a96",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "fred:PZINCUSDM:2026-05-01",
       "policyNotes": [
-        "This universe supports market reaction and valuation proxy only.",
-        "Company inclusion does not imply official sector classification or verified product exposure."
+        "These series are global price proxies.",
+        "They do not directly prove China domestic supply-demand conditions."
       ],
-      "dataMode": "configured_proxy_fact"
-    },
-    {
-      "factId": "F005",
-      "statement": "中国铝业 (sh.601600) is configured as a representative A-share nonferrous proxy with aluminum exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
-      "metricName": "representative_company_market_proxy",
-      "value": null,
-      "unit": "",
-      "period": "configured",
-      "source": "BAOSTOCK",
-      "sourceType": "market_data_proxy",
-      "collector": "baostock_python_package_v0",
-      "evidenceId": "EVID:BAOSTOCK:stock:sh.601600:representative_company_market_proxy:configured:sh.601600:52ed0876",
-      "confidence": 0.75,
-      "rawHash": "52ed0876",
-      "parserVersion": "finance-evidence-generator-v1",
-      "originalLocation": "baostock-company-universe.json:sh.601600",
-      "policyNotes": [
-        "This universe supports market reaction and valuation proxy only.",
-        "Company inclusion does not imply official sector classification or verified product exposure."
+      "dataMode": "offline_observation_fact",
+      "observedAt": "2026-05-01",
+      "generatedAt": "2026-06-15T14:19:31Z",
+      "seriesId": "PZINCUSDM",
+      "commodity": "zinc",
+      "lookbackObservationCount": 36,
+      "trendDirection": "up",
+      "lookbackChangePct": 45.57,
+      "sourcePublisher": "FRED",
+      "accessProvider": "FRED API",
+      "endpoint": "legacy_snapshot:series/observations",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "official_api",
+      "allowedClaimTypes": [
+        "commodity_trend",
+        "commodity_price_momentum",
+        "valuation_vs_commodity_signal",
+        "limited_positive_stance",
+        "limited_negative_stance"
       ],
-      "dataMode": "configured_proxy_fact"
-    },
-    {
-      "factId": "F006",
-      "statement": "铜陵有色 (sz.000630) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
-      "metricName": "representative_company_market_proxy",
-      "value": null,
-      "unit": "",
-      "period": "configured",
-      "source": "BAOSTOCK",
-      "sourceType": "market_data_proxy",
-      "collector": "baostock_python_package_v0",
-      "evidenceId": "EVID:BAOSTOCK:stock:sz.000630:representative_company_market_proxy:configured:sz.000630:6d78537c",
-      "confidence": 0.75,
-      "rawHash": "6d78537c",
-      "parserVersion": "finance-evidence-generator-v1",
-      "originalLocation": "baostock-company-universe.json:sz.000630",
-      "policyNotes": [
-        "This universe supports market reaction and valuation proxy only.",
-        "Company inclusion does not imply official sector classification or verified product exposure."
+      "notAllowedClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
       ],
-      "dataMode": "configured_proxy_fact"
-    },
-    {
-      "factId": "F007",
-      "statement": "云南铜业 (sz.000878) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
-      "metricName": "representative_company_market_proxy",
-      "value": null,
-      "unit": "",
-      "period": "configured",
-      "source": "BAOSTOCK",
-      "sourceType": "market_data_proxy",
-      "collector": "baostock_python_package_v0",
-      "evidenceId": "EVID:BAOSTOCK:stock:sz.000878:representative_company_market_proxy:configured:sz.000878:900484b2",
-      "confidence": 0.75,
-      "rawHash": "900484b2",
-      "parserVersion": "finance-evidence-generator-v1",
-      "originalLocation": "baostock-company-universe.json:sz.000878",
-      "policyNotes": [
-        "This universe supports market reaction and valuation proxy only.",
-        "Company inclusion does not imply official sector classification or verified product exposure."
-      ],
-      "dataMode": "configured_proxy_fact"
+      "interpretationHint": "旧快照升级事实：可支持全球商品价格动量，不能证明国内供需或公司盈利。",
+      "scoreCapPolicy": "legacy FRED snapshot caps domestic supply-demand and equity transmission claims unless paired with N57 facts.",
+      "legacySnapshotFallback": true,
+      "statement": "FRED Global price of Zinc 最近观测为 3458.04 USD per metric ton（2026-05-01），近 36 个有效观测趋势为 up。该事实只能作为全球价格代理，不能证明中国国内供需。",
+      "factBankSource": "fact_bank_v2"
     }
   ],
   "missingEvidence": [
@@ -180,39 +329,24 @@
   ],
   "promptFacts": [
     {
-      "factId": "F001",
-      "shortText": "FRED series PCOPPUSDM (Global price of Copper) is configured as a global copper price proxy for 基于有限证据的配置倾向与风险边界; it does not prove China domestic inventory, spot premium, or supply-demand tightness.",
-      "evidenceId": "EVID:FRED:commodity:PCOPPUSDM:global_price_of_copper:configured:PCOPPUSDM:ddd077aa"
+      "factId": "FRED001",
+      "shortText": "FRED Global price of Copper 最近观测为 13483.8 USD per metric ton（2026-05-01），近 36 个有效观测趋势为 up。该事实只能作为全球价格代理，不能证明中国国内供需。",
+      "evidenceId": "EVID:FRED:commodity:PCOPPUSDM:global_price_of_copper:2026-05-01:PCOPPUSDM:351a511a"
     },
     {
-      "factId": "F002",
-      "shortText": "FRED series PALUMUSDM (Global price of Aluminum) is configured as a global aluminum price proxy for 基于有限证据的配置倾向与风险边界; it does not prove China domestic inventory, spot premium, or supply-demand tightness.",
-      "evidenceId": "EVID:FRED:commodity:PALUMUSDM:global_price_of_aluminum:configured:PALUMUSDM:f0aa978e"
+      "factId": "FRED002",
+      "shortText": "FRED Global price of Aluminum 最近观测为 3654.02 USD per metric ton（2026-05-01），近 36 个有效观测趋势为 up。该事实只能作为全球价格代理，不能证明中国国内供需。",
+      "evidenceId": "EVID:FRED:commodity:PALUMUSDM:global_price_of_aluminum:2026-05-01:PALUMUSDM:086757c8"
     },
     {
-      "factId": "F003",
-      "shortText": "紫金矿业 (sh.601899) is configured as a representative A-share nonferrous proxy with copper_gold exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
-      "evidenceId": "EVID:BAOSTOCK:stock:sh.601899:representative_company_market_proxy:configured:sh.601899:e5846c2c"
+      "factId": "FRED003",
+      "shortText": "FRED Global price of Nickel 最近观测为 18879.2 USD per metric ton（2026-05-01），近 36 个有效观测趋势为 down。该事实只能作为全球价格代理，不能证明中国国内供需。",
+      "evidenceId": "EVID:FRED:commodity:PNICKUSDM:global_price_of_nickel:2026-05-01:PNICKUSDM:62d38773"
     },
     {
-      "factId": "F004",
-      "shortText": "江西铜业 (sh.600362) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
-      "evidenceId": "EVID:BAOSTOCK:stock:sh.600362:representative_company_market_proxy:configured:sh.600362:e6d26b68"
-    },
-    {
-      "factId": "F005",
-      "shortText": "中国铝业 (sh.601600) is configured as a representative A-share nonferrous proxy with aluminum exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
-      "evidenceId": "EVID:BAOSTOCK:stock:sh.601600:representative_company_market_proxy:configured:sh.601600:52ed0876"
-    },
-    {
-      "factId": "F006",
-      "shortText": "铜陵有色 (sz.000630) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
-      "evidenceId": "EVID:BAOSTOCK:stock:sz.000630:representative_company_market_proxy:configured:sz.000630:6d78537c"
-    },
-    {
-      "factId": "F007",
-      "shortText": "云南铜业 (sz.000878) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
-      "evidenceId": "EVID:BAOSTOCK:stock:sz.000878:representative_company_market_proxy:configured:sz.000878:900484b2"
+      "factId": "FRED004",
+      "shortText": "FRED Global price of Zinc 最近观测为 3458.04 USD per metric ton（2026-05-01），近 36 个有效观测趋势为 up。该事实只能作为全球价格代理，不能证明中国国内供需。",
+      "evidenceId": "EVID:FRED:commodity:PZINCUSDM:global_price_of_zinc:2026-05-01:PZINCUSDM:cd2d4a96"
     }
   ],
   "judgeLedger": {
@@ -238,26 +372,29 @@
       "They do not directly prove China domestic supply-demand conditions.",
       "These series are global price proxies.",
       "They do not directly prove China domestic supply-demand conditions.",
-      "This universe supports market reaction and valuation proxy only.",
-      "Company inclusion does not imply official sector classification or verified product exposure.",
-      "This universe supports market reaction and valuation proxy only.",
-      "Company inclusion does not imply official sector classification or verified product exposure.",
-      "This universe supports market reaction and valuation proxy only.",
-      "Company inclusion does not imply official sector classification or verified product exposure.",
-      "This universe supports market reaction and valuation proxy only.",
-      "Company inclusion does not imply official sector classification or verified product exposure.",
-      "This universe supports market reaction and valuation proxy only.",
-      "Company inclusion does not imply official sector classification or verified product exposure."
+      "These series are global price proxies.",
+      "They do not directly prove China domestic supply-demand conditions.",
+      "These series are global price proxies.",
+      "They do not directly prove China domestic supply-demand conditions."
     ]
   },
   "sideSwapPolicy": {
-    "interpretation": "These six topics define the subject of dispute, not fixed team ownership.",
-    "defenseThesisFocus": "Consumed by whichever team is the current defense side.",
-    "attackChallengeFocus": "Consumed by whichever team is the current attack side.",
+    "interpretation": "These six topics now define investment decision questions, not fixed proof directions.",
+    "stanceSideFocus": "Consumed by whichever team is the current CS defense side in N56 v1; this means stance side, not automatic bullish defense.",
+    "challengeSideFocus": "Consumed by whichever team is the current CS attack side in N56 v1; this means challenge side, not automatic bearish attack.",
+    "defenseThesisFocus": "Legacy compatibility only. Current prompt and audit should prefer decisionQuestion and stanceSideFocus.",
+    "attackChallengeFocus": "Legacy compatibility only. Current prompt and audit should prefer decisionQuestion and challengeSideFocus.",
     "topicIndexFormula": "((mapRoundNumber - 1) % 6) + 1",
-    "sideSwapRule": "When sides swap, the same six topics are reused and proof/challenge responsibilities swap with the current side."
+    "sideSwapRule": "When sides swap, the same six decision questions are reused and stance/challenge responsibilities swap with the current side."
   },
   "sourceWarnings": [
     "BaoStock live observations are not fetched by this JS MVP; configured universe facts are used as proxy scaffolding."
-  ]
+  ],
+  "factBankSnapshot": {
+    "schemaVersion": 2,
+    "parserVersion": "finance-fact-bank-collector-v2",
+    "generatedAt": "2026-06-19T09:21:04Z",
+    "consumedFactCount": 4,
+    "fallbackConfiguredFactCount": 0
+  }
 }

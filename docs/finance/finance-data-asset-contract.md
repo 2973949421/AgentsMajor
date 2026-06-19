@@ -92,9 +92,21 @@ collector（采集器） != source（事实来源） != evidence（证据） != 
 | `fred` | 全球金属价格和宏观代理事实 | HTTP API，`FRED_API_KEY` |
 | `baostock` | A 股代表公司行情和估值代理事实 | Python package，无 key |
 | `un_comtrade` | 进出口滞后线索，可选 | Python package，`UN_COMTRADE_KEY` |
-| `akshare` | 采集器候选，不是事实源 | Python package |
+| `akshare` | 可用采集入口 / access provider | Python package |
 
-`AKShare` 只能被登记为采集器，不能作为最终事实源。若未来用 AKShare 抽取 SHFE、国家统计局或其他页面，证据必须保留原始 source、URL、hash、抓取时间和质量降级说明。
+`AKShare` 和 `BaoStock` 本质上都属于接入入口 / 采集器。区别不在于“谁高谁低”，而在于每条 fact 是否能说清楚来源链。若用 AKShare 抽取 SHFE、INE、GFEX、Sina 或其他页面，证据必须保留：
+
+```text
+sourcePublisher：原始发布方，例如 SHFE / INE / GFEX / Sina。
+accessProvider：接入提供方，例如 AKShare。
+collector：项目内采集器，例如 akshare_python_package_v0。
+endpoint：具体函数或 URL。
+fieldDefinitions：字段口径。
+observedAt / period：观测时间和数据期。
+transform：派生指标如何计算。
+```
+
+不能省略来源链后只写“AKShare 证明了某事实”。但如果 endpoint 字段清楚、时间清楚、发布方清楚，AKShare 采集到的数据可以进入 N57。
 
 ## 5. 与地图资产的隔离
 
@@ -109,6 +121,18 @@ data/materials/processed/maps/dust2/
 ```text
 data/materials/processed/finance/maps/dust2-nonferrous/
 ```
+
+这里的 `finance/maps` 是历史命名。它当前实际表示 Finance scenario（金融场景包），不是 Hex tactical map（战术地图）。为避免 N57 前置阶段扩大迁移风险，本轮不搬目录，只固定解释：
+
+```text
+data/materials/processed/maps/dust2/
+  Hex 战术地图：cell / region / point / cover / objective。
+
+data/materials/processed/finance/maps/dust2-nonferrous/
+  金融场景包：decisionQuestion、requiredEvidenceSchema、source universe、evidence template。
+```
+
+后续如做结构治理，可把 `finance/maps` 迁移为 `finance/scenarios`，但必须单独规划，不和数据接入混做。
 
 两者关系：
 
@@ -250,7 +274,7 @@ N50 的第一版默认策略：
 | FRED | 必通主路径 | 全球金属价格和宏观代理事实 |
 | BaoStock | 必通主路径 | A 股代表公司行情、成交和估值代理 |
 | UN Comtrade | 可选 | 进出口滞后线索，失败不阻塞 |
-| AKShare | 登记采集器 | 不作为最终事实源，第一版可不启用 |
+| AKShare | 可用采集入口 | 可探测 SHFE / INE / GFEX 等源；N50 第一版未启用，N57 可按 endpoint 结果使用 |
 
 N50 生成的事实库建议放在：
 
@@ -258,22 +282,33 @@ N50 生成的事实库建议放在：
 data/materials/generated/finance/fact-bank/
 ```
 
-N50 第一版已生成：
+事实库主入口固定为：
 
 ```text
 data/materials/generated/finance/fact-bank/dust2-nonferrous/latest.json
+```
+
+N57 不另起 `fact-bank-v2` 平行库，而是在同一路径覆盖升级。当前同目录拆分文件包括：
+
+```text
 data/materials/generated/finance/fact-bank/dust2-nonferrous/fred-facts.json
 data/materials/generated/finance/fact-bank/dust2-nonferrous/baostock-facts.json
+data/materials/generated/finance/fact-bank/dust2-nonferrous/shfe-facts.json
+data/materials/generated/finance/fact-bank/dust2-nonferrous/ine-facts.json
+data/materials/generated/finance/fact-bank/dust2-nonferrous/world-bank-facts.json
 data/materials/generated/finance/fact-bank/dust2-nonferrous/un-comtrade-facts.json
+data/materials/generated/finance/fact-bank/dust2-nonferrous/coverage-report.json
 ```
 
 当前状态：
 
 ```text
-FRED：offline_observation_fact。
-BaoStock：offline_observation_fact。
-UN Comtrade：optional unavailable_observation。
-AKShare：registered_collector_not_used。
+Fact Bank v2：schemaVersion=2，覆盖原 latest.json。
+FRED：当前环境使用旧快照升级保底；联网环境可刷新深度派生指标。
+BaoStock：当前环境使用旧快照升级保底；联网环境可刷新收益窗口、估值和相对基准。
+SHFE / INE：通过 AKShare 访问入口接入，当前环境网络受限时写入 unavailable_observation。
+World Bank：public API 接入，当前环境网络受限时写入 unavailable_observation。
+UN Comtrade：使用 period / flow / direct HTTP fallback，当前环境网络受限时写入 unavailable_observation。
 ```
 
 比赛运行时仍读取：
@@ -285,3 +320,44 @@ data/materials/generated/finance/maps/dust2-nonferrous/round-evidence-packs.json
 但这个 evidence pack 应由 fact bank 派生，而不是只由配置文件派生。后续 agent 看到 `configured_proxy_fact` 时，必须理解它只是兜底脚手架，不代表用户准备的金融数据接口已经真正进入比赛事实层。
 
 N51 以后，`agentOpeningBrief` 不应直接复制 round thesis，而应引用 `agentEvidenceSlice`。N53 以后，裁判不能只因为 evidence 字段存在就给正向金融分，必须输出采信 / 拒绝 / 缺失证据链。
+
+## 10. N57 前置数据源探测补充契约
+
+N57 正式生成 Fact Bank v2 前，必须先运行 source probe（数据源探测），回答“接口是否真实可用、返回什么字段、支持哪个 N56 必需证据键、进入 N57 的决策是什么”。
+
+探测命令：
+
+```powershell
+..\.venv\Scripts\python.exe tools\finance-data\probes\probe_finance_sources.py --map dust2-nonferrous
+node data/materials/scripts/validate-finance-evidence.mjs --map dust2-nonferrous --source-probes
+```
+
+探测产物：
+
+```text
+data/materials/generated/finance/source-probes/dust2-nonferrous/source-probe-report.json
+docs/finance/n57-data-source-probe-report.md
+```
+
+探测必须区分：
+
+```text
+source：事实源，例如 FRED、BaoStock、SHFE、INE、GFEX、World Bank、UN Comtrade。
+collector：采集器，例如 fred_http_api_v1、baostock_python_package_v0、akshare_python_package_v0、world_bank_http_api_v2。
+scenario：金融场景，例如 dust2-nonferrous。
+generated output：探测报告或事实库产物。
+```
+
+N57 前置探测的当前结论：
+
+| source | collector | N57 决策 | 说明 |
+|---|---|---|---|
+| FRED | `fred_http_api_v1` | `ready_for_n57` | 全球金属价格和宏观代理主路径。 |
+| BaoStock | `baostock_python_package_v0` | `ready_for_n57` | A 股公司行情、成交、估值代理主路径。 |
+| SHFE | `akshare_python_package_v0` | `usable_with_cap` | 期货日行情 / 结算可取，仓单 / 库存路径部分失败；N57 fact 需写清 sourcePublisher=SHFE、accessProvider=AKShare。 |
+| INE | `akshare_python_package_v0` | `usable_with_cap` | 国际铜相关行情 / 结算可取，需写清 endpoint 与字段口径。 |
+| GFEX | `akshare_python_package_v0` | `candidate_only` | 碳酸锂 / 工业硅与 Dust2 有色 v1 主线不完全一致，先作候选。 |
+| World Bank | `world_bank_http_api_v2` | `usable_with_cap` | 无 key public API，可做年度宏观代理，不能证明短周期国内供需。 |
+| UN Comtrade | `un_comtrade_python_package_v1` / direct HTTP | `usable_with_cap` | 2025 可能无记录，2024 指定 HS / flow 可返回；滞后贸易线索。 |
+
+任何进入 N57 的 fact 都不得省略来源链。如果通过 AKShare 抽取 SHFE / INE / GFEX，事实必须保留原交易所或行情发布方、接入提供方、采集器、endpoint、字段、日期和变换口径。质量等级由具体 endpoint 与字段稳定性决定，不由“AKShare”这个名字一刀切决定。

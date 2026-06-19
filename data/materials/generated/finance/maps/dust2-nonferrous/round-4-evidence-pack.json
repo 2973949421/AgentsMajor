@@ -1,124 +1,202 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-06-14T16:10:10.840Z",
+  "generatedAt": "2026-06-19T09:28:52.826Z",
   "generator": "finance-evidence-generator-v1",
   "dataMode": "fixture-or-live",
   "mapBindingId": "dust2_nonferrous_industry_judgment_v1",
   "financeMapSlug": "dust2-nonferrous",
   "roundNumber": 4,
   "roundKey": "import_export_proxy",
-  "topicTitle": "进出口数据是否支持供需变化",
-  "defenseThesisFocus": "用可选 UN Comtrade 的铜矿砂、铝土矿、精炼铜等 HS 线索观察贸易趋势。",
-  "attackChallengeFocus": "指出进出口数据滞后，且不能替代国内库存、现货和行业利润。",
+  "topicTitle": "贸易线索与供需判断边界",
+  "decisionQuestion": "在贸易数据可用性有限时，进出口线索是否足以影响未来 1-3 个月有色行业配置判断？",
+  "decisionObject": "铜、铝等有色金属贸易线索与行业配置判断",
+  "horizon": "1-3个月",
+  "benchmark": "沪深300",
+  "allowedStance": [
+    "bullish",
+    "bearish",
+    "neutral",
+    "structural",
+    "conditional_bullish",
+    "conditional_bearish",
+    "no_trade"
+  ],
+  "requiredOutput": [
+    "说明贸易线索是否可用",
+    "说明可用性不足如何限制结论",
+    "给出可交易或不可交易立场",
+    "给出触发条件和后续观察项"
+  ],
+  "requiredEvidenceSchema": [
+    {
+      "requiredKey": "trade_flow_proxy",
+      "requiredForClaimTypes": [
+        "trade_flow_signal",
+        "supply_demand_proxy"
+      ],
+      "minimumFactCount": 1,
+      "preferredSources": [
+        "UN_COMTRADE",
+        "ChinaCustoms"
+      ],
+      "fallbackSources": [
+        "unavailable_observation",
+        "missingEvidence"
+      ],
+      "missingEffect": "贸易数据不可用时，只能形成缺口和降权，不能声称贸易流支持供需结论。",
+      "notWinCondition": true
+    },
+    {
+      "requiredKey": "domestic_inventory_or_spot_proxy",
+      "requiredForClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure"
+      ],
+      "minimumFactCount": 1,
+      "preferredSources": [
+        "SHFE",
+        "NBS"
+      ],
+      "fallbackSources": [
+        "missingEvidence"
+      ],
+      "missingEffect": "缺少国内库存或现货代理时，贸易线索不能升级为完整供需判断。",
+      "notWinCondition": true
+    },
+    {
+      "requiredKey": "commodity_price_context",
+      "requiredForClaimTypes": [
+        "trade_price_consistency"
+      ],
+      "minimumFactCount": 1,
+      "preferredSources": [
+        "FRED"
+      ],
+      "fallbackSources": [
+        "configured_proxy_fact"
+      ],
+      "missingEffect": "缺少价格上下文时，贸易线索无法转化为配置方向。",
+      "notWinCondition": true
+    }
+  ],
+  "challengePolicy": {
+    "mustTargetClaimId": true,
+    "allowedChallengeTypes": [
+      "evidence_gap",
+      "proxy_mismatch",
+      "horizon_mismatch",
+      "alternative_explanation",
+      "reasoning_bridge_break"
+    ],
+    "invalidChallengePatterns": [
+      "把 unavailable_observation 写成真实贸易事实",
+      "只说贸易数据滞后",
+      "不说明滞后如何影响具体主张"
+    ],
+    "missingEvidenceCanOnlyCap": true
+  },
+  "defenseThesisFocus": "立场方需要说明贸易线索的可用性及其对配置判断的有限影响。",
+  "attackChallengeFocus": "挑战方需要指出贸易代理的滞后、缺失或不能替代国内库存与利润的具体断点。",
+  "legacyDefenseThesisFocus": "用可选 UN Comtrade 的铜矿砂、铝土矿、精炼铜等 HS 线索观察贸易趋势。",
+  "legacyAttackChallengeFocus": "指出进出口数据滞后，且不能替代国内库存、现货和行业利润。",
   "requiredSources": [],
   "optionalSources": [
-    "un_comtrade"
+    "un_comtrade",
+    "fred"
   ],
   "facts": [
     {
-      "factId": "F001",
-      "statement": "UN Comtrade HS 260300 (铜矿砂及其精矿) is configured as a lagged trade proxy for 进出口数据是否支持供需变化; it cannot replace China domestic inventory, spot premium, or industry profit evidence.",
+      "factId": "COM001",
+      "statementZh": "UN Comtrade 未能采集 HS 260300（铜矿砂及其精矿）的可用贸易观测：package:2025:M:empty; direct:2025:M:ConnectionError; package:2025:X:empty; direct:2025:X:ConnectionError; package:2024:M:empty; direct:2024:M:ConnectionError; package:2024:X:empty; direct:2024:X:ConnectionError; package:2023:M:empty; direct:2023:M:ConnectionError; package:2023:X:empty; direct:2023:X:ConnectionError。",
       "metricName": "china_import_export_proxy",
       "value": null,
       "unit": "",
-      "period": "configured",
+      "period": "unavailable",
       "source": "UN_COMTRADE",
       "sourceType": "official_api_lagged",
+      "sourcePublisher": "UN Comtrade",
+      "accessProvider": "UN Comtrade API",
       "collector": "un_comtrade_python_package_v1",
-      "evidenceId": "EVID:UN_COMTRADE:trade:260300:china_import_export_proxy:configured:260300:7c909008",
-      "confidence": 0.9,
-      "rawHash": "7c909008",
-      "parserVersion": "finance-evidence-generator-v1",
+      "endpoint": "getFinalData/direct_http_fallback",
+      "evidenceId": "EVID:UN_COMTRADE:trade:260300:china_import_export_proxy:unavailable:260300:39e321f5",
+      "confidence": 0,
+      "rawHash": "39e321f5",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "un-comtrade-hs-codes.json:260300",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "official_api_lagged",
+      "allowedClaimTypes": [
+        "trade_flow_signal",
+        "supply_demand_proxy",
+        "trade_price_consistency",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "domestic_inventory_confirmed",
+        "spot_premium_confirmed",
+        "company_earnings_confirmed",
+        "short_term_supply_demand_confirmed"
+      ],
+      "interpretationHint": "贸易流缺失时，只能形成缺口或 score cap，不能支持贸易流或供需判断。",
+      "scoreCapPolicy": "missing trade flow proxy caps supply-demand and trade-flow claims.",
       "policyNotes": [
         "HS mapping must be reviewed before being used as strong evidence.",
         "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence."
       ],
-      "dataMode": "configured_proxy_fact"
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "package:2025:M:empty; direct:2025:M:ConnectionError; package:2025:X:empty; direct:2025:X:ConnectionError; package:2024:M:empty; direct:2024:M:ConnectionError; package:2024:X:empty; direct:2024:X:ConnectionError; package:2023:M:empty; direct:2023:M:ConnectionError; package:2023:X:empty; direct:2023:X:ConnectionError",
+      "sourceWarning": "UN Comtrade query returned no usable records or failed; do not treat this HS code as observed trade evidence.",
+      "generatedAt": "2026-06-19T09:21:18Z",
+      "statement": "UN Comtrade 未能采集 HS 260300（铜矿砂及其精矿）的可用贸易观测：package:2025:M:empty; direct:2025:M:ConnectionError; package:2025:X:empty; direct:2025:X:ConnectionError; package:2024:M:empty; direct:2024:M:ConnectionError; package:2024:X:empty; direct:2024:X:ConnectionError; package:2023:M:empty; direct:2023:M:ConnectionError; package:2023:X:empty; direct:2023:X:ConnectionError。",
+      "factBankSource": "fact_bank_v2"
     },
     {
-      "factId": "F002",
-      "statement": "UN Comtrade HS 260600 (铝矿砂及其精矿) is configured as a lagged trade proxy for 进出口数据是否支持供需变化; it cannot replace China domestic inventory, spot premium, or industry profit evidence.",
-      "metricName": "china_import_export_proxy",
+      "factId": "SHFE001",
+      "statementZh": "AKShare 未能采集 SHFE 可用期货、结算、库存或仓单观测。",
+      "metricName": "domestic_futures_exchange_proxy",
       "value": null,
       "unit": "",
-      "period": "configured",
-      "source": "UN_COMTRADE",
-      "sourceType": "official_api_lagged",
-      "collector": "un_comtrade_python_package_v1",
-      "evidenceId": "EVID:UN_COMTRADE:trade:260600:china_import_export_proxy:configured:260600:d9ca976e",
-      "confidence": 0.9,
-      "rawHash": "d9ca976e",
-      "parserVersion": "finance-evidence-generator-v1",
-      "originalLocation": "un-comtrade-hs-codes.json:260600",
-      "policyNotes": [
-        "HS mapping must be reviewed before being used as strong evidence.",
-        "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence."
+      "period": "unavailable",
+      "source": "SHFE",
+      "sourceType": "exchange_data_via_named_collector",
+      "sourcePublisher": "SHFE",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "endpoint": "get_shfe_daily:20260619",
+      "evidenceId": "EVID:SHFE:futures:CU/AL/ZN/NI/SN/PB/AU/AG:domestic_futures_exchange_proxy:unavailable:get_shfe_daily:20260619:13fc1ec1",
+      "confidence": 0,
+      "rawHash": "13fc1ec1",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "akshare:get_shfe_daily:20260619:CU/AL/ZN/NI/SN/PB/AU/AG",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "exchange_data_via_named_collector",
+      "allowedClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure",
+        "commodity_price_momentum",
+        "commodity_price_context",
+        "risk_reward",
+        "limited_positive_stance",
+        "limited_negative_stance"
       ],
-      "dataMode": "configured_proxy_fact"
-    },
-    {
-      "factId": "F003",
-      "statement": "UN Comtrade HS 740311 (精炼铜阴极及阴极型材) is configured as a lagged trade proxy for 进出口数据是否支持供需变化; it cannot replace China domestic inventory, spot premium, or industry profit evidence.",
-      "metricName": "china_import_export_proxy",
-      "value": null,
-      "unit": "",
-      "period": "configured",
-      "source": "UN_COMTRADE",
-      "sourceType": "official_api_lagged",
-      "collector": "un_comtrade_python_package_v1",
-      "evidenceId": "EVID:UN_COMTRADE:trade:740311:china_import_export_proxy:configured:740311:4f4ad3a5",
-      "confidence": 0.9,
-      "rawHash": "4f4ad3a5",
-      "parserVersion": "finance-evidence-generator-v1",
-      "originalLocation": "un-comtrade-hs-codes.json:740311",
-      "policyNotes": [
-        "HS mapping must be reviewed before being used as strong evidence.",
-        "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence."
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed",
+        "full_industry_fundamentals_confirmed"
       ],
-      "dataMode": "configured_proxy_fact"
-    },
-    {
-      "factId": "F004",
-      "statement": "UN Comtrade HS 750210 (未锻轧非合金镍) is configured as a lagged trade proxy for 进出口数据是否支持供需变化; it cannot replace China domestic inventory, spot premium, or industry profit evidence.",
-      "metricName": "china_import_export_proxy",
-      "value": null,
-      "unit": "",
-      "period": "configured",
-      "source": "UN_COMTRADE",
-      "sourceType": "official_api_lagged",
-      "collector": "un_comtrade_python_package_v1",
-      "evidenceId": "EVID:UN_COMTRADE:trade:750210:china_import_export_proxy:configured:750210:f2c87bd9",
-      "confidence": 0.9,
-      "rawHash": "f2c87bd9",
-      "parserVersion": "finance-evidence-generator-v1",
-      "originalLocation": "un-comtrade-hs-codes.json:750210",
+      "interpretationHint": "交易所期货或仓单数据缺失时，国内供需、库存或价格代理必须降权。",
+      "scoreCapPolicy": "missing SHFE/INE facts cap China supply-demand and domestic price context claims.",
       "policyNotes": [
-        "HS mapping must be reviewed before being used as strong evidence.",
-        "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence."
+        "AKShare 是访问入口；事实发布方和端点字段必须保留。",
+        "交易所或市场行情代理不能单独证明公司盈利或全行业基本面。"
       ],
-      "dataMode": "configured_proxy_fact"
-    },
-    {
-      "factId": "F005",
-      "statement": "UN Comtrade HS 790111 (含锌量不少于 99.99% 的未锻轧锌) is configured as a lagged trade proxy for 进出口数据是否支持供需变化; it cannot replace China domestic inventory, spot premium, or industry profit evidence.",
-      "metricName": "china_import_export_proxy",
-      "value": null,
-      "unit": "",
-      "period": "configured",
-      "source": "UN_COMTRADE",
-      "sourceType": "official_api_lagged",
-      "collector": "un_comtrade_python_package_v1",
-      "evidenceId": "EVID:UN_COMTRADE:trade:790111:china_import_export_proxy:configured:790111:138261d5",
-      "confidence": 0.9,
-      "rawHash": "138261d5",
-      "parserVersion": "finance-evidence-generator-v1",
-      "originalLocation": "un-comtrade-hs-codes.json:790111",
-      "policyNotes": [
-        "HS mapping must be reviewed before being used as strong evidence.",
-        "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence."
-      ],
-      "dataMode": "configured_proxy_fact"
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "get_shfe_daily:20260619: empty; futures_settle_shfe:20260619: RuntimeError: Traceback (most recent call last):\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\connection.py\", line 204, in _new_conn\n    sock = connection.create_connection(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 85, in create_connection\n    raise err\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 73, in create_connection\n    sock.con; get_receipt: RuntimeError: Traceback (most recent call last):\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\connection.py\", line 204, in _new_conn\n    sock = connection.create_connection(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 85, in create_connection\n    raise err\n  File \"B:\\sharewithlight\\Lege",
+      "sourceWarning": "AKShare futures endpoint failed or returned no usable records; do not treat this as observed exchange evidence.",
+      "generatedAt": "2026-06-19T09:21:13Z",
+      "statement": "AKShare 未能采集 SHFE 可用期货、结算、库存或仓单观测。",
+      "factBankSource": "fact_bank_v2"
     }
   ],
   "missingEvidence": [
@@ -135,29 +213,14 @@
   ],
   "promptFacts": [
     {
-      "factId": "F001",
-      "shortText": "UN Comtrade HS 260300 (铜矿砂及其精矿) is configured as a lagged trade proxy for 进出口数据是否支持供需变化; it cannot replace China domestic inventory, spot premium, or industry profit evidence.",
-      "evidenceId": "EVID:UN_COMTRADE:trade:260300:china_import_export_proxy:configured:260300:7c909008"
+      "factId": "COM001",
+      "shortText": "UN Comtrade 未能采集 HS 260300（铜矿砂及其精矿）的可用贸易观测：package:2025:M:empty; direct:2025:M:ConnectionError; package:2025:X:empty; direct:2025:X:ConnectionError; package:2024:M:empty; direct:2024:M:ConnectionError; package:2024:X:empty; direct:2024:X:ConnectionError; package:2023:M:empty; direct:2023:M:ConnectionError; package:2023:X:empty; direct:2023:X:ConnectionError。",
+      "evidenceId": "EVID:UN_COMTRADE:trade:260300:china_import_export_proxy:unavailable:260300:39e321f5"
     },
     {
-      "factId": "F002",
-      "shortText": "UN Comtrade HS 260600 (铝矿砂及其精矿) is configured as a lagged trade proxy for 进出口数据是否支持供需变化; it cannot replace China domestic inventory, spot premium, or industry profit evidence.",
-      "evidenceId": "EVID:UN_COMTRADE:trade:260600:china_import_export_proxy:configured:260600:d9ca976e"
-    },
-    {
-      "factId": "F003",
-      "shortText": "UN Comtrade HS 740311 (精炼铜阴极及阴极型材) is configured as a lagged trade proxy for 进出口数据是否支持供需变化; it cannot replace China domestic inventory, spot premium, or industry profit evidence.",
-      "evidenceId": "EVID:UN_COMTRADE:trade:740311:china_import_export_proxy:configured:740311:4f4ad3a5"
-    },
-    {
-      "factId": "F004",
-      "shortText": "UN Comtrade HS 750210 (未锻轧非合金镍) is configured as a lagged trade proxy for 进出口数据是否支持供需变化; it cannot replace China domestic inventory, spot premium, or industry profit evidence.",
-      "evidenceId": "EVID:UN_COMTRADE:trade:750210:china_import_export_proxy:configured:750210:f2c87bd9"
-    },
-    {
-      "factId": "F005",
-      "shortText": "UN Comtrade HS 790111 (含锌量不少于 99.99% 的未锻轧锌) is configured as a lagged trade proxy for 进出口数据是否支持供需变化; it cannot replace China domestic inventory, spot premium, or industry profit evidence.",
-      "evidenceId": "EVID:UN_COMTRADE:trade:790111:china_import_export_proxy:configured:790111:138261d5"
+      "factId": "SHFE001",
+      "shortText": "AKShare 未能采集 SHFE 可用期货、结算、库存或仓单观测。",
+      "evidenceId": "EVID:SHFE:futures:CU/AL/ZN/NI/SN/PB/AU/AG:domestic_futures_exchange_proxy:unavailable:get_shfe_daily:20260619:13fc1ec1"
     }
   ],
   "judgeLedger": {
@@ -181,22 +244,25 @@
       "代理事实足以替代完整行业数据库。",
       "HS mapping must be reviewed before being used as strong evidence.",
       "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence.",
-      "HS mapping must be reviewed before being used as strong evidence.",
-      "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence.",
-      "HS mapping must be reviewed before being used as strong evidence.",
-      "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence.",
-      "HS mapping must be reviewed before being used as strong evidence.",
-      "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence.",
-      "HS mapping must be reviewed before being used as strong evidence.",
-      "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence."
+      "AKShare 是访问入口；事实发布方和端点字段必须保留。",
+      "交易所或市场行情代理不能单独证明公司盈利或全行业基本面。"
     ]
   },
   "sideSwapPolicy": {
-    "interpretation": "These six topics define the subject of dispute, not fixed team ownership.",
-    "defenseThesisFocus": "Consumed by whichever team is the current defense side.",
-    "attackChallengeFocus": "Consumed by whichever team is the current attack side.",
+    "interpretation": "These six topics now define investment decision questions, not fixed proof directions.",
+    "stanceSideFocus": "Consumed by whichever team is the current CS defense side in N56 v1; this means stance side, not automatic bullish defense.",
+    "challengeSideFocus": "Consumed by whichever team is the current CS attack side in N56 v1; this means challenge side, not automatic bearish attack.",
+    "defenseThesisFocus": "Legacy compatibility only. Current prompt and audit should prefer decisionQuestion and stanceSideFocus.",
+    "attackChallengeFocus": "Legacy compatibility only. Current prompt and audit should prefer decisionQuestion and challengeSideFocus.",
     "topicIndexFormula": "((mapRoundNumber - 1) % 6) + 1",
-    "sideSwapRule": "When sides swap, the same six topics are reused and proof/challenge responsibilities swap with the current side."
+    "sideSwapRule": "When sides swap, the same six decision questions are reused and stance/challenge responsibilities swap with the current side."
   },
-  "sourceWarnings": []
+  "sourceWarnings": [],
+  "factBankSnapshot": {
+    "schemaVersion": 2,
+    "parserVersion": "finance-fact-bank-collector-v2",
+    "generatedAt": "2026-06-19T09:21:04Z",
+    "consumedFactCount": 2,
+    "fallbackConfiguredFactCount": 0
+  }
 }

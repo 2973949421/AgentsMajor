@@ -1,0 +1,279 @@
+{
+  "sourceId": "world_bank",
+  "collector": "world_bank_http_api_v2",
+  "dataMode": "unavailable_observation",
+  "facts": [
+    {
+      "factId": "WB001",
+      "statementZh": "World Bank 指标 NV.IND.TOTL.KD.ZG（China industry value added growth）未形成年度宏观背景事实：World Bank indicator NV.IND.TOTL.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NV.IND.TOTL.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))。",
+      "metricName": "macro_industry_growth_proxy",
+      "value": null,
+      "unit": "",
+      "period": "unavailable",
+      "source": "WORLD_BANK",
+      "sourceType": "official_api_lagged",
+      "sourcePublisher": "World Bank",
+      "accessProvider": "World Bank Indicators API",
+      "collector": "world_bank_http_api_v2",
+      "endpoint": "country/CHN/indicator/NV.IND.TOTL.KD.ZG",
+      "evidenceId": "EVID:WORLD_BANK:macro:NV.IND.TOTL.KD.ZG:macro_industry_growth_proxy:unavailable:NV.IND.TOTL.KD.ZG:4d34f665",
+      "confidence": 0,
+      "rawHash": "4d34f665",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "world_bank:NV.IND.TOTL.KD.ZG",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "official_api_lagged",
+      "allowedClaimTypes": [
+        "macro_demand",
+        "macro_demand_proxy",
+        "global_cycle_signal",
+        "horizon_context",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "short_term_china_spot_supply_demand",
+        "inventory_pressure_confirmed",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "World Bank 指标缺失时，宏观背景或全球周期判断必须降权。",
+      "scoreCapPolicy": "missing annual macro background caps macro demand and global cycle claims.",
+      "policyNotes": [
+        "World Bank indicators are generally annual or lagged and cannot prove 1-3 month domestic nonferrous supply-demand by themselves.",
+        "World Bank macro data can support background context and score caps, not company earnings confirmation."
+      ],
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "World Bank indicator NV.IND.TOTL.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NV.IND.TOTL.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+      "sourceWarning": "World Bank indicator unavailable; do not treat this macro proxy as observed evidence.",
+      "generatedAt": "2026-06-19T09:21:18Z"
+    },
+    {
+      "factId": "WB002",
+      "statementZh": "World Bank 指标 NV.IND.MANF.KD.ZG（China manufacturing value added growth）未形成年度宏观背景事实：World Bank indicator NV.IND.MANF.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NV.IND.MANF.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))。",
+      "metricName": "macro_manufacturing_growth_proxy",
+      "value": null,
+      "unit": "",
+      "period": "unavailable",
+      "source": "WORLD_BANK",
+      "sourceType": "official_api_lagged",
+      "sourcePublisher": "World Bank",
+      "accessProvider": "World Bank Indicators API",
+      "collector": "world_bank_http_api_v2",
+      "endpoint": "country/CHN/indicator/NV.IND.MANF.KD.ZG",
+      "evidenceId": "EVID:WORLD_BANK:macro:NV.IND.MANF.KD.ZG:macro_manufacturing_growth_proxy:unavailable:NV.IND.MANF.KD.ZG:bee91ef7",
+      "confidence": 0,
+      "rawHash": "bee91ef7",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "world_bank:NV.IND.MANF.KD.ZG",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "official_api_lagged",
+      "allowedClaimTypes": [
+        "macro_demand",
+        "macro_demand_proxy",
+        "global_cycle_signal",
+        "horizon_context",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "short_term_china_spot_supply_demand",
+        "inventory_pressure_confirmed",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "World Bank 指标缺失时，宏观背景或全球周期判断必须降权。",
+      "scoreCapPolicy": "missing annual macro background caps macro demand and global cycle claims.",
+      "policyNotes": [
+        "World Bank indicators are generally annual or lagged and cannot prove 1-3 month domestic nonferrous supply-demand by themselves.",
+        "World Bank macro data can support background context and score caps, not company earnings confirmation."
+      ],
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "World Bank indicator NV.IND.MANF.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NV.IND.MANF.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+      "sourceWarning": "World Bank indicator unavailable; do not treat this macro proxy as observed evidence.",
+      "generatedAt": "2026-06-19T09:21:18Z"
+    },
+    {
+      "factId": "WB003",
+      "statementZh": "World Bank 指标 NE.GDI.FTOT.KD.ZG（China gross fixed capital formation growth）未形成年度宏观背景事实：World Bank indicator NE.GDI.FTOT.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NE.GDI.FTOT.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))。",
+      "metricName": "macro_fixed_investment_growth_proxy",
+      "value": null,
+      "unit": "",
+      "period": "unavailable",
+      "source": "WORLD_BANK",
+      "sourceType": "official_api_lagged",
+      "sourcePublisher": "World Bank",
+      "accessProvider": "World Bank Indicators API",
+      "collector": "world_bank_http_api_v2",
+      "endpoint": "country/CHN/indicator/NE.GDI.FTOT.KD.ZG",
+      "evidenceId": "EVID:WORLD_BANK:macro:NE.GDI.FTOT.KD.ZG:macro_fixed_investment_growth_proxy:unavailable:NE.GDI.FTOT.KD.ZG:3727ad39",
+      "confidence": 0,
+      "rawHash": "3727ad39",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "world_bank:NE.GDI.FTOT.KD.ZG",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "official_api_lagged",
+      "allowedClaimTypes": [
+        "macro_demand",
+        "macro_demand_proxy",
+        "global_cycle_signal",
+        "horizon_context",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "short_term_china_spot_supply_demand",
+        "inventory_pressure_confirmed",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "World Bank 指标缺失时，宏观背景或全球周期判断必须降权。",
+      "scoreCapPolicy": "missing annual macro background caps macro demand and global cycle claims.",
+      "policyNotes": [
+        "World Bank indicators are generally annual or lagged and cannot prove 1-3 month domestic nonferrous supply-demand by themselves.",
+        "World Bank macro data can support background context and score caps, not company earnings confirmation."
+      ],
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "World Bank indicator NE.GDI.FTOT.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NE.GDI.FTOT.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+      "sourceWarning": "World Bank indicator unavailable; do not treat this macro proxy as observed evidence.",
+      "generatedAt": "2026-06-19T09:21:18Z"
+    },
+    {
+      "factId": "WB004",
+      "statementZh": "World Bank 指标 NY.GDP.MKTP.KD.ZG（China GDP growth）未形成年度宏观背景事实：World Bank indicator NY.GDP.MKTP.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NY.GDP.MKTP.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))。",
+      "metricName": "macro_gdp_growth_proxy",
+      "value": null,
+      "unit": "",
+      "period": "unavailable",
+      "source": "WORLD_BANK",
+      "sourceType": "official_api_lagged",
+      "sourcePublisher": "World Bank",
+      "accessProvider": "World Bank Indicators API",
+      "collector": "world_bank_http_api_v2",
+      "endpoint": "country/CHN/indicator/NY.GDP.MKTP.KD.ZG",
+      "evidenceId": "EVID:WORLD_BANK:macro:NY.GDP.MKTP.KD.ZG:macro_gdp_growth_proxy:unavailable:NY.GDP.MKTP.KD.ZG:50b7e7df",
+      "confidence": 0,
+      "rawHash": "50b7e7df",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "world_bank:NY.GDP.MKTP.KD.ZG",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "official_api_lagged",
+      "allowedClaimTypes": [
+        "macro_demand",
+        "macro_demand_proxy",
+        "global_cycle_signal",
+        "horizon_context",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "short_term_china_spot_supply_demand",
+        "inventory_pressure_confirmed",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "World Bank 指标缺失时，宏观背景或全球周期判断必须降权。",
+      "scoreCapPolicy": "missing annual macro background caps macro demand and global cycle claims.",
+      "policyNotes": [
+        "World Bank indicators are generally annual or lagged and cannot prove 1-3 month domestic nonferrous supply-demand by themselves.",
+        "World Bank macro data can support background context and score caps, not company earnings confirmation."
+      ],
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "World Bank indicator NY.GDP.MKTP.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NY.GDP.MKTP.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+      "sourceWarning": "World Bank indicator unavailable; do not treat this macro proxy as observed evidence.",
+      "generatedAt": "2026-06-19T09:21:18Z"
+    },
+    {
+      "factId": "WB005",
+      "statementZh": "World Bank 指标 TX.VAL.MRCH.CD.WT（China merchandise exports）未形成年度宏观背景事实：World Bank indicator TX.VAL.MRCH.CD.WT unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/TX.VAL.MRCH.CD.WT?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))。",
+      "metricName": "macro_trade_export_proxy",
+      "value": null,
+      "unit": "",
+      "period": "unavailable",
+      "source": "WORLD_BANK",
+      "sourceType": "official_api_lagged",
+      "sourcePublisher": "World Bank",
+      "accessProvider": "World Bank Indicators API",
+      "collector": "world_bank_http_api_v2",
+      "endpoint": "country/CHN/indicator/TX.VAL.MRCH.CD.WT",
+      "evidenceId": "EVID:WORLD_BANK:macro:TX.VAL.MRCH.CD.WT:macro_trade_export_proxy:unavailable:TX.VAL.MRCH.CD.WT:113ce1c9",
+      "confidence": 0,
+      "rawHash": "113ce1c9",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "world_bank:TX.VAL.MRCH.CD.WT",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "official_api_lagged",
+      "allowedClaimTypes": [
+        "macro_demand",
+        "macro_demand_proxy",
+        "global_cycle_signal",
+        "horizon_context",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "short_term_china_spot_supply_demand",
+        "inventory_pressure_confirmed",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "World Bank 指标缺失时，宏观背景或全球周期判断必须降权。",
+      "scoreCapPolicy": "missing annual macro background caps macro demand and global cycle claims.",
+      "policyNotes": [
+        "World Bank indicators are generally annual or lagged and cannot prove 1-3 month domestic nonferrous supply-demand by themselves.",
+        "World Bank macro data can support background context and score caps, not company earnings confirmation."
+      ],
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "World Bank indicator TX.VAL.MRCH.CD.WT unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/TX.VAL.MRCH.CD.WT?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+      "sourceWarning": "World Bank indicator unavailable; do not treat this macro proxy as observed evidence.",
+      "generatedAt": "2026-06-19T09:21:18Z"
+    },
+    {
+      "factId": "WB006",
+      "statementZh": "World Bank 指标 TM.VAL.MRCH.CD.WT（China merchandise imports）未形成年度宏观背景事实：World Bank indicator TM.VAL.MRCH.CD.WT unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/TM.VAL.MRCH.CD.WT?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))。",
+      "metricName": "macro_trade_import_proxy",
+      "value": null,
+      "unit": "",
+      "period": "unavailable",
+      "source": "WORLD_BANK",
+      "sourceType": "official_api_lagged",
+      "sourcePublisher": "World Bank",
+      "accessProvider": "World Bank Indicators API",
+      "collector": "world_bank_http_api_v2",
+      "endpoint": "country/CHN/indicator/TM.VAL.MRCH.CD.WT",
+      "evidenceId": "EVID:WORLD_BANK:macro:TM.VAL.MRCH.CD.WT:macro_trade_import_proxy:unavailable:TM.VAL.MRCH.CD.WT:e348867c",
+      "confidence": 0,
+      "rawHash": "e348867c",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "world_bank:TM.VAL.MRCH.CD.WT",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "official_api_lagged",
+      "allowedClaimTypes": [
+        "macro_demand",
+        "macro_demand_proxy",
+        "global_cycle_signal",
+        "horizon_context",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "short_term_china_spot_supply_demand",
+        "inventory_pressure_confirmed",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "World Bank 指标缺失时，宏观背景或全球周期判断必须降权。",
+      "scoreCapPolicy": "missing annual macro background caps macro demand and global cycle claims.",
+      "policyNotes": [
+        "World Bank indicators are generally annual or lagged and cannot prove 1-3 month domestic nonferrous supply-demand by themselves.",
+        "World Bank macro data can support background context and score caps, not company earnings confirmation."
+      ],
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "World Bank indicator TM.VAL.MRCH.CD.WT unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/TM.VAL.MRCH.CD.WT?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+      "sourceWarning": "World Bank indicator unavailable; do not treat this macro proxy as observed evidence.",
+      "generatedAt": "2026-06-19T09:21:18Z"
+    }
+  ],
+  "warnings": [
+    "World Bank indicator NV.IND.TOTL.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NV.IND.TOTL.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+    "World Bank indicator NV.IND.MANF.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NV.IND.MANF.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+    "World Bank indicator NE.GDI.FTOT.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NE.GDI.FTOT.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+    "World Bank indicator NY.GDP.MKTP.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NY.GDP.MKTP.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+    "World Bank indicator TX.VAL.MRCH.CD.WT unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/TX.VAL.MRCH.CD.WT?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+    "World Bank indicator TM.VAL.MRCH.CD.WT unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/TM.VAL.MRCH.CD.WT?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))"
+  ]
+}

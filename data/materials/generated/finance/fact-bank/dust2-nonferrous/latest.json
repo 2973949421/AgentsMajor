@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 1,
-  "generatedAt": "2026-06-15T14:19:26Z",
-  "parserVersion": "finance-fact-bank-collector-v1",
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-19T09:21:04Z",
+  "parserVersion": "finance-fact-bank-collector-v2",
   "mapBindingId": "dust2_nonferrous_industry_judgment_v1",
   "financeMapSlug": "dust2-nonferrous",
   "dataMode": "offline_fact_bank_snapshot",
@@ -17,14 +17,47 @@
       "collector": "fred_http_api_v1",
       "dataMode": "offline_observation_fact",
       "factCount": 4,
-      "warnings": []
+      "warnings": [
+        "Current run could not refresh this source; upgraded prior snapshot facts were retained to avoid overwriting usable local evidence with unavailable placeholders."
+      ]
     },
     {
       "sourceId": "baostock",
       "collector": "baostock_python_package_v0",
       "dataMode": "offline_observation_fact",
       "factCount": 5,
-      "warnings": []
+      "warnings": [
+        "Current run could not refresh this source; upgraded prior snapshot facts were retained to avoid overwriting usable local evidence with unavailable placeholders."
+      ]
+    },
+    {
+      "sourceId": "akshare_futures",
+      "collector": "akshare_python_package_v0",
+      "dataMode": "unavailable_observation",
+      "factCount": 2,
+      "warnings": [
+        "get_shfe_daily:20260619: empty; futures_settle_shfe:20260619: RuntimeError: Traceback (most recent call last):\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\connection.py\", line 204, in _new_conn\n    sock = connection.create_connection(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 85, in create_connection\n    raise err\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 73, in create_connection\n    sock.con; get_receipt: RuntimeError: Traceback (most recent call last):\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\connection.py\", line 204, in _new_conn\n    sock = connection.create_connection(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 85, in create_connection\n    raise err\n  File \"B:\\sharewithlight\\Lege",
+        "futures_settle_ine:20260619: RuntimeError: Traceback (most recent call last):\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\connection.py\", line 204, in _new_conn\n    sock = connection.create_connection(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 85, in create_connection\n    raise err\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 73, in create_connection\n    sock.con; futures_zh_daily_sina:BC0: RuntimeError: Traceback (most recent call last):\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\connection.py\", line 204, in _new_conn\n    sock = connection.create_connection(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 85, in create_connection\n    raise err\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib"
+      ],
+      "candidateOnly": {
+        "sourceId": "GFEX",
+        "reason": "GFEX LC/SI 与 Dust2 有色铜铝锌镍主线不是完全同一资产，N57 只保留 candidate status。",
+        "accessProvider": "AKShare"
+      }
+    },
+    {
+      "sourceId": "world_bank",
+      "collector": "world_bank_http_api_v2",
+      "dataMode": "unavailable_observation",
+      "factCount": 6,
+      "warnings": [
+        "World Bank indicator NV.IND.TOTL.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NV.IND.TOTL.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+        "World Bank indicator NV.IND.MANF.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NV.IND.MANF.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+        "World Bank indicator NE.GDI.FTOT.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NE.GDI.FTOT.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+        "World Bank indicator NY.GDP.MKTP.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NY.GDP.MKTP.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+        "World Bank indicator TX.VAL.MRCH.CD.WT unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/TX.VAL.MRCH.CD.WT?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+        "World Bank indicator TM.VAL.MRCH.CD.WT unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/TM.VAL.MRCH.CD.WT?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))"
+      ]
     },
     {
       "sourceId": "un_comtrade",
@@ -32,20 +65,11 @@
       "dataMode": "unavailable_observation",
       "factCount": 5,
       "warnings": [
-        "UN Comtrade HS 260300 unavailable: ValueError",
-        "UN Comtrade HS 260600 unavailable: ValueError",
-        "UN Comtrade HS 740311 unavailable: ValueError",
-        "UN Comtrade HS 750210 unavailable: ValueError",
-        "UN Comtrade HS 790111 unavailable: ValueError"
-      ]
-    },
-    {
-      "sourceId": "akshare",
-      "collector": "akshare_python_package_v0",
-      "dataMode": "registered_collector_not_used",
-      "factCount": 0,
-      "warnings": [
-        "AKShare is registered as a collector candidate only. It is not used as a final fact source in N50."
+        "UN Comtrade HS 260300 unavailable: package:2025:M:empty; direct:2025:M:ConnectionError; package:2025:X:empty; direct:2025:X:ConnectionError; package:2024:M:empty; direct:2024:M:ConnectionError; package:2024:X:empty; direct:2024:X:ConnectionError; package:2023:M:empty; direct:2023:M:ConnectionError; package:2023:X:empty; direct:2023:X:ConnectionError",
+        "UN Comtrade HS 260600 unavailable: package:2025:M:empty; direct:2025:M:ConnectionError; package:2025:X:empty; direct:2025:X:ConnectionError; package:2024:M:empty; direct:2024:M:ConnectionError; package:2024:X:empty; direct:2024:X:ConnectionError; package:2023:M:empty; direct:2023:M:ConnectionError; package:2023:X:empty; direct:2023:X:ConnectionError",
+        "UN Comtrade HS 740311 unavailable: package:2025:M:empty; direct:2025:M:ConnectionError; package:2025:X:empty; direct:2025:X:ConnectionError; package:2024:M:empty; direct:2024:M:ConnectionError; package:2024:X:empty; direct:2024:X:ConnectionError; package:2023:M:empty; direct:2023:M:ConnectionError; package:2023:X:empty; direct:2023:X:ConnectionError",
+        "UN Comtrade HS 750210 unavailable: package:2025:M:empty; direct:2025:M:ConnectionError; package:2025:X:empty; direct:2025:X:ConnectionError; package:2024:M:empty; direct:2024:M:ConnectionError; package:2024:X:empty; direct:2024:X:ConnectionError; package:2023:M:empty; direct:2023:M:ConnectionError; package:2023:X:empty; direct:2023:X:ConnectionError",
+        "UN Comtrade HS 790111 unavailable: package:2025:M:empty; direct:2025:M:ConnectionError; package:2025:X:empty; direct:2025:X:ConnectionError; package:2024:M:empty; direct:2024:M:ConnectionError; package:2024:X:empty; direct:2024:X:ConnectionError; package:2023:M:empty; direct:2023:M:ConnectionError; package:2023:X:empty; direct:2023:X:ConnectionError"
       ]
     }
   ],
@@ -63,7 +87,7 @@
       "evidenceId": "EVID:FRED:commodity:PCOPPUSDM:global_price_of_copper:2026-05-01:PCOPPUSDM:351a511a",
       "confidence": 0.95,
       "rawHash": "351a511a",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "fred:PCOPPUSDM:2026-05-01",
       "policyNotes": [
         "These series are global price proxies.",
@@ -76,7 +100,28 @@
       "commodity": "copper",
       "lookbackObservationCount": 36,
       "trendDirection": "up",
-      "lookbackChangePct": 60.59
+      "lookbackChangePct": 60.59,
+      "sourcePublisher": "FRED",
+      "accessProvider": "FRED API",
+      "endpoint": "legacy_snapshot:series/observations",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "official_api",
+      "allowedClaimTypes": [
+        "commodity_trend",
+        "commodity_price_momentum",
+        "valuation_vs_commodity_signal",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持全球商品价格动量，不能证明国内供需或公司盈利。",
+      "scoreCapPolicy": "legacy FRED snapshot caps domestic supply-demand and equity transmission claims unless paired with N57 facts.",
+      "legacySnapshotFallback": true
     },
     {
       "factId": "FRED002",
@@ -91,7 +136,7 @@
       "evidenceId": "EVID:FRED:commodity:PALUMUSDM:global_price_of_aluminum:2026-05-01:PALUMUSDM:086757c8",
       "confidence": 0.95,
       "rawHash": "086757c8",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "fred:PALUMUSDM:2026-05-01",
       "policyNotes": [
         "These series are global price proxies.",
@@ -104,7 +149,28 @@
       "commodity": "aluminum",
       "lookbackObservationCount": 36,
       "trendDirection": "up",
-      "lookbackChangePct": 67.25
+      "lookbackChangePct": 67.25,
+      "sourcePublisher": "FRED",
+      "accessProvider": "FRED API",
+      "endpoint": "legacy_snapshot:series/observations",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "official_api",
+      "allowedClaimTypes": [
+        "commodity_trend",
+        "commodity_price_momentum",
+        "valuation_vs_commodity_signal",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持全球商品价格动量，不能证明国内供需或公司盈利。",
+      "scoreCapPolicy": "legacy FRED snapshot caps domestic supply-demand and equity transmission claims unless paired with N57 facts.",
+      "legacySnapshotFallback": true
     },
     {
       "factId": "FRED003",
@@ -119,7 +185,7 @@
       "evidenceId": "EVID:FRED:commodity:PNICKUSDM:global_price_of_nickel:2026-05-01:PNICKUSDM:62d38773",
       "confidence": 0.95,
       "rawHash": "62d38773",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "fred:PNICKUSDM:2026-05-01",
       "policyNotes": [
         "These series are global price proxies.",
@@ -132,7 +198,28 @@
       "commodity": "nickel",
       "lookbackObservationCount": 36,
       "trendDirection": "down",
-      "lookbackChangePct": -11.09
+      "lookbackChangePct": -11.09,
+      "sourcePublisher": "FRED",
+      "accessProvider": "FRED API",
+      "endpoint": "legacy_snapshot:series/observations",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "official_api",
+      "allowedClaimTypes": [
+        "commodity_trend",
+        "commodity_price_momentum",
+        "valuation_vs_commodity_signal",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持全球商品价格动量，不能证明国内供需或公司盈利。",
+      "scoreCapPolicy": "legacy FRED snapshot caps domestic supply-demand and equity transmission claims unless paired with N57 facts.",
+      "legacySnapshotFallback": true
     },
     {
       "factId": "FRED004",
@@ -147,7 +234,7 @@
       "evidenceId": "EVID:FRED:commodity:PZINCUSDM:global_price_of_zinc:2026-05-01:PZINCUSDM:cd2d4a96",
       "confidence": 0.95,
       "rawHash": "cd2d4a96",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "fred:PZINCUSDM:2026-05-01",
       "policyNotes": [
         "These series are global price proxies.",
@@ -160,7 +247,28 @@
       "commodity": "zinc",
       "lookbackObservationCount": 36,
       "trendDirection": "up",
-      "lookbackChangePct": 45.57
+      "lookbackChangePct": 45.57,
+      "sourcePublisher": "FRED",
+      "accessProvider": "FRED API",
+      "endpoint": "legacy_snapshot:series/observations",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "official_api",
+      "allowedClaimTypes": [
+        "commodity_trend",
+        "commodity_price_momentum",
+        "valuation_vs_commodity_signal",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持全球商品价格动量，不能证明国内供需或公司盈利。",
+      "scoreCapPolicy": "legacy FRED snapshot caps domestic supply-demand and equity transmission claims unless paired with N57 facts.",
+      "legacySnapshotFallback": true
     },
     {
       "factId": "BAO001",
@@ -175,7 +283,7 @@
       "evidenceId": "EVID:BAOSTOCK:stock:sh.601899:representative_company_market_proxy:2025-10-20..2026-06-15:sh.601899:2e6ad25a",
       "confidence": 0.75,
       "rawHash": "2e6ad25a",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "baostock:sh.601899:2026-06-15",
       "policyNotes": [
         "This universe supports market reaction and valuation proxy only.",
@@ -193,7 +301,28 @@
       "latestAmount": 17720187950.24,
       "latestVolume": 571475639.0,
       "peTTM": 13.495802,
-      "pbMRQ": 4.220283
+      "pbMRQ": 4.220283,
+      "sourcePublisher": "BaoStock",
+      "accessProvider": "BaoStock Python package",
+      "endpoint": "legacy_snapshot:query_history_k_data_plus",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "market_data_proxy",
+      "allowedClaimTypes": [
+        "a_share_relative_performance",
+        "market_confirmation",
+        "valuation_support",
+        "price_in_assessment",
+        "commodity_to_equity_transmission"
+      ],
+      "notAllowedClaimTypes": [
+        "industry_fundamentals_confirmed",
+        "company_earnings_confirmed",
+        "china_supply_demand",
+        "inventory_pressure"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持 A 股市场反应和估值代理，不能证明行业基本面。",
+      "scoreCapPolicy": "legacy BaoStock snapshot caps A-share allocation claims unless paired with commodity and risk facts.",
+      "legacySnapshotFallback": true
     },
     {
       "factId": "BAO002",
@@ -208,7 +337,7 @@
       "evidenceId": "EVID:BAOSTOCK:stock:sh.600362:representative_company_market_proxy:2025-10-20..2026-06-15:sh.600362:b21a5834",
       "confidence": 0.75,
       "rawHash": "b21a5834",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "baostock:sh.600362:2026-06-15",
       "policyNotes": [
         "This universe supports market reaction and valuation proxy only.",
@@ -226,7 +355,28 @@
       "latestAmount": 4273438033.29,
       "latestVolume": 92320649.0,
       "peTTM": 20.511349,
-      "pbMRQ": 1.949762
+      "pbMRQ": 1.949762,
+      "sourcePublisher": "BaoStock",
+      "accessProvider": "BaoStock Python package",
+      "endpoint": "legacy_snapshot:query_history_k_data_plus",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "market_data_proxy",
+      "allowedClaimTypes": [
+        "a_share_relative_performance",
+        "market_confirmation",
+        "valuation_support",
+        "price_in_assessment",
+        "commodity_to_equity_transmission"
+      ],
+      "notAllowedClaimTypes": [
+        "industry_fundamentals_confirmed",
+        "company_earnings_confirmed",
+        "china_supply_demand",
+        "inventory_pressure"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持 A 股市场反应和估值代理，不能证明行业基本面。",
+      "scoreCapPolicy": "legacy BaoStock snapshot caps A-share allocation claims unless paired with commodity and risk facts.",
+      "legacySnapshotFallback": true
     },
     {
       "factId": "BAO003",
@@ -241,7 +391,7 @@
       "evidenceId": "EVID:BAOSTOCK:stock:sh.601600:representative_company_market_proxy:2025-10-20..2026-06-15:sh.601600:b5f1e046",
       "confidence": 0.75,
       "rawHash": "b5f1e046",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "baostock:sh.601600:2026-06-15",
       "policyNotes": [
         "This universe supports market reaction and valuation proxy only.",
@@ -259,7 +409,28 @@
       "latestAmount": 4348846898.99,
       "latestVolume": 405938084.0,
       "peTTM": 12.480886,
-      "pbMRQ": 2.269739
+      "pbMRQ": 2.269739,
+      "sourcePublisher": "BaoStock",
+      "accessProvider": "BaoStock Python package",
+      "endpoint": "legacy_snapshot:query_history_k_data_plus",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "market_data_proxy",
+      "allowedClaimTypes": [
+        "a_share_relative_performance",
+        "market_confirmation",
+        "valuation_support",
+        "price_in_assessment",
+        "commodity_to_equity_transmission"
+      ],
+      "notAllowedClaimTypes": [
+        "industry_fundamentals_confirmed",
+        "company_earnings_confirmed",
+        "china_supply_demand",
+        "inventory_pressure"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持 A 股市场反应和估值代理，不能证明行业基本面。",
+      "scoreCapPolicy": "legacy BaoStock snapshot caps A-share allocation claims unless paired with commodity and risk facts.",
+      "legacySnapshotFallback": true
     },
     {
       "factId": "BAO004",
@@ -274,7 +445,7 @@
       "evidenceId": "EVID:BAOSTOCK:stock:sz.000630:representative_company_market_proxy:2025-10-20..2026-06-15:sz.000630:05280a4e",
       "confidence": 0.75,
       "rawHash": "05280a4e",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "baostock:sz.000630:2026-06-15",
       "policyNotes": [
         "This universe supports market reaction and valuation proxy only.",
@@ -292,7 +463,28 @@
       "latestAmount": 9342479559.09,
       "latestVolume": 1246720995.0,
       "peTTM": 39.058457,
-      "pbMRQ": 2.740178
+      "pbMRQ": 2.740178,
+      "sourcePublisher": "BaoStock",
+      "accessProvider": "BaoStock Python package",
+      "endpoint": "legacy_snapshot:query_history_k_data_plus",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "market_data_proxy",
+      "allowedClaimTypes": [
+        "a_share_relative_performance",
+        "market_confirmation",
+        "valuation_support",
+        "price_in_assessment",
+        "commodity_to_equity_transmission"
+      ],
+      "notAllowedClaimTypes": [
+        "industry_fundamentals_confirmed",
+        "company_earnings_confirmed",
+        "china_supply_demand",
+        "inventory_pressure"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持 A 股市场反应和估值代理，不能证明行业基本面。",
+      "scoreCapPolicy": "legacy BaoStock snapshot caps A-share allocation claims unless paired with commodity and risk facts.",
+      "legacySnapshotFallback": true
     },
     {
       "factId": "BAO005",
@@ -307,7 +499,7 @@
       "evidenceId": "EVID:BAOSTOCK:stock:sz.000878:representative_company_market_proxy:2025-10-20..2026-06-15:sz.000878:2c640bfe",
       "confidence": 0.75,
       "rawHash": "2c640bfe",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "baostock:sz.000878:2026-06-15",
       "policyNotes": [
         "This universe supports market reaction and valuation proxy only.",
@@ -325,134 +517,610 @@
       "latestAmount": 1868004093.7,
       "latestVolume": 104384373.0,
       "peTTM": 32.72242,
-      "pbMRQ": 2.39911
+      "pbMRQ": 2.39911,
+      "sourcePublisher": "BaoStock",
+      "accessProvider": "BaoStock Python package",
+      "endpoint": "legacy_snapshot:query_history_k_data_plus",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "market_data_proxy",
+      "allowedClaimTypes": [
+        "a_share_relative_performance",
+        "market_confirmation",
+        "valuation_support",
+        "price_in_assessment",
+        "commodity_to_equity_transmission"
+      ],
+      "notAllowedClaimTypes": [
+        "industry_fundamentals_confirmed",
+        "company_earnings_confirmed",
+        "china_supply_demand",
+        "inventory_pressure"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持 A 股市场反应和估值代理，不能证明行业基本面。",
+      "scoreCapPolicy": "legacy BaoStock snapshot caps A-share allocation claims unless paired with commodity and risk facts.",
+      "legacySnapshotFallback": true
+    },
+    {
+      "factId": "SHFE001",
+      "statementZh": "AKShare 未能采集 SHFE 可用期货、结算、库存或仓单观测。",
+      "metricName": "domestic_futures_exchange_proxy",
+      "value": null,
+      "unit": "",
+      "period": "unavailable",
+      "source": "SHFE",
+      "sourceType": "exchange_data_via_named_collector",
+      "sourcePublisher": "SHFE",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "endpoint": "get_shfe_daily:20260619",
+      "evidenceId": "EVID:SHFE:futures:CU/AL/ZN/NI/SN/PB/AU/AG:domestic_futures_exchange_proxy:unavailable:get_shfe_daily:20260619:13fc1ec1",
+      "confidence": 0,
+      "rawHash": "13fc1ec1",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "akshare:get_shfe_daily:20260619:CU/AL/ZN/NI/SN/PB/AU/AG",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "exchange_data_via_named_collector",
+      "allowedClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure",
+        "commodity_price_momentum",
+        "commodity_price_context",
+        "risk_reward",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed",
+        "full_industry_fundamentals_confirmed"
+      ],
+      "interpretationHint": "交易所期货或仓单数据缺失时，国内供需、库存或价格代理必须降权。",
+      "scoreCapPolicy": "missing SHFE/INE facts cap China supply-demand and domestic price context claims.",
+      "policyNotes": [
+        "AKShare 是访问入口；事实发布方和端点字段必须保留。",
+        "交易所或市场行情代理不能单独证明公司盈利或全行业基本面。"
+      ],
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "get_shfe_daily:20260619: empty; futures_settle_shfe:20260619: RuntimeError: Traceback (most recent call last):\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\connection.py\", line 204, in _new_conn\n    sock = connection.create_connection(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 85, in create_connection\n    raise err\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 73, in create_connection\n    sock.con; get_receipt: RuntimeError: Traceback (most recent call last):\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\connection.py\", line 204, in _new_conn\n    sock = connection.create_connection(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 85, in create_connection\n    raise err\n  File \"B:\\sharewithlight\\Lege",
+      "sourceWarning": "AKShare futures endpoint failed or returned no usable records; do not treat this as observed exchange evidence.",
+      "generatedAt": "2026-06-19T09:21:13Z"
+    },
+    {
+      "factId": "INE001",
+      "statementZh": "AKShare 未能采集 INE 国际铜可用期货观测。",
+      "metricName": "international_copper_futures_proxy",
+      "value": null,
+      "unit": "",
+      "period": "unavailable",
+      "source": "INE",
+      "sourceType": "exchange_data_via_named_collector",
+      "sourcePublisher": "INE",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "endpoint": "futures_settle_ine:20260619",
+      "evidenceId": "EVID:INE:futures:BC:international_copper_futures_proxy:unavailable:futures_settle_ine:20260619:293a3883",
+      "confidence": 0,
+      "rawHash": "293a3883",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "akshare:futures_settle_ine:20260619:BC",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "exchange_data_via_named_collector",
+      "allowedClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure",
+        "commodity_price_momentum",
+        "commodity_price_context",
+        "risk_reward",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed",
+        "full_industry_fundamentals_confirmed"
+      ],
+      "interpretationHint": "交易所期货或仓单数据缺失时，国内供需、库存或价格代理必须降权。",
+      "scoreCapPolicy": "missing SHFE/INE facts cap China supply-demand and domestic price context claims.",
+      "policyNotes": [
+        "AKShare 是访问入口；事实发布方和端点字段必须保留。",
+        "交易所或市场行情代理不能单独证明公司盈利或全行业基本面。"
+      ],
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "futures_settle_ine:20260619: RuntimeError: Traceback (most recent call last):\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\connection.py\", line 204, in _new_conn\n    sock = connection.create_connection(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 85, in create_connection\n    raise err\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 73, in create_connection\n    sock.con; futures_zh_daily_sina:BC0: RuntimeError: Traceback (most recent call last):\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\connection.py\", line 204, in _new_conn\n    sock = connection.create_connection(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 85, in create_connection\n    raise err\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib",
+      "sourceWarning": "AKShare futures endpoint failed or returned no usable records; do not treat this as observed exchange evidence.",
+      "generatedAt": "2026-06-19T09:21:18Z"
+    },
+    {
+      "factId": "WB001",
+      "statementZh": "World Bank 指标 NV.IND.TOTL.KD.ZG（China industry value added growth）未形成年度宏观背景事实：World Bank indicator NV.IND.TOTL.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NV.IND.TOTL.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))。",
+      "metricName": "macro_industry_growth_proxy",
+      "value": null,
+      "unit": "",
+      "period": "unavailable",
+      "source": "WORLD_BANK",
+      "sourceType": "official_api_lagged",
+      "sourcePublisher": "World Bank",
+      "accessProvider": "World Bank Indicators API",
+      "collector": "world_bank_http_api_v2",
+      "endpoint": "country/CHN/indicator/NV.IND.TOTL.KD.ZG",
+      "evidenceId": "EVID:WORLD_BANK:macro:NV.IND.TOTL.KD.ZG:macro_industry_growth_proxy:unavailable:NV.IND.TOTL.KD.ZG:4d34f665",
+      "confidence": 0,
+      "rawHash": "4d34f665",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "world_bank:NV.IND.TOTL.KD.ZG",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "official_api_lagged",
+      "allowedClaimTypes": [
+        "macro_demand",
+        "macro_demand_proxy",
+        "global_cycle_signal",
+        "horizon_context",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "short_term_china_spot_supply_demand",
+        "inventory_pressure_confirmed",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "World Bank 指标缺失时，宏观背景或全球周期判断必须降权。",
+      "scoreCapPolicy": "missing annual macro background caps macro demand and global cycle claims.",
+      "policyNotes": [
+        "World Bank indicators are generally annual or lagged and cannot prove 1-3 month domestic nonferrous supply-demand by themselves.",
+        "World Bank macro data can support background context and score caps, not company earnings confirmation."
+      ],
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "World Bank indicator NV.IND.TOTL.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NV.IND.TOTL.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+      "sourceWarning": "World Bank indicator unavailable; do not treat this macro proxy as observed evidence.",
+      "generatedAt": "2026-06-19T09:21:18Z"
+    },
+    {
+      "factId": "WB002",
+      "statementZh": "World Bank 指标 NV.IND.MANF.KD.ZG（China manufacturing value added growth）未形成年度宏观背景事实：World Bank indicator NV.IND.MANF.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NV.IND.MANF.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))。",
+      "metricName": "macro_manufacturing_growth_proxy",
+      "value": null,
+      "unit": "",
+      "period": "unavailable",
+      "source": "WORLD_BANK",
+      "sourceType": "official_api_lagged",
+      "sourcePublisher": "World Bank",
+      "accessProvider": "World Bank Indicators API",
+      "collector": "world_bank_http_api_v2",
+      "endpoint": "country/CHN/indicator/NV.IND.MANF.KD.ZG",
+      "evidenceId": "EVID:WORLD_BANK:macro:NV.IND.MANF.KD.ZG:macro_manufacturing_growth_proxy:unavailable:NV.IND.MANF.KD.ZG:bee91ef7",
+      "confidence": 0,
+      "rawHash": "bee91ef7",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "world_bank:NV.IND.MANF.KD.ZG",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "official_api_lagged",
+      "allowedClaimTypes": [
+        "macro_demand",
+        "macro_demand_proxy",
+        "global_cycle_signal",
+        "horizon_context",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "short_term_china_spot_supply_demand",
+        "inventory_pressure_confirmed",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "World Bank 指标缺失时，宏观背景或全球周期判断必须降权。",
+      "scoreCapPolicy": "missing annual macro background caps macro demand and global cycle claims.",
+      "policyNotes": [
+        "World Bank indicators are generally annual or lagged and cannot prove 1-3 month domestic nonferrous supply-demand by themselves.",
+        "World Bank macro data can support background context and score caps, not company earnings confirmation."
+      ],
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "World Bank indicator NV.IND.MANF.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NV.IND.MANF.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+      "sourceWarning": "World Bank indicator unavailable; do not treat this macro proxy as observed evidence.",
+      "generatedAt": "2026-06-19T09:21:18Z"
+    },
+    {
+      "factId": "WB003",
+      "statementZh": "World Bank 指标 NE.GDI.FTOT.KD.ZG（China gross fixed capital formation growth）未形成年度宏观背景事实：World Bank indicator NE.GDI.FTOT.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NE.GDI.FTOT.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))。",
+      "metricName": "macro_fixed_investment_growth_proxy",
+      "value": null,
+      "unit": "",
+      "period": "unavailable",
+      "source": "WORLD_BANK",
+      "sourceType": "official_api_lagged",
+      "sourcePublisher": "World Bank",
+      "accessProvider": "World Bank Indicators API",
+      "collector": "world_bank_http_api_v2",
+      "endpoint": "country/CHN/indicator/NE.GDI.FTOT.KD.ZG",
+      "evidenceId": "EVID:WORLD_BANK:macro:NE.GDI.FTOT.KD.ZG:macro_fixed_investment_growth_proxy:unavailable:NE.GDI.FTOT.KD.ZG:3727ad39",
+      "confidence": 0,
+      "rawHash": "3727ad39",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "world_bank:NE.GDI.FTOT.KD.ZG",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "official_api_lagged",
+      "allowedClaimTypes": [
+        "macro_demand",
+        "macro_demand_proxy",
+        "global_cycle_signal",
+        "horizon_context",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "short_term_china_spot_supply_demand",
+        "inventory_pressure_confirmed",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "World Bank 指标缺失时，宏观背景或全球周期判断必须降权。",
+      "scoreCapPolicy": "missing annual macro background caps macro demand and global cycle claims.",
+      "policyNotes": [
+        "World Bank indicators are generally annual or lagged and cannot prove 1-3 month domestic nonferrous supply-demand by themselves.",
+        "World Bank macro data can support background context and score caps, not company earnings confirmation."
+      ],
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "World Bank indicator NE.GDI.FTOT.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NE.GDI.FTOT.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+      "sourceWarning": "World Bank indicator unavailable; do not treat this macro proxy as observed evidence.",
+      "generatedAt": "2026-06-19T09:21:18Z"
+    },
+    {
+      "factId": "WB004",
+      "statementZh": "World Bank 指标 NY.GDP.MKTP.KD.ZG（China GDP growth）未形成年度宏观背景事实：World Bank indicator NY.GDP.MKTP.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NY.GDP.MKTP.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))。",
+      "metricName": "macro_gdp_growth_proxy",
+      "value": null,
+      "unit": "",
+      "period": "unavailable",
+      "source": "WORLD_BANK",
+      "sourceType": "official_api_lagged",
+      "sourcePublisher": "World Bank",
+      "accessProvider": "World Bank Indicators API",
+      "collector": "world_bank_http_api_v2",
+      "endpoint": "country/CHN/indicator/NY.GDP.MKTP.KD.ZG",
+      "evidenceId": "EVID:WORLD_BANK:macro:NY.GDP.MKTP.KD.ZG:macro_gdp_growth_proxy:unavailable:NY.GDP.MKTP.KD.ZG:50b7e7df",
+      "confidence": 0,
+      "rawHash": "50b7e7df",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "world_bank:NY.GDP.MKTP.KD.ZG",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "official_api_lagged",
+      "allowedClaimTypes": [
+        "macro_demand",
+        "macro_demand_proxy",
+        "global_cycle_signal",
+        "horizon_context",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "short_term_china_spot_supply_demand",
+        "inventory_pressure_confirmed",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "World Bank 指标缺失时，宏观背景或全球周期判断必须降权。",
+      "scoreCapPolicy": "missing annual macro background caps macro demand and global cycle claims.",
+      "policyNotes": [
+        "World Bank indicators are generally annual or lagged and cannot prove 1-3 month domestic nonferrous supply-demand by themselves.",
+        "World Bank macro data can support background context and score caps, not company earnings confirmation."
+      ],
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "World Bank indicator NY.GDP.MKTP.KD.ZG unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/NY.GDP.MKTP.KD.ZG?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+      "sourceWarning": "World Bank indicator unavailable; do not treat this macro proxy as observed evidence.",
+      "generatedAt": "2026-06-19T09:21:18Z"
+    },
+    {
+      "factId": "WB005",
+      "statementZh": "World Bank 指标 TX.VAL.MRCH.CD.WT（China merchandise exports）未形成年度宏观背景事实：World Bank indicator TX.VAL.MRCH.CD.WT unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/TX.VAL.MRCH.CD.WT?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))。",
+      "metricName": "macro_trade_export_proxy",
+      "value": null,
+      "unit": "",
+      "period": "unavailable",
+      "source": "WORLD_BANK",
+      "sourceType": "official_api_lagged",
+      "sourcePublisher": "World Bank",
+      "accessProvider": "World Bank Indicators API",
+      "collector": "world_bank_http_api_v2",
+      "endpoint": "country/CHN/indicator/TX.VAL.MRCH.CD.WT",
+      "evidenceId": "EVID:WORLD_BANK:macro:TX.VAL.MRCH.CD.WT:macro_trade_export_proxy:unavailable:TX.VAL.MRCH.CD.WT:113ce1c9",
+      "confidence": 0,
+      "rawHash": "113ce1c9",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "world_bank:TX.VAL.MRCH.CD.WT",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "official_api_lagged",
+      "allowedClaimTypes": [
+        "macro_demand",
+        "macro_demand_proxy",
+        "global_cycle_signal",
+        "horizon_context",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "short_term_china_spot_supply_demand",
+        "inventory_pressure_confirmed",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "World Bank 指标缺失时，宏观背景或全球周期判断必须降权。",
+      "scoreCapPolicy": "missing annual macro background caps macro demand and global cycle claims.",
+      "policyNotes": [
+        "World Bank indicators are generally annual or lagged and cannot prove 1-3 month domestic nonferrous supply-demand by themselves.",
+        "World Bank macro data can support background context and score caps, not company earnings confirmation."
+      ],
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "World Bank indicator TX.VAL.MRCH.CD.WT unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/TX.VAL.MRCH.CD.WT?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+      "sourceWarning": "World Bank indicator unavailable; do not treat this macro proxy as observed evidence.",
+      "generatedAt": "2026-06-19T09:21:18Z"
+    },
+    {
+      "factId": "WB006",
+      "statementZh": "World Bank 指标 TM.VAL.MRCH.CD.WT（China merchandise imports）未形成年度宏观背景事实：World Bank indicator TM.VAL.MRCH.CD.WT unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/TM.VAL.MRCH.CD.WT?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))。",
+      "metricName": "macro_trade_import_proxy",
+      "value": null,
+      "unit": "",
+      "period": "unavailable",
+      "source": "WORLD_BANK",
+      "sourceType": "official_api_lagged",
+      "sourcePublisher": "World Bank",
+      "accessProvider": "World Bank Indicators API",
+      "collector": "world_bank_http_api_v2",
+      "endpoint": "country/CHN/indicator/TM.VAL.MRCH.CD.WT",
+      "evidenceId": "EVID:WORLD_BANK:macro:TM.VAL.MRCH.CD.WT:macro_trade_import_proxy:unavailable:TM.VAL.MRCH.CD.WT:e348867c",
+      "confidence": 0,
+      "rawHash": "e348867c",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "world_bank:TM.VAL.MRCH.CD.WT",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "official_api_lagged",
+      "allowedClaimTypes": [
+        "macro_demand",
+        "macro_demand_proxy",
+        "global_cycle_signal",
+        "horizon_context",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "short_term_china_spot_supply_demand",
+        "inventory_pressure_confirmed",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "World Bank 指标缺失时，宏观背景或全球周期判断必须降权。",
+      "scoreCapPolicy": "missing annual macro background caps macro demand and global cycle claims.",
+      "policyNotes": [
+        "World Bank indicators are generally annual or lagged and cannot prove 1-3 month domestic nonferrous supply-demand by themselves.",
+        "World Bank macro data can support background context and score caps, not company earnings confirmation."
+      ],
+      "dataMode": "unavailable_observation",
+      "unavailableReason": "World Bank indicator TM.VAL.MRCH.CD.WT unavailable: ConnectionError: HTTPSConnectionPool(host='api.worldbank.org', port=443): Max retries exceeded with url: /v2/country/CHN/indicator/TM.VAL.MRCH.CD.WT?format=json&date=2016%3A2026&per_page=1000 (Caused by NewConnectionError(\"HTTPSConnection(host='api.worldbank.org', port=443): Failed to establish a new connection: [WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。\"))",
+      "sourceWarning": "World Bank indicator unavailable; do not treat this macro proxy as observed evidence.",
+      "generatedAt": "2026-06-19T09:21:18Z"
     },
     {
       "factId": "COM001",
-      "statementZh": "UN Comtrade 未能采集 HS 260300（铜矿砂及其精矿）的可用观测。",
+      "statementZh": "UN Comtrade 未能采集 HS 260300（铜矿砂及其精矿）的可用贸易观测：package:2025:M:empty; direct:2025:M:ConnectionError; package:2025:X:empty; direct:2025:X:ConnectionError; package:2024:M:empty; direct:2024:M:ConnectionError; package:2024:X:empty; direct:2024:X:ConnectionError; package:2023:M:empty; direct:2023:M:ConnectionError; package:2023:X:empty; direct:2023:X:ConnectionError。",
       "metricName": "china_import_export_proxy",
       "value": null,
       "unit": "",
       "period": "unavailable",
       "source": "UN_COMTRADE",
       "sourceType": "official_api_lagged",
+      "sourcePublisher": "UN Comtrade",
+      "accessProvider": "UN Comtrade API",
       "collector": "un_comtrade_python_package_v1",
-      "evidenceId": "EVID:UN_COMTRADE:trade:260300:china_import_export_proxy:unavailable:260300:0f458faa",
+      "endpoint": "getFinalData/direct_http_fallback",
+      "evidenceId": "EVID:UN_COMTRADE:trade:260300:china_import_export_proxy:unavailable:260300:39e321f5",
       "confidence": 0,
-      "rawHash": "0f458faa",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "rawHash": "39e321f5",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "un-comtrade-hs-codes.json:260300",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "official_api_lagged",
+      "allowedClaimTypes": [
+        "trade_flow_signal",
+        "supply_demand_proxy",
+        "trade_price_consistency",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "domestic_inventory_confirmed",
+        "spot_premium_confirmed",
+        "company_earnings_confirmed",
+        "short_term_supply_demand_confirmed"
+      ],
+      "interpretationHint": "贸易流缺失时，只能形成缺口或 score cap，不能支持贸易流或供需判断。",
+      "scoreCapPolicy": "missing trade flow proxy caps supply-demand and trade-flow claims.",
       "policyNotes": [
         "HS mapping must be reviewed before being used as strong evidence.",
         "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence."
       ],
       "dataMode": "unavailable_observation",
-      "unavailableReason": "UN Comtrade HS 260300 unavailable: ValueError",
-      "sourceWarning": "UN Comtrade query failed; do not treat this HS code as observed evidence.",
-      "generatedAt": "2026-06-15T14:19:52Z"
+      "unavailableReason": "package:2025:M:empty; direct:2025:M:ConnectionError; package:2025:X:empty; direct:2025:X:ConnectionError; package:2024:M:empty; direct:2024:M:ConnectionError; package:2024:X:empty; direct:2024:X:ConnectionError; package:2023:M:empty; direct:2023:M:ConnectionError; package:2023:X:empty; direct:2023:X:ConnectionError",
+      "sourceWarning": "UN Comtrade query returned no usable records or failed; do not treat this HS code as observed trade evidence.",
+      "generatedAt": "2026-06-19T09:21:18Z"
     },
     {
       "factId": "COM002",
-      "statementZh": "UN Comtrade 未能采集 HS 260600（铝矿砂及其精矿）的可用观测。",
+      "statementZh": "UN Comtrade 未能采集 HS 260600（铝矿砂及其精矿）的可用贸易观测：package:2025:M:empty; direct:2025:M:ConnectionError; package:2025:X:empty; direct:2025:X:ConnectionError; package:2024:M:empty; direct:2024:M:ConnectionError; package:2024:X:empty; direct:2024:X:ConnectionError; package:2023:M:empty; direct:2023:M:ConnectionError; package:2023:X:empty; direct:2023:X:ConnectionError。",
       "metricName": "china_import_export_proxy",
       "value": null,
       "unit": "",
       "period": "unavailable",
       "source": "UN_COMTRADE",
       "sourceType": "official_api_lagged",
+      "sourcePublisher": "UN Comtrade",
+      "accessProvider": "UN Comtrade API",
       "collector": "un_comtrade_python_package_v1",
-      "evidenceId": "EVID:UN_COMTRADE:trade:260600:china_import_export_proxy:unavailable:260600:833c4f53",
+      "endpoint": "getFinalData/direct_http_fallback",
+      "evidenceId": "EVID:UN_COMTRADE:trade:260600:china_import_export_proxy:unavailable:260600:2eaacb9f",
       "confidence": 0,
-      "rawHash": "833c4f53",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "rawHash": "2eaacb9f",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "un-comtrade-hs-codes.json:260600",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "official_api_lagged",
+      "allowedClaimTypes": [
+        "trade_flow_signal",
+        "supply_demand_proxy",
+        "trade_price_consistency",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "domestic_inventory_confirmed",
+        "spot_premium_confirmed",
+        "company_earnings_confirmed",
+        "short_term_supply_demand_confirmed"
+      ],
+      "interpretationHint": "贸易流缺失时，只能形成缺口或 score cap，不能支持贸易流或供需判断。",
+      "scoreCapPolicy": "missing trade flow proxy caps supply-demand and trade-flow claims.",
       "policyNotes": [
         "HS mapping must be reviewed before being used as strong evidence.",
         "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence."
       ],
       "dataMode": "unavailable_observation",
-      "unavailableReason": "UN Comtrade HS 260600 unavailable: ValueError",
-      "sourceWarning": "UN Comtrade query failed; do not treat this HS code as observed evidence.",
-      "generatedAt": "2026-06-15T14:19:54Z"
+      "unavailableReason": "package:2025:M:empty; direct:2025:M:ConnectionError; package:2025:X:empty; direct:2025:X:ConnectionError; package:2024:M:empty; direct:2024:M:ConnectionError; package:2024:X:empty; direct:2024:X:ConnectionError; package:2023:M:empty; direct:2023:M:ConnectionError; package:2023:X:empty; direct:2023:X:ConnectionError",
+      "sourceWarning": "UN Comtrade query returned no usable records or failed; do not treat this HS code as observed trade evidence.",
+      "generatedAt": "2026-06-19T09:21:18Z"
     },
     {
       "factId": "COM003",
-      "statementZh": "UN Comtrade 未能采集 HS 740311（精炼铜阴极及阴极型材）的可用观测。",
+      "statementZh": "UN Comtrade 未能采集 HS 740311（精炼铜阴极及阴极型材）的可用贸易观测：package:2025:M:empty; direct:2025:M:ConnectionError; package:2025:X:empty; direct:2025:X:ConnectionError; package:2024:M:empty; direct:2024:M:ConnectionError; package:2024:X:empty; direct:2024:X:ConnectionError; package:2023:M:empty; direct:2023:M:ConnectionError; package:2023:X:empty; direct:2023:X:ConnectionError。",
       "metricName": "china_import_export_proxy",
       "value": null,
       "unit": "",
       "period": "unavailable",
       "source": "UN_COMTRADE",
       "sourceType": "official_api_lagged",
+      "sourcePublisher": "UN Comtrade",
+      "accessProvider": "UN Comtrade API",
       "collector": "un_comtrade_python_package_v1",
-      "evidenceId": "EVID:UN_COMTRADE:trade:740311:china_import_export_proxy:unavailable:740311:83f92349",
+      "endpoint": "getFinalData/direct_http_fallback",
+      "evidenceId": "EVID:UN_COMTRADE:trade:740311:china_import_export_proxy:unavailable:740311:df40e625",
       "confidence": 0,
-      "rawHash": "83f92349",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "rawHash": "df40e625",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "un-comtrade-hs-codes.json:740311",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "official_api_lagged",
+      "allowedClaimTypes": [
+        "trade_flow_signal",
+        "supply_demand_proxy",
+        "trade_price_consistency",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "domestic_inventory_confirmed",
+        "spot_premium_confirmed",
+        "company_earnings_confirmed",
+        "short_term_supply_demand_confirmed"
+      ],
+      "interpretationHint": "贸易流缺失时，只能形成缺口或 score cap，不能支持贸易流或供需判断。",
+      "scoreCapPolicy": "missing trade flow proxy caps supply-demand and trade-flow claims.",
       "policyNotes": [
         "HS mapping must be reviewed before being used as strong evidence.",
         "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence."
       ],
       "dataMode": "unavailable_observation",
-      "unavailableReason": "UN Comtrade HS 740311 unavailable: ValueError",
-      "sourceWarning": "UN Comtrade query failed; do not treat this HS code as observed evidence.",
-      "generatedAt": "2026-06-15T14:19:56Z"
+      "unavailableReason": "package:2025:M:empty; direct:2025:M:ConnectionError; package:2025:X:empty; direct:2025:X:ConnectionError; package:2024:M:empty; direct:2024:M:ConnectionError; package:2024:X:empty; direct:2024:X:ConnectionError; package:2023:M:empty; direct:2023:M:ConnectionError; package:2023:X:empty; direct:2023:X:ConnectionError",
+      "sourceWarning": "UN Comtrade query returned no usable records or failed; do not treat this HS code as observed trade evidence.",
+      "generatedAt": "2026-06-19T09:21:19Z"
     },
     {
       "factId": "COM004",
-      "statementZh": "UN Comtrade 未能采集 HS 750210（未锻轧非合金镍）的可用观测。",
+      "statementZh": "UN Comtrade 未能采集 HS 750210（未锻轧非合金镍）的可用贸易观测：package:2025:M:empty; direct:2025:M:ConnectionError; package:2025:X:empty; direct:2025:X:ConnectionError; package:2024:M:empty; direct:2024:M:ConnectionError; package:2024:X:empty; direct:2024:X:ConnectionError; package:2023:M:empty; direct:2023:M:ConnectionError; package:2023:X:empty; direct:2023:X:ConnectionError。",
       "metricName": "china_import_export_proxy",
       "value": null,
       "unit": "",
       "period": "unavailable",
       "source": "UN_COMTRADE",
       "sourceType": "official_api_lagged",
+      "sourcePublisher": "UN Comtrade",
+      "accessProvider": "UN Comtrade API",
       "collector": "un_comtrade_python_package_v1",
-      "evidenceId": "EVID:UN_COMTRADE:trade:750210:china_import_export_proxy:unavailable:750210:a09e329d",
+      "endpoint": "getFinalData/direct_http_fallback",
+      "evidenceId": "EVID:UN_COMTRADE:trade:750210:china_import_export_proxy:unavailable:750210:7f759824",
       "confidence": 0,
-      "rawHash": "a09e329d",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "rawHash": "7f759824",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "un-comtrade-hs-codes.json:750210",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "official_api_lagged",
+      "allowedClaimTypes": [
+        "trade_flow_signal",
+        "supply_demand_proxy",
+        "trade_price_consistency",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "domestic_inventory_confirmed",
+        "spot_premium_confirmed",
+        "company_earnings_confirmed",
+        "short_term_supply_demand_confirmed"
+      ],
+      "interpretationHint": "贸易流缺失时，只能形成缺口或 score cap，不能支持贸易流或供需判断。",
+      "scoreCapPolicy": "missing trade flow proxy caps supply-demand and trade-flow claims.",
       "policyNotes": [
         "HS mapping must be reviewed before being used as strong evidence.",
         "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence."
       ],
       "dataMode": "unavailable_observation",
-      "unavailableReason": "UN Comtrade HS 750210 unavailable: ValueError",
-      "sourceWarning": "UN Comtrade query failed; do not treat this HS code as observed evidence.",
-      "generatedAt": "2026-06-15T14:19:58Z"
+      "unavailableReason": "package:2025:M:empty; direct:2025:M:ConnectionError; package:2025:X:empty; direct:2025:X:ConnectionError; package:2024:M:empty; direct:2024:M:ConnectionError; package:2024:X:empty; direct:2024:X:ConnectionError; package:2023:M:empty; direct:2023:M:ConnectionError; package:2023:X:empty; direct:2023:X:ConnectionError",
+      "sourceWarning": "UN Comtrade query returned no usable records or failed; do not treat this HS code as observed trade evidence.",
+      "generatedAt": "2026-06-19T09:21:19Z"
     },
     {
       "factId": "COM005",
-      "statementZh": "UN Comtrade 未能采集 HS 790111（含锌量不少于 99.99% 的未锻轧锌）的可用观测。",
+      "statementZh": "UN Comtrade 未能采集 HS 790111（含锌量不少于 99.99% 的未锻轧锌）的可用贸易观测：package:2025:M:empty; direct:2025:M:ConnectionError; package:2025:X:empty; direct:2025:X:ConnectionError; package:2024:M:empty; direct:2024:M:ConnectionError; package:2024:X:empty; direct:2024:X:ConnectionError; package:2023:M:empty; direct:2023:M:ConnectionError; package:2023:X:empty; direct:2023:X:ConnectionError。",
       "metricName": "china_import_export_proxy",
       "value": null,
       "unit": "",
       "period": "unavailable",
       "source": "UN_COMTRADE",
       "sourceType": "official_api_lagged",
+      "sourcePublisher": "UN Comtrade",
+      "accessProvider": "UN Comtrade API",
       "collector": "un_comtrade_python_package_v1",
-      "evidenceId": "EVID:UN_COMTRADE:trade:790111:china_import_export_proxy:unavailable:790111:41a26410",
+      "endpoint": "getFinalData/direct_http_fallback",
+      "evidenceId": "EVID:UN_COMTRADE:trade:790111:china_import_export_proxy:unavailable:790111:a1aa7a07",
       "confidence": 0,
-      "rawHash": "41a26410",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "rawHash": "a1aa7a07",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "un-comtrade-hs-codes.json:790111",
+      "transform": "unavailable_observation",
+      "reliabilityTier": "official_api_lagged",
+      "allowedClaimTypes": [
+        "trade_flow_signal",
+        "supply_demand_proxy",
+        "trade_price_consistency",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "domestic_inventory_confirmed",
+        "spot_premium_confirmed",
+        "company_earnings_confirmed",
+        "short_term_supply_demand_confirmed"
+      ],
+      "interpretationHint": "贸易流缺失时，只能形成缺口或 score cap，不能支持贸易流或供需判断。",
+      "scoreCapPolicy": "missing trade flow proxy caps supply-demand and trade-flow claims.",
       "policyNotes": [
         "HS mapping must be reviewed before being used as strong evidence.",
         "UN Comtrade is lagged and cannot replace domestic inventory or spot premium evidence."
       ],
       "dataMode": "unavailable_observation",
-      "unavailableReason": "UN Comtrade HS 790111 unavailable: ValueError",
-      "sourceWarning": "UN Comtrade query failed; do not treat this HS code as observed evidence.",
-      "generatedAt": "2026-06-15T14:20:00Z"
+      "unavailableReason": "package:2025:M:empty; direct:2025:M:ConnectionError; package:2025:X:empty; direct:2025:X:ConnectionError; package:2024:M:empty; direct:2024:M:ConnectionError; package:2024:X:empty; direct:2024:X:ConnectionError; package:2023:M:empty; direct:2023:M:ConnectionError; package:2023:X:empty; direct:2023:X:ConnectionError",
+      "sourceWarning": "UN Comtrade query returned no usable records or failed; do not treat this HS code as observed trade evidence.",
+      "generatedAt": "2026-06-19T09:21:19Z"
     }
   ],
   "policyNotes": [
-    "N50 fact bank is a low-frequency audit snapshot, not a high-frequency market data system.",
+    "N57 Fact Bank v2 overwrites the existing Dust2 nonferrous fact bank path; it is not a parallel library.",
     "FRED supports global metal price proxies only.",
-    "BaoStock supports A-share market and valuation proxies only.",
-    "UN Comtrade is optional and lagged.",
-    "AKShare is registered but not used as a final source."
+    "BaoStock supports A-share market, valuation and liquidity proxies only.",
+    "AKShare is an access provider / collector; SHFE and INE remain the source publishers for exchange facts.",
+    "World Bank supports annual macro background only and is lagged.",
+    "UN Comtrade is optional, lagged, and must not replace domestic inventory or spot evidence."
   ]
 }

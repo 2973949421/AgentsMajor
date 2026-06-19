@@ -16,7 +16,7 @@
       "evidenceId": "EVID:BAOSTOCK:stock:sh.601899:representative_company_market_proxy:2025-10-20..2026-06-15:sh.601899:2e6ad25a",
       "confidence": 0.75,
       "rawHash": "2e6ad25a",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "baostock:sh.601899:2026-06-15",
       "policyNotes": [
         "This universe supports market reaction and valuation proxy only.",
@@ -34,7 +34,28 @@
       "latestAmount": 17720187950.24,
       "latestVolume": 571475639.0,
       "peTTM": 13.495802,
-      "pbMRQ": 4.220283
+      "pbMRQ": 4.220283,
+      "sourcePublisher": "BaoStock",
+      "accessProvider": "BaoStock Python package",
+      "endpoint": "legacy_snapshot:query_history_k_data_plus",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "market_data_proxy",
+      "allowedClaimTypes": [
+        "a_share_relative_performance",
+        "market_confirmation",
+        "valuation_support",
+        "price_in_assessment",
+        "commodity_to_equity_transmission"
+      ],
+      "notAllowedClaimTypes": [
+        "industry_fundamentals_confirmed",
+        "company_earnings_confirmed",
+        "china_supply_demand",
+        "inventory_pressure"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持 A 股市场反应和估值代理，不能证明行业基本面。",
+      "scoreCapPolicy": "legacy BaoStock snapshot caps A-share allocation claims unless paired with commodity and risk facts.",
+      "legacySnapshotFallback": true
     },
     {
       "factId": "BAO002",
@@ -49,7 +70,7 @@
       "evidenceId": "EVID:BAOSTOCK:stock:sh.600362:representative_company_market_proxy:2025-10-20..2026-06-15:sh.600362:b21a5834",
       "confidence": 0.75,
       "rawHash": "b21a5834",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "baostock:sh.600362:2026-06-15",
       "policyNotes": [
         "This universe supports market reaction and valuation proxy only.",
@@ -67,7 +88,28 @@
       "latestAmount": 4273438033.29,
       "latestVolume": 92320649.0,
       "peTTM": 20.511349,
-      "pbMRQ": 1.949762
+      "pbMRQ": 1.949762,
+      "sourcePublisher": "BaoStock",
+      "accessProvider": "BaoStock Python package",
+      "endpoint": "legacy_snapshot:query_history_k_data_plus",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "market_data_proxy",
+      "allowedClaimTypes": [
+        "a_share_relative_performance",
+        "market_confirmation",
+        "valuation_support",
+        "price_in_assessment",
+        "commodity_to_equity_transmission"
+      ],
+      "notAllowedClaimTypes": [
+        "industry_fundamentals_confirmed",
+        "company_earnings_confirmed",
+        "china_supply_demand",
+        "inventory_pressure"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持 A 股市场反应和估值代理，不能证明行业基本面。",
+      "scoreCapPolicy": "legacy BaoStock snapshot caps A-share allocation claims unless paired with commodity and risk facts.",
+      "legacySnapshotFallback": true
     },
     {
       "factId": "BAO003",
@@ -82,7 +124,7 @@
       "evidenceId": "EVID:BAOSTOCK:stock:sh.601600:representative_company_market_proxy:2025-10-20..2026-06-15:sh.601600:b5f1e046",
       "confidence": 0.75,
       "rawHash": "b5f1e046",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "baostock:sh.601600:2026-06-15",
       "policyNotes": [
         "This universe supports market reaction and valuation proxy only.",
@@ -100,7 +142,28 @@
       "latestAmount": 4348846898.99,
       "latestVolume": 405938084.0,
       "peTTM": 12.480886,
-      "pbMRQ": 2.269739
+      "pbMRQ": 2.269739,
+      "sourcePublisher": "BaoStock",
+      "accessProvider": "BaoStock Python package",
+      "endpoint": "legacy_snapshot:query_history_k_data_plus",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "market_data_proxy",
+      "allowedClaimTypes": [
+        "a_share_relative_performance",
+        "market_confirmation",
+        "valuation_support",
+        "price_in_assessment",
+        "commodity_to_equity_transmission"
+      ],
+      "notAllowedClaimTypes": [
+        "industry_fundamentals_confirmed",
+        "company_earnings_confirmed",
+        "china_supply_demand",
+        "inventory_pressure"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持 A 股市场反应和估值代理，不能证明行业基本面。",
+      "scoreCapPolicy": "legacy BaoStock snapshot caps A-share allocation claims unless paired with commodity and risk facts.",
+      "legacySnapshotFallback": true
     },
     {
       "factId": "BAO004",
@@ -115,7 +178,7 @@
       "evidenceId": "EVID:BAOSTOCK:stock:sz.000630:representative_company_market_proxy:2025-10-20..2026-06-15:sz.000630:05280a4e",
       "confidence": 0.75,
       "rawHash": "05280a4e",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "baostock:sz.000630:2026-06-15",
       "policyNotes": [
         "This universe supports market reaction and valuation proxy only.",
@@ -133,7 +196,28 @@
       "latestAmount": 9342479559.09,
       "latestVolume": 1246720995.0,
       "peTTM": 39.058457,
-      "pbMRQ": 2.740178
+      "pbMRQ": 2.740178,
+      "sourcePublisher": "BaoStock",
+      "accessProvider": "BaoStock Python package",
+      "endpoint": "legacy_snapshot:query_history_k_data_plus",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "market_data_proxy",
+      "allowedClaimTypes": [
+        "a_share_relative_performance",
+        "market_confirmation",
+        "valuation_support",
+        "price_in_assessment",
+        "commodity_to_equity_transmission"
+      ],
+      "notAllowedClaimTypes": [
+        "industry_fundamentals_confirmed",
+        "company_earnings_confirmed",
+        "china_supply_demand",
+        "inventory_pressure"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持 A 股市场反应和估值代理，不能证明行业基本面。",
+      "scoreCapPolicy": "legacy BaoStock snapshot caps A-share allocation claims unless paired with commodity and risk facts.",
+      "legacySnapshotFallback": true
     },
     {
       "factId": "BAO005",
@@ -148,7 +232,7 @@
       "evidenceId": "EVID:BAOSTOCK:stock:sz.000878:representative_company_market_proxy:2025-10-20..2026-06-15:sz.000878:2c640bfe",
       "confidence": 0.75,
       "rawHash": "2c640bfe",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "baostock:sz.000878:2026-06-15",
       "policyNotes": [
         "This universe supports market reaction and valuation proxy only.",
@@ -166,8 +250,31 @@
       "latestAmount": 1868004093.7,
       "latestVolume": 104384373.0,
       "peTTM": 32.72242,
-      "pbMRQ": 2.39911
+      "pbMRQ": 2.39911,
+      "sourcePublisher": "BaoStock",
+      "accessProvider": "BaoStock Python package",
+      "endpoint": "legacy_snapshot:query_history_k_data_plus",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "market_data_proxy",
+      "allowedClaimTypes": [
+        "a_share_relative_performance",
+        "market_confirmation",
+        "valuation_support",
+        "price_in_assessment",
+        "commodity_to_equity_transmission"
+      ],
+      "notAllowedClaimTypes": [
+        "industry_fundamentals_confirmed",
+        "company_earnings_confirmed",
+        "china_supply_demand",
+        "inventory_pressure"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持 A 股市场反应和估值代理，不能证明行业基本面。",
+      "scoreCapPolicy": "legacy BaoStock snapshot caps A-share allocation claims unless paired with commodity and risk facts.",
+      "legacySnapshotFallback": true
     }
   ],
-  "warnings": []
+  "warnings": [
+    "Current run could not refresh this source; upgraded prior snapshot facts were retained to avoid overwriting usable local evidence with unavailable placeholders."
+  ]
 }

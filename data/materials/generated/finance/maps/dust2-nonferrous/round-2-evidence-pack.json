@@ -1,15 +1,101 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-06-14T16:10:10.840Z",
+  "generatedAt": "2026-06-19T09:28:52.826Z",
   "generator": "finance-evidence-generator-v1",
   "dataMode": "fixture-or-live",
   "mapBindingId": "dust2_nonferrous_industry_judgment_v1",
   "financeMapSlug": "dust2-nonferrous",
   "roundNumber": 2,
   "roundKey": "a_share_market_reaction",
-  "topicTitle": "A 股有色代表公司是否已经反映价格预期",
-  "defenseThesisFocus": "用代表公司股价、成交和估值变化说明市场正在反映价格预期。",
-  "attackChallengeFocus": "指出市场表现不能证明行业基本面，也可能只是风险偏好或资金风格变化。",
+  "topicTitle": "A 股市场反应与商品信号确认",
+  "decisionQuestion": "A 股有色代表公司的市场表现是否确认商品价格信号，并足以支持未来 1-3 个月相对沪深300的配置动作？",
+  "decisionObject": "A 股有色代表公司池",
+  "horizon": "1-3个月",
+  "benchmark": "沪深300",
+  "allowedStance": [
+    "bullish",
+    "bearish",
+    "neutral",
+    "structural",
+    "conditional_bullish",
+    "conditional_bearish",
+    "no_trade"
+  ],
+  "requiredOutput": [
+    "说明市场表现是否确认、背离或过度反映商品信号",
+    "给出配置动作或等待触发条件",
+    "说明代表公司池证据边界",
+    "说明风险收益和降级条件"
+  ],
+  "requiredEvidenceSchema": [
+    {
+      "requiredKey": "equity_market_reaction",
+      "requiredForClaimTypes": [
+        "a_share_relative_performance",
+        "market_confirmation"
+      ],
+      "minimumFactCount": 2,
+      "preferredSources": [
+        "BaoStock"
+      ],
+      "fallbackSources": [
+        "configured_proxy_fact"
+      ],
+      "missingEffect": "缺少代表公司行情或成交代理时，不能主张市场已确认商品信号。",
+      "notWinCondition": true
+    },
+    {
+      "requiredKey": "valuation_proxy",
+      "requiredForClaimTypes": [
+        "valuation_support",
+        "price_in_assessment"
+      ],
+      "minimumFactCount": 1,
+      "preferredSources": [
+        "BaoStock"
+      ],
+      "fallbackSources": [
+        "configured_proxy_fact"
+      ],
+      "missingEffect": "缺少估值代理时，只能讨论价格行为，不能得出风险收益已经充分成立。",
+      "notWinCondition": true
+    },
+    {
+      "requiredKey": "commodity_context",
+      "requiredForClaimTypes": [
+        "commodity_to_equity_transmission"
+      ],
+      "minimumFactCount": 1,
+      "preferredSources": [
+        "FRED"
+      ],
+      "fallbackSources": [
+        "configured_proxy_fact"
+      ],
+      "missingEffect": "缺少商品背景时，权益表现不能被解释为商品景气确认。",
+      "notWinCondition": true
+    }
+  ],
+  "challengePolicy": {
+    "mustTargetClaimId": true,
+    "allowedChallengeTypes": [
+      "proxy_mismatch",
+      "alternative_explanation",
+      "horizon_mismatch",
+      "risk_reward_failure",
+      "evidence_gap"
+    ],
+    "invalidChallengePatterns": [
+      "只说市场不是基本面",
+      "不说明替代解释",
+      "不指向代表公司或估值证据"
+    ],
+    "missingEvidenceCanOnlyCap": true
+  },
+  "defenseThesisFocus": "立场方需要判断 A 股代表公司市场表现是否确认、背离或过度反映商品信号。",
+  "attackChallengeFocus": "挑战方需要指出具体的市场代理错配、风险偏好替代解释或估值已透支问题。",
+  "legacyDefenseThesisFocus": "用代表公司股价、成交和估值变化说明市场正在反映价格预期。",
+  "legacyAttackChallengeFocus": "指出市场表现不能证明行业基本面，也可能只是风险偏好或资金风格变化。",
   "requiredSources": [
     "baostock"
   ],
@@ -18,109 +104,172 @@
   ],
   "facts": [
     {
-      "factId": "F001",
-      "statement": "紫金矿业 (sh.601899) is configured as a representative A-share nonferrous proxy with copper_gold exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "factId": "BAO001",
+      "statementZh": "BaoStock 显示 紫金矿业（sh.601899）最近收盘价为 31.31，自 2025-10-20 至 2026-06-15 区间收益率约 5.24%。该事实只能作为市场反应和估值代理，不能证明行业基本面。",
       "metricName": "representative_company_market_proxy",
-      "value": null,
-      "unit": "",
-      "period": "configured",
+      "value": 31.31,
+      "unit": "CNY/share",
+      "period": "2025-10-20..2026-06-15",
       "source": "BAOSTOCK",
       "sourceType": "market_data_proxy",
       "collector": "baostock_python_package_v0",
-      "evidenceId": "EVID:BAOSTOCK:stock:sh.601899:representative_company_market_proxy:configured:sh.601899:e5846c2c",
+      "evidenceId": "EVID:BAOSTOCK:stock:sh.601899:representative_company_market_proxy:2025-10-20..2026-06-15:sh.601899:2e6ad25a",
       "confidence": 0.75,
-      "rawHash": "e5846c2c",
-      "parserVersion": "finance-evidence-generator-v1",
-      "originalLocation": "baostock-company-universe.json:sh.601899",
+      "rawHash": "2e6ad25a",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "baostock:sh.601899:2026-06-15",
       "policyNotes": [
         "This universe supports market reaction and valuation proxy only.",
         "Company inclusion does not imply official sector classification or verified product exposure."
       ],
-      "dataMode": "configured_proxy_fact"
+      "dataMode": "offline_observation_fact",
+      "observedAt": "2026-06-15",
+      "generatedAt": "2026-06-15T14:19:38Z",
+      "companyName": "紫金矿业",
+      "primaryExposure": "copper_gold",
+      "bucket": "diversified_miner",
+      "startClose": 29.75,
+      "latestClose": 31.31,
+      "returnPct": 5.24,
+      "latestAmount": 17720187950.24,
+      "latestVolume": 571475639,
+      "peTTM": 13.495802,
+      "pbMRQ": 4.220283,
+      "sourcePublisher": "BaoStock",
+      "accessProvider": "BaoStock Python package",
+      "endpoint": "legacy_snapshot:query_history_k_data_plus",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "market_data_proxy",
+      "allowedClaimTypes": [
+        "a_share_relative_performance",
+        "market_confirmation",
+        "valuation_support",
+        "price_in_assessment",
+        "commodity_to_equity_transmission"
+      ],
+      "notAllowedClaimTypes": [
+        "industry_fundamentals_confirmed",
+        "company_earnings_confirmed",
+        "china_supply_demand",
+        "inventory_pressure"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持 A 股市场反应和估值代理，不能证明行业基本面。",
+      "scoreCapPolicy": "legacy BaoStock snapshot caps A-share allocation claims unless paired with commodity and risk facts.",
+      "legacySnapshotFallback": true,
+      "statement": "BaoStock 显示 紫金矿业（sh.601899）最近收盘价为 31.31，自 2025-10-20 至 2026-06-15 区间收益率约 5.24%。该事实只能作为市场反应和估值代理，不能证明行业基本面。",
+      "factBankSource": "fact_bank_v2"
     },
     {
-      "factId": "F002",
-      "statement": "江西铜业 (sh.600362) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "factId": "BAO002",
+      "statementZh": "BaoStock 显示 江西铜业（sh.600362）最近收盘价为 47.36，自 2025-10-20 至 2026-06-15 区间收益率约 27.28%。该事实只能作为市场反应和估值代理，不能证明行业基本面。",
       "metricName": "representative_company_market_proxy",
-      "value": null,
-      "unit": "",
-      "period": "configured",
+      "value": 47.36,
+      "unit": "CNY/share",
+      "period": "2025-10-20..2026-06-15",
       "source": "BAOSTOCK",
       "sourceType": "market_data_proxy",
       "collector": "baostock_python_package_v0",
-      "evidenceId": "EVID:BAOSTOCK:stock:sh.600362:representative_company_market_proxy:configured:sh.600362:e6d26b68",
+      "evidenceId": "EVID:BAOSTOCK:stock:sh.600362:representative_company_market_proxy:2025-10-20..2026-06-15:sh.600362:b21a5834",
       "confidence": 0.75,
-      "rawHash": "e6d26b68",
-      "parserVersion": "finance-evidence-generator-v1",
-      "originalLocation": "baostock-company-universe.json:sh.600362",
+      "rawHash": "b21a5834",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "baostock:sh.600362:2026-06-15",
       "policyNotes": [
         "This universe supports market reaction and valuation proxy only.",
         "Company inclusion does not imply official sector classification or verified product exposure."
       ],
-      "dataMode": "configured_proxy_fact"
+      "dataMode": "offline_observation_fact",
+      "observedAt": "2026-06-15",
+      "generatedAt": "2026-06-15T14:19:40Z",
+      "companyName": "江西铜业",
+      "primaryExposure": "copper",
+      "bucket": "copper",
+      "startClose": 37.21,
+      "latestClose": 47.36,
+      "returnPct": 27.28,
+      "latestAmount": 4273438033.29,
+      "latestVolume": 92320649,
+      "peTTM": 20.511349,
+      "pbMRQ": 1.949762,
+      "sourcePublisher": "BaoStock",
+      "accessProvider": "BaoStock Python package",
+      "endpoint": "legacy_snapshot:query_history_k_data_plus",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "market_data_proxy",
+      "allowedClaimTypes": [
+        "a_share_relative_performance",
+        "market_confirmation",
+        "valuation_support",
+        "price_in_assessment",
+        "commodity_to_equity_transmission"
+      ],
+      "notAllowedClaimTypes": [
+        "industry_fundamentals_confirmed",
+        "company_earnings_confirmed",
+        "china_supply_demand",
+        "inventory_pressure"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持 A 股市场反应和估值代理，不能证明行业基本面。",
+      "scoreCapPolicy": "legacy BaoStock snapshot caps A-share allocation claims unless paired with commodity and risk facts.",
+      "legacySnapshotFallback": true,
+      "statement": "BaoStock 显示 江西铜业（sh.600362）最近收盘价为 47.36，自 2025-10-20 至 2026-06-15 区间收益率约 27.28%。该事实只能作为市场反应和估值代理，不能证明行业基本面。",
+      "factBankSource": "fact_bank_v2"
     },
     {
-      "factId": "F003",
-      "statement": "中国铝业 (sh.601600) is configured as a representative A-share nonferrous proxy with aluminum exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
+      "factId": "BAO003",
+      "statementZh": "BaoStock 显示 中国铝业（sh.601600）最近收盘价为 10.67，自 2025-10-20 至 2026-06-15 区间收益率约 27.48%。该事实只能作为市场反应和估值代理，不能证明行业基本面。",
       "metricName": "representative_company_market_proxy",
-      "value": null,
-      "unit": "",
-      "period": "configured",
+      "value": 10.67,
+      "unit": "CNY/share",
+      "period": "2025-10-20..2026-06-15",
       "source": "BAOSTOCK",
       "sourceType": "market_data_proxy",
       "collector": "baostock_python_package_v0",
-      "evidenceId": "EVID:BAOSTOCK:stock:sh.601600:representative_company_market_proxy:configured:sh.601600:52ed0876",
+      "evidenceId": "EVID:BAOSTOCK:stock:sh.601600:representative_company_market_proxy:2025-10-20..2026-06-15:sh.601600:b5f1e046",
       "confidence": 0.75,
-      "rawHash": "52ed0876",
-      "parserVersion": "finance-evidence-generator-v1",
-      "originalLocation": "baostock-company-universe.json:sh.601600",
+      "rawHash": "b5f1e046",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "baostock:sh.601600:2026-06-15",
       "policyNotes": [
         "This universe supports market reaction and valuation proxy only.",
         "Company inclusion does not imply official sector classification or verified product exposure."
       ],
-      "dataMode": "configured_proxy_fact"
-    },
-    {
-      "factId": "F004",
-      "statement": "铜陵有色 (sz.000630) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
-      "metricName": "representative_company_market_proxy",
-      "value": null,
-      "unit": "",
-      "period": "configured",
-      "source": "BAOSTOCK",
-      "sourceType": "market_data_proxy",
-      "collector": "baostock_python_package_v0",
-      "evidenceId": "EVID:BAOSTOCK:stock:sz.000630:representative_company_market_proxy:configured:sz.000630:6d78537c",
-      "confidence": 0.75,
-      "rawHash": "6d78537c",
-      "parserVersion": "finance-evidence-generator-v1",
-      "originalLocation": "baostock-company-universe.json:sz.000630",
-      "policyNotes": [
-        "This universe supports market reaction and valuation proxy only.",
-        "Company inclusion does not imply official sector classification or verified product exposure."
+      "dataMode": "offline_observation_fact",
+      "observedAt": "2026-06-15",
+      "generatedAt": "2026-06-15T14:19:42Z",
+      "companyName": "中国铝业",
+      "primaryExposure": "aluminum",
+      "bucket": "aluminum",
+      "startClose": 8.37,
+      "latestClose": 10.67,
+      "returnPct": 27.48,
+      "latestAmount": 4348846898.99,
+      "latestVolume": 405938084,
+      "peTTM": 12.480886,
+      "pbMRQ": 2.269739,
+      "sourcePublisher": "BaoStock",
+      "accessProvider": "BaoStock Python package",
+      "endpoint": "legacy_snapshot:query_history_k_data_plus",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "market_data_proxy",
+      "allowedClaimTypes": [
+        "a_share_relative_performance",
+        "market_confirmation",
+        "valuation_support",
+        "price_in_assessment",
+        "commodity_to_equity_transmission"
       ],
-      "dataMode": "configured_proxy_fact"
-    },
-    {
-      "factId": "F005",
-      "statement": "云南铜业 (sz.000878) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
-      "metricName": "representative_company_market_proxy",
-      "value": null,
-      "unit": "",
-      "period": "configured",
-      "source": "BAOSTOCK",
-      "sourceType": "market_data_proxy",
-      "collector": "baostock_python_package_v0",
-      "evidenceId": "EVID:BAOSTOCK:stock:sz.000878:representative_company_market_proxy:configured:sz.000878:900484b2",
-      "confidence": 0.75,
-      "rawHash": "900484b2",
-      "parserVersion": "finance-evidence-generator-v1",
-      "originalLocation": "baostock-company-universe.json:sz.000878",
-      "policyNotes": [
-        "This universe supports market reaction and valuation proxy only.",
-        "Company inclusion does not imply official sector classification or verified product exposure."
+      "notAllowedClaimTypes": [
+        "industry_fundamentals_confirmed",
+        "company_earnings_confirmed",
+        "china_supply_demand",
+        "inventory_pressure"
       ],
-      "dataMode": "configured_proxy_fact"
+      "interpretationHint": "旧快照升级事实：可支持 A 股市场反应和估值代理，不能证明行业基本面。",
+      "scoreCapPolicy": "legacy BaoStock snapshot caps A-share allocation claims unless paired with commodity and risk facts.",
+      "legacySnapshotFallback": true,
+      "statement": "BaoStock 显示 中国铝业（sh.601600）最近收盘价为 10.67，自 2025-10-20 至 2026-06-15 区间收益率约 27.48%。该事实只能作为市场反应和估值代理，不能证明行业基本面。",
+      "factBankSource": "fact_bank_v2"
     }
   ],
   "missingEvidence": [
@@ -137,29 +286,19 @@
   ],
   "promptFacts": [
     {
-      "factId": "F001",
-      "shortText": "紫金矿业 (sh.601899) is configured as a representative A-share nonferrous proxy with copper_gold exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
-      "evidenceId": "EVID:BAOSTOCK:stock:sh.601899:representative_company_market_proxy:configured:sh.601899:e5846c2c"
+      "factId": "BAO001",
+      "shortText": "BaoStock 显示 紫金矿业（sh.601899）最近收盘价为 31.31，自 2025-10-20 至 2026-06-15 区间收益率约 5.24%。该事实只能作为市场反应和估值代理，不能证明行业基本面。",
+      "evidenceId": "EVID:BAOSTOCK:stock:sh.601899:representative_company_market_proxy:2025-10-20..2026-06-15:sh.601899:2e6ad25a"
     },
     {
-      "factId": "F002",
-      "shortText": "江西铜业 (sh.600362) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
-      "evidenceId": "EVID:BAOSTOCK:stock:sh.600362:representative_company_market_proxy:configured:sh.600362:e6d26b68"
+      "factId": "BAO002",
+      "shortText": "BaoStock 显示 江西铜业（sh.600362）最近收盘价为 47.36，自 2025-10-20 至 2026-06-15 区间收益率约 27.28%。该事实只能作为市场反应和估值代理，不能证明行业基本面。",
+      "evidenceId": "EVID:BAOSTOCK:stock:sh.600362:representative_company_market_proxy:2025-10-20..2026-06-15:sh.600362:b21a5834"
     },
     {
-      "factId": "F003",
-      "shortText": "中国铝业 (sh.601600) is configured as a representative A-share nonferrous proxy with aluminum exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
-      "evidenceId": "EVID:BAOSTOCK:stock:sh.601600:representative_company_market_proxy:configured:sh.601600:52ed0876"
-    },
-    {
-      "factId": "F004",
-      "shortText": "铜陵有色 (sz.000630) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
-      "evidenceId": "EVID:BAOSTOCK:stock:sz.000630:representative_company_market_proxy:configured:sz.000630:6d78537c"
-    },
-    {
-      "factId": "F005",
-      "shortText": "云南铜业 (sz.000878) is configured as a representative A-share nonferrous proxy with copper exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.",
-      "evidenceId": "EVID:BAOSTOCK:stock:sz.000878:representative_company_market_proxy:configured:sz.000878:900484b2"
+      "factId": "BAO003",
+      "shortText": "BaoStock 显示 中国铝业（sh.601600）最近收盘价为 10.67，自 2025-10-20 至 2026-06-15 区间收益率约 27.48%。该事实只能作为市场反应和估值代理，不能证明行业基本面。",
+      "evidenceId": "EVID:BAOSTOCK:stock:sh.601600:representative_company_market_proxy:2025-10-20..2026-06-15:sh.601600:b5f1e046"
     }
   ],
   "judgeLedger": {
@@ -186,21 +325,26 @@
       "This universe supports market reaction and valuation proxy only.",
       "Company inclusion does not imply official sector classification or verified product exposure.",
       "This universe supports market reaction and valuation proxy only.",
-      "Company inclusion does not imply official sector classification or verified product exposure.",
-      "This universe supports market reaction and valuation proxy only.",
-      "Company inclusion does not imply official sector classification or verified product exposure.",
-      "This universe supports market reaction and valuation proxy only.",
       "Company inclusion does not imply official sector classification or verified product exposure."
     ]
   },
   "sideSwapPolicy": {
-    "interpretation": "These six topics define the subject of dispute, not fixed team ownership.",
-    "defenseThesisFocus": "Consumed by whichever team is the current defense side.",
-    "attackChallengeFocus": "Consumed by whichever team is the current attack side.",
+    "interpretation": "These six topics now define investment decision questions, not fixed proof directions.",
+    "stanceSideFocus": "Consumed by whichever team is the current CS defense side in N56 v1; this means stance side, not automatic bullish defense.",
+    "challengeSideFocus": "Consumed by whichever team is the current CS attack side in N56 v1; this means challenge side, not automatic bearish attack.",
+    "defenseThesisFocus": "Legacy compatibility only. Current prompt and audit should prefer decisionQuestion and stanceSideFocus.",
+    "attackChallengeFocus": "Legacy compatibility only. Current prompt and audit should prefer decisionQuestion and challengeSideFocus.",
     "topicIndexFormula": "((mapRoundNumber - 1) % 6) + 1",
-    "sideSwapRule": "When sides swap, the same six topics are reused and proof/challenge responsibilities swap with the current side."
+    "sideSwapRule": "When sides swap, the same six decision questions are reused and stance/challenge responsibilities swap with the current side."
   },
   "sourceWarnings": [
     "BaoStock live observations are not fetched by this JS MVP; configured universe facts are used as proxy scaffolding."
-  ]
+  ],
+  "factBankSnapshot": {
+    "schemaVersion": 2,
+    "parserVersion": "finance-fact-bank-collector-v2",
+    "generatedAt": "2026-06-19T09:21:04Z",
+    "consumedFactCount": 3,
+    "fallbackConfiguredFactCount": 0
+  }
 }

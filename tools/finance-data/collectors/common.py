@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 
-PARSER_VERSION = "finance-fact-bank-collector-v1"
+PARSER_VERSION = "finance-fact-bank-collector-v2"
 
 
 def repo_root() -> Path:
@@ -42,6 +42,63 @@ def write_json(path: Path, value: Any) -> None:
 
 def hash8(value: Any) -> str:
     return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()[:8]
+
+
+def to_float(value: Any) -> float | None:
+    try:
+        if value in (None, "", ".", "None", "nan", "NaN"):
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def pct_change(latest: float | None, base: float | None) -> float | None:
+    if latest is None or base is None or base == 0:
+        return None
+    return round(((latest - base) / abs(base)) * 100, 2)
+
+
+def percentile_rank(values: list[float], latest: float | None = None) -> float | None:
+    clean = [value for value in values if value is not None]
+    if not clean:
+        return None
+    target = clean[-1] if latest is None else latest
+    below_or_equal = sum(1 for value in clean if value <= target)
+    return round((below_or_equal / len(clean)) * 100, 2)
+
+
+def annualized_volatility_from_returns(returns: list[float], periods_per_year: int = 12) -> float | None:
+    clean = [value for value in returns if value is not None]
+    if len(clean) < 2:
+        return None
+    mean = sum(clean) / len(clean)
+    variance = sum((value - mean) ** 2 for value in clean) / (len(clean) - 1)
+    return round((variance ** 0.5) * (periods_per_year ** 0.5), 4)
+
+
+def max_drawdown_pct(values: list[float]) -> float | None:
+    clean = [value for value in values if value is not None]
+    if len(clean) < 2:
+        return None
+    peak = clean[0]
+    max_drawdown = 0.0
+    for value in clean:
+        peak = max(peak, value)
+        if peak:
+            max_drawdown = min(max_drawdown, (value - peak) / abs(peak))
+    return round(max_drawdown * 100, 2)
+
+
+def value_n_periods_ago(values: list[float], periods: int) -> float | None:
+    clean = [value for value in values if value is not None]
+    if len(clean) <= periods:
+        return None
+    return clean[-1 - periods]
+
+
+def source_label(source: str) -> str:
+    return source.upper().replace("_", " ")
 
 
 def load_local_env() -> dict[str, str]:
@@ -99,6 +156,15 @@ def observation_fact(
     policy_notes: list[str],
     observed_at: str | None = None,
     extra: dict[str, Any] | None = None,
+    source_publisher: str | None = None,
+    access_provider: str | None = None,
+    endpoint: str | None = None,
+    transform: str = "raw_observation",
+    reliability_tier: str | None = None,
+    allowed_claim_types: list[str] | None = None,
+    not_allowed_claim_types: list[str] | None = None,
+    interpretation_hint: str | None = None,
+    score_cap_policy: str | None = None,
 ) -> dict[str, Any]:
     raw_hash = hash8(
         {
@@ -121,12 +187,21 @@ def observation_fact(
         "period": period,
         "source": source,
         "sourceType": source_type,
+        "sourcePublisher": source_publisher or source,
+        "accessProvider": access_provider or collector,
         "collector": collector,
+        "endpoint": endpoint or original_location,
         "evidenceId": evidence_id(source, domain, entity, metric_name, period, locator, raw_hash),
         "confidence": confidence,
         "rawHash": raw_hash,
         "parserVersion": PARSER_VERSION,
         "originalLocation": original_location,
+        "transform": transform,
+        "reliabilityTier": reliability_tier or source_type,
+        "allowedClaimTypes": allowed_claim_types or [],
+        "notAllowedClaimTypes": not_allowed_claim_types or [],
+        "interpretationHint": interpretation_hint or "",
+        "scoreCapPolicy": score_cap_policy or "",
         "policyNotes": policy_notes,
         "dataMode": "offline_observation_fact",
         "observedAt": observed_at,
@@ -152,6 +227,15 @@ def unavailable_fact(
     policy_notes: list[str],
     unavailable_reason: str,
     source_warning: str,
+    source_publisher: str | None = None,
+    access_provider: str | None = None,
+    endpoint: str | None = None,
+    transform: str = "unavailable_observation",
+    reliability_tier: str | None = None,
+    allowed_claim_types: list[str] | None = None,
+    not_allowed_claim_types: list[str] | None = None,
+    interpretation_hint: str | None = None,
+    score_cap_policy: str | None = None,
 ) -> dict[str, Any]:
     raw_hash = hash8(
         {
@@ -171,12 +255,21 @@ def unavailable_fact(
         "period": "unavailable",
         "source": source,
         "sourceType": source_type,
+        "sourcePublisher": source_publisher or source,
+        "accessProvider": access_provider or collector,
         "collector": collector,
+        "endpoint": endpoint or original_location,
         "evidenceId": evidence_id(source, domain, entity, metric_name, "unavailable", locator, raw_hash),
         "confidence": 0,
         "rawHash": raw_hash,
         "parserVersion": PARSER_VERSION,
         "originalLocation": original_location,
+        "transform": transform,
+        "reliabilityTier": reliability_tier or source_type,
+        "allowedClaimTypes": allowed_claim_types or [],
+        "notAllowedClaimTypes": not_allowed_claim_types or [],
+        "interpretationHint": interpretation_hint or "",
+        "scoreCapPolicy": score_cap_policy or "",
         "policyNotes": policy_notes,
         "dataMode": "unavailable_observation",
         "unavailableReason": unavailable_reason,

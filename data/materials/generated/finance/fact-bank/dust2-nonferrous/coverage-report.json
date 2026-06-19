@@ -1,0 +1,574 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-19T09:21:19Z",
+  "financeScenarioSlug": "dust2-nonferrous",
+  "factBankParserVersion": "finance-fact-bank-collector-v2",
+  "summary": {
+    "totalRequiredEvidenceItems": 18,
+    "covered": 7,
+    "partial": 0,
+    "missing": 11
+  },
+  "coverageItems": [
+    {
+      "roundNumber": 1,
+      "roundKey": "global_metal_price_signal",
+      "decisionQuestion": "当前全球金属价格趋势是否足以支持未来 1-3 个月 A 股有色板块相对沪深300超配、低配、标配或结构性配置？",
+      "requiredEvidenceKey": "commodity_price_momentum",
+      "requiredForClaimTypes": [
+        "commodity_trend",
+        "relative_allocation_signal"
+      ],
+      "minimumFactCount": 2,
+      "preferredSources": [
+        "FRED"
+      ],
+      "fallbackSources": [
+        "configured_proxy_fact"
+      ],
+      "matchedFactIds": [
+        "FRED001",
+        "FRED002",
+        "FRED003",
+        "FRED004"
+      ],
+      "matchedEvidenceIds": [
+        "EVID:FRED:commodity:PCOPPUSDM:global_price_of_copper:2026-05-01:PCOPPUSDM:351a511a",
+        "EVID:FRED:commodity:PALUMUSDM:global_price_of_aluminum:2026-05-01:PALUMUSDM:086757c8",
+        "EVID:FRED:commodity:PNICKUSDM:global_price_of_nickel:2026-05-01:PNICKUSDM:62d38773",
+        "EVID:FRED:commodity:PZINCUSDM:global_price_of_zinc:2026-05-01:PZINCUSDM:cd2d4a96"
+      ],
+      "coverageStatus": "covered",
+      "supportedClaimTypes": [
+        "commodity_trend"
+      ],
+      "remainingGaps": [],
+      "scoreCapPolicy": "缺少商品价格动量时，不能形成有色超配或低配方向结论。",
+      "notWinCondition": true
+    },
+    {
+      "roundNumber": 1,
+      "roundKey": "global_metal_price_signal",
+      "decisionQuestion": "当前全球金属价格趋势是否足以支持未来 1-3 个月 A 股有色板块相对沪深300超配、低配、标配或结构性配置？",
+      "requiredEvidenceKey": "china_supply_demand_proxy",
+      "requiredForClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure"
+      ],
+      "minimumFactCount": 1,
+      "preferredSources": [
+        "SHFE",
+        "NBS"
+      ],
+      "fallbackSources": [
+        "missingEvidence"
+      ],
+      "matchedFactIds": [],
+      "matchedEvidenceIds": [],
+      "coverageStatus": "missing",
+      "supportedClaimTypes": [],
+      "remainingGaps": [
+        "缺少国内供需、库存或现货代理时，只能限制置信度，不能直接让挑战方获胜。"
+      ],
+      "scoreCapPolicy": "缺少国内供需、库存或现货代理时，只能限制置信度，不能直接让挑战方获胜。",
+      "notWinCondition": true
+    },
+    {
+      "roundNumber": 1,
+      "roundKey": "global_metal_price_signal",
+      "decisionQuestion": "当前全球金属价格趋势是否足以支持未来 1-3 个月 A 股有色板块相对沪深300超配、低配、标配或结构性配置？",
+      "requiredEvidenceKey": "equity_transmission_proxy",
+      "requiredForClaimTypes": [
+        "commodity_to_equity_transmission",
+        "a_share_relative_allocation"
+      ],
+      "minimumFactCount": 1,
+      "preferredSources": [
+        "BaoStock"
+      ],
+      "fallbackSources": [
+        "configured_proxy_fact"
+      ],
+      "matchedFactIds": [
+        "BAO001",
+        "BAO002",
+        "BAO003",
+        "BAO004",
+        "BAO005"
+      ],
+      "matchedEvidenceIds": [
+        "EVID:BAOSTOCK:stock:sh.601899:representative_company_market_proxy:2025-10-20..2026-06-15:sh.601899:2e6ad25a",
+        "EVID:BAOSTOCK:stock:sh.600362:representative_company_market_proxy:2025-10-20..2026-06-15:sh.600362:b21a5834",
+        "EVID:BAOSTOCK:stock:sh.601600:representative_company_market_proxy:2025-10-20..2026-06-15:sh.601600:b5f1e046",
+        "EVID:BAOSTOCK:stock:sz.000630:representative_company_market_proxy:2025-10-20..2026-06-15:sz.000630:05280a4e",
+        "EVID:BAOSTOCK:stock:sz.000878:representative_company_market_proxy:2025-10-20..2026-06-15:sz.000878:2c640bfe"
+      ],
+      "coverageStatus": "covered",
+      "supportedClaimTypes": [
+        "commodity_to_equity_transmission"
+      ],
+      "remainingGaps": [],
+      "scoreCapPolicy": "缺少权益传导证据时，商品价格只能支持商品动量，不能直接支持 A 股有色超配。",
+      "notWinCondition": true
+    },
+    {
+      "roundNumber": 2,
+      "roundKey": "a_share_market_reaction",
+      "decisionQuestion": "A 股有色代表公司的市场表现是否确认商品价格信号，并足以支持未来 1-3 个月相对沪深300的配置动作？",
+      "requiredEvidenceKey": "equity_market_reaction",
+      "requiredForClaimTypes": [
+        "a_share_relative_performance",
+        "market_confirmation"
+      ],
+      "minimumFactCount": 2,
+      "preferredSources": [
+        "BaoStock"
+      ],
+      "fallbackSources": [
+        "configured_proxy_fact"
+      ],
+      "matchedFactIds": [
+        "BAO001",
+        "BAO002",
+        "BAO003",
+        "BAO004",
+        "BAO005"
+      ],
+      "matchedEvidenceIds": [
+        "EVID:BAOSTOCK:stock:sh.601899:representative_company_market_proxy:2025-10-20..2026-06-15:sh.601899:2e6ad25a",
+        "EVID:BAOSTOCK:stock:sh.600362:representative_company_market_proxy:2025-10-20..2026-06-15:sh.600362:b21a5834",
+        "EVID:BAOSTOCK:stock:sh.601600:representative_company_market_proxy:2025-10-20..2026-06-15:sh.601600:b5f1e046",
+        "EVID:BAOSTOCK:stock:sz.000630:representative_company_market_proxy:2025-10-20..2026-06-15:sz.000630:05280a4e",
+        "EVID:BAOSTOCK:stock:sz.000878:representative_company_market_proxy:2025-10-20..2026-06-15:sz.000878:2c640bfe"
+      ],
+      "coverageStatus": "covered",
+      "supportedClaimTypes": [
+        "a_share_relative_performance",
+        "market_confirmation"
+      ],
+      "remainingGaps": [],
+      "scoreCapPolicy": "缺少代表公司行情或成交代理时，不能主张市场已确认商品信号。",
+      "notWinCondition": true
+    },
+    {
+      "roundNumber": 2,
+      "roundKey": "a_share_market_reaction",
+      "decisionQuestion": "A 股有色代表公司的市场表现是否确认商品价格信号，并足以支持未来 1-3 个月相对沪深300的配置动作？",
+      "requiredEvidenceKey": "valuation_proxy",
+      "requiredForClaimTypes": [
+        "valuation_support",
+        "price_in_assessment"
+      ],
+      "minimumFactCount": 1,
+      "preferredSources": [
+        "BaoStock"
+      ],
+      "fallbackSources": [
+        "configured_proxy_fact"
+      ],
+      "matchedFactIds": [
+        "BAO001",
+        "BAO002",
+        "BAO003",
+        "BAO004",
+        "BAO005"
+      ],
+      "matchedEvidenceIds": [
+        "EVID:BAOSTOCK:stock:sh.601899:representative_company_market_proxy:2025-10-20..2026-06-15:sh.601899:2e6ad25a",
+        "EVID:BAOSTOCK:stock:sh.600362:representative_company_market_proxy:2025-10-20..2026-06-15:sh.600362:b21a5834",
+        "EVID:BAOSTOCK:stock:sh.601600:representative_company_market_proxy:2025-10-20..2026-06-15:sh.601600:b5f1e046",
+        "EVID:BAOSTOCK:stock:sz.000630:representative_company_market_proxy:2025-10-20..2026-06-15:sz.000630:05280a4e",
+        "EVID:BAOSTOCK:stock:sz.000878:representative_company_market_proxy:2025-10-20..2026-06-15:sz.000878:2c640bfe"
+      ],
+      "coverageStatus": "covered",
+      "supportedClaimTypes": [
+        "price_in_assessment",
+        "valuation_support"
+      ],
+      "remainingGaps": [],
+      "scoreCapPolicy": "缺少估值代理时，只能讨论价格行为，不能得出风险收益已经充分成立。",
+      "notWinCondition": true
+    },
+    {
+      "roundNumber": 2,
+      "roundKey": "a_share_market_reaction",
+      "decisionQuestion": "A 股有色代表公司的市场表现是否确认商品价格信号，并足以支持未来 1-3 个月相对沪深300的配置动作？",
+      "requiredEvidenceKey": "commodity_context",
+      "requiredForClaimTypes": [
+        "commodity_to_equity_transmission"
+      ],
+      "minimumFactCount": 1,
+      "preferredSources": [
+        "FRED"
+      ],
+      "fallbackSources": [
+        "configured_proxy_fact"
+      ],
+      "matchedFactIds": [],
+      "matchedEvidenceIds": [],
+      "coverageStatus": "missing",
+      "supportedClaimTypes": [],
+      "remainingGaps": [
+        "缺少商品背景时，权益表现不能被解释为商品景气确认。"
+      ],
+      "scoreCapPolicy": "缺少商品背景时，权益表现不能被解释为商品景气确认。",
+      "notWinCondition": true
+    },
+    {
+      "roundNumber": 3,
+      "roundKey": "valuation_price_in",
+      "decisionQuestion": "当前 A 股有色代表公司的估值是否已经反映商品价格预期，还是仍存在 1-3 个月风险收益空间？",
+      "requiredEvidenceKey": "valuation_level",
+      "requiredForClaimTypes": [
+        "valuation_support",
+        "price_in_assessment"
+      ],
+      "minimumFactCount": 2,
+      "preferredSources": [
+        "BaoStock"
+      ],
+      "fallbackSources": [
+        "configured_proxy_fact"
+      ],
+      "matchedFactIds": [
+        "BAO001",
+        "BAO002",
+        "BAO003",
+        "BAO004",
+        "BAO005"
+      ],
+      "matchedEvidenceIds": [
+        "EVID:BAOSTOCK:stock:sh.601899:representative_company_market_proxy:2025-10-20..2026-06-15:sh.601899:2e6ad25a",
+        "EVID:BAOSTOCK:stock:sh.600362:representative_company_market_proxy:2025-10-20..2026-06-15:sh.600362:b21a5834",
+        "EVID:BAOSTOCK:stock:sh.601600:representative_company_market_proxy:2025-10-20..2026-06-15:sh.601600:b5f1e046",
+        "EVID:BAOSTOCK:stock:sz.000630:representative_company_market_proxy:2025-10-20..2026-06-15:sz.000630:05280a4e",
+        "EVID:BAOSTOCK:stock:sz.000878:representative_company_market_proxy:2025-10-20..2026-06-15:sz.000878:2c640bfe"
+      ],
+      "coverageStatus": "covered",
+      "supportedClaimTypes": [
+        "price_in_assessment",
+        "valuation_support"
+      ],
+      "remainingGaps": [],
+      "scoreCapPolicy": "缺少估值代理时，不能判断是否 price in。",
+      "notWinCondition": true
+    },
+    {
+      "roundNumber": 3,
+      "roundKey": "valuation_price_in",
+      "decisionQuestion": "当前 A 股有色代表公司的估值是否已经反映商品价格预期，还是仍存在 1-3 个月风险收益空间？",
+      "requiredEvidenceKey": "earnings_transmission_proxy",
+      "requiredForClaimTypes": [
+        "commodity_to_company_earnings",
+        "profit_sensitivity"
+      ],
+      "minimumFactCount": 1,
+      "preferredSources": [
+        "company_financials",
+        "CNINFO"
+      ],
+      "fallbackSources": [
+        "missingEvidence"
+      ],
+      "matchedFactIds": [],
+      "matchedEvidenceIds": [],
+      "coverageStatus": "missing",
+      "supportedClaimTypes": [],
+      "remainingGaps": [
+        "缺少利润弹性或财报锚点时，估值结论必须降级为代理判断。"
+      ],
+      "scoreCapPolicy": "缺少利润弹性或财报锚点时，估值结论必须降级为代理判断。",
+      "notWinCondition": true
+    },
+    {
+      "roundNumber": 3,
+      "roundKey": "valuation_price_in",
+      "decisionQuestion": "当前 A 股有色代表公司的估值是否已经反映商品价格预期，还是仍存在 1-3 个月风险收益空间？",
+      "requiredEvidenceKey": "commodity_price_context",
+      "requiredForClaimTypes": [
+        "valuation_vs_commodity_signal"
+      ],
+      "minimumFactCount": 1,
+      "preferredSources": [
+        "FRED"
+      ],
+      "fallbackSources": [
+        "configured_proxy_fact"
+      ],
+      "matchedFactIds": [
+        "FRED001",
+        "FRED002",
+        "FRED003",
+        "FRED004"
+      ],
+      "matchedEvidenceIds": [
+        "EVID:FRED:commodity:PCOPPUSDM:global_price_of_copper:2026-05-01:PCOPPUSDM:351a511a",
+        "EVID:FRED:commodity:PALUMUSDM:global_price_of_aluminum:2026-05-01:PALUMUSDM:086757c8",
+        "EVID:FRED:commodity:PNICKUSDM:global_price_of_nickel:2026-05-01:PNICKUSDM:62d38773",
+        "EVID:FRED:commodity:PZINCUSDM:global_price_of_zinc:2026-05-01:PZINCUSDM:cd2d4a96"
+      ],
+      "coverageStatus": "covered",
+      "supportedClaimTypes": [
+        "valuation_vs_commodity_signal"
+      ],
+      "remainingGaps": [],
+      "scoreCapPolicy": "缺少商品价格上下文时，估值高低不能与景气预期相连。",
+      "notWinCondition": true
+    },
+    {
+      "roundNumber": 4,
+      "roundKey": "import_export_proxy",
+      "decisionQuestion": "在贸易数据可用性有限时，进出口线索是否足以影响未来 1-3 个月有色行业配置判断？",
+      "requiredEvidenceKey": "trade_flow_proxy",
+      "requiredForClaimTypes": [
+        "trade_flow_signal",
+        "supply_demand_proxy"
+      ],
+      "minimumFactCount": 1,
+      "preferredSources": [
+        "UN_COMTRADE",
+        "ChinaCustoms"
+      ],
+      "fallbackSources": [
+        "unavailable_observation",
+        "missingEvidence"
+      ],
+      "matchedFactIds": [],
+      "matchedEvidenceIds": [],
+      "coverageStatus": "missing",
+      "supportedClaimTypes": [],
+      "remainingGaps": [
+        "贸易数据不可用时，只能形成缺口和降权，不能声称贸易流支持供需结论。"
+      ],
+      "scoreCapPolicy": "贸易数据不可用时，只能形成缺口和降权，不能声称贸易流支持供需结论。",
+      "notWinCondition": true
+    },
+    {
+      "roundNumber": 4,
+      "roundKey": "import_export_proxy",
+      "decisionQuestion": "在贸易数据可用性有限时，进出口线索是否足以影响未来 1-3 个月有色行业配置判断？",
+      "requiredEvidenceKey": "domestic_inventory_or_spot_proxy",
+      "requiredForClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure"
+      ],
+      "minimumFactCount": 1,
+      "preferredSources": [
+        "SHFE",
+        "NBS"
+      ],
+      "fallbackSources": [
+        "missingEvidence"
+      ],
+      "matchedFactIds": [],
+      "matchedEvidenceIds": [],
+      "coverageStatus": "missing",
+      "supportedClaimTypes": [],
+      "remainingGaps": [
+        "缺少国内库存或现货代理时，贸易线索不能升级为完整供需判断。"
+      ],
+      "scoreCapPolicy": "缺少国内库存或现货代理时，贸易线索不能升级为完整供需判断。",
+      "notWinCondition": true
+    },
+    {
+      "roundNumber": 4,
+      "roundKey": "import_export_proxy",
+      "decisionQuestion": "在贸易数据可用性有限时，进出口线索是否足以影响未来 1-3 个月有色行业配置判断？",
+      "requiredEvidenceKey": "commodity_price_context",
+      "requiredForClaimTypes": [
+        "trade_price_consistency"
+      ],
+      "minimumFactCount": 1,
+      "preferredSources": [
+        "FRED"
+      ],
+      "fallbackSources": [
+        "configured_proxy_fact"
+      ],
+      "matchedFactIds": [],
+      "matchedEvidenceIds": [],
+      "coverageStatus": "missing",
+      "supportedClaimTypes": [],
+      "remainingGaps": [
+        "缺少价格上下文时，贸易线索无法转化为配置方向。"
+      ],
+      "scoreCapPolicy": "缺少价格上下文时，贸易线索无法转化为配置方向。",
+      "notWinCondition": true
+    },
+    {
+      "roundNumber": 5,
+      "roundKey": "evidence_gap_discipline",
+      "decisionQuestion": "在当前证据缺口下，哪些有色配置结论仍可低置信执行，哪些必须降级为观察或不交易？",
+      "requiredEvidenceKey": "declared_missing_evidence",
+      "requiredForClaimTypes": [
+        "confidence_cap",
+        "no_trade_condition",
+        "risk_boundary"
+      ],
+      "minimumFactCount": 1,
+      "preferredSources": [
+        "requiredEvidenceSchema",
+        "judgeLedger"
+      ],
+      "fallbackSources": [
+        "missingEvidence"
+      ],
+      "matchedFactIds": [],
+      "matchedEvidenceIds": [],
+      "coverageStatus": "missing",
+      "supportedClaimTypes": [],
+      "remainingGaps": [
+        "缺失证据必须映射到置信度上限、仓位降级或观察条件，不能直接构成胜负。"
+      ],
+      "scoreCapPolicy": "缺失证据必须映射到置信度上限、仓位降级或观察条件，不能直接构成胜负。",
+      "notWinCondition": true
+    },
+    {
+      "roundNumber": 5,
+      "roundKey": "evidence_gap_discipline",
+      "decisionQuestion": "在当前证据缺口下，哪些有色配置结论仍可低置信执行，哪些必须降级为观察或不交易？",
+      "requiredEvidenceKey": "available_positive_proxy",
+      "requiredForClaimTypes": [
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "minimumFactCount": 2,
+      "preferredSources": [
+        "FRED",
+        "BaoStock"
+      ],
+      "fallbackSources": [
+        "configured_proxy_fact"
+      ],
+      "matchedFactIds": [
+        "FRED001",
+        "FRED002",
+        "FRED003",
+        "FRED004"
+      ],
+      "matchedEvidenceIds": [
+        "EVID:FRED:commodity:PCOPPUSDM:global_price_of_copper:2026-05-01:PCOPPUSDM:351a511a",
+        "EVID:FRED:commodity:PALUMUSDM:global_price_of_aluminum:2026-05-01:PALUMUSDM:086757c8",
+        "EVID:FRED:commodity:PNICKUSDM:global_price_of_nickel:2026-05-01:PNICKUSDM:62d38773",
+        "EVID:FRED:commodity:PZINCUSDM:global_price_of_zinc:2026-05-01:PZINCUSDM:cd2d4a96"
+      ],
+      "coverageStatus": "covered",
+      "supportedClaimTypes": [
+        "limited_negative_stance",
+        "limited_positive_stance"
+      ],
+      "remainingGaps": [],
+      "scoreCapPolicy": "如果没有任何正向可采信代理事实，只能给出 no_trade 或 neutral，不能包装成金融胜利。",
+      "notWinCondition": true
+    },
+    {
+      "roundNumber": 5,
+      "roundKey": "evidence_gap_discipline",
+      "decisionQuestion": "在当前证据缺口下，哪些有色配置结论仍可低置信执行，哪些必须降级为观察或不交易？",
+      "requiredEvidenceKey": "risk_execution_rule",
+      "requiredForClaimTypes": [
+        "risk_reward",
+        "executability"
+      ],
+      "minimumFactCount": 1,
+      "preferredSources": [
+        "scoreCapPolicy",
+        "riskPolicy"
+      ],
+      "fallbackSources": [
+        "judgeLedger"
+      ],
+      "matchedFactIds": [],
+      "matchedEvidenceIds": [],
+      "coverageStatus": "missing",
+      "supportedClaimTypes": [],
+      "remainingGaps": [
+        "缺少风险执行规则时，任何立场都不能升级为强仓位建议。"
+      ],
+      "scoreCapPolicy": "缺少风险执行规则时，任何立场都不能升级为强仓位建议。",
+      "notWinCondition": true
+    },
+    {
+      "roundNumber": 6,
+      "roundKey": "limited_allocation_conclusion",
+      "decisionQuestion": "基于固定数据菜单，当前有色配置建议应如何落地：超配、低配、标配、结构性配置、条件触发还是暂不交易？",
+      "requiredEvidenceKey": "portfolio_stance_evidence_mix",
+      "requiredForClaimTypes": [
+        "portfolio_allocation",
+        "position_sizing"
+      ],
+      "minimumFactCount": 3,
+      "preferredSources": [
+        "FRED",
+        "BaoStock"
+      ],
+      "fallbackSources": [
+        "configured_proxy_fact"
+      ],
+      "matchedFactIds": [],
+      "matchedEvidenceIds": [],
+      "coverageStatus": "missing",
+      "supportedClaimTypes": [],
+      "remainingGaps": [
+        "证据组合不足时，只能给低置信或不交易立场，不能给强仓位。"
+      ],
+      "scoreCapPolicy": "证据组合不足时，只能给低置信或不交易立场，不能给强仓位。",
+      "notWinCondition": true
+    },
+    {
+      "roundNumber": 6,
+      "roundKey": "limited_allocation_conclusion",
+      "decisionQuestion": "基于固定数据菜单，当前有色配置建议应如何落地：超配、低配、标配、结构性配置、条件触发还是暂不交易？",
+      "requiredEvidenceKey": "risk_reward_boundary",
+      "requiredForClaimTypes": [
+        "risk_reward",
+        "executability",
+        "invalidating_condition"
+      ],
+      "minimumFactCount": 1,
+      "preferredSources": [
+        "scoreCapPolicy",
+        "marketRiskProxy"
+      ],
+      "fallbackSources": [
+        "judgeLedger"
+      ],
+      "matchedFactIds": [],
+      "matchedEvidenceIds": [],
+      "coverageStatus": "missing",
+      "supportedClaimTypes": [],
+      "remainingGaps": [
+        "缺少风险收益边界时，配置建议必须降为观察或小仓位。"
+      ],
+      "scoreCapPolicy": "缺少风险收益边界时，配置建议必须降为观察或小仓位。",
+      "notWinCondition": true
+    },
+    {
+      "roundNumber": 6,
+      "roundKey": "limited_allocation_conclusion",
+      "decisionQuestion": "基于固定数据菜单，当前有色配置建议应如何落地：超配、低配、标配、结构性配置、条件触发还是暂不交易？",
+      "requiredEvidenceKey": "missing_evidence_policy",
+      "requiredForClaimTypes": [
+        "confidence_cap",
+        "projection_limit"
+      ],
+      "minimumFactCount": 1,
+      "preferredSources": [
+        "requiredEvidenceSchema",
+        "scoreCapPolicy"
+      ],
+      "fallbackSources": [
+        "missingEvidence"
+      ],
+      "matchedFactIds": [],
+      "matchedEvidenceIds": [],
+      "coverageStatus": "missing",
+      "supportedClaimTypes": [],
+      "remainingGaps": [
+        "缺口只能限制结论强度和战斗投影权限，不能直接赢。"
+      ],
+      "scoreCapPolicy": "缺口只能限制结论强度和战斗投影权限，不能直接赢。",
+      "notWinCondition": true
+    }
+  ]
+}

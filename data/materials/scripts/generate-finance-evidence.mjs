@@ -9,6 +9,15 @@ const repoRoot = path.resolve(materialsRoot, "..", "..");
 const processedFinanceRoot = path.join(materialsRoot, "processed", "finance");
 const generatedFinanceRoot = path.join(materialsRoot, "generated", "finance");
 const parserVersion = "finance-evidence-generator-v1";
+const requiredAllowedStance = [
+  "bullish",
+  "bearish",
+  "neutral",
+  "structural",
+  "conditional_bullish",
+  "conditional_bearish",
+  "no_trade"
+];
 
 function parseArgs(argv) {
   const args = {
@@ -107,6 +116,134 @@ function factFromConfig({
   };
 }
 
+function defaultChallengePolicy() {
+  return {
+    mustTargetClaimId: true,
+    allowedChallengeTypes: [
+      "evidence_gap",
+      "proxy_mismatch",
+      "horizon_mismatch",
+      "reasoning_bridge_break",
+      "risk_reward_failure",
+      "alternative_explanation"
+    ],
+    invalidChallengePatterns: [
+      "只说数据不足",
+      "不指向具体主张或证据链"
+    ],
+    missingEvidenceCanOnlyCap: true
+  };
+}
+
+function normalizeDecisionFields(round) {
+  return {
+    decisionQuestion: round.decisionQuestion ?? round.title,
+    decisionObject: round.decisionObject ?? "",
+    horizon: round.horizon ?? "",
+    benchmark: round.benchmark ?? "",
+    allowedStance: round.allowedStance ?? requiredAllowedStance,
+    requiredOutput: round.requiredOutput ?? [],
+    requiredEvidenceSchema: round.requiredEvidenceSchema ?? [],
+    challengePolicy: round.challengePolicy ?? defaultChallengePolicy(),
+    legacyDefenseThesisFocus: round.legacyDefenseThesisFocus ?? round.defenseThesisFocus,
+    legacyAttackChallengeFocus: round.legacyAttackChallengeFocus ?? round.attackChallengeFocus
+  };
+}
+
+function loadFactBank(map) {
+  const latestPath = path.join(generatedFinanceRoot, "fact-bank", map, "latest.json");
+  if (!fs.existsSync(latestPath)) return null;
+  return readJson(latestPath);
+}
+
+const sourceAliases = {
+  FRED: ["FRED"],
+  BaoStock: ["BAOSTOCK"],
+  BAOSTOCK: ["BAOSTOCK"],
+  UN_COMTRADE: ["UN_COMTRADE"],
+  SHFE: ["SHFE"],
+  INE: ["INE"],
+  WorldBank: ["WORLD_BANK"],
+  WORLD_BANK: ["WORLD_BANK"],
+  "World Bank": ["WORLD_BANK"],
+  configured_proxy_fact: ["CONFIGURED_PROXY"],
+  unavailable_observation: ["UNAVAILABLE"],
+  missingEvidence: ["MISSING"],
+  requiredEvidenceSchema: ["SCHEMA"],
+  judgeLedger: ["JUDGE_LEDGER"],
+  scoreCapPolicy: ["SCORE_CAP_POLICY"],
+  riskPolicy: ["RISK_POLICY"],
+  marketRiskProxy: ["MARKET_RISK_PROXY"]
+};
+
+function normalizeSources(sourceNames) {
+  return new Set(sourceNames.flatMap((source) => sourceAliases[source] ?? [String(source).toUpperCase()]));
+}
+
+function factSourceKey(fact) {
+  return String(fact.source ?? fact.sourcePublisher ?? "").toUpperCase();
+}
+
+function claimMatches(fact, claimTypes) {
+  const allowed = new Set(fact.allowedClaimTypes ?? []);
+  if (allowed.size === 0) return true;
+  return claimTypes.some((claimType) => allowed.has(claimType));
+}
+
+function packFactFromFactBank(fact, index) {
+  return {
+    ...fact,
+    factId: fact.factId ?? `FB${String(index).padStart(3, "0")}`,
+    statement: fact.statementZh ?? fact.statement ?? "",
+    statementZh: fact.statementZh ?? fact.statement ?? "",
+    metricName: fact.metricName,
+    source: fact.source,
+    sourceType: fact.sourceType ?? fact.reliabilityTier,
+    collector: fact.collector,
+    evidenceId: fact.evidenceId,
+    confidence: fact.confidence ?? 0,
+    rawHash: fact.rawHash,
+    parserVersion: fact.parserVersion ?? parserVersion,
+    originalLocation: fact.originalLocation ?? fact.endpoint ?? fact.source,
+    policyNotes: fact.policyNotes ?? [],
+    dataMode: fact.dataMode ?? "offline_observation_fact",
+    factBankSource: "fact_bank_v2"
+  };
+}
+
+function buildFactBankFacts({ round, factBank }) {
+  if (!factBank?.facts?.length) return [];
+  const selected = new Map();
+  for (const evidenceItem of round.requiredEvidenceSchema ?? []) {
+    const preferred = normalizeSources(evidenceItem.preferredSources ?? []);
+    const fallback = normalizeSources(evidenceItem.fallbackSources ?? []);
+    const claimTypes = evidenceItem.requiredForClaimTypes ?? [];
+    const minimum = Number(evidenceItem.minimumFactCount ?? 1);
+    const observedPreferred = factBank.facts.filter(
+      (fact) => fact.dataMode === "offline_observation_fact" && preferred.has(factSourceKey(fact)) && claimMatches(fact, claimTypes)
+    );
+    const observedFallback = factBank.facts.filter(
+      (fact) => fact.dataMode === "offline_observation_fact" && fallback.has(factSourceKey(fact)) && claimMatches(fact, claimTypes)
+    );
+    const unavailablePreferred = factBank.facts.filter(
+      (fact) => fact.dataMode === "unavailable_observation" && preferred.has(factSourceKey(fact))
+    );
+    const picks = observedPreferred.length >= minimum ? observedPreferred.slice(0, minimum + 1) : [...observedPreferred, ...observedFallback, ...unavailablePreferred.slice(0, 1)];
+    for (const fact of picks) {
+      if (fact.factId && !selected.has(fact.factId)) selected.set(fact.factId, fact);
+    }
+  }
+  if (selected.size === 0) {
+    const observedCoreFacts = factBank.facts.filter(
+      (fact) => fact.dataMode === "offline_observation_fact" && ["FRED", "BAOSTOCK"].includes(factSourceKey(fact))
+    );
+    for (const fact of observedCoreFacts.slice(0, 4)) {
+      if (fact.factId && !selected.has(fact.factId)) selected.set(fact.factId, fact);
+    }
+  }
+  return [...selected.values()].map((fact, index) => packFactFromFactBank(fact, index + 1));
+}
+
 function buildFredFacts({ round, fredSeries, sourceRegistry, policy, factStart }) {
   const source = sourceById(sourceRegistry, "fred");
   const confidence = confidenceForTier(policy, source.defaultQualityTier);
@@ -122,7 +259,7 @@ function buildFredFacts({ round, fredSeries, sourceRegistry, policy, factStart }
       domain: "commodity",
       locator: series.seriesId,
       unit: series.unit,
-      statement: `FRED series ${series.seriesId} (${series.displayName}) is configured as a global ${series.commodity} price proxy for ${round.title}; it does not prove China domestic inventory, spot premium, or supply-demand tightness.`,
+      statement: `FRED series ${series.seriesId} (${series.displayName}) is configured as a global ${series.commodity} price proxy for the decision question "${round.decisionQuestion ?? round.title}"; it does not prove China domestic inventory, spot premium, or supply-demand tightness.`,
       originalLocation: `fred-series.json:${series.seriesId}`,
       policyNotes: fredSeries.limitations,
       factIndex: factStart + offset
@@ -144,7 +281,7 @@ function buildBaoStockFacts({ round, universe, sourceRegistry, policy, factStart
       entity: company.code,
       domain: "stock",
       locator: company.code,
-      statement: `${company.name} (${company.code}) is configured as a representative A-share nonferrous proxy with ${company.primaryExposure} exposure; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.`,
+      statement: `${company.name} (${company.code}) is configured as a representative A-share nonferrous proxy with ${company.primaryExposure} exposure for the decision question "${round.decisionQuestion ?? round.title}"; BaoStock can support market reaction and valuation proxy only, not confirmed industry fundamentals.`,
       originalLocation: `baostock-company-universe.json:${company.code}`,
       policyNotes: universe.limitations,
       factIndex: factStart + offset
@@ -168,7 +305,7 @@ function buildComtradeFacts({ round, hsCodes, sourceRegistry, policy, factStart 
         entity: item.cmdCode,
         domain: "trade",
         locator: item.cmdCode,
-        statement: `UN Comtrade HS ${item.cmdCode} (${item.displayName}) is configured as a lagged trade proxy for ${round.title}; it cannot replace China domestic inventory, spot premium, or industry profit evidence.`,
+        statement: `UN Comtrade HS ${item.cmdCode} (${item.displayName}) is configured as a lagged trade proxy for the decision question "${round.decisionQuestion ?? round.title}"; it cannot replace China domestic inventory, spot premium, or industry profit evidence.`,
         originalLocation: `un-comtrade-hs-codes.json:${item.cmdCode}`,
         policyNotes: hsCodes.limitations,
         factIndex: factStart + offset
@@ -225,19 +362,24 @@ function buildPromptFacts(facts) {
   }));
 }
 
-function buildRoundPack({ round, configs, generatedAt, mode, envNames }) {
-  const facts = [];
-  facts.push(...buildFredFacts({ round, ...configs, factStart: facts.length + 1 }));
-  facts.push(...buildBaoStockFacts({ round, ...configs, factStart: facts.length + 1 }));
-  facts.push(...buildComtradeFacts({ round, ...configs, factStart: facts.length + 1 }));
+function buildRoundPack({ round, configs, generatedAt, mode, envNames, factBank }) {
+  const decision = normalizeDecisionFields(round);
+  const facts = buildFactBankFacts({ round, factBank });
+  const fallbackFacts = [];
+  if (facts.length === 0) {
+    fallbackFacts.push(...buildFredFacts({ round, ...configs, factStart: fallbackFacts.length + 1 }));
+    fallbackFacts.push(...buildBaoStockFacts({ round, ...configs, factStart: fallbackFacts.length + 1 }));
+    fallbackFacts.push(...buildComtradeFacts({ round, ...configs, factStart: fallbackFacts.length + 1 }));
+  }
+  facts.push(...fallbackFacts);
 
   const availableSources = new Set(facts.map((fact) => fact.source.toLowerCase().replace("un_comtrade", "un_comtrade")));
   const sourceWarnings = [];
   if (round.optionalSources.includes("un_comtrade") && !envNames.has("UN_COMTRADE_KEY")) {
-    sourceWarnings.push("UN Comtrade is optional for this round and UN_COMTRADE_KEY was not detected in .env.local.");
+    sourceWarnings.push("UN Comtrade is optional for this round and the required credential was not detected.");
   }
   if (round.requiredSources.includes("fred") && !envNames.has("FRED_API_KEY")) {
-    sourceWarnings.push("FRED_API_KEY was not detected; generated facts are configured proxy facts, not live observations.");
+    sourceWarnings.push("FRED credential was not detected; generated facts may fall back to configured proxy facts.");
   }
   if (round.requiredSources.includes("baostock")) {
     sourceWarnings.push("BaoStock live observations are not fetched by this JS MVP; configured universe facts are used as proxy scaffolding.");
@@ -253,8 +395,18 @@ function buildRoundPack({ round, configs, generatedAt, mode, envNames }) {
     roundNumber: round.roundNumber,
     roundKey: round.roundKey,
     topicTitle: round.title,
+    decisionQuestion: decision.decisionQuestion,
+    decisionObject: decision.decisionObject,
+    horizon: decision.horizon,
+    benchmark: decision.benchmark,
+    allowedStance: decision.allowedStance,
+    requiredOutput: decision.requiredOutput,
+    requiredEvidenceSchema: decision.requiredEvidenceSchema,
+    challengePolicy: decision.challengePolicy,
     defenseThesisFocus: round.defenseThesisFocus,
     attackChallengeFocus: round.attackChallengeFocus,
+    legacyDefenseThesisFocus: decision.legacyDefenseThesisFocus,
+    legacyAttackChallengeFocus: decision.legacyAttackChallengeFocus,
     requiredSources: round.requiredSources,
     optionalSources: round.optionalSources,
     facts,
@@ -263,7 +415,16 @@ function buildRoundPack({ round, configs, generatedAt, mode, envNames }) {
     promptFacts: buildPromptFacts(facts),
     judgeLedger: judgeLedgerForRound({ round, overlay: configs.overlay, facts }),
     sideSwapPolicy: configs.topics.sideSwapPolicy,
-    sourceWarnings
+    sourceWarnings,
+    factBankSnapshot: factBank
+      ? {
+          schemaVersion: factBank.schemaVersion,
+          parserVersion: factBank.parserVersion,
+          generatedAt: factBank.generatedAt,
+          consumedFactCount: facts.filter((fact) => fact.factBankSource === "fact_bank_v2").length,
+          fallbackConfiguredFactCount: fallbackFacts.length
+        }
+      : null
   };
 }
 
@@ -285,7 +446,8 @@ function main() {
   };
   const generatedAt = new Date().toISOString();
   const envNames = loadLocalEnvNames();
-  const packs = configs.topics.rounds.map((round) => buildRoundPack({ round, configs, generatedAt, mode: args.mode, envNames }));
+  const factBank = loadFactBank(args.map);
+  const packs = configs.topics.rounds.map((round) => buildRoundPack({ round, configs, generatedAt, mode: args.mode, envNames, factBank }));
 
   const output = {
     schemaVersion: 1,
@@ -297,7 +459,18 @@ function main() {
     sourceSummary: {
       defaultSources: configs.binding.defaultSources,
       optionalSources: configs.binding.optionalSources,
-      detectedEnvNames: [...envNames].filter((name) => /FRED|COMTRADE|BAOSTOCK/i.test(name)).sort()
+      detectedEnvFlags: {
+        fred: envNames.has("FRED_API_KEY"),
+        unComtrade: envNames.has("UN_COMTRADE_KEY") || envNames.has("UN_COMTRADE_SECONDARY_KEY")
+      },
+      factBankSnapshot: factBank
+        ? {
+            schemaVersion: factBank.schemaVersion,
+            parserVersion: factBank.parserVersion,
+            generatedAt: factBank.generatedAt,
+            factCount: factBank.facts?.length ?? 0
+          }
+        : null
     },
     sideSwapPolicy: configs.binding.sideSwapPolicy,
     packs

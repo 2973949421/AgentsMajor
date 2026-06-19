@@ -14,7 +14,7 @@ Simulation First, Broadcast Second.
 Finance Major 的当前口径是：
 
 ```text
-金融研究攻防决定为什么打，Hex 执行层证据决定怎么打，硬条件决定谁赢。
+证据绑定的投资决策攻防决定金融主动权，Hex 执行层证据决定怎么打，硬条件决定谁赢。
 ```
 
 也就是：
@@ -22,10 +22,11 @@ Finance Major 的当前口径是：
 ```text
 地图 = 行业赛道。
 轮次 = 研究任务类型。
-round = 当前任务子命题。
-守方提出投资主张并自证。
-攻方 challenge 投资假设、估值、风险和行业逻辑。
-裁判基于证据质量、逻辑一致性、反证处理、收益风险比和可执行性评分。
+round = 当前任务下的投资决策题。
+立场方提出 stance（投资立场）。
+挑战方 challenge 具体 claim（主张）。
+裁判基于 claim、evidence、reasoningBridge、missingEvidence 和 scoreCap 判断金融层是否成立。
+CS 层继续保留 attack / defense，并负责行动、控图、下包、拆包和战斗投影。
 ```
 
 N20-N41 的旧商业攻防口径已经完成第一版验证，但它容易输出空泛内容。后续不继续加厚旧商业文案，而是把旧 business duel 语义替换为 finance duel。
@@ -46,9 +47,11 @@ Node/Sector 实验线：已退役并清理 active mode / runtime / Web progress 
 
 ## 3. 近期优先级
 
-### P0：N42-N55，Finance Major 原型（当前）
+### P0：N57-N61，证据绑定投资决策攻防（当前）
 
-目标是保留 HexGrid 工程骨架，把旧 business duel 语义替换为 finance duel：
+N42-N55 已证明 Finance Major 原型能跑进 HexGrid，但也暴露出当前最大问题：金融层仍可能用“缺数据 / 泛金融意图 / 角色任务 / 风险提示”冒充金融胜负。N56 已完成第一版，把 Dust2 有色 6 个 round 改成开放投资决策题，并写入 `decisionQuestion`、`allowedStance`、`requiredEvidenceSchema` 和 `challengePolicy`。N57 前置数据源探测已完成，N57 Fact Bank v2 已完成第一版覆盖升级；当前新增外部源在 Codex 环境因网络受限多为 unavailable，下一步应先在联网环境重跑 collector，再进入 N58。
+
+N42-N55 历史状态：
 
 ```text
 N42：Finance Evidence + Finance Duel 契约。（已完成）
@@ -69,7 +72,51 @@ N55 收口修正：phase0 真实开局输出层、失败态隔离与局内行动
 N55 后 combat 窄修补丁：接触门槛与伤亡门槛分层，远距离抽象接触禁止击杀，近距离和开阔枪线暴露允许受伤 / 退让 / 击杀，move / rotate 进入暴露关系可触发隐式交火。（已完成）
 ```
 
-当前测试落点：
+N56-N61 新路线：
+
+```text
+N56：决策题与立场 / 挑战契约。（已完成第一版）
+N57 前置：数据源探测与接口统一审计。（已完成）
+N57：数据菜单扩充与 Fact Bank v2。（已完成第一版覆盖升级；需联网刷新新增源）
+N58：Phase0 Stance Card / Challenge Card。
+N59：金融裁判证据绑定重写。
+N60：金融结果与 Combat Projection 解耦。
+N61：Evidence-bound Round v1 小样本验收。
+```
+
+这六步是强依赖链，不是并列待办：
+
+```text
+N56 已解决“问题怎么问”：产出 decisionQuestion、allowedStance、requiredEvidenceSchema、challengePolicy，并进入材料、trace、prompt 和 Web 审计。
+N57 前置已解决“哪些源真实能试”：确认 FRED / BaoStock 可作为主路径，AKShare 可探测 SHFE / INE / GFEX 且可作为接入入口使用，World Bank public API 可作年度宏观代理，UN Comtrade 2024 指定 HS / flow 可返回贸易记录。N57 fact 必须写清 sourcePublisher / accessProvider / collector / endpoint / 字段口径。
+N57 解决“数据够不够”：按 N56 的 requiredEvidenceSchema 和前置 source probe 结果扩充数据、提取事实、生成派生指标和覆盖率报告。第一版已经覆盖原 fact bank 路径，不新增平行库；若联网重跑后某源仍 unavailable，N58 必须把它当成缺口和 score cap，而不是可采信事实。
+N58 解决“agent 怎么说”：phase0 只能输出结构化 stanceCard / challengeCard，claim 必须绑定 evidence。
+N59 解决“裁判怎么采信”：机械校验 claimType 与 allowedClaimTypes，accepted evidence 是金融胜负硬门槛。
+N60 解决“金融怎么影响战斗”：金融只输出受限 combatEffectAllowed，不让作文分直接变成击杀。
+N61 解决“是否真的闭环”：用 Dust2 有色最小样本证明 claim、evidence、judge、combat、Web 审计能串起来。
+```
+
+任何一步不达标，都不能靠后续步骤粉饰：
+
+```text
+N56 没有 requiredEvidenceSchema，N57 就不知道补什么数据。
+N57 没有足够事实和派生指标，N58 就只能继续说数据不足。
+N58 没有 claimId / evidenceRefs / reasoningBridge，N59 就无法真正采信。
+N59 没有 accepted / rejected / missing / scoreCaps，N60 就不能判断金融投影权限。
+N60 没有金融与 CS 解耦，N61 的击杀解释仍会黑箱。
+```
+
+核心硬规则：
+
+```text
+Round 必须是投资决策题，不预设看多或看空。
+金融层使用 stance side / challenge side，CS 层继续使用 attack / defense。
+没有 acceptedEvidenceRefs，不能判金融胜利。
+missingEvidence 只能降权或限制置信度，不能直接赢。
+CS 击杀仍可由纯 CS 事实产生，但不能包装成金融胜利。
+```
+
+当前测试落点保持不变：
 
 ```text
 地图：Dust2 有色。
@@ -87,43 +134,13 @@ docs/finance/finance-evidence-mvp.md
 docs/finance/finance-data-asset-contract.md
 ```
 
-N44 已生成第一版证据包：
+当前文档入口：
 
 ```text
-data/materials/generated/finance/maps/dust2-nonferrous/round-evidence-packs.json
-```
-
-N45 已读取这份 evidence pack，生成 round-level financeDuel，并写入 Hex trace。N46 已让 combat 裁判优先消费 financeDuel，并保留旧 business 字段作为兼容别名。N47 已让 `/hex-lab/match` 的审计抽屉优先展示金融小主题、投资主张、反证质疑、证据编号、缺失证据、评分上限、金融裁判和 hard condition 分离链路。N48 已完成 Dust2 有色 / 行业判断 6R 小样本验收，结论是条件通过：fixture 结构链路通过，real provider 金融样本尚未通过。
-
-N49 已完成第一版中文审计和信息层拆分，重点结果是：
-
-```text
-1. Web 审计默认中文摘要优先，不再强迫用户先读 raw enum / artifact id。
-2. 每 round 生成 roundOpeningBrief 和 10 张 agentOpeningBrief。
-3. phase action 消费开局信息卡和当前局势，不应继续重写完整金融论文。
-4. 技术细节仍折叠保留，方便排查。
-```
-
-N49 暴露出的新问题是：
-
-```text
-1. FRED / BaoStock / UN Comtrade / AKShare 只完成 source registry 和依赖登记。
-2. 当前 evidence pack 主要仍是 configured_proxy_fact，不是真实 API 观测数据。
-3. generate-finance-evidence.mjs 只读取配置文件，没有真正调用 FRED / BaoStock / Comtrade / AKShare。
-4. 同队 5 名 agent 的开局信息卡高度重复，finance role 仍可能是 unknown。
-5. roundOpeningBrief 缺少按 PM / Macro / Commodity / Company / Risk 切分的证据。
-```
-
-因此下一步必须拆成 N50-N55：
-
-```text
-N50 已用用户准备的免费接口生成离线宏微观事实库，FRED / BaoStock 为观测事实，UN Comtrade 为 optional unavailable。
-N51 已从事实库生成 agent evidence slice，让 10 名 agent 的开局信息卡按专家角色读取不同证据、证据缺口和评分边界。
-N52 已把回合信息层和局内行动层硬隔离：compact request 不再发送完整金融长文本，briefRefId 缺失或错写只能修到当前 agent 自己的信息卡，复述完整开局论点或行动理由明显超长会拒绝 / 降级。
-N53 已让金融裁判明确采信 / 拒绝 / 降权哪些证据，不能用字段存在冒充机制生效。combat trace 现在记录 `acceptedEvidenceRefs / rejectedEvidenceRefs / missingEvidenceApplied / scoreCapRefs / financeReasonZh / csReasonZh`，fallback、invalid action、复述开局论点和明显超长行动理由不产生正向金融证据。
-N54 已完成中文 Web 审计主链路和失败报告。当前环境中的 real provider 成功样本因外部出站风险被阻断，因此不能宣称真实对局已通过。
-
-N55 进一步修正审计来源：主审计展示真实 `hex_llm_response` artifact 的人工可读摘要，系统生成的 `agentOpeningBrief` 只能作为“系统输入卡（非 agent 输出）”折叠展示。没有 response artifact 时必须显示“没有真实模型输出”，不能用系统预置词或 fallback 文案补成 agent 输出。N55 收口修正再把真实输出层前置到运行时：每 round 先生成 10 条 `roundStartAgentOutputs`，phase1+ 只允许引用当前 agent 自己的可消费真实开局输出；provider 失败、无效响应或非法证据引用只能作为失败审计展示，不得进入后续行动请求，也不得计入真实输出成功数。N55 后 combat 窄修补丁修正战斗行为门槛：远距离 `site_contest / choke_contest / known_enemy / same_region` 不再能直接击杀；近距离、同点位、开阔无掩体、包点入口、下包 / 拆包附近可进入致命接触；`move / rotate` 进入可射击暴露关系时可触发隐式交火；support 默认只贡献助攻和压制。
+docs/finance/finance-major-prototype-plan.md
+docs/finance/finance-decision-question-contract.md
+docs/finance/finance-evidence-mvp.md
+docs/finance/finance-evidence-bound-round-roadmap.md
 ```
 
 当前必须承认的边界：
@@ -148,6 +165,8 @@ N48-N55 推进记录：
 ```text
 docs/finance/finance-n48-n55-iteration-log.md
 ```
+
+N48-N55 推进记录是历史日志，不再作为当前下一步执行入口。
 
 正式本地环境入口：
 
@@ -227,29 +246,17 @@ role contribution 已进入 killer / assister 归因排序，但不写 hard winn
 KDA 仍只从 combat trace 的 killer / target / assister 链路读取。
 ```
 
-### Done：N41，商业攻防审计主线（已完成第一版）
+### Done：N41，旧商业审计主线（历史记录）
 
-目标是让用户不用打开 raw JSON，也能审查商业文斗：
-
-```text
-本回合小主题
-守方自证
-攻方质疑
-agent 商业职责
-LLM 原始输出与规范化行动
-战斗商业裁判
-CS 证据
-hard winner
-```
-
-当前结果：
+N41 是切换 Finance Major 前的旧 business duel（商业攻防）审计尝试。它只作为历史质量打磨记录保留，不再作为当前金融层执行口径。
 
 ```text
-Web progress projection 新增 businessReview。
-/hex-lab/match 的审计抽屉新增并默认进入“商业攻防”标签。
-页面先展示 round 小主题、守方自证、攻方质疑、phase 行动故事、combat 裁判故事和 hard winner。
-LLM / combat / economy / hard winner 标签仍保留，但 raw JSON 不再是理解回合的主要入口。
+Web progress projection 曾新增 businessReview。
+/hex-lab/match 曾新增商业攻防审计标签。
+raw JSON 不再是理解回合的主要入口。
 ```
+
+当前 Finance Major 已转向证据绑定的投资决策攻防，不沿用 N41 的商业证明题主语。
 
 详见：
 

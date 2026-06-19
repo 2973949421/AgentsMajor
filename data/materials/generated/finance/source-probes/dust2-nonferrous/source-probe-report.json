@@ -1,0 +1,1143 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-19T06:37:49Z",
+  "financeScenarioSlug": "dust2-nonferrous",
+  "hexMapSlug": "dust2",
+  "n56RequiredEvidenceKeys": [
+    "available_positive_proxy",
+    "china_supply_demand_proxy",
+    "commodity_context",
+    "commodity_price_context",
+    "commodity_price_momentum",
+    "declared_missing_evidence",
+    "domestic_inventory_or_spot_proxy",
+    "earnings_transmission_proxy",
+    "equity_market_reaction",
+    "equity_transmission_proxy",
+    "missing_evidence_policy",
+    "portfolio_stance_evidence_mix",
+    "risk_execution_rule",
+    "risk_reward_boundary",
+    "trade_flow_proxy",
+    "valuation_level",
+    "valuation_proxy"
+  ],
+  "sourceProbes": [
+    {
+      "sourceId": "fred",
+      "displayName": "FRED",
+      "collectorId": "fred_http_api_v1",
+      "sourceRole": "official_api",
+      "requiresApiKey": true,
+      "apiKeyPresent": true,
+      "sourceType": "macro_commodity_time_series",
+      "probeStatus": "success",
+      "testedEndpoints": [
+        {
+          "label": "series_observations:PCOPPUSDM",
+          "status": "success",
+          "returnedRows": 3,
+          "returnedFields": [
+            "realtime_start",
+            "realtime_end",
+            "date",
+            "value"
+          ],
+          "samplePeriod": "2026-05-01..2026-03-01"
+        },
+        {
+          "label": "series_observations:PALUMUSDM",
+          "status": "success",
+          "returnedRows": 3,
+          "returnedFields": [
+            "realtime_start",
+            "realtime_end",
+            "date",
+            "value"
+          ],
+          "samplePeriod": "2026-05-01..2026-03-01"
+        }
+      ],
+      "testedSymbols": [
+        "PALUMUSDM",
+        "PCOPPUSDM"
+      ],
+      "returnedRows": 6,
+      "returnedFields": [
+        "date",
+        "realtime_end",
+        "realtime_start",
+        "value"
+      ],
+      "samplePeriod": "2026-05-01..2026-03-01; 2026-05-01..2026-03-01",
+      "supportsRequiredEvidenceKeys": [
+        "available_positive_proxy",
+        "commodity_context",
+        "commodity_price_context",
+        "commodity_price_momentum",
+        "portfolio_stance_evidence_mix"
+      ],
+      "allowedClaimTypes": [
+        "commodity_to_equity_transmission",
+        "commodity_trend",
+        "relative_allocation_signal",
+        "trade_price_consistency",
+        "valuation_vs_commodity_signal"
+      ],
+      "notAllowedClaimTypes": [
+        "china_supply_demand_confirmed",
+        "company_earnings_confirmed",
+        "domestic_inventory_confirmed"
+      ],
+      "reliabilityTier": "official_api",
+      "decisionForN57": "ready_for_n57",
+      "failureReason": null,
+      "notes": [
+        "FRED 可以做全球金属价格和宏观代理，不能证明中国国内库存、现货升贴水或公司盈利。"
+      ]
+    },
+    {
+      "sourceId": "baostock",
+      "displayName": "BaoStock",
+      "collectorId": "baostock_python_package_v0",
+      "sourceRole": "community_api",
+      "requiresApiKey": false,
+      "apiKeyPresent": null,
+      "sourceType": "a_share_market_and_valuation",
+      "probeStatus": "success",
+      "testedEndpoints": [
+        {
+          "label": "query_history_k_data_plus:sh.601899",
+          "status": "success",
+          "returnedRows": 5,
+          "returnedFields": [
+            "date",
+            "code",
+            "close",
+            "volume",
+            "amount",
+            "turn",
+            "pctChg",
+            "peTTM",
+            "pbMRQ"
+          ],
+          "samplePeriod": "2026-06-12..2026-06-18"
+        }
+      ],
+      "testedSymbols": [
+        "sh.601899"
+      ],
+      "returnedRows": 5,
+      "returnedFields": [
+        "amount",
+        "close",
+        "code",
+        "date",
+        "pbMRQ",
+        "pctChg",
+        "peTTM",
+        "turn",
+        "volume"
+      ],
+      "samplePeriod": "2026-06-12..2026-06-18",
+      "supportsRequiredEvidenceKeys": [
+        "available_positive_proxy",
+        "equity_market_reaction",
+        "equity_transmission_proxy",
+        "portfolio_stance_evidence_mix",
+        "valuation_level",
+        "valuation_proxy"
+      ],
+      "allowedClaimTypes": [
+        "a_share_relative_allocation",
+        "a_share_relative_performance",
+        "market_confirmation",
+        "price_in_assessment",
+        "valuation_support"
+      ],
+      "notAllowedClaimTypes": [
+        "commodity_supply_demand_confirmed",
+        "company_margin_confirmed",
+        "industry_fundamental_confirmed"
+      ],
+      "reliabilityTier": "market_data_proxy",
+      "decisionForN57": "ready_for_n57",
+      "failureReason": null,
+      "notes": [
+        "BaoStock 可做 A 股代表公司市场反应、成交和估值代理，不能单独证明行业基本面。"
+      ]
+    },
+    {
+      "sourceId": "shfe",
+      "displayName": "SHFE 上期所（AKShare 采集器）",
+      "collectorId": "akshare_python_package_v0",
+      "sourceRole": "official_exchange_via_collector",
+      "requiresApiKey": false,
+      "apiKeyPresent": null,
+      "sourceType": "domestic_futures_exchange_data",
+      "probeStatus": "partial",
+      "testedEndpoints": [
+        {
+          "label": "get_shfe_daily:20260619",
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null
+        },
+        {
+          "label": "get_shfe_daily:20260618",
+          "status": "success",
+          "returnedRows": 305,
+          "returnedFields": [
+            "index",
+            "symbol",
+            "date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "open_interest",
+            "turnover",
+            "settle",
+            "pre_settle",
+            "variety"
+          ],
+          "samplePeriod": null
+        },
+        {
+          "label": "futures_settle_shfe:20260619",
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null
+        },
+        {
+          "label": "futures_settle_shfe:20260618",
+          "status": "success",
+          "returnedRows": 302,
+          "returnedFields": [
+            "date",
+            "symbol",
+            "variety",
+            "settle_price",
+            "spec_long_margin_ratio",
+            "hedge_long_margin_ratio",
+            "spec_short_margin_ratio",
+            "hedge_short_margin_ratio",
+            "trade_fee_ratio",
+            "close_today_fee_ratio",
+            "is_close_today"
+          ],
+          "samplePeriod": null
+        },
+        {
+          "label": "futures_stock_shfe_js:20260619",
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null
+        },
+        {
+          "label": "futures_stock_shfe_js:20260618",
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null
+        },
+        {
+          "label": "futures_stock_shfe_js:20260617",
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null
+        },
+        {
+          "label": "futures_stock_shfe_js:20260616",
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null
+        },
+        {
+          "label": "futures_shfe_warehouse_receipt:20260619",
+          "status": "error",
+          "failureReason": {
+            "errorType": "JSONDecodeError",
+            "message": "Expecting value: line 1 column 1 (char 0)"
+          }
+        },
+        {
+          "label": "futures_shfe_warehouse_receipt:20260618",
+          "status": "error",
+          "failureReason": {
+            "errorType": "JSONDecodeError",
+            "message": "Expecting value: line 1 column 1 (char 0)"
+          }
+        },
+        {
+          "label": "futures_shfe_warehouse_receipt:20260617",
+          "status": "error",
+          "failureReason": {
+            "errorType": "JSONDecodeError",
+            "message": "Expecting value: line 1 column 1 (char 0)"
+          }
+        },
+        {
+          "label": "futures_shfe_warehouse_receipt:20260616",
+          "status": "error",
+          "failureReason": {
+            "errorType": "JSONDecodeError",
+            "message": "Expecting value: line 1 column 1 (char 0)"
+          }
+        },
+        {
+          "label": "get_receipt:CU/AL/ZN/NI/SN/PB/AU/AG",
+          "status": "error",
+          "failureReason": {
+            "errorType": "ValueError",
+            "message": "No tables found"
+          }
+        }
+      ],
+      "testedSymbols": [
+        "AG",
+        "AL",
+        "AU",
+        "CU",
+        "NI",
+        "PB",
+        "SN",
+        "ZN"
+      ],
+      "returnedRows": 607,
+      "returnedFields": [
+        "close",
+        "close_today_fee_ratio",
+        "date",
+        "hedge_long_margin_ratio",
+        "hedge_short_margin_ratio",
+        "high",
+        "index",
+        "is_close_today",
+        "low",
+        "open",
+        "open_interest",
+        "pre_settle",
+        "settle",
+        "settle_price",
+        "spec_long_margin_ratio",
+        "spec_short_margin_ratio",
+        "symbol",
+        "trade_fee_ratio",
+        "turnover",
+        "variety",
+        "volume"
+      ],
+      "samplePeriod": null,
+      "supportsRequiredEvidenceKeys": [
+        "china_supply_demand_proxy",
+        "commodity_price_context",
+        "commodity_price_momentum",
+        "domestic_inventory_or_spot_proxy",
+        "risk_reward_boundary"
+      ],
+      "allowedClaimTypes": [
+        "china_supply_demand",
+        "commodity_trend",
+        "inventory_pressure",
+        "risk_reward",
+        "trade_price_consistency"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed",
+        "final_official_fact_without_source_review"
+      ],
+      "reliabilityTier": "exchange_data_via_named_collector",
+      "decisionForN57": "usable_with_cap",
+      "failureReason": null,
+      "notes": [
+        "AKShare 是访问入口；N57 fact 必须记录 sourcePublisher=SHFE、accessProvider=AKShare、collector=akshare_python_package_v0、endpoint、字段、日期和变换口径。"
+      ]
+    },
+    {
+      "sourceId": "ine",
+      "displayName": "INE 上海国际能源交易中心（AKShare / Sina 采集器）",
+      "collectorId": "akshare_python_package_v0",
+      "sourceRole": "official_exchange_or_market_feed_via_collector",
+      "requiresApiKey": false,
+      "apiKeyPresent": null,
+      "sourceType": "domestic_futures_exchange_data",
+      "probeStatus": "success",
+      "testedEndpoints": [
+        {
+          "label": "futures_settle_ine:20260619",
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null
+        },
+        {
+          "label": "futures_settle_ine:20260618",
+          "status": "success",
+          "returnedRows": 64,
+          "returnedFields": [
+            "date",
+            "symbol",
+            "variety",
+            "settle_price",
+            "spec_long_margin_ratio",
+            "hedge_long_margin_ratio",
+            "spec_short_margin_ratio",
+            "hedge_short_margin_ratio",
+            "trade_fee_ratio",
+            "close_today_fee_ratio",
+            "is_close_today"
+          ],
+          "samplePeriod": null
+        },
+        {
+          "label": "futures_zh_daily_sina:BC0",
+          "status": "success",
+          "returnedRows": 1352,
+          "returnedFields": [
+            "date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "hold",
+            "settle"
+          ],
+          "samplePeriod": null
+        }
+      ],
+      "testedSymbols": [
+        "BC"
+      ],
+      "returnedRows": 1416,
+      "returnedFields": [
+        "close",
+        "close_today_fee_ratio",
+        "date",
+        "hedge_long_margin_ratio",
+        "hedge_short_margin_ratio",
+        "high",
+        "hold",
+        "is_close_today",
+        "low",
+        "open",
+        "settle",
+        "settle_price",
+        "spec_long_margin_ratio",
+        "spec_short_margin_ratio",
+        "symbol",
+        "trade_fee_ratio",
+        "variety",
+        "volume"
+      ],
+      "samplePeriod": null,
+      "supportsRequiredEvidenceKeys": [
+        "china_supply_demand_proxy",
+        "commodity_price_context",
+        "commodity_price_momentum"
+      ],
+      "allowedClaimTypes": [
+        "commodity_trend",
+        "trade_price_consistency"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed",
+        "domestic_inventory_confirmed"
+      ],
+      "reliabilityTier": "exchange_data_via_named_collector",
+      "decisionForN57": "usable_with_cap",
+      "failureReason": null,
+      "notes": [
+        "INE 国际铜可作为铜价或市场交易代理；若只有 Sina 行情可用，不能包装成官方仓单或供需事实。"
+      ]
+    },
+    {
+      "sourceId": "gfex",
+      "displayName": "GFEX 广期所（AKShare / Sina 采集器）",
+      "collectorId": "akshare_python_package_v0",
+      "sourceRole": "official_exchange_or_market_feed_via_collector",
+      "requiresApiKey": false,
+      "apiKeyPresent": null,
+      "sourceType": "domestic_futures_exchange_data",
+      "probeStatus": "success",
+      "testedEndpoints": [
+        {
+          "label": "futures_settle_gfex:20260619",
+          "status": "success",
+          "returnedRows": 48,
+          "returnedFields": [
+            "date",
+            "symbol",
+            "variety",
+            "spec_buy_rate",
+            "spec_buy",
+            "hedge_buy_rate",
+            "hedge_buy",
+            "rise_limit_rate",
+            "rise_limit",
+            "fall_limit",
+            "agent_tot_buy_posi_quota",
+            "self_tot_buy_posi_quota",
+            "client_buy_posi_quota"
+          ],
+          "samplePeriod": null
+        },
+        {
+          "label": "futures_gfex_warehouse_receipt:20260619",
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null
+        },
+        {
+          "label": "futures_gfex_warehouse_receipt:20260618",
+          "status": "success",
+          "returnedRows": 91,
+          "returnedFields": [
+            "PS",
+            "品种",
+            "仓库/分库",
+            "昨日仓单量",
+            "今日仓单量",
+            "增减",
+            "SI",
+            "品种",
+            "仓库/分库",
+            "昨日仓单量",
+            "今日仓单量",
+            "增减",
+            "PT",
+            "品种",
+            "仓库/分库",
+            "昨日仓单量",
+            "今日仓单量",
+            "增减",
+            "LC",
+            "品种",
+            "仓库/分库",
+            "昨日仓单量",
+            "今日仓单量",
+            "增减",
+            "PD",
+            "品种",
+            "仓库/分库",
+            "昨日仓单量",
+            "今日仓单量",
+            "增减"
+          ],
+          "samplePeriod": null
+        },
+        {
+          "label": "futures_zh_daily_sina:LC0",
+          "status": "success",
+          "returnedRows": 704,
+          "returnedFields": [
+            "date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "hold",
+            "settle"
+          ],
+          "samplePeriod": null
+        },
+        {
+          "label": "futures_zh_daily_sina:SI0",
+          "status": "success",
+          "returnedRows": 843,
+          "returnedFields": [
+            "date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "hold",
+            "settle"
+          ],
+          "samplePeriod": null
+        }
+      ],
+      "testedSymbols": [
+        "LC",
+        "SI"
+      ],
+      "returnedRows": 1686,
+      "returnedFields": [
+        "LC",
+        "PD",
+        "PS",
+        "PT",
+        "SI",
+        "agent_tot_buy_posi_quota",
+        "client_buy_posi_quota",
+        "close",
+        "date",
+        "fall_limit",
+        "hedge_buy",
+        "hedge_buy_rate",
+        "high",
+        "hold",
+        "low",
+        "open",
+        "rise_limit",
+        "rise_limit_rate",
+        "self_tot_buy_posi_quota",
+        "settle",
+        "spec_buy",
+        "spec_buy_rate",
+        "symbol",
+        "variety",
+        "volume",
+        "今日仓单量",
+        "仓库/分库",
+        "品种",
+        "增减",
+        "昨日仓单量"
+      ],
+      "samplePeriod": null,
+      "supportsRequiredEvidenceKeys": [
+        "commodity_price_context",
+        "commodity_price_momentum",
+        "domestic_inventory_or_spot_proxy",
+        "risk_reward_boundary"
+      ],
+      "allowedClaimTypes": [
+        "commodity_trend",
+        "inventory_pressure",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "a_share_nonferrous_broad_allocation_without_mapping"
+      ],
+      "reliabilityTier": "exchange_data_via_named_collector",
+      "decisionForN57": "candidate_only",
+      "failureReason": null,
+      "notes": [
+        "GFEX LC/SI 与 Dust2 有色铜铝锌镍主线不是完全同一资产，可作为新能源金属候选，不直接进入 v1 核心结论。"
+      ]
+    },
+    {
+      "sourceId": "world_bank",
+      "displayName": "World Bank Indicators API",
+      "collectorId": "world_bank_http_api_v2",
+      "sourceRole": "official_public_api",
+      "requiresApiKey": false,
+      "apiKeyPresent": null,
+      "sourceType": "macro_demand_time_series",
+      "probeStatus": "success",
+      "testedEndpoints": [
+        {
+          "label": "indicator:NV.IND.TOTL.KD.ZG:industry_value_added_growth",
+          "status": "success",
+          "returnedRows": 7,
+          "returnedFields": [
+            "indicator",
+            "country",
+            "countryiso3code",
+            "date",
+            "value",
+            "unit",
+            "obs_status",
+            "decimal"
+          ],
+          "samplePeriod": "2024..2018"
+        },
+        {
+          "label": "indicator:NV.IND.MANF.KD.ZG:manufacturing_value_added_growth",
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null
+        },
+        {
+          "label": "indicator:NE.GDI.FTOT.KD.ZG:gross_fixed_capital_formation_growth",
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null
+        },
+        {
+          "label": "indicator:NY.GDP.MKTP.KD.ZG:gdp_growth",
+          "status": "success",
+          "returnedRows": 7,
+          "returnedFields": [
+            "indicator",
+            "country",
+            "countryiso3code",
+            "date",
+            "value",
+            "unit",
+            "obs_status",
+            "decimal"
+          ],
+          "samplePeriod": "2024..2018"
+        },
+        {
+          "label": "indicator:TX.VAL.MRCH.CD.WT:merchandise_exports",
+          "status": "success",
+          "returnedRows": 7,
+          "returnedFields": [
+            "indicator",
+            "country",
+            "countryiso3code",
+            "date",
+            "value",
+            "unit",
+            "obs_status",
+            "decimal"
+          ],
+          "samplePeriod": "2024..2018"
+        },
+        {
+          "label": "indicator:TM.VAL.MRCH.CD.WT:merchandise_imports",
+          "status": "success",
+          "returnedRows": 7,
+          "returnedFields": [
+            "indicator",
+            "country",
+            "countryiso3code",
+            "date",
+            "value",
+            "unit",
+            "obs_status",
+            "decimal"
+          ],
+          "samplePeriod": "2024..2018"
+        }
+      ],
+      "testedSymbols": [
+        "NE.GDI.FTOT.KD.ZG",
+        "NV.IND.MANF.KD.ZG",
+        "NV.IND.TOTL.KD.ZG",
+        "NY.GDP.MKTP.KD.ZG",
+        "TM.VAL.MRCH.CD.WT",
+        "TX.VAL.MRCH.CD.WT"
+      ],
+      "returnedRows": 28,
+      "returnedFields": [
+        "country",
+        "countryiso3code",
+        "date",
+        "decimal",
+        "indicator",
+        "obs_status",
+        "unit",
+        "value"
+      ],
+      "samplePeriod": "2024..2018; 2024..2018; 2024..2018",
+      "supportsRequiredEvidenceKeys": [
+        "global_cycle_signal",
+        "macro_demand_proxy",
+        "risk_reward_boundary"
+      ],
+      "allowedClaimTypes": [
+        "global_cycle_signal",
+        "horizon_context",
+        "macro_demand"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed",
+        "inventory_pressure_confirmed",
+        "short_term_china_spot_supply_demand"
+      ],
+      "reliabilityTier": "official_api_lagged",
+      "decisionForN57": "usable_with_cap",
+      "failureReason": null,
+      "notes": [
+        "World Bank 无 key public API 可做年度宏观背景，频率偏低，不能直接支撑 1-3 个月国内有色供需判断。"
+      ]
+    },
+    {
+      "sourceId": "un_comtrade",
+      "displayName": "UN Comtrade",
+      "collectorId": "un_comtrade_python_package_v1",
+      "sourceRole": "official_api",
+      "requiresApiKey": true,
+      "apiKeyPresent": true,
+      "sourceType": "international_trade_time_series",
+      "probeStatus": "success",
+      "testedEndpoints": [
+        {
+          "label": "getFinalData:2025:M:260300",
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null
+        },
+        {
+          "label": "getFinalData:2025:M:260600",
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null
+        },
+        {
+          "label": "getFinalData:2025:X:260300",
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null
+        },
+        {
+          "label": "getFinalData:2025:X:260600",
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null
+        },
+        {
+          "label": "getFinalData:2024:M:260300",
+          "status": "success",
+          "returnedRows": 1,
+          "returnedFields": [
+            "typeCode",
+            "freqCode",
+            "refPeriodId",
+            "refYear",
+            "refMonth",
+            "period",
+            "reporterCode",
+            "reporterISO",
+            "reporterDesc",
+            "flowCode",
+            "flowDesc",
+            "partnerCode",
+            "partnerISO",
+            "partnerDesc",
+            "partner2Code",
+            "partner2ISO",
+            "partner2Desc",
+            "classificationCode",
+            "classificationSearchCode",
+            "isOriginalClassification",
+            "cmdCode",
+            "cmdDesc",
+            "aggrLevel",
+            "isLeaf",
+            "customsCode",
+            "customsDesc",
+            "mosCode",
+            "motCode",
+            "motDesc",
+            "qtyUnitCode",
+            "qtyUnitAbbr",
+            "qty",
+            "isQtyEstimated",
+            "altQtyUnitCode",
+            "altQtyUnitAbbr",
+            "altQty",
+            "isAltQtyEstimated",
+            "netWgt",
+            "isNetWgtEstimated",
+            "grossWgt",
+            "isGrossWgtEstimated",
+            "cifvalue",
+            "fobvalue",
+            "primaryValue",
+            "legacyEstimationFlag",
+            "isReported",
+            "isAggregate"
+          ],
+          "samplePeriod": "2024..2024"
+        }
+      ],
+      "testedSymbols": [
+        "260300",
+        "260600",
+        "740311",
+        "750210",
+        "790111"
+      ],
+      "returnedRows": 1,
+      "returnedFields": [
+        "aggrLevel",
+        "altQty",
+        "altQtyUnitAbbr",
+        "altQtyUnitCode",
+        "cifvalue",
+        "classificationCode",
+        "classificationSearchCode",
+        "cmdCode",
+        "cmdDesc",
+        "customsCode",
+        "customsDesc",
+        "flowCode",
+        "flowDesc",
+        "fobvalue",
+        "freqCode",
+        "grossWgt",
+        "isAggregate",
+        "isAltQtyEstimated",
+        "isGrossWgtEstimated",
+        "isLeaf",
+        "isNetWgtEstimated",
+        "isOriginalClassification",
+        "isQtyEstimated",
+        "isReported",
+        "legacyEstimationFlag",
+        "mosCode",
+        "motCode",
+        "motDesc",
+        "netWgt",
+        "partner2Code",
+        "partner2Desc",
+        "partner2ISO",
+        "partnerCode",
+        "partnerDesc",
+        "partnerISO",
+        "period",
+        "primaryValue",
+        "qty",
+        "qtyUnitAbbr",
+        "qtyUnitCode",
+        "refMonth",
+        "refPeriodId",
+        "refYear",
+        "reporterCode",
+        "reporterDesc",
+        "reporterISO",
+        "typeCode"
+      ],
+      "samplePeriod": "2024..2024",
+      "supportsRequiredEvidenceKeys": [
+        "trade_flow_proxy"
+      ],
+      "allowedClaimTypes": [
+        "supply_demand_proxy",
+        "trade_flow_signal"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed",
+        "domestic_inventory_confirmed",
+        "spot_premium_confirmed"
+      ],
+      "reliabilityTier": "official_api_lagged",
+      "decisionForN57": "usable_with_cap",
+      "failureReason": null,
+      "notes": [
+        "UN Comtrade 是滞后贸易流线索；成功也不能单独证明国内库存、现货或公司盈利。",
+        "本探测会区分 key 缺失、package 错误、空结果和 direct HTTP fallback 错误。"
+      ]
+    },
+    {
+      "sourceId": "nbs",
+      "displayName": "国家统计局 NBS",
+      "collectorId": "not_implemented_in_n57_pre_probe",
+      "sourceRole": "candidate_source",
+      "requiresApiKey": false,
+      "apiKeyPresent": null,
+      "sourceType": "china_macro_and_industrial_statistics",
+      "probeStatus": "skipped",
+      "testedEndpoints": [
+        {
+          "label": "documented candidate only",
+          "status": "skipped"
+        }
+      ],
+      "testedSymbols": [],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "supportsRequiredEvidenceKeys": [
+        "china_supply_demand_proxy",
+        "macro_demand_proxy",
+        "risk_reward_boundary"
+      ],
+      "allowedClaimTypes": [
+        "china_supply_demand",
+        "industrial_activity",
+        "macro_demand"
+      ],
+      "notAllowedClaimTypes": [
+        "final_fact_without_probe",
+        "ready_for_runtime_without_collector"
+      ],
+      "reliabilityTier": "candidate_unverified",
+      "decisionForN57": "candidate_only",
+      "failureReason": null,
+      "notes": [
+        "权威但接口稳定性待单独验证；本前置不采集。"
+      ]
+    },
+    {
+      "sourceId": "gacc",
+      "displayName": "中国海关总署 GACC",
+      "collectorId": "not_implemented_in_n57_pre_probe",
+      "sourceRole": "candidate_source",
+      "requiresApiKey": false,
+      "apiKeyPresent": null,
+      "sourceType": "china_customs_trade_data",
+      "probeStatus": "skipped",
+      "testedEndpoints": [
+        {
+          "label": "documented candidate only",
+          "status": "skipped"
+        }
+      ],
+      "testedSymbols": [],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "supportsRequiredEvidenceKeys": [
+        "trade_flow_proxy"
+      ],
+      "allowedClaimTypes": [
+        "trade_flow_signal"
+      ],
+      "notAllowedClaimTypes": [
+        "final_fact_without_probe",
+        "ready_for_runtime_without_collector"
+      ],
+      "reliabilityTier": "candidate_unverified",
+      "decisionForN57": "candidate_only",
+      "failureReason": null,
+      "notes": [
+        "可作为中国本地贸易锚点候选；本前置不抓取网页或登录数据。"
+      ]
+    },
+    {
+      "sourceId": "usgs",
+      "displayName": "USGS Mineral Commodity Summaries",
+      "collectorId": "not_implemented_in_n57_pre_probe",
+      "sourceRole": "candidate_source",
+      "requiresApiKey": false,
+      "apiKeyPresent": null,
+      "sourceType": "annual_mineral_supply_background",
+      "probeStatus": "skipped",
+      "testedEndpoints": [
+        {
+          "label": "documented candidate only",
+          "status": "skipped"
+        }
+      ],
+      "testedSymbols": [],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "supportsRequiredEvidenceKeys": [
+        "china_supply_demand_proxy",
+        "commodity_context"
+      ],
+      "allowedClaimTypes": [
+        "resource_structure",
+        "supply_background"
+      ],
+      "notAllowedClaimTypes": [
+        "final_fact_without_probe",
+        "ready_for_runtime_without_collector"
+      ],
+      "reliabilityTier": "candidate_unverified",
+      "decisionForN57": "candidate_only",
+      "failureReason": null,
+      "notes": [
+        "适合年度供给背景和行业底蕴，不适合短周期交易判断；本前置不解析 PDF。"
+      ]
+    },
+    {
+      "sourceId": "smm",
+      "displayName": "上海有色网 SMM",
+      "collectorId": "not_implemented_in_n57_pre_probe",
+      "sourceRole": "candidate_source",
+      "requiresApiKey": false,
+      "apiKeyPresent": null,
+      "sourceType": "paid_or_authorized_industry_data",
+      "probeStatus": "skipped",
+      "testedEndpoints": [
+        {
+          "label": "documented candidate only",
+          "status": "skipped"
+        }
+      ],
+      "testedSymbols": [],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "supportsRequiredEvidenceKeys": [
+        "china_supply_demand_proxy",
+        "domestic_inventory_or_spot_proxy"
+      ],
+      "allowedClaimTypes": [
+        "inventory_pressure",
+        "spot_premium"
+      ],
+      "notAllowedClaimTypes": [
+        "final_fact_without_probe",
+        "ready_for_runtime_without_collector"
+      ],
+      "reliabilityTier": "candidate_unverified",
+      "decisionForN57": "candidate_only",
+      "failureReason": null,
+      "notes": [
+        "可能覆盖现货、库存、升贴水，但需要授权；不可免费抓取或假设可用。"
+      ]
+    },
+    {
+      "sourceId": "cninfo",
+      "displayName": "巨潮资讯 CNINFO",
+      "collectorId": "not_implemented_in_n57_pre_probe",
+      "sourceRole": "candidate_source",
+      "requiresApiKey": false,
+      "apiKeyPresent": null,
+      "sourceType": "filing_anchor_and_company_disclosure",
+      "probeStatus": "skipped",
+      "testedEndpoints": [
+        {
+          "label": "documented candidate only",
+          "status": "skipped"
+        }
+      ],
+      "testedSymbols": [],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "supportsRequiredEvidenceKeys": [
+        "earnings_transmission_proxy",
+        "valuation_level"
+      ],
+      "allowedClaimTypes": [
+        "company_disclosure_anchor",
+        "filing_locator"
+      ],
+      "notAllowedClaimTypes": [
+        "final_fact_without_probe",
+        "ready_for_runtime_without_collector"
+      ],
+      "reliabilityTier": "candidate_unverified",
+      "decisionForN57": "candidate_only",
+      "failureReason": null,
+      "notes": [
+        "可作为财报页码和公司披露锚点；本前置不解析全文 PDF。"
+      ]
+    }
+  ],
+  "summary": {
+    "totalSources": 12,
+    "byDecisionForN57": {
+      "blocked": 0,
+      "candidate_only": 6,
+      "ready_for_n57": 2,
+      "unavailable": 0,
+      "usable_with_cap": 4
+    },
+    "futuresInterfaceConclusionZh": "现有正式 collector 不含期货数据；AKShare 可作为期货采集入口探测 SHFE / INE / GFEX。N57 fact 必须记录发布方、接入方、采集器、endpoint 和字段口径。",
+    "worldBankConclusionZh": "World Bank public API 无需用户申请 key；若 smoke test 返回数据，可进入 N57 作为年度宏观代理，但不能支撑短周期国内供需。",
+    "unComtradeConclusionZh": "UN Comtrade 需要按 package、参数年份、flow、空结果和 direct HTTP fallback 分层记录，不能再只写 ValueError。",
+    "scenarioNamingConclusionZh": "data/materials/processed/finance/maps 是历史命名；当前 dust2-nonferrous 实际是 finance scenario，不是 Hex tactical map。本前置只文档标注，不迁移目录。"
+  },
+  "probeErrors": [],
+  "secretsPolicy": {
+    "storedApiKeyValues": false,
+    "storedRawResponses": false,
+    "apiKeysRecordedAsPresenceOnly": true
+  }
+}

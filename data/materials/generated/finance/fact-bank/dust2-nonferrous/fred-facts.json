@@ -16,7 +16,7 @@
       "evidenceId": "EVID:FRED:commodity:PCOPPUSDM:global_price_of_copper:2026-05-01:PCOPPUSDM:351a511a",
       "confidence": 0.95,
       "rawHash": "351a511a",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "fred:PCOPPUSDM:2026-05-01",
       "policyNotes": [
         "These series are global price proxies.",
@@ -29,7 +29,28 @@
       "commodity": "copper",
       "lookbackObservationCount": 36,
       "trendDirection": "up",
-      "lookbackChangePct": 60.59
+      "lookbackChangePct": 60.59,
+      "sourcePublisher": "FRED",
+      "accessProvider": "FRED API",
+      "endpoint": "legacy_snapshot:series/observations",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "official_api",
+      "allowedClaimTypes": [
+        "commodity_trend",
+        "commodity_price_momentum",
+        "valuation_vs_commodity_signal",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持全球商品价格动量，不能证明国内供需或公司盈利。",
+      "scoreCapPolicy": "legacy FRED snapshot caps domestic supply-demand and equity transmission claims unless paired with N57 facts.",
+      "legacySnapshotFallback": true
     },
     {
       "factId": "FRED002",
@@ -44,7 +65,7 @@
       "evidenceId": "EVID:FRED:commodity:PALUMUSDM:global_price_of_aluminum:2026-05-01:PALUMUSDM:086757c8",
       "confidence": 0.95,
       "rawHash": "086757c8",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "fred:PALUMUSDM:2026-05-01",
       "policyNotes": [
         "These series are global price proxies.",
@@ -57,7 +78,28 @@
       "commodity": "aluminum",
       "lookbackObservationCount": 36,
       "trendDirection": "up",
-      "lookbackChangePct": 67.25
+      "lookbackChangePct": 67.25,
+      "sourcePublisher": "FRED",
+      "accessProvider": "FRED API",
+      "endpoint": "legacy_snapshot:series/observations",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "official_api",
+      "allowedClaimTypes": [
+        "commodity_trend",
+        "commodity_price_momentum",
+        "valuation_vs_commodity_signal",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持全球商品价格动量，不能证明国内供需或公司盈利。",
+      "scoreCapPolicy": "legacy FRED snapshot caps domestic supply-demand and equity transmission claims unless paired with N57 facts.",
+      "legacySnapshotFallback": true
     },
     {
       "factId": "FRED003",
@@ -72,7 +114,7 @@
       "evidenceId": "EVID:FRED:commodity:PNICKUSDM:global_price_of_nickel:2026-05-01:PNICKUSDM:62d38773",
       "confidence": 0.95,
       "rawHash": "62d38773",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "fred:PNICKUSDM:2026-05-01",
       "policyNotes": [
         "These series are global price proxies.",
@@ -85,7 +127,28 @@
       "commodity": "nickel",
       "lookbackObservationCount": 36,
       "trendDirection": "down",
-      "lookbackChangePct": -11.09
+      "lookbackChangePct": -11.09,
+      "sourcePublisher": "FRED",
+      "accessProvider": "FRED API",
+      "endpoint": "legacy_snapshot:series/observations",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "official_api",
+      "allowedClaimTypes": [
+        "commodity_trend",
+        "commodity_price_momentum",
+        "valuation_vs_commodity_signal",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持全球商品价格动量，不能证明国内供需或公司盈利。",
+      "scoreCapPolicy": "legacy FRED snapshot caps domestic supply-demand and equity transmission claims unless paired with N57 facts.",
+      "legacySnapshotFallback": true
     },
     {
       "factId": "FRED004",
@@ -100,7 +163,7 @@
       "evidenceId": "EVID:FRED:commodity:PZINCUSDM:global_price_of_zinc:2026-05-01:PZINCUSDM:cd2d4a96",
       "confidence": 0.95,
       "rawHash": "cd2d4a96",
-      "parserVersion": "finance-fact-bank-collector-v1",
+      "parserVersion": "finance-fact-bank-collector-v2",
       "originalLocation": "fred:PZINCUSDM:2026-05-01",
       "policyNotes": [
         "These series are global price proxies.",
@@ -113,8 +176,31 @@
       "commodity": "zinc",
       "lookbackObservationCount": 36,
       "trendDirection": "up",
-      "lookbackChangePct": 45.57
+      "lookbackChangePct": 45.57,
+      "sourcePublisher": "FRED",
+      "accessProvider": "FRED API",
+      "endpoint": "legacy_snapshot:series/observations",
+      "transform": "legacy N50 snapshot upgraded to N57 field contract",
+      "reliabilityTier": "official_api",
+      "allowedClaimTypes": [
+        "commodity_trend",
+        "commodity_price_momentum",
+        "valuation_vs_commodity_signal",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure",
+        "company_earnings_confirmed",
+        "a_share_relative_allocation_confirmed"
+      ],
+      "interpretationHint": "旧快照升级事实：可支持全球商品价格动量，不能证明国内供需或公司盈利。",
+      "scoreCapPolicy": "legacy FRED snapshot caps domestic supply-demand and equity transmission claims unless paired with N57 facts.",
+      "legacySnapshotFallback": true
     }
   ],
-  "warnings": []
+  "warnings": [
+    "Current run could not refresh this source; upgraded prior snapshot facts were retained to avoid overwriting usable local evidence with unavailable placeholders."
+  ]
 }
