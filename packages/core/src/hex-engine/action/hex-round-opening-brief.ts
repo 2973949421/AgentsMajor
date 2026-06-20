@@ -8,6 +8,14 @@ export interface HexRoundOpeningBrief {
   source: "hex_round_opening_brief";
   roundNumber: number;
   topicTitle: string;
+  decisionQuestionZh?: string;
+  allowedStance?: string[];
+  requiredEvidenceSchema?: Array<{
+    requiredKey: string;
+    missingEffect: string;
+    notWinCondition: true;
+  }>;
+  challengePolicyZh?: string;
   defenseSummaryZh: string;
   attackSummaryZh: string;
   evidenceBoundaryZh: string;
@@ -73,8 +81,16 @@ export function buildHexRoundOpeningBrief(input: BuildHexRoundOpeningBriefInput)
     source: "hex_round_opening_brief",
     roundNumber: input.financeDuel.roundNumber,
     topicTitle: input.financeDuel.topic.topicTitle,
-    defenseSummaryZh: `守方自证：${input.financeDuel.defenseThesis.thesis}`,
-    attackSummaryZh: `攻方质疑：${input.financeDuel.attackChallenge.thesis}`,
+    decisionQuestionZh: input.financeDuel.decisionQuestion.question,
+    allowedStance: [...input.financeDuel.decisionQuestion.allowedStance],
+    requiredEvidenceSchema: input.financeDuel.decisionQuestion.requiredEvidenceSchema.map((item) => ({
+      requiredKey: item.requiredKey,
+      missingEffect: item.missingEffect,
+      notWinCondition: item.notWinCondition
+    })),
+    challengePolicyZh: "挑战方必须攻击具体主张、证据缺口、代理错配、时间窗口、推理桥或风险收益；缺失证据只能降权，不能直接赢。",
+    defenseSummaryZh: `立场方任务：${input.financeDuel.defenseThesis.thesis}`,
+    attackSummaryZh: `挑战方任务：${input.financeDuel.attackChallenge.thesis}`,
     evidenceBoundaryZh,
     agentEvidenceSlices,
     agentBriefs: agents.map((agent) => buildHexAgentOpeningBrief({
@@ -110,11 +126,11 @@ export function buildHexAgentOpeningBrief(input: {
   const assignment = input.financeDuel.agentAssignments.find((candidate) => candidate.agentId === input.agent.agentId);
   const side = assignment?.side ?? input.agent.side;
   const proofOrChallengeZh = side === "defense"
-    ? input.financeDuel.defenseThesis.thesis
-    : input.financeDuel.attackChallenge.thesis;
+    ? `立场方：${input.financeDuel.defenseThesis.thesis}`
+    : `挑战方：${input.financeDuel.attackChallenge.thesis}`;
   const evidenceBoundaryZh = input.evidenceBoundaryZh ?? buildEvidenceBoundary(input.financeDuel);
   const roundTaskZh = assignment?.financeTask
-    ?? (side === "defense" ? input.financeDuel.topic.defenseThesisFocus : input.financeDuel.topic.attackChallengeFocus);
+    ?? (side === "defense" ? `立场方：${input.financeDuel.topic.decisionQuestion}` : `挑战方：${input.financeDuel.topic.decisionQuestion}`);
   const agentEvidenceSlice = input.agentEvidenceSlice ?? buildHexAgentEvidenceSlices({
     financeDuel: input.financeDuel,
     agents: [{
@@ -202,8 +218,8 @@ function buildActionHintZh(input: {
   carryingMainClaim: boolean;
 }): string {
   const sideHint = input.side === "defense"
-    ? "局内行动应保护自证链条，优先守住关键位置、回应质疑或延缓攻方验证。"
-    : "局内行动应服务质疑链条，优先取得信息、压迫关键点或验证守方风险边界。";
+    ? "局内行动应保护已锁定的投资立场链条，优先守住关键位置、回应挑战或延缓对方验证。"
+    : "局内行动应服务挑战链条，优先取得信息、压迫关键点或验证立场方风险边界。";
   if (input.resourceTier === "low") {
     return `${sideHint} 当前资源偏低，行动理由应短、窄、可回撤。`;
   }
@@ -211,7 +227,7 @@ function buildActionHintZh(input: {
     return `${sideHint} 当前资源有限，允许冒险但必须说明暴露了哪个证据缺口。`;
   }
   if (input.carryingMainClaim) {
-    return `${sideHint} 该选手承载本局核心任务，行动理由应引用本信息卡，不要重写整段金融论点。`;
+    return `${sideHint} 该选手承载本局核心任务，行动理由应引用本信息卡，不要重写整段 phase0 金融材料。`;
   }
   return `${sideHint} 行动理由应引用本信息卡，不要重新生成完整金融主张。`;
 }

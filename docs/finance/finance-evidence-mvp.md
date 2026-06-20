@@ -1,4 +1,4 @@
-# Finance Evidence MVP：免费 API 代理事实版
+﻿# Finance Evidence MVP：免费 API 代理事实版
 
 ## 1. 结论
 
@@ -82,7 +82,7 @@ collector（采集器） != source（事实来源） != evidence（证据） != 
 ```text
 FRED
 BaoStock
-UN Comtrade（可选）
+AKShare（作为公开数据接入入口，按 endpoint 标来源链）
 ```
 
 对应资产注册表已经固定在：
@@ -189,6 +189,7 @@ BaoStock 可支持“市场是否已经 price in”。
 ```text
 UN Comtrade 可支持“进出口趋势线索”。
 不能单独支持国内供需强弱。
+N57c 后暂时冻结出当前 active 主路径，避免滞后贸易数据污染 1-3 个月有色判断。
 ```
 
 ## 4. 第一阶段不自动接入的源
@@ -242,9 +243,9 @@ SHFE 仓单变化。
 | R1 | 当前全球金属价格趋势是否足以支持未来 1-3 个月 A 股有色相对超配？ | FRED 金属价格 | 不能证明中国国内供需，只能支持商品价格动量 |
 | R2 | A 股有色代表公司市场表现是否确认商品价格信号？ | BaoStock 股价、成交、PE/PB | 不能证明行业基本面，只能证明市场反应 |
 | R3 | 当前估值是否已经 price in 商品价格预期？ | BaoStock 估值、收益率 | 缺少公司财报页码时不能做盈利弹性强结论 |
-| R4 | 在贸易数据可用性有限时，进出口线索是否足以影响行业判断？ | UN Comtrade 可选 | 缺少中国海关与库存时只算弱线索 |
+| R4 | 在贸易数据可用性有限时，进出口线索是否足以影响行业判断？ | N57c 后默认不使用 UN Comtrade active fact，可用 AKShare / SHFE / INE 等代理与 missingEvidence 约束 | 缺少中国海关与库存时只算弱线索 |
 | R5 | 当前证据缺口下，哪些结论必须被限制置信度？ | missingEvidence / scoreCaps | 缺失证据只能降权或限制结论，不能自动赢 |
-| R6 | 基于固定数据菜单，当前有色配置建议应如何落地？ | FRED + BaoStock + 可选 Comtrade | 只能给有限置信度配置建议和触发条件 |
+| R6 | 基于固定数据菜单，当前有色配置建议应如何落地？ | FRED + BaoStock + AKShare active facts | 只能给有限置信度配置建议和触发条件 |
 
 任何 round 都允许看多、看空、中性、结构性分化、条件判断或暂不交易。暂不交易必须给出触发条件，不能只写“无法判断”。
 
@@ -268,7 +269,7 @@ SHFE 仓单变化。
 | 只有 BaoStock | 行业判断最高 50-60 |
 | 只有 FRED | 中国有色供需最高 55-65 |
 | FRED + BaoStock | 代理事实判断最高 70 |
-| FRED + BaoStock + UN Comtrade | 代理事实判断最高 75 |
+| FRED + BaoStock + AKShare active facts | 代理事实判断最高 75 |
 | 无 CNINFO 页码 | 公司深度最高 50-60 |
 | 无 SHFE / SMM / LME | 国内商品价格与库存判断最高 60-70 |
 
@@ -282,7 +283,7 @@ N57 不是单纯给 fact 增加字段。N57 的任务是根据 N56 的 `required
 data/materials/generated/finance/fact-bank/dust2-nonferrous/latest.json
 ```
 
-它没有新建平行 `fact-bank-v2` 目录。当前 Codex 环境外部网络受限，本次生成中 FRED / BaoStock 使用旧快照升级保底，SHFE / INE / World Bank / UN Comtrade 以 unavailable fact 记录失败原因。联网环境重跑 collector 后，这些事实会在同一路径被刷新。
+它没有新建平行 `fact-bank-v2` 目录。N57c 最新联网生成已把 `latest.json` 收敛为 FRED、BaoStock 和 AKShare 访问到的 SHFE / INE / Sina Finance / Eastmoney / SSE / 公开宏观端点；World Bank / UN Comtrade 已冻结出 active facts、coverage 和 round evidence packs。
 
 必须交付：
 
@@ -313,10 +314,10 @@ UN Comtrade：
 第一版可验证的候选源：
 
 ```text
-World Bank：长期宏观和国家指标，优先验证无 key 稳定 API。
+World Bank：长期宏观和国家指标，已接入无 key public API；只作为年度宏观背景。
 USGS：低频矿产供给背景，优先作为年度结构事实。
 NBS：权威中国宏观和工业数据，先验证接口或抓取稳定性。
-SHFE：有色价格、成交、持仓、仓单或库存锚点；若不免费稳定，先作为 missingEvidence 和后续候选源。
+SHFE / INE：已通过 AKShare 接入交易所行情 / 结算代理；仓单、库存或更细字段失败时仍作为 missingEvidence 和后续候选。
 ```
 
 每个 round 的 `coverageReport` 至少说明：
@@ -505,3 +506,34 @@ collector 是谁。
 | A 股估值风格对抗 | BaoStock + TuShare + 少量公告锚点 | 更贴近中国市场，但依赖权限 |
 
 这些不是第一阶段替代 Dust2 有色的强制项，而是当数据源证明有色难以低成本支撑时的后续地图选项。
+## 7.3 N57b / N57c 数据源收敛
+
+N57 第一版证明了多源可以进同一个 fact bank，但用户行研复盘后的当前策略是少接口、深加工：
+
+```text
+active 主源：FRED + BaoStock + AKShare。
+frozen / candidate：World Bank、UN Comtrade、NBS、USGS、CNINFO、SMM、GACC 等。
+```
+
+N57b 只做 AKShare endpoint 广探测，不覆盖正式 fact bank。重点尝试：
+
+```text
+期货：SHFE / INE 日行情、结算、成交、持仓、仓单、库存。
+现货 / 商品：有色现货价格、商品价格指数、生意社 / 东方财富 / 新浪等公开入口。
+公司基本面：利润表、资产负债表、现金流、主要财务指标、估值指标。
+行业 / 板块：有色板块指数、概念板块、成分股和行业涨跌。
+资金 / 交易：成交额、换手、主力资金、北向或融资融券如可取。
+```
+
+N57c 根据 N57b 的 endpoint 结果覆盖升级原 fact bank，且不新建平行库。N57c 后：
+
+```text
+World Bank / UN Comtrade 不进入 active round evidence pack。
+World Bank / UN Comtrade 不进入 agent evidence slice。
+World Bank / UN Comtrade 不参与 N59 accepted evidence。
+FRED 继续做全球金属价格锚。
+BaoStock 扩大公司池并补可取财报字段。
+AKShare 按 endpoint 进入期货、现货、行业、公司基本面或资金事实。
+```
+
+这不是否定 World Bank / UN Comtrade 的历史可用性，而是承认它们对当前 1-3 个月有色行业判断帮助有限，先冻结出比赛主路径。

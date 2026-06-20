@@ -1,61 +1,201 @@
 {
   "sourceId": "ine",
   "collector": "akshare_python_package_v0",
-  "dataMode": "unavailable_observation",
+  "dataMode": "offline_observation_fact",
   "facts": [
     {
-      "factId": "INE001",
-      "statementZh": "AKShare 未能采集 INE 国际铜可用期货观测。",
-      "metricName": "international_copper_futures_proxy",
-      "value": null,
-      "unit": "",
-      "period": "unavailable",
+      "factId": "AKF-INE-DAILY-BC",
+      "statementZh": "INE 国际铜日行情代理事实：国际铜（BC）。通过 AKShare 访问 INE / get_ine_daily:20240419，目标品种匹配 12 行，样本期为 20240419，样本合约或品种为 BC2407，字段包括 close, date, high, low, open, open_interest, pre_settle, settle, symbol, turnover, variety, volume。该事实只能按字段口径作为公开代理证据，不能单独证明完整行业基本面或公司盈利。",
+      "metricName": "ine_daily_international_copper_proxy",
+      "value": "70950",
+      "unit": "reported_public_field",
+      "period": "20240419",
       "source": "INE",
-      "sourceType": "exchange_data_via_named_collector",
+      "domain": "finance_public_endpoint",
+      "entity": "BC",
+      "locator": "get_ine_daily:20240419:BC",
+      "sourceType": "public_data_via_named_collector",
       "sourcePublisher": "INE",
       "accessProvider": "AKShare",
       "collector": "akshare_python_package_v0",
-      "endpoint": "futures_settle_ine:20260619",
-      "evidenceId": "EVID:INE:futures:BC:international_copper_futures_proxy:unavailable:futures_settle_ine:20260619:293a3883",
-      "confidence": 0,
-      "rawHash": "293a3883",
+      "endpoint": "get_ine_daily:20240419",
+      "evidenceId": "EVID:INE:finance_public_endpoint:BC:ine_daily_international_copper_proxy:20240419:get_ine_daily:20240419:BC:d513a81d",
+      "confidence": 0.75,
+      "rawHash": "d513a81d",
       "parserVersion": "finance-fact-bank-collector-v2",
-      "originalLocation": "akshare:futures_settle_ine:20260619:BC",
-      "transform": "unavailable_observation",
-      "reliabilityTier": "exchange_data_via_named_collector",
+      "originalLocation": "akshare:get_ine_daily:20240419:BC:20240419",
+      "transform": "filter endpoint rows to target metal BC; sample matched target row field",
+      "reliabilityTier": "public_data_via_named_collector",
       "allowedClaimTypes": [
-        "china_supply_demand",
-        "inventory_pressure",
+        "commodity_trend",
         "commodity_price_momentum",
         "commodity_price_context",
+        "china_supply_demand",
+        "supply_demand_proxy",
+        "inventory_pressure",
+        "trade_price_consistency",
         "risk_reward",
+        "risk_boundary",
+        "executability",
         "limited_positive_stance",
         "limited_negative_stance"
       ],
       "notAllowedClaimTypes": [
         "company_earnings_confirmed",
+        "full_industry_fundamentals_confirmed",
         "a_share_relative_allocation_confirmed",
-        "full_industry_fundamentals_confirmed"
+        "trade_flow_confirmed"
       ],
-      "interpretationHint": "交易所期货或仓单数据缺失时，国内供需、库存或价格代理必须降权。",
-      "scoreCapPolicy": "missing SHFE/INE facts cap China supply-demand and domestic price context claims.",
+      "interpretationHint": "可用于 N56 requiredEvidenceSchema 的对应代理证据；强结论需要其他证据配合。",
+      "scoreCapPolicy": "INE facts support copper futures context with score caps for broad allocation claims.",
+      "requiredEvidenceKeys": [
+        "commodity_price_context",
+        "commodity_price_momentum"
+      ],
+      "frequency": "daily",
+      "activeSourceStatus": "active",
       "policyNotes": [
-        "AKShare 是访问入口；事实发布方和端点字段必须保留。",
-        "交易所或市场行情代理不能单独证明公司盈利或全行业基本面。"
+        "AKShare 是访问入口，事实发布方和 endpoint 必须保留。",
+        "公开端点字段只能支持相应代理 claim，不能过度外推。",
+        "本事实已按目标金属过滤，未匹配目标金属的返回行不计入事实。"
       ],
-      "dataMode": "unavailable_observation",
-      "unavailableReason": "futures_settle_ine:20260619: RuntimeError: Traceback (most recent call last):\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\connection.py\", line 204, in _new_conn\n    sock = connection.create_connection(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 85, in create_connection\n    raise err\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 73, in create_connection\n    sock.con; futures_zh_daily_sina:BC0: RuntimeError: Traceback (most recent call last):\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\connection.py\", line 204, in _new_conn\n    sock = connection.create_connection(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 85, in create_connection\n    raise err\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib",
-      "sourceWarning": "AKShare futures endpoint failed or returned no usable records; do not treat this as observed exchange evidence.",
-      "generatedAt": "2026-06-19T09:21:18Z"
+      "dataMode": "offline_observation_fact",
+      "observedAt": "20240419",
+      "generatedAt": "2026-06-19T20:10:39Z",
+      "targetSymbol": "BC",
+      "targetNameZh": "国际铜",
+      "matchedRecordCount": 12,
+      "returnedFields": [
+        "close",
+        "date",
+        "high",
+        "low",
+        "open",
+        "open_interest",
+        "pre_settle",
+        "settle",
+        "symbol",
+        "turnover",
+        "variety",
+        "volume"
+      ],
+      "sampleRecord": {
+        "symbol": "BC2407",
+        "date": "20240419",
+        "open": "70600",
+        "high": "71310",
+        "low": "69990",
+        "close": "70950",
+        "volume": "198",
+        "open_interest": "428",
+        "turnover": "6988.515",
+        "settle": "70590",
+        "pre_settle": "69640",
+        "variety": "BC"
+      }
+    },
+    {
+      "factId": "AKF-INE-SETTLE-BC",
+      "statementZh": "INE 国际铜结算、保证金和手续费代理事实：国际铜（BC）。通过 AKShare 访问 INE / futures_settle_ine:20260618，目标品种匹配 12 行，样本期为 20260618，样本合约或品种为 bc2706，字段包括 close_today_fee_ratio, date, hedge_long_margin_ratio, hedge_short_margin_ratio, is_close_today, settle_price, spec_long_margin_ratio, spec_short_margin_ratio, symbol, trade_fee_ratio, variety。该事实只能按字段口径作为公开代理证据，不能单独证明完整行业基本面或公司盈利。",
+      "metricName": "ine_settlement_margin_fee_proxy",
+      "value": "93950.0",
+      "unit": "reported_public_field",
+      "period": "20260618",
+      "source": "INE",
+      "domain": "finance_public_endpoint",
+      "entity": "BC",
+      "locator": "futures_settle_ine:20260618:BC",
+      "sourceType": "public_data_via_named_collector",
+      "sourcePublisher": "INE",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "endpoint": "futures_settle_ine:20260618",
+      "evidenceId": "EVID:INE:finance_public_endpoint:BC:ine_settlement_margin_fee_proxy:20260618:futures_settle_ine:20260618:BC:99721f86",
+      "confidence": 0.75,
+      "rawHash": "99721f86",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "akshare:futures_settle_ine:20260618:BC:20260618",
+      "transform": "filter endpoint rows to target metal BC; sample matched target row field",
+      "reliabilityTier": "public_data_via_named_collector",
+      "allowedClaimTypes": [
+        "commodity_trend",
+        "commodity_price_momentum",
+        "commodity_price_context",
+        "china_supply_demand",
+        "supply_demand_proxy",
+        "inventory_pressure",
+        "trade_price_consistency",
+        "risk_reward",
+        "risk_boundary",
+        "executability",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed",
+        "full_industry_fundamentals_confirmed",
+        "a_share_relative_allocation_confirmed",
+        "trade_flow_confirmed"
+      ],
+      "interpretationHint": "可用于 N56 requiredEvidenceSchema 的对应代理证据；强结论需要其他证据配合。",
+      "scoreCapPolicy": "INE settlement facts support risk-reward boundaries but cannot prove company earnings.",
+      "requiredEvidenceKeys": [
+        "commodity_price_context",
+        "risk_reward_boundary"
+      ],
+      "frequency": "daily",
+      "activeSourceStatus": "active",
+      "policyNotes": [
+        "AKShare 是访问入口，事实发布方和 endpoint 必须保留。",
+        "公开端点字段只能支持相应代理 claim，不能过度外推。",
+        "本事实已按目标金属过滤，未匹配目标金属的返回行不计入事实。"
+      ],
+      "dataMode": "offline_observation_fact",
+      "observedAt": "20260618",
+      "generatedAt": "2026-06-19T20:10:44Z",
+      "targetSymbol": "BC",
+      "targetNameZh": "国际铜",
+      "matchedRecordCount": 12,
+      "returnedFields": [
+        "close_today_fee_ratio",
+        "date",
+        "hedge_long_margin_ratio",
+        "hedge_short_margin_ratio",
+        "is_close_today",
+        "settle_price",
+        "spec_long_margin_ratio",
+        "spec_short_margin_ratio",
+        "symbol",
+        "trade_fee_ratio",
+        "variety"
+      ],
+      "sampleRecord": {
+        "date": "20260618",
+        "symbol": "bc2706",
+        "variety": "bc",
+        "settle_price": "93950.0",
+        "spec_long_margin_ratio": "0.09",
+        "hedge_long_margin_ratio": "0.08",
+        "spec_short_margin_ratio": "0.09",
+        "hedge_short_margin_ratio": "0.08",
+        "trade_fee_ratio": "0.01",
+        "close_today_fee_ratio": "0.005",
+        "is_close_today": "0"
+      }
     }
   ],
   "warnings": [
-    "get_shfe_daily:20260619: empty; futures_settle_shfe:20260619: RuntimeError: Traceback (most recent call last):\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\connection.py\", line 204, in _new_conn\n    sock = connection.create_connection(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 85, in create_connection\n    raise err\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 73, in create_connection\n    sock.con; get_receipt: RuntimeError: Traceback (most recent call last):\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\connection.py\", line 204, in _new_conn\n    sock = connection.create_connection(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 85, in create_connection\n    raise err\n  File \"B:\\sharewithlight\\Lege",
-    "futures_settle_ine:20260619: RuntimeError: Traceback (most recent call last):\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\connection.py\", line 204, in _new_conn\n    sock = connection.create_connection(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 85, in create_connection\n    raise err\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 73, in create_connection\n    sock.con; futures_zh_daily_sina:BC0: RuntimeError: Traceback (most recent call last):\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\connection.py\", line 204, in _new_conn\n    sock = connection.create_connection(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib\\site-packages\\urllib3\\util\\connection.py\", line 85, in create_connection\n    raise err\n  File \"B:\\sharewithlight\\LegendProject\\.venv\\Lib"
+    "ConnectionError: ('Connection aborted.', ConnectionResetError(10054, '远程主机强迫关闭了一个现有的连接。', None, 10054, None))",
+    "stock_margin_sse{'start_date': '20260220', 'end_date': '20260620'}: TimeoutExpired: Command '['B:\\\\sharewithlight\\\\LegendProject\\\\.venv\\\\Scripts\\\\python.exe', '-c', '\\nimport json\\nimport sys\\nkwargs = json.loads(sys.argv[2])\\nimport akshare as ak\\nvalue = getattr(ak, sys.argv[1])(**kwargs)\\nif hasattr(value, \"head\"):\\n    value = value.head(500)\\nif hasattr(value, \"to_dict\"):\\n    records = value.to_dict(\"records\")\\nelif isinstance(value, list):\\n    records = [item for item in value if isinstance(item, dict)][:80]\\nelif isinstance(value, dict):\\n    records = []\\n    for key, item in value.items():\\n        if hasattr(item, \"head\"):\\n            item = item.head(80)\\n        if hasattr(item, \"to_dict\"):\\n            for row in item.to_dict(\"records\"):\\n                row[\"bucket\"] = key\\n                records.append(row)\\n        elif isinstance(item, list):\\n            for row in item:\\n                if isinstance(row, dict):\\n                    row[\"bucket\"] = key\\n                    records.append(row)\\nelse:\\n    records = []\\nclean = []\\nfor row in records[:500]:\\n    clean.append({str(key): None if value is None else str(value) for key, value in row.items()})\\nprint"
   ],
-  "candidateOnly": {
-    "sourceId": "GFEX",
-    "reason": "GFEX LC/SI 与 Dust2 有色铜铝锌镍主线不是完全同一资产，N57 只保留 candidate status。",
-    "accessProvider": "AKShare"
-  }
+  "candidateOnly": [
+    {
+      "sourceId": "GFEX",
+      "reason": "N57b classified GFEX as candidate_only for Dust2 nonferrous v1."
+    },
+    {
+      "sourceId": "SHMET_NEWS",
+      "reason": "News endpoints require manual review and do not enter active fact bank."
+    }
+  ]
 }

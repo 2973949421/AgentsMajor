@@ -5,7 +5,11 @@ import { getHexAgentFinanceAssignment, type HexAgentFinanceAssignment, type HexR
 import { buildHexPathGraph, calculateHexApCost } from "../path/index.js";
 import { buildHexAgentMemoryContext, type HexAgentMemoryPromptContext, type HexPhaseId, type HexRoundMemory, type HexSide } from "../state/index.js";
 import { buildHexAgentOpeningBrief, type HexAgentOpeningBrief } from "./hex-round-opening-brief.js";
-import { isUsableRoundStartAgentOutput, type HexRoundStartAgentOutputForAction } from "./hex-round-start-agent-output.js";
+import {
+  collectRoundStartAllowedPhaseRefIds,
+  isUsableRoundStartAgentOutput,
+  type HexRoundStartAgentOutputForAction
+} from "./hex-round-start-agent-output.js";
 
 export const hexAgentActionTypes = [
   "hold_position",
@@ -112,7 +116,7 @@ export interface HexAgentCompactCommandRequest {
   };
   outputSchema: {
     requiredFields: readonly ["agentId", "phaseId", "currentCellId", "targetCellId", "actionType", "businessIntent"];
-    optionalFields: readonly ["briefRefId", "roundStartOutputId", "actionRationaleZh", "tacticalIntent", "riskNotes", "confidence"];
+    optionalFields: readonly ["briefRefId", "roundStartOutputId", "phase0RefId", "actionRationaleZh", "tacticalIntent", "riskNotes", "confidence"];
     semanticFieldsMustUseChinese: readonly ["businessIntent", "actionRationaleZh", "tacticalIntent", "riskNotes"];
     codeIdentifiersRemainEnglish: readonly ["agentId", "phaseId", "currentCellId", "targetCellId", "actionType"];
   };
@@ -145,6 +149,14 @@ export interface HexAgentCompactCommandRequest {
   financeDuel?: {
     topicKey: string;
     topicTitle: string;
+    decisionQuestionZh?: string | undefined;
+    allowedStance?: string[] | undefined;
+    requiredEvidenceSchema?: Array<{
+      requiredKey: string;
+      missingEffect: string;
+      notWinCondition: true;
+    }> | undefined;
+    challengePolicyZh?: string | undefined;
     defenseSummaryZh: string;
     attackSummaryZh: string;
   } | undefined;
@@ -224,6 +236,29 @@ export interface HexAgentFinanceDuelPromptContext {
   mirrorRoundNumber: number;
   topicKey: string;
   topicTitle: string;
+  decisionQuestion: {
+    question: string;
+    decisionObject: string;
+    horizon: string;
+    benchmark: string;
+    allowedStance: string[];
+    requiredOutput: string[];
+    requiredEvidenceSchema: Array<{
+      requiredKey: string;
+      requiredForClaimTypes: string[];
+      minimumFactCount: number;
+      preferredSources: string[];
+      fallbackSources: string[];
+      missingEffect: string;
+      notWinCondition: true;
+    }>;
+    challengePolicy: {
+      mustTargetClaimId: true;
+      allowedChallengeTypes: string[];
+      invalidChallengePatterns: string[];
+      missingEvidenceCanOnlyCap: true;
+    };
+  };
   defenseThesis: {
     thesisId: string;
     teamId: string;
@@ -280,6 +315,7 @@ export interface HexAgentActionDraft {
   businessIntent: string;
   briefRefId?: string;
   roundStartOutputId?: string;
+  phase0RefId?: string;
   actionRationaleZh?: string;
   tacticalIntent?: string;
   riskNotes?: string[];
@@ -315,6 +351,7 @@ const allowedDraftFields = new Set([
   "businessIntent",
   "briefRefId",
   "roundStartOutputId",
+  "phase0RefId",
   "actionRationaleZh",
   "tacticalIntent",
   "riskNotes",
@@ -443,8 +480,10 @@ export function buildHexAgentCommandRequest(input: {
       "businessIntent is required and must explain the phase action purpose in Chinese.",
       "businessIntent must connect the phaseObjective, role responsibility, selected target, and roundStartAgentOutput when present.",
       "When financeDuel is present, businessIntent is a legacy field name; use it as a short phase action rationale, not a full thesis rewrite.",
+      "When financeDuel.decisionQuestion is present, the financial layer is stance side versus challenge side; do not frame it as forced bullish proof versus forced bearish rebuttal.",
+      "Missing evidence can only cap confidence, score, or projection strength; it is not a direct win condition.",
       "When roundStartAgentOutput is present, cite it briefly; do not restate the full opening statement.",
-      "When agentOpeningBrief is present, cite the brief idea briefly and do not restate the whole defense thesis or attack challenge.",
+      "When agentOpeningBrief is present, cite the brief idea briefly and do not restate the whole stance task or challenge task.",
       "When financeAssignment is present, businessIntent must respect that assignment and evidence boundaries; do not invent financial facts.",
       "When businessAssignment is present, businessIntent must carry that assignment; do not rewrite proof, challenge, assignment, team ids, or agent ids.",
       "lastSeenEnemies are historical hints, not current enemy truth.",
@@ -505,7 +544,7 @@ export function buildHexAgentCompactCommandRequest(request: HexAgentCommandReque
     },
     outputSchema: {
       requiredFields: ["agentId", "phaseId", "currentCellId", "targetCellId", "actionType", "businessIntent"],
-      optionalFields: ["briefRefId", "roundStartOutputId", "actionRationaleZh", "tacticalIntent", "riskNotes", "confidence"],
+      optionalFields: ["briefRefId", "roundStartOutputId", "phase0RefId", "actionRationaleZh", "tacticalIntent", "riskNotes", "confidence"],
       semanticFieldsMustUseChinese: ["businessIntent", "actionRationaleZh", "tacticalIntent", "riskNotes"],
       codeIdentifiersRemainEnglish: ["agentId", "phaseId", "currentCellId", "targetCellId", "actionType"]
     },
@@ -550,11 +589,15 @@ export function buildHexAgentCompactCommandRequest(request: HexAgentCommandReque
       "businessIntent、tacticalIntent、riskNotes 必须用中文表达本阶段行动理由。",
       "如果有 roundStartAgentOutput，businessIntent 必须短句引用该真实开局输出，但不要复述完整开局判断。",
       "如果只有 agentOpeningBrief，businessIntent 才引用该系统输入卡的任务或证据边界，但不要复述完整金融主张。",
+      "金融层主语是立场方 / 挑战方；不要写成守方必然证明看多、攻方只要说数据不足就赢。",
+      "缺失证据只能限制置信度、score cap 或投影强度，不能直接写成胜利理由。",
       "phase0 / roundStartAgentOutput 是本局材料依据；phase1+ 只输出局内行动、目标、风险和短句引用，不能重新写金融作文。",
       "你要像想赢回合的 CS 选手行动：清点、抢枪线、补枪、换人、护包、拆包、转点或保枪必须服务于赢回合。",
       "进入包点入口、开阔枪线、下包/拆包附近或已知敌人接近时，行动理由要说明如何处理接触风险，而不是抽象移动。",
+      "如果本阶段可能撞到敌人枪线，优先写清楚争取击杀、补枪、换人、护包或拆包的具体执行意图。",
       "必须输出 actionRationaleZh；如果请求包含 agentOpeningBrief，才输出 briefRefId 且必须等于 agentOpeningBrief.briefId。",
       "如果有 roundStartAgentOutput，必须输出 roundStartOutputId，且必须等于 roundStartAgentOutput.outputId。",
+      "如果引用 phase0 金融材料，只能输出当前 roundStartAgentOutput.allowedPhaseRefs 中的 phase0RefId，不能新增 claim、challenge 或 evidence。",
       "businessIntent 不超过 160 个中文字符，actionRationaleZh 不超过 200 个中文字符，riskNotes 最多 3 条且每条不超过 80 个中文字符。",
       "JSON 字段名、actionType、cell id、phaseId、agentId 必须保持给定英文标识。",
       "targetCellId 必须从 targetCandidates 中选择；不要选择 friendly occupied/reserved cell。",
@@ -590,11 +633,19 @@ export function buildHexAgentCompactCommandRequest(request: HexAgentCommandReque
     compact.financeDuel = {
       topicKey: request.financeDuel.topicKey,
       topicTitle: request.financeDuel.topicTitle,
-      defenseSummaryZh: "守方自证已固定在开局信息卡；局内只引用信息卡，不复述完整主张。",
-      attackSummaryZh: "攻方质疑已固定在开局信息卡；局内只引用信息卡，不复述完整质疑。"
+      decisionQuestionZh: request.financeDuel.decisionQuestion.question,
+      allowedStance: [...request.financeDuel.decisionQuestion.allowedStance],
+      requiredEvidenceSchema: request.financeDuel.decisionQuestion.requiredEvidenceSchema.slice(0, 4).map((item) => ({
+        requiredKey: item.requiredKey,
+        missingEffect: item.missingEffect,
+        notWinCondition: item.notWinCondition
+      })),
+      challengePolicyZh: "挑战必须指向具体 claim、证据缺口、代理错配、时间窗口、推理桥或风险收益；缺失证据只能降权。",
+      defenseSummaryZh: "立场方的 phase0 判断已固定；局内只短句引用，不复述完整投资判断。",
+      attackSummaryZh: "挑战方的 phase0 挑战任务已固定；局内只短句引用，不复述完整挑战论文。"
     };
     if (request.roundStartAgentOutput) {
-      compact.roundStartAgentOutput = { ...request.roundStartAgentOutput };
+      compact.roundStartAgentOutput = summarizeRoundStartOutputForCompact(request.roundStartAgentOutput);
     } else if (request.agentOpeningBrief) {
       compact.agentOpeningBrief = { ...request.agentOpeningBrief };
     }
@@ -686,6 +737,28 @@ export function auditHexAgentDraftSemanticLanguage(draft: HexAgentActionDraft | 
   };
 }
 
+function summarizeRoundStartOutputForCompact(output: HexRoundStartAgentOutputForAction): HexRoundStartAgentOutputForAction {
+  return {
+    outputId: output.outputId,
+    agentId: output.agentId,
+    usableForPhaseAction: output.usableForPhaseAction,
+    openingStatementZh: output.cardSummaryZh ?? output.openingStatementZh,
+    evidenceRefs: output.evidenceRefs.slice(0, 6),
+    riskBoundaryZh: output.riskBoundaryZh,
+    buyConstraintAppliedZh: output.buyConstraintAppliedZh,
+    phaseActionCarryoverZh: output.phaseActionCarryoverZh,
+    source: output.source,
+    cardKind: output.cardKind,
+    cardSummaryZh: output.cardSummaryZh ?? output.openingStatementZh,
+    allowedPhaseRefs: output.allowedPhaseRefs
+      ? {
+          claimIds: output.allowedPhaseRefs.claimIds.slice(0, 8),
+          challengeIds: output.allowedPhaseRefs.challengeIds.slice(0, 8)
+        }
+      : undefined
+  };
+}
+
 function summarizeBusinessDuelForRequest(duel: HexRoundBusinessDuel): HexAgentBusinessDuelPromptContext {
   return {
     roundNumber: duel.roundNumber,
@@ -718,6 +791,21 @@ function summarizeFinanceDuelForRequest(duel: HexRoundFinanceDuel): HexAgentFina
     mirrorRoundNumber: duel.mirrorRoundNumber,
     topicKey: duel.topic.roundKey,
     topicTitle: duel.topic.topicTitle,
+    decisionQuestion: {
+      question: duel.decisionQuestion.question,
+      decisionObject: duel.decisionQuestion.decisionObject,
+      horizon: duel.decisionQuestion.horizon,
+      benchmark: duel.decisionQuestion.benchmark,
+      allowedStance: [...duel.decisionQuestion.allowedStance],
+      requiredOutput: [...duel.decisionQuestion.requiredOutput],
+      requiredEvidenceSchema: duel.decisionQuestion.requiredEvidenceSchema.map((item) => ({ ...item })),
+      challengePolicy: {
+        mustTargetClaimId: duel.decisionQuestion.challengePolicy.mustTargetClaimId,
+        allowedChallengeTypes: [...duel.decisionQuestion.challengePolicy.allowedChallengeTypes],
+        invalidChallengePatterns: [...duel.decisionQuestion.challengePolicy.invalidChallengePatterns],
+        missingEvidenceCanOnlyCap: duel.decisionQuestion.challengePolicy.missingEvidenceCanOnlyCap
+      }
+    },
     defenseThesis: {
       thesisId: duel.defenseThesis.thesisId,
       teamId: duel.defenseThesis.teamId,
@@ -980,6 +1068,13 @@ export function normalizeHexAgentActionDraft(input: NormalizeHexAgentActionDraft
   if (rawRoundStartOutputId && !input.request.roundStartAgentOutput) {
     errors.push("draft:invalid_roundStartOutputId");
   }
+  const rawPhase0RefId = readOptionalString(rawDraft.phase0RefId);
+  const allowedPhase0RefIds = collectRoundStartAllowedPhaseRefIds(input.request.roundStartAgentOutput);
+  if (rawPhase0RefId && !allowedPhase0RefIds.includes(rawPhase0RefId)) {
+    if (allowedPhase0RefIds.length !== 1) {
+      errors.push("draft:invalid_phase0RefId");
+    }
+  }
 
   if (errors.length > 0) {
     return {
@@ -1017,6 +1112,14 @@ export function normalizeHexAgentActionDraft(input: NormalizeHexAgentActionDraft
     draft.roundStartOutputId = input.request.roundStartAgentOutput.outputId;
   } else if (rawRoundStartOutputId) {
     draft.roundStartOutputId = rawRoundStartOutputId;
+  }
+  if (rawPhase0RefId) {
+    if (allowedPhase0RefIds.includes(rawPhase0RefId)) {
+      draft.phase0RefId = rawPhase0RefId;
+    } else if (allowedPhase0RefIds.length === 1) {
+      repairedFields.push("repaired_invalid_phase0_ref");
+      draft.phase0RefId = allowedPhase0RefIds[0];
+    }
   }
   if (actionRationaleZh) {
     draft.actionRationaleZh = actionRationaleZh;
@@ -1096,10 +1199,13 @@ function repeatsRoundStartOutput(text: string, output: HexRoundStartAgentOutputF
     return false;
   }
   const candidates = [
+    output.cardSummaryZh ?? "",
     output.openingStatementZh,
     output.riskBoundaryZh,
     output.buyConstraintAppliedZh,
-    output.phaseActionCarryoverZh
+    output.phaseActionCarryoverZh,
+    ...(output.stanceCard?.coreClaims.map((claim) => `${claim.claimZh}${claim.reasoningBridge}`) ?? []),
+    ...(output.challengeCard?.challenges.map((challenge) => challenge.challengeReasonZh) ?? [])
   ]
     .map((value) => value.replace(/\s+/g, ""))
     .filter((value) => value.length >= 12);

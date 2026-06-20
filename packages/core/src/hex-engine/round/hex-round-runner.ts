@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+﻿import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 import type { HexCell, HexMapAsset } from "@agent-major/shared";
@@ -254,7 +254,8 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
         actions: acceptedActions,
         economyContext,
         businessDuel,
-        financeDuel
+        financeDuel,
+        roundStartAgentOutputs: usableRoundStartAgentOutputs
       }))
     });
     const combatEvents = combatResolutions.flatMap((resolution) => resolution.memoryEvents);

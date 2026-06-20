@@ -1,4 +1,4 @@
-# Finance data tools
+﻿# Finance data tools
 
 This directory contains low-frequency finance data collectors for the Finance Major prototype.
 
@@ -43,13 +43,21 @@ data/materials/generated/finance/source-probes/dust2-nonferrous/source-probe-rep
 docs/finance/n57-data-source-probe-report.md
 ```
 
-Current collector scope:
+Current N57c active collector scope:
 
 - FRED: global metal price derived facts.
-- BaoStock: A-share company market, valuation, liquidity, and relative benchmark proxies.
-- AKShare: access provider for SHFE / INE futures data when endpoint-level provenance is clear.
-- World Bank: public annual macro background proxy.
-- UN Comtrade: lagged trade-flow proxy with period / flow / direct HTTP fallback.
+- BaoStock: A-share company market, valuation, liquidity, relative benchmark, and available PE/PB/PS/PCF proxies.
+- AKShare: access provider for SHFE / INE futures, Sina Finance company financial abstract, selected market-risk, and public macro endpoints when publisher, endpoint, fields, dates, and transforms are recorded.
+- World Bank / UN Comtrade: frozen from the active match path; they may remain in historical probe reports but must not enter latest.json facts, coverage, round evidence packs, agent evidence slices, or judge accepted evidence.
+
+N57c company fundamental standardization outputs:
+
+```text
+data/materials/generated/finance/fact-bank/dust2-nonferrous/company-fundamental-facts.json
+data/materials/generated/finance/fact-bank/dust2-nonferrous/company-profile-facts.json
+```
+
+These files split Sina Finance / AKShare financial abstract tables into metric-level company facts such as revenue, parent net profit, YoY proxies, ROE, gross margin, net margin, debt ratio, operating cash flow, and EPS. They are proxy facts with score caps, not complete audited company research.
 
 N57 pre-probe scope:
 

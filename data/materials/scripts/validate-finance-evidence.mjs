@@ -1,4 +1,4 @@
-import fs from "node:fs";
+﻿import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -104,6 +104,12 @@ function validateFactBankFact(fact, context) {
     "interpretationHint",
     "scoreCapPolicy",
     "dataMode",
+    "domain",
+    "entity",
+    "locator",
+    "frequency",
+    "requiredEvidenceKeys",
+    "activeSourceStatus",
     "generatedAt"
   ];
   for (const field of requiredFields) {
@@ -152,7 +158,7 @@ function validateFactBank(map) {
   assert(latest.schemaVersion === 2, "Fact bank schemaVersion must be 2 for N57.");
   assert(latest.mapBindingId === "dust2_nonferrous_industry_judgment_v1", "Fact bank has unexpected mapBindingId.");
   assert(latest.dataMode === "offline_fact_bank_snapshot", "Fact bank dataMode must be offline_fact_bank_snapshot.");
-  assert(Array.isArray(latest.sourceStatus) && latest.sourceStatus.length >= 5, "Fact bank must include N57 sourceStatus.");
+  assert(Array.isArray(latest.sourceStatus) && latest.sourceStatus.length >= 3, "Fact bank must include N57c active sourceStatus.");
   assert(Array.isArray(latest.facts) && latest.facts.length >= 1, "Fact bank must include facts.");
   assert(!/FRED_API_KEY|UN_COMTRADE_KEY|UN_COMTRADE_SECONDARY_KEY/.test(JSON.stringify(latest)), "Fact bank leaks env key names.");
   assert(!/api[_-]?key["']?\s*[:=]\s*["'][^"']{4,}/i.test(JSON.stringify(latest)), "Fact bank appears to contain API key material.");
@@ -160,20 +166,35 @@ function validateFactBank(map) {
   const sourceStatus = new Map(latest.sourceStatus.map((item) => [item.sourceId, item]));
   assert(sourceStatus.get("fred"), "Fact bank missing FRED source status.");
   assert(sourceStatus.get("baostock"), "Fact bank missing BaoStock source status.");
-  assert(sourceStatus.get("akshare_futures"), "Fact bank missing AKShare futures source status.");
-  assert(sourceStatus.get("world_bank"), "Fact bank missing World Bank source status.");
-  assert(sourceStatus.get("un_comtrade"), "Fact bank missing UN Comtrade source status.");
+  assert(sourceStatus.get("akshare_active"), "Fact bank missing AKShare active source status.");
+  assert(Array.isArray(latest.frozenSources) && latest.frozenSources.some((item) => item.sourceId === "world_bank"), "Fact bank must freeze World Bank outside active facts.");
+  assert(Array.isArray(latest.frozenSources) && latest.frozenSources.some((item) => item.sourceId === "un_comtrade"), "Fact bank must freeze UN Comtrade outside active facts.");
 
   const observedFred = latest.facts.some((fact) => fact.source === "FRED" && fact.dataMode === "offline_observation_fact");
   const observedBaoStock = latest.facts.some((fact) => fact.source === "BAOSTOCK" && fact.dataMode === "offline_observation_fact");
+  const observedAkshare = latest.facts.some((fact) => ["SHFE", "INE", "SINA_FINANCE", "EASTMONEY", "SSE", "CHINA_FUTURES_SPOT", "CHINA_MACRO_PUBLIC"].includes(fact.source) && fact.dataMode === "offline_observation_fact");
   assert(observedFred, "Fact bank must include at least one observed FRED fact.");
   assert(observedBaoStock, "Fact bank must include at least one observed BaoStock fact.");
+  assert(observedAkshare, "Fact bank must include at least one observed AKShare-accessed active fact.");
 
   for (const fact of latest.facts) validateFactBankFact(fact, `factBank:${fact.factId}`);
   const hasAksharePublisher = latest.facts.some((fact) => fact.sourcePublisher === "AKShare");
   assert(!hasAksharePublisher, "AKShare must remain an access provider / collector, not sourcePublisher.");
-  for (const fileName of ["fred-facts.json", "baostock-facts.json", "shfe-facts.json", "ine-facts.json", "world-bank-facts.json", "un-comtrade-facts.json"]) {
+  const frozenActiveFact = latest.facts.find((fact) => ["WORLD_BANK", "UN_COMTRADE"].includes(String(fact.source).toUpperCase()));
+  assert(!frozenActiveFact, `Frozen source ${frozenActiveFact?.source} must not enter latest.json active facts.`);
+  for (const fact of latest.facts) {
+    assert(fact.activeSourceStatus === "active", `factBank:${fact.factId} must be active.`);
+    assert(Array.isArray(fact.requiredEvidenceKeys), `factBank:${fact.factId} missing requiredEvidenceKeys array.`);
+  }
+  for (const fileName of ["fred-facts.json", "baostock-facts.json", "akshare-active-facts.json", "shfe-facts.json", "ine-facts.json", "akshare-company-facts.json", "company-fundamental-facts.json", "company-profile-facts.json", "akshare-market-facts.json", "akshare-macro-facts.json", "frozen-source-policy.json"]) {
     assert(fs.existsSync(path.join(root, fileName)), `Missing split fact bank file ${fileName}.`);
+  }
+  const companyFundamentals = readJson(path.join(root, "company-fundamental-facts.json"));
+  assert(Array.isArray(companyFundamentals.facts) && companyFundamentals.facts.length >= 10, "Company fundamental facts must include standardized metric-level facts.");
+  for (const fact of companyFundamentals.facts) {
+    assert(fact.sourcePublisher !== "AKShare", `company fundamental ${fact.factId} treats AKShare as sourcePublisher.`);
+    assert(Array.isArray(fact.notAllowedClaimTypes) && fact.notAllowedClaimTypes.includes("company_earnings_confirmed"), `company fundamental ${fact.factId} must prohibit strong earnings confirmation.`);
+    assert(fact.metricName !== "company_financial_abstract_table_summary", `company fundamental ${fact.factId} must not be table-level summary.`);
   }
   validateCoverageReport(root);
 }
@@ -242,7 +263,12 @@ function main() {
     assert(Array.isArray(pack.scoreCaps) && pack.scoreCaps.length >= 1, `${context} must include scoreCaps.`);
     assert(Array.isArray(pack.promptFacts) && pack.promptFacts.length >= 1, `${context} must include promptFacts.`);
     assert(pack.judgeLedger?.prohibitedClaims?.length >= 1, `${context} must include judge prohibited claims.`);
-    for (const fact of pack.facts) validateFact(fact, context);
+    for (const fact of pack.facts) {
+      validateFact(fact, context);
+      assert(!["WORLD_BANK", "UN_COMTRADE"].includes(String(fact.source).toUpperCase()), `${context} includes frozen source ${fact.source}.`);
+      assert(fact.sourcePublisher !== "AKShare", `${context} treats AKShare as sourcePublisher.`);
+      assert(fact.metricName !== "company_financial_abstract_table_summary", `${context} uses table-level financial abstract summary as primary evidence.`);
+    }
     const positiveEvidenceText = JSON.stringify({ facts: pack.facts, promptFacts: pack.promptFacts, allowedClaims: pack.judgeLedger.allowedClaims });
     assert(!/中国国内供需已经确认|行业基本面已经确认|盈利已经改善/.test(positiveEvidenceText), `${context} contains over-strong proxy claim.`);
     assert(

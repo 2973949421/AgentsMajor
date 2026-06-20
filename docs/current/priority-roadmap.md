@@ -49,7 +49,7 @@ Node/Sector 实验线：已退役并清理 active mode / runtime / Web progress 
 
 ### P0：N57-N61，证据绑定投资决策攻防（当前）
 
-N42-N55 已证明 Finance Major 原型能跑进 HexGrid，但也暴露出当前最大问题：金融层仍可能用“缺数据 / 泛金融意图 / 角色任务 / 风险提示”冒充金融胜负。N56 已完成第一版，把 Dust2 有色 6 个 round 改成开放投资决策题，并写入 `decisionQuestion`、`allowedStance`、`requiredEvidenceSchema` 和 `challengePolicy`。N57 前置数据源探测已完成，N57 Fact Bank v2 已完成第一版覆盖升级；当前新增外部源在 Codex 环境因网络受限多为 unavailable，下一步应先在联网环境重跑 collector，再进入 N58。
+N42-N55 已证明 Finance Major 原型能跑进 HexGrid，但也暴露出当前最大问题：金融层可能用“缺数据 / 泛金融意图 / 角色任务 / 风险提示”冒充金融胜负。N56 已完成第一版，把 Dust2 有色 6 个 round 改成开放投资决策题，并写入 `decisionQuestion`、`allowedStance`、`requiredEvidenceSchema` 和 `challengePolicy`。N57 前置数据源探测已完成，N57 Fact Bank v2 已完成第一版覆盖升级。N57c 数据底座收敛已完成：active 主路径已收敛为 FRED + BaoStock + AKShare。N58 已完成第一版，把 phase0 从自然语言开局段落升级为结构化 `stanceCard / challengeCard`。N59 已完成第一版金融裁判证据绑定重写：无 accepted evidence 不允许金融胜利，裁判输出 accepted / rejected / missing / scoreCaps、stanceScore / challengeScore、financialResult 和 combatEffectAllowed。下一步是 N60。
 
 N42-N55 历史状态：
 
@@ -77,9 +77,11 @@ N56-N61 新路线：
 ```text
 N56：决策题与立场 / 挑战契约。（已完成第一版）
 N57 前置：数据源探测与接口统一审计。（已完成）
-N57：数据菜单扩充与 Fact Bank v2。（已完成第一版覆盖升级；需联网刷新新增源）
-N58：Phase0 Stance Card / Challenge Card。
-N59：金融裁判证据绑定重写。
+N57：数据菜单扩充与 Fact Bank v2。（已完成联网覆盖升级；N57c active coverage 15/18，缺口进入 score cap）
+N57b：AKShare Endpoint 广探测。（已完成；30 个 endpoint，6 ready、5 usable、3 candidate）
+N57c：三主源 Active Fact Bank 覆盖重建。（已完成目标品种匹配补丁；94 条 active facts，coverage 15/18，World Bank / UN Comtrade 已冻结出 active path）
+N58：Phase0 Stance Card / Challenge Card。（已完成第一版）
+N59：金融裁判证据绑定重写。（已完成第一版）
 N60：金融结果与 Combat Projection 解耦。
 N61：Evidence-bound Round v1 小样本验收。
 ```
@@ -89,10 +91,12 @@ N61：Evidence-bound Round v1 小样本验收。
 ```text
 N56 已解决“问题怎么问”：产出 decisionQuestion、allowedStance、requiredEvidenceSchema、challengePolicy，并进入材料、trace、prompt 和 Web 审计。
 N57 前置已解决“哪些源真实能试”：确认 FRED / BaoStock 可作为主路径，AKShare 可探测 SHFE / INE / GFEX 且可作为接入入口使用，World Bank public API 可作年度宏观代理，UN Comtrade 2024 指定 HS / flow 可返回贸易记录。N57 fact 必须写清 sourcePublisher / accessProvider / collector / endpoint / 字段口径。
-N57 解决“数据够不够”：按 N56 的 requiredEvidenceSchema 和前置 source probe 结果扩充数据、提取事实、生成派生指标和覆盖率报告。第一版已经覆盖原 fact bank 路径，不新增平行库；若联网重跑后某源仍 unavailable，N58 必须把它当成缺口和 score cap，而不是可采信事实。
-N58 解决“agent 怎么说”：phase0 只能输出结构化 stanceCard / challengeCard，claim 必须绑定 evidence。
-N59 解决“裁判怎么采信”：机械校验 claimType 与 allowedClaimTypes，accepted evidence 是金融胜负硬门槛。
-N60 解决“金融怎么影响战斗”：金融只输出受限 combatEffectAllowed，不让作文分直接变成击杀。
+N57 解决“数据够不够”的第一版：按 N56 的 requiredEvidenceSchema 和前置 source probe 结果扩充数据、提取事实、生成派生指标和覆盖率报告。第一版已经覆盖原 fact bank 路径，不新增平行库；最新联网结果显示 FRED、BaoStock、SHFE、INE、World Bank、UN Comtrade 均进入同一事实库，但 coverage 仍只有 12/18。
+N57b 已解决“AKShare 能不能吃深”的第一轮探测：30 个 endpoint 中，SHFE/INE 期货与 `stock_financial_abstract` 可优先进 N57c，现货基差、北向/融资融券和宏观公开项可降权使用，GFEX/SHMET 先候选，行业板块和多数财报明细端点本轮不可用。
+N57c 解决“当前比赛主路径是否干净”：active 数据源收敛为 FRED + BaoStock + AKShare；World Bank / UN Comtrade 从 active pack、agent evidence slice 和 judge coverage 中冻结，避免弱相关年频/贸易数据污染当前有色投研对抗。
+N58 解决“agent 怎么说”：phase0 只能输出结构化 stanceCard / challengeCard，claim 必须绑定 evidence，challenge 必须绑定真实 targetClaimId，phase1+ 只能引用当前 agent 的 claimId / challengeId。
+N59 已解决第一版“裁判怎么采信”：机械校验 claimType 与 allowedClaimTypes，accepted evidence 是金融胜负硬门槛，并把 financialResult / combatEffectAllowed 写入 trace。
+N60 继续解决“金融怎么影响战斗”：金融只输出受限 combatEffectAllowed，不让作文分直接变成击杀。
 N61 解决“是否真的闭环”：用 Dust2 有色最小样本证明 claim、evidence、judge、combat、Web 审计能串起来。
 ```
 
@@ -102,7 +106,7 @@ N61 解决“是否真的闭环”：用 Dust2 有色最小样本证明 claim、
 N56 没有 requiredEvidenceSchema，N57 就不知道补什么数据。
 N57 没有足够事实和派生指标，N58 就只能继续说数据不足。
 N58 没有 claimId / evidenceRefs / reasoningBridge，N59 就无法真正采信。
-N59 没有 accepted / rejected / missing / scoreCaps，N60 就不能判断金融投影权限。
+N59 已提供 accepted / rejected / missing / scoreCaps，N60 必须只消费这些金融结果和 combatEffectAllowed。
 N60 没有金融与 CS 解耦，N61 的击杀解释仍会黑箱。
 ```
 
@@ -123,7 +127,7 @@ CS 击杀仍可由纯 CS 事实产生，但不能包装成金融胜利。
 轮次：行业判断。
 round：全球价格、市场反应、估值是否 price in、进出口线索、证据缺口、有限配置结论。
 队伍：两种投资风格 + 五专家 agent + coach。
-数据：FRED + BaoStock + 可选 UN Comtrade 的免费 API 代理事实版。
+数据：N57c 后以 FRED + BaoStock + AKShare 三主源为 active 主路径；World Bank / UN Comtrade 只保留 frozen/candidate 状态。
 ```
 
 详见：
@@ -149,8 +153,9 @@ docs/finance/finance-evidence-bound-round-roadmap.md
 Dust2 有色第一版不是完整中国有色行业基本面系统。
 FRED 全球金属价格不能直接证明中国国内供需。
 BaoStock 市场表现不能直接证明行业基本面。
-UN Comtrade 进出口数据只能提供滞后线索。
-CNINFO、国家统计局、工信部、SHFE、SMM 等先作为后置证据锚点或商业化替换源。
+AKShare 是公开数据入口集合，能取到的数据按 endpoint 单独分级；不能因为是 AKShare 就一刀切排斥，也不能省略 sourcePublisher / endpoint / 字段口径。
+World Bank / UN Comtrade 对当前 1-3 个月有色判断帮助有限，N57c 后冻结出 active 主路径。
+CNINFO、国家统计局、工信部、SMM、USGS 等先作为后置证据锚点或后续增强源。
 裁判必须展示 missingEvidence 和 scoreCaps，不能让 LLM 用代理事实冒充完整事实。
 ```
 

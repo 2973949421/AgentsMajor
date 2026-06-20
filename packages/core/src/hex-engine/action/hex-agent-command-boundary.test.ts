@@ -266,10 +266,13 @@ describe("Hex agent command boundary", () => {
     expect(request.financeDuel?.topicKey).toBe("global_metal_price_signal");
     expect(request.financeAssignment?.agentId).toBe("t_0");
     expect(request.agentOpeningBrief?.briefId).toBe("opening_1_t_0");
-    expect(request.agentOpeningBrief?.roundTaskZh).toContain("质疑");
+    expect(request.agentOpeningBrief?.roundTaskZh).toContain("挑战具体主张");
     expect(compact.financeDuel?.topicKey).toBe("global_metal_price_signal");
-    expect(compact.financeDuel?.defenseSummaryZh).toContain("守方自证");
-    expect(compact.financeDuel?.attackSummaryZh).toContain("攻方质疑");
+    expect(compact.financeDuel?.decisionQuestionZh).toContain("是否足以支持");
+    expect(compact.financeDuel?.allowedStance).toContain("structural");
+    expect(compact.financeDuel?.challengePolicyZh).toContain("缺失证据只能降权");
+    expect(compact.financeDuel?.defenseSummaryZh).toContain("立场方");
+    expect(compact.financeDuel?.attackSummaryZh).toContain("挑战方");
     expect(compact.financeDuel?.defenseSummaryZh).not.toContain(financeDuel.defenseThesis.thesis);
     expect(compact.financeDuel?.attackSummaryZh).not.toContain(financeDuel.attackChallenge.thesis);
     expect(compact.agentOpeningBrief?.briefId).toBe(request.agentOpeningBrief?.briefId);
@@ -385,7 +388,12 @@ describe("Hex agent command boundary", () => {
       riskBoundaryZh: brief.evidenceBoundaryZh,
       buyConstraintAppliedZh: brief.buyConstraintZh,
       phaseActionCarryoverZh: "后续 phase 只需短句引用本局开局输出并执行地图行动。",
-      source: "fixture_response" as const
+      source: "fixture_response" as const,
+      cardKind: brief.teamSide === "defense" ? "stance" as const : "challenge" as const,
+      cardSummaryZh: `${brief.displayName} 的 N58 结构化卡片摘要。`,
+      allowedPhaseRefs: brief.teamSide === "defense"
+        ? { claimIds: [`claim_${brief.agentId}_1`], challengeIds: [] }
+        : { claimIds: [], challengeIds: [`challenge_${brief.agentId}_1`] }
     }));
 
     const request = buildHexAgentCommandRequest({
@@ -408,7 +416,8 @@ describe("Hex agent command boundary", () => {
         briefRefId: request.agentOpeningBrief?.briefId,
         businessIntent: "短句引用本局开局输出，执行本阶段移动验证。",
         actionRationaleZh: "继续推进到候选点位。",
-        roundStartOutputId: "wrong_output_id"
+        roundStartOutputId: "wrong_output_id",
+        phase0RefId: "wrong_phase0_ref"
       }
     });
 
@@ -417,7 +426,9 @@ describe("Hex agent command boundary", () => {
     expect(compact.hardConstraints.some((line) => line.includes("roundStartOutputId"))).toBe(true);
     expect(repaired.errors).toEqual([]);
     expect(repaired.draft?.roundStartOutputId).toBe("round_start_t_0");
+    expect(repaired.draft?.phase0RefId).toBe("challenge_t_0_1");
     expect(repaired.repairedFields).toContain("repaired_invalid_roundStartOutputId");
+    expect(repaired.repairedFields).toContain("repaired_invalid_phase0_ref");
   });
 
   it("does not attach failed round-start outputs to phase requests or preserve invalid output references", () => {
@@ -588,7 +599,13 @@ describe("Hex agent command boundary", () => {
         riskBoundaryZh: "不能把全球价格代理直接当作中国国内供需事实。",
         buyConstraintAppliedZh: "full buy 允许承担主攻判断，但不能越过证据边界。",
         phaseActionCarryoverZh: "后续只可短句引用，不可整段复述。",
-        source: "fixture_response" as const
+        source: "fixture_response" as const,
+        cardKind: "challenge" as const,
+        cardSummaryZh: "t_0 的挑战卡摘要：只短句引用具体 challenge。",
+        allowedPhaseRefs: {
+          claimIds: [],
+          challengeIds: ["challenge_t_0_1"]
+        }
       }]
     });
     const repeated = normalizeHexAgentActionDraft({
@@ -649,8 +666,11 @@ describe("Hex agent command boundary", () => {
 
     expect(brief.agentBriefs).toHaveLength(10);
     expect(brief.agentEvidenceSlices).toHaveLength(10);
-    expect(brief.defenseSummaryZh).toContain("守方自证");
-    expect(brief.attackSummaryZh).toContain("攻方质疑");
+    expect(brief.decisionQuestionZh).toContain("是否足以支持");
+    expect(brief.allowedStance).toContain("no_trade");
+    expect(brief.challengePolicyZh).toContain("缺失证据只能降权");
+    expect(brief.defenseSummaryZh).toContain("立场方任务");
+    expect(brief.attackSummaryZh).toContain("挑战方任务");
     expect(brief.agentBriefs.find((item) => item.agentId === "t_0")?.proofOrChallengeZh).toContain(financeDuel.attackChallenge.thesis);
     expect(brief.agentBriefs.find((item) => item.agentId === "ct_0")?.buyConstraintZh).toContain("资源 low");
     expect(brief.agentBriefs.find((item) => item.agentId === "t_0")?.sliceId).toBeDefined();

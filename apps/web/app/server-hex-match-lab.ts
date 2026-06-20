@@ -1,4 +1,4 @@
-﻿import { randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 
@@ -9,6 +9,7 @@ import {
   runDust2HexMapExperimental,
   type HexAgentEvidenceSlice,
   type HexAgentCommandProgressEvent,
+  type HexFinanceAllowedStance,
   type HexMapExperimentalSummary,
   type HexRoundFinanceDuel,
   type HexRoundTrace
@@ -208,6 +209,10 @@ export interface HexMatchLabRoundTraceDetail extends HexMatchLabRoundSummary {
 
 export interface HexMatchLabHumanAudit {
   roundStoryZh: string;
+  decisionQuestionZh?: string | undefined;
+  allowedStanceZh?: string[] | undefined;
+  requiredEvidenceSchemaZh?: string[] | undefined;
+  challengePolicyZh?: string | undefined;
   defenseSummaryZh: string;
   attackSummaryZh: string;
   evidenceBoundaryZh: string;
@@ -241,6 +246,14 @@ export interface HexMatchLabRoundStartAgentOutput {
   responseArtifactId?: string | undefined;
   rawOutputSummaryZh: string;
   openingStatementZh: string;
+  cardKind?: "stance" | "challenge" | undefined;
+  cardSummaryZh?: string | undefined;
+  allowedPhaseRefs?: {
+    claimIds: string[];
+    challengeIds: string[];
+  } | undefined;
+  stanceCard?: HexMatchLabFinanceStanceCard | undefined;
+  challengeCard?: HexMatchLabFinanceChallengeCard | undefined;
   evidenceRefs: string[];
   riskBoundaryZh: string;
   buyConstraintAppliedZh: string;
@@ -256,6 +269,55 @@ export interface HexMatchLabRoundStartAgentOutput {
     providerMode?: string | undefined;
     modelId?: string | undefined;
   };
+}
+
+export interface HexMatchLabFinanceCoreClaim {
+  claimId: string;
+  claimType: string;
+  claimZh: string;
+  evidenceRefs: string[];
+  reasoningBridge: string;
+  confidence: number;
+  unsupportedIfEvidenceRejected: boolean;
+}
+
+export interface HexMatchLabFinanceStanceCard {
+  cardId: string;
+  agentId: string;
+  teamSide: string;
+  decisionQuestionZh: string;
+  direction: string;
+  target: string;
+  horizon: string;
+  confidence: number;
+  positionSuggestion: string;
+  coreClaims: HexMatchLabFinanceCoreClaim[];
+  riskBoundaries: string[];
+  invalidatingConditions: string[];
+  auditSummaryZh: string;
+}
+
+export interface HexMatchLabFinanceChallenge {
+  challengeId: string;
+  targetClaimId: string;
+  challengeType: string;
+  evidenceRefs: string[];
+  challengeReasonZh: string;
+  expectedEffect: string;
+}
+
+export interface HexMatchLabFinanceChallengeCard {
+  cardId: string;
+  agentId: string;
+  teamSide: string;
+  targetClaimId: string;
+  challengeType: string;
+  challengedAssumption: string;
+  evidenceRefs: string[];
+  proxyMismatch: string;
+  confidenceReduction: number;
+  challenges: HexMatchLabFinanceChallenge[];
+  auditSummaryZh: string;
 }
 
 export interface HexMatchLabAgentOutputDigest {
@@ -281,6 +343,7 @@ export interface HexMatchLabAgentOutputDigest {
     targetCellId?: string | undefined;
     briefRefId?: string | undefined;
     roundStartOutputId?: string | undefined;
+    phase0RefId?: string | undefined;
     rawTextPreview?: string | undefined;
     rawDraftPreview?: string | undefined;
     normalizedDraftPreview?: string | undefined;
@@ -326,12 +389,14 @@ export interface HexMatchLabHumanActionStory {
   actionSummaryZh: string;
   openingBriefRef?: string | undefined;
   roundStartOutputRef?: string | undefined;
+  phase0Ref?: string | undefined;
   repairSummaryZh?: string | undefined;
   technicalRefs: {
     targetCellId?: string | undefined;
     requestArtifactId?: string | undefined;
     responseArtifactId?: string | undefined;
     roundStartOutputId?: string | undefined;
+    phase0RefId?: string | undefined;
     validationErrors: string[];
     repairedFields: string[];
   };
@@ -360,6 +425,29 @@ export interface HexMatchLabFinanceDuelSummary {
   roundNumber: number;
   topicKey: string;
   topicTitle: string;
+  decisionQuestion?: {
+    question: string;
+    decisionObject: string;
+    horizon: string;
+    benchmark: string;
+    allowedStance: HexFinanceAllowedStance[];
+    requiredOutput: string[];
+    requiredEvidenceSchema: Array<{
+      requiredKey: string;
+      requiredForClaimTypes: string[];
+      minimumFactCount: number;
+      preferredSources: string[];
+      fallbackSources: string[];
+      missingEffect: string;
+      notWinCondition: true;
+    }>;
+    challengePolicy: {
+      mustTargetClaimId: true;
+      allowedChallengeTypes: string[];
+      invalidChallengePatterns: string[];
+      missingEvidenceCanOnlyCap: true;
+    };
+  } | undefined;
   defenseThesisFocus: string;
   attackChallengeFocus: string;
   halfIndex: 0 | 1;
@@ -626,6 +714,7 @@ export interface HexMatchLabActionSummary {
   businessIntent?: string | undefined;
   briefRefId?: string | undefined;
   roundStartOutputId?: string | undefined;
+  phase0RefId?: string | undefined;
   actionRationaleZh?: string | undefined;
   requestArtifactId?: string | undefined;
   responseArtifactId?: string | undefined;
@@ -698,9 +787,20 @@ export interface HexMatchLabFinanceEvidenceAdoptionSideSummary {
   rejectedEvidenceRefs: string[];
   missingEvidenceApplied: string[];
   scoreCapRefs: string[];
+  scoreCaps: Array<{ condition: string; reason: string; maxScore?: number | undefined }>;
+  acceptedClaims: string[];
+  rejectedClaims: string[];
+  acceptedChallenges: string[];
+  rejectedChallenges: string[];
+  sideScore?: number | undefined;
+  stanceScore?: number | undefined;
+  challengeScore?: number | undefined;
+  financialResult?: string | undefined;
+  combatEffectAllowed: string[];
   adoptionReasons: string[];
   rejectionReasons: string[];
   financeReasonZh: string[];
+  auditReasons: string[];
 }
 
 export interface HexMatchLabEconomySummary {
@@ -1515,6 +1615,21 @@ function summarizeFinanceDuel(trace: HexRoundTrace): HexMatchLabFinanceDuelSumma
     roundNumber: duel.roundNumber,
     topicKey: duel.topic.roundKey,
     topicTitle: duel.topic.topicTitle,
+    decisionQuestion: duel.decisionQuestion ? {
+      question: duel.decisionQuestion.question,
+      decisionObject: duel.decisionQuestion.decisionObject,
+      horizon: duel.decisionQuestion.horizon,
+      benchmark: duel.decisionQuestion.benchmark,
+      allowedStance: [...duel.decisionQuestion.allowedStance],
+      requiredOutput: [...duel.decisionQuestion.requiredOutput],
+      requiredEvidenceSchema: duel.decisionQuestion.requiredEvidenceSchema.map((item) => ({ ...item })),
+      challengePolicy: {
+        mustTargetClaimId: duel.decisionQuestion.challengePolicy.mustTargetClaimId,
+        allowedChallengeTypes: [...duel.decisionQuestion.challengePolicy.allowedChallengeTypes],
+        invalidChallengePatterns: [...duel.decisionQuestion.challengePolicy.invalidChallengePatterns],
+        missingEvidenceCanOnlyCap: duel.decisionQuestion.challengePolicy.missingEvidenceCanOnlyCap
+      }
+    } : undefined,
     defenseThesisFocus: duel.topic.defenseThesisFocus,
     attackChallengeFocus: duel.topic.attackChallengeFocus,
     halfIndex: duel.halfIndex,
@@ -1556,37 +1671,56 @@ function summarizeRoundStartAgentOutputs(
   agentIdentities: Map<string, AgentIdentity>
 ): HexMatchLabRoundStartAgentOutput[] {
   const outputs = Array.isArray(trace.roundStartAgentOutputs) ? trace.roundStartAgentOutputs : [];
-  return outputs.map((output) => ({
-    outputId: output.outputId,
-    agentId: output.agentId,
-    displayName: output.displayName || formatAgentName(output.agentId, agentIdentities),
-    teamSide: output.teamSide === "defense" ? "守方" : output.teamSide === "attack" ? "攻方" : output.teamSide,
-    financeRole: output.financeRole,
-    financeRoleCn: output.financeRoleCn,
-    buyType: output.buyType,
-    resourceTier: output.resourceTier,
-    source: output.source,
-    usableForPhaseAction: isUsableHexMatchLabRoundStartOutputSource(output),
-    requestArtifactId: output.requestArtifactId,
-    responseArtifactId: output.responseArtifactId,
-    rawOutputSummaryZh: output.rawOutputSummaryZh,
-    openingStatementZh: output.openingStatementZh,
-    evidenceRefs: [...output.evidenceRefs],
-    riskBoundaryZh: output.riskBoundaryZh,
-    buyConstraintAppliedZh: output.buyConstraintAppliedZh,
-    phaseActionCarryoverZh: output.phaseActionCarryoverZh,
-    normalizationSummaryZh: output.normalizationSummaryZh,
-    validationSummaryZh: output.validationSummaryZh,
-    technicalRefs: {
-      rawTextPreview: output.technicalRefs.rawTextPreview,
-      rawDraftPreview: output.technicalRefs.rawDraftPreview,
-      normalizedDraftPreview: output.technicalRefs.normalizedDraftPreview,
-      errors: [...output.technicalRefs.errors],
-      repairedFields: [...output.technicalRefs.repairedFields],
-      providerMode: output.technicalRefs.providerMode,
-      modelId: output.technicalRefs.modelId
-    }
-  }));
+  return outputs.map((rawOutput) => {
+    const output = rawOutput as typeof rawOutput & {
+      cardKind?: "stance" | "challenge" | undefined;
+      cardSummaryZh?: string | undefined;
+      allowedPhaseRefs?: { claimIds: string[]; challengeIds: string[] } | undefined;
+      stanceCard?: HexMatchLabFinanceStanceCard | undefined;
+      challengeCard?: HexMatchLabFinanceChallengeCard | undefined;
+    };
+    return {
+      outputId: output.outputId,
+      agentId: output.agentId,
+      displayName: output.displayName || formatAgentName(output.agentId, agentIdentities),
+      teamSide: output.teamSide === "defense" ? "守方" : output.teamSide === "attack" ? "攻方" : output.teamSide,
+      financeRole: output.financeRole,
+      financeRoleCn: output.financeRoleCn,
+      buyType: output.buyType,
+      resourceTier: output.resourceTier,
+      source: output.source,
+      usableForPhaseAction: isUsableHexMatchLabRoundStartOutputSource(output),
+      requestArtifactId: output.requestArtifactId,
+      responseArtifactId: output.responseArtifactId,
+      rawOutputSummaryZh: output.rawOutputSummaryZh,
+      openingStatementZh: output.openingStatementZh,
+      cardKind: output.cardKind,
+      cardSummaryZh: output.cardSummaryZh,
+      allowedPhaseRefs: output.allowedPhaseRefs
+      ? {
+          claimIds: [...output.allowedPhaseRefs.claimIds],
+          challengeIds: [...output.allowedPhaseRefs.challengeIds]
+        }
+      : undefined,
+      stanceCard: output.stanceCard,
+      challengeCard: output.challengeCard,
+      evidenceRefs: [...output.evidenceRefs],
+      riskBoundaryZh: output.riskBoundaryZh,
+      buyConstraintAppliedZh: output.buyConstraintAppliedZh,
+      phaseActionCarryoverZh: output.phaseActionCarryoverZh,
+      normalizationSummaryZh: output.normalizationSummaryZh,
+      validationSummaryZh: output.validationSummaryZh,
+      technicalRefs: {
+        rawTextPreview: output.technicalRefs.rawTextPreview,
+        rawDraftPreview: output.technicalRefs.rawDraftPreview,
+        normalizedDraftPreview: output.technicalRefs.normalizedDraftPreview,
+        errors: [...output.technicalRefs.errors],
+        repairedFields: [...output.technicalRefs.repairedFields],
+        providerMode: output.technicalRefs.providerMode,
+        modelId: output.technicalRefs.modelId
+      }
+    };
+  });
 }
 
 function isUsableHexMatchLabRoundStartOutput(output: HexMatchLabRoundStartAgentOutput): boolean {
@@ -1596,9 +1730,13 @@ function isUsableHexMatchLabRoundStartOutput(output: HexMatchLabRoundStartAgentO
 function isUsableHexMatchLabRoundStartOutputSource(output: {
   source?: string | undefined;
   usableForPhaseAction?: boolean | undefined;
+  cardKind?: string | undefined;
+  allowedPhaseRefs?: { claimIds?: string[] | undefined; challengeIds?: string[] | undefined } | undefined;
 }): boolean {
   return output.usableForPhaseAction === true
-    && (output.source === "fixture_response" || output.source === "llm_response_artifact");
+    && (output.source === "fixture_response" || output.source === "llm_response_artifact")
+    && (output.cardKind === "stance" || output.cardKind === "challenge")
+    && Boolean(output.allowedPhaseRefs);
 }
 
 function buildHumanAudit(input: {
@@ -1629,9 +1767,19 @@ function buildHumanAudit(input: {
     finalHardCondition: input.finalHardCondition
   });
   return {
-    roundStoryZh: `本 round 小主题：${input.financeDuel.topicTitle}。`,
-    defenseSummaryZh: `守方自证：${input.financeDuel.defenseThesis.thesis}`,
-    attackSummaryZh: `攻方质疑：${input.financeDuel.attackChallenge.thesis}`,
+    roundStoryZh: input.financeDuel.decisionQuestion
+      ? `本 round 决策题：${input.financeDuel.decisionQuestion.question}`
+      : `旧 trace 未记录 N56 决策题契约；旧小主题：${input.financeDuel.topicTitle}。`,
+    decisionQuestionZh: input.financeDuel.decisionQuestion?.question,
+    allowedStanceZh: input.financeDuel.decisionQuestion?.allowedStance.map(formatAllowedStanceZh),
+    requiredEvidenceSchemaZh: input.financeDuel.decisionQuestion?.requiredEvidenceSchema.map((item) =>
+      `${item.requiredKey}：至少 ${item.minimumFactCount} 条；缺失影响：${item.missingEffect}`
+    ),
+    challengePolicyZh: input.financeDuel.decisionQuestion
+      ? "挑战方必须攻击具体 claim、证据缺口、代理错配、时间窗口、推理桥或风险收益；缺失证据只能降权，不能直接赢。"
+      : "旧 trace 未记录 N56 挑战规则。",
+    defenseSummaryZh: `立场方任务：${input.financeDuel.defenseThesis.thesis}`,
+    attackSummaryZh: `挑战方任务：${input.financeDuel.attackChallenge.thesis}`,
     evidenceBoundaryZh: buildHumanEvidenceBoundary(input.financeDuel),
     roundValidationSummaryZh: buildHumanRoundValidationSummary({
       audit: input.audit,
@@ -1679,7 +1827,7 @@ function buildHumanRoundValidationSummary(input: {
     (sum, phase) => sum + phase.combats.filter((combat) => combat.financeEvidenceAdoption).length,
     0
   );
-  return `样本审计：${provider}，${input.phaseSummaries.length} 个 phase，${input.usableRoundStartOutputCount} 条可消费真实开局输出，${input.failedRoundStartOutputCount} 条开局输出失败，${input.openingBriefCount} 张系统输入卡，${adoptionCount} 条证据采信链。`;
+  return `样本审计：${provider}，${input.phaseSummaries.length} 个 phase，${input.usableRoundStartOutputCount} 条可消费真实 phase0 结构化卡片，${input.failedRoundStartOutputCount} 条 phase0 卡片失败，${input.openingBriefCount} 张系统输入卡，${adoptionCount} 条证据采信链。`;
 }
 
 function buildHumanSampleQualityWarnings(input: {
@@ -1695,10 +1843,10 @@ function buildHumanSampleQualityWarnings(input: {
     warnings.push("当前样本不是 real provider，不能作为真实模型验收样本。");
   }
   if (input.roundStartAgentOutputs.length < 10) {
-    warnings.push(`真实开局输出不足 10 条，当前只有 ${input.roundStartAgentOutputs.length} 条。`);
+    warnings.push(`真实 phase0 结构化卡片不足 10 条，当前只有 ${input.roundStartAgentOutputs.length} 条。`);
   }
   if (input.failedRoundStartOutputCount > 0) {
-    warnings.push(`本 round 有 ${input.failedRoundStartOutputCount} 条开局输出不可消费，需检查 round-start 审计。`);
+    warnings.push(`本 round 有 ${input.failedRoundStartOutputCount} 条 phase0 卡片不可消费，需检查 round-start 审计。`);
   }
   if (input.openingBriefs.length < 10) {
     warnings.push(`开局信息卡不足 10 张，当前只有 ${input.openingBriefs.length} 张。`);
@@ -1813,6 +1961,7 @@ function buildAgentOutputDigests(input: {
           targetCellId: readString(draft?.targetCellId) ?? readString(normalizedDraft?.targetCellId) ?? action.targetCellId,
           briefRefId: readString(draft?.briefRefId) ?? readString(normalizedDraft?.briefRefId) ?? action.briefRefId,
           roundStartOutputId: readString(draft?.roundStartOutputId) ?? readString(normalizedDraft?.roundStartOutputId) ?? action.roundStartOutputId,
+          phase0RefId: readString(draft?.phase0RefId) ?? readString(normalizedDraft?.phase0RefId) ?? (action as { phase0RefId?: string | undefined }).phase0RefId,
           rawTextPreview: response?.rawTextPreview,
           rawDraftPreview: previewRecord(response?.rawDraft),
           normalizedDraftPreview: previewRecord(response?.normalizedDraft),
@@ -1974,10 +2123,10 @@ function buildHumanAgentOpeningBriefs(
   return financeDuel.assignments.map((assignment) => {
     const identity = agentIdentities.get(assignment.agentId);
     const economy = economySummary.flatMap((team) => team.agents).find((agent) => agent.agentId === assignment.agentId);
-    const side = assignment.side === "defense" ? "守方" : "攻方";
+    const side = assignment.side === "defense" ? "立场方" : "挑战方";
     const proofOrChallengeZh = assignment.side === "defense"
-      ? financeDuel.defenseThesis.thesis
-      : financeDuel.attackChallenge.thesis;
+      ? `立场方：${financeDuel.defenseThesis.thesis}`
+      : `挑战方：${financeDuel.attackChallenge.thesis}`;
     const slice = slicesByAgentId.get(assignment.agentId);
     return {
       briefId: `opening_${financeDuel.mirrorRoundNumber}_${assignment.agentId}`,
@@ -2012,13 +2161,48 @@ function buildHumanAgentOpeningBriefs(
         : evidenceBoundaryZh,
       buyConstraintZh: humanizeBuyConstraint(economy),
       actionHintZh: slice?.actionBoundaryZh ?? (assignment.side === "defense"
-        ? "局内行动应守住自证链条，用位置、交叉火力和回防回应攻方质疑。"
-        : "局内行动应服务质疑链条，用推进、信息或压迫验证守方风险边界。")
+        ? "局内行动应守住已锁定的投资立场链条，用位置、交叉火力和回防回应挑战。"
+        : "局内行动应服务挑战链条，用推进、信息或压迫验证立场方风险边界。")
     };
   });
 }
 
+function buildLegacyDecisionQuestionFallback(summary: HexMatchLabFinanceDuelSummary): NonNullable<HexMatchLabFinanceDuelSummary["decisionQuestion"]> {
+  return {
+    question: `旧 trace 未记录 N56 决策题契约；旧小主题：${summary.topicTitle}`,
+    decisionObject: "旧 trace 未记录",
+    horizon: "旧 trace 未记录",
+    benchmark: "旧 trace 未记录",
+    allowedStance: [
+      "bullish",
+      "bearish",
+      "neutral",
+      "structural",
+      "conditional_bullish",
+      "conditional_bearish",
+      "no_trade"
+    ],
+    requiredOutput: ["旧 trace 未记录 N56 requiredOutput。"],
+    requiredEvidenceSchema: [{
+      requiredKey: "old_trace_missing_n56_contract",
+      requiredForClaimTypes: ["legacy_trace"],
+      minimumFactCount: 0,
+      preferredSources: [],
+      fallbackSources: ["legacy_trace"],
+      missingEffect: "旧 trace 缺少 N56 必需证据结构，不能据此判定新金融契约已生效。",
+      notWinCondition: true
+    }],
+    challengePolicy: {
+      mustTargetClaimId: true,
+      allowedChallengeTypes: ["legacy_trace_missing"],
+      invalidChallengePatterns: ["旧 trace 不具备 N56 challengePolicy。"],
+      missingEvidenceCanOnlyCap: true
+    }
+  };
+}
+
 function toCoreFinanceDuel(summary: HexMatchLabFinanceDuelSummary): HexRoundFinanceDuel {
+  const decisionQuestion = summary.decisionQuestion ?? buildLegacyDecisionQuestionFallback(summary);
   return {
     schemaVersion: 1,
     source: "hex_round_finance_duel",
@@ -2033,9 +2217,23 @@ function toCoreFinanceDuel(summary: HexMatchLabFinanceDuelSummary): HexRoundFina
       roundNumber: summary.roundInHalf,
       roundKey: summary.topicKey,
       topicTitle: summary.topicTitle,
+      decisionQuestion: decisionQuestion.question,
+      decisionObject: decisionQuestion.decisionObject,
+      horizon: decisionQuestion.horizon,
+      benchmark: decisionQuestion.benchmark,
+      allowedStance: [...decisionQuestion.allowedStance],
+      requiredOutput: [...decisionQuestion.requiredOutput],
+      requiredEvidenceSchema: decisionQuestion.requiredEvidenceSchema.map((item) => ({ ...item })),
+      challengePolicy: {
+        mustTargetClaimId: decisionQuestion.challengePolicy.mustTargetClaimId,
+        allowedChallengeTypes: [...decisionQuestion.challengePolicy.allowedChallengeTypes],
+        invalidChallengePatterns: [...decisionQuestion.challengePolicy.invalidChallengePatterns],
+        missingEvidenceCanOnlyCap: decisionQuestion.challengePolicy.missingEvidenceCanOnlyCap
+      },
       defenseThesisFocus: summary.defenseThesisFocus,
       attackChallengeFocus: summary.attackChallengeFocus
     },
+    decisionQuestion,
     defenseThesis: {
       thesisId: `web_finance_thesis_${summary.roundNumber}_${summary.defenseThesis.teamId}_${summary.topicKey}`,
       teamId: summary.defenseThesis.teamId,
@@ -2122,7 +2320,7 @@ function buildHumanPhaseStory(
       action.targetCellId ? "目标格已记录，具体 cell id 见技术细节" : "目标未记录",
       action.actionRationaleZh || action.businessIntent ? `理由：${action.actionRationaleZh ?? action.businessIntent}` : "理由：未记录",
       roundStartOutput
-        ? `引用真实开局输出：${roundStartOutput.openingStatementZh}`
+        ? `引用真实 ${roundStartOutput.cardKind === "stance" ? "立场卡" : roundStartOutput.cardKind === "challenge" ? "挑战卡" : "开局输出"}：${roundStartOutput.cardSummaryZh ?? roundStartOutput.openingStatementZh}`
         : brief
           ? `引用系统输入卡：${brief.roleQuestionZh ?? brief.roundTaskZh}`
           : "未记录开局引用"
@@ -2140,12 +2338,14 @@ function buildHumanPhaseStory(
       actionSummaryZh,
       openingBriefRef: action.briefRefId ?? brief?.briefId,
       roundStartOutputRef: action.roundStartOutputId ?? roundStartOutput?.outputId,
+      phase0Ref: (action as { phase0RefId?: string | undefined }).phase0RefId,
       repairSummaryZh,
       technicalRefs: {
         targetCellId: action.targetCellId,
         requestArtifactId: action.requestArtifactId,
         responseArtifactId: action.responseArtifactId,
         roundStartOutputId: action.roundStartOutputId,
+        phase0RefId: (action as { phase0RefId?: string | undefined }).phase0RefId,
         validationErrors: [...action.validationErrors],
         repairedFields: [...action.repairedFields]
       }
@@ -2279,6 +2479,17 @@ function buildHumanEvidenceBoundary(financeDuel: HexMatchLabFinanceDuelSummary):
   return `${financeDuel.defenseThesis.riskBoundary} ${missing}${caps}`.trim();
 }
 
+function formatAllowedStanceZh(value: string): string {
+  if (value === "bullish") return "看多";
+  if (value === "bearish") return "看空";
+  if (value === "neutral") return "中性";
+  if (value === "structural") return "结构性分化";
+  if (value === "conditional_bullish") return "条件看多";
+  if (value === "conditional_bearish") return "条件看空";
+  if (value === "no_trade") return "暂不交易但给触发条件";
+  return value;
+}
+
 function humanizeBuyConstraint(economy: HexMatchLabEconomySummary["agents"][number] | undefined): string {
   if (!economy) {
     return "经济未记录；按保守行动处理。";
@@ -2325,11 +2536,11 @@ function humanizeActionType(actionType: string): string {
 
 function humanizeFinanceVerdict(value: string | undefined): string {
   const labels: Record<string, string> = {
-    challenge_landed: "攻方质疑成立",
-    thesis_defended: "守方自证守住",
-    contested_no_finance_resolution: "金融攻防未分胜负",
-    proof_rebutted_challenge: "守方自证驳回质疑",
-    challenge_succeeded: "攻方质疑成功",
+    challenge_landed: "挑战方击中关键主张",
+    thesis_defended: "立场方判断暂时守住",
+    contested_no_finance_resolution: "金融决策未分胜负",
+    proof_rebutted_challenge: "立场方回应挑战",
+    challenge_succeeded: "挑战方挑战成功",
     contested_no_business_resolution: "攻防争夺未分胜负"
   };
   return value ? labels[value] ?? `未翻译裁定：${value}` : "未记录金融裁定";
@@ -2337,9 +2548,9 @@ function humanizeFinanceVerdict(value: string | undefined): string {
 
 function humanizeReason(reason: string): string {
   const labels: Record<string, string> = {
-    challenge_landed: "攻方质疑成立",
-    thesis_defended: "守方自证守住",
-    contested_no_finance_resolution: "金融攻防未分胜负",
+    challenge_landed: "挑战方击中关键主张",
+    thesis_defended: "立场方判断暂时守住",
+    contested_no_finance_resolution: "金融决策未分胜负",
     decisive_combat_margin: "战斗优势明显，形成击杀",
     contested_combat: "交火僵持，形成压制",
     target_bombsite_exposure: "目标暴露在包点交火区",
@@ -2358,6 +2569,8 @@ function humanizeReason(reason: string): string {
     repaired_invalid_briefRefId: "已修正为当前选手自己的开局信息卡",
     repaired_missing_roundStartOutputId: "已补齐真实开局输出引用",
     repaired_invalid_roundStartOutputId: "已修正为当前选手自己的真实开局输出",
+    repaired_invalid_phase0_ref: "已修正为当前选手自己的 phase0 claim / challenge 引用",
+    "draft:invalid_phase0RefId": "phase0 claim / challenge 引用无效",
     provider_error: "真实模型供应器失败",
     external_blocked: "外部调用被阻断",
     no_accepted_finance_evidence: "没有被裁判正向采信的金融证据",
@@ -2409,9 +2622,11 @@ function buildFinanceReview(input: {
   return {
     roundStory: {
       title: input.financeDuel.topicTitle,
-      summary: `本回合金融小主题是「${input.financeDuel.topicTitle}」：守方围绕「${input.financeDuel.defenseThesisFocus}」自证，攻方围绕「${input.financeDuel.attackChallengeFocus}」反证。`,
-      defenseSummary: `守方 ${input.financeDuel.defenseThesis.teamId} 投资主张：${input.financeDuel.defenseThesis.thesis}`,
-      attackSummary: `攻方 ${input.financeDuel.attackChallenge.teamId} 反证质疑：${input.financeDuel.attackChallenge.thesis}`,
+      summary: input.financeDuel.decisionQuestion
+        ? `本回合金融决策题是「${input.financeDuel.decisionQuestion.question}」。立场方在允许立场内给出投资判断，挑战方必须攻击具体主张或证据链断点；缺失证据只能降权，不能直接赢。`
+        : `旧 trace 未记录 N56 决策题契约；旧小主题是「${input.financeDuel.topicTitle}」。`,
+      defenseSummary: `立场方 ${input.financeDuel.defenseThesis.teamId} 任务：${input.financeDuel.defenseThesis.thesis}`,
+      attackSummary: `挑战方 ${input.financeDuel.attackChallenge.teamId} 任务：${input.financeDuel.attackChallenge.thesis}`,
       evidenceSummary: `证据 ${input.financeDuel.evidence.promptFacts.map((fact) => fact.factId).join(", ") || "无"}；缺失 ${input.financeDuel.evidence.missingEvidence.join(", ") || "无"}；评分上限 ${input.financeDuel.evidence.scoreCaps.map((cap) => `${cap.condition}:${cap.maxScore}`).join(", ") || "无"}`,
       mirrorSummary: `当前为第 ${input.financeDuel.halfIndex + 1} 个半场的第 ${input.financeDuel.roundInHalf} 个小主题；攻防互换对应 round ${input.financeDuel.mirrorRoundNumber}。`
     },
@@ -2682,6 +2897,7 @@ function summarizePhase(
       businessIntent: action.businessIntent,
       briefRefId: action.briefRefId,
       roundStartOutputId: action.roundStartOutputId,
+      phase0RefId: (action as { phase0RefId?: string | undefined }).phase0RefId,
       actionRationaleZh: action.actionRationaleZh,
       requestArtifactId: audit?.requestArtifactId,
       responseArtifactId: audit?.responseArtifactId
@@ -2950,16 +3166,27 @@ function materializeLiveRunStatus(record: LiveRunRecord): HexMatchLabLiveRunStat
   };
 }
 
-function cloneFinanceEvidenceAdoptionSide(value: HexMatchLabFinanceEvidenceAdoptionSideSummary): HexMatchLabFinanceEvidenceAdoptionSideSummary {
+function cloneFinanceEvidenceAdoptionSide(value: Partial<HexMatchLabFinanceEvidenceAdoptionSideSummary> & { side?: string | undefined }): HexMatchLabFinanceEvidenceAdoptionSideSummary {
   return {
-    side: value.side,
-    acceptedEvidenceRefs: [...value.acceptedEvidenceRefs],
-    rejectedEvidenceRefs: [...value.rejectedEvidenceRefs],
-    missingEvidenceApplied: [...value.missingEvidenceApplied],
-    scoreCapRefs: [...value.scoreCapRefs],
-    adoptionReasons: [...value.adoptionReasons],
-    rejectionReasons: [...value.rejectionReasons],
-    financeReasonZh: [...value.financeReasonZh]
+    side: value.side ?? "unknown",
+    acceptedEvidenceRefs: [...(value.acceptedEvidenceRefs ?? [])],
+    rejectedEvidenceRefs: [...(value.rejectedEvidenceRefs ?? [])],
+    missingEvidenceApplied: [...(value.missingEvidenceApplied ?? [])],
+    scoreCapRefs: [...(value.scoreCapRefs ?? [])],
+    scoreCaps: (value.scoreCaps ?? []).map((cap) => ({ ...cap })),
+    acceptedClaims: [...(value.acceptedClaims ?? [])],
+    rejectedClaims: [...(value.rejectedClaims ?? [])],
+    acceptedChallenges: [...(value.acceptedChallenges ?? [])],
+    rejectedChallenges: [...(value.rejectedChallenges ?? [])],
+    sideScore: value.sideScore,
+    stanceScore: value.stanceScore,
+    challengeScore: value.challengeScore,
+    financialResult: value.financialResult,
+    combatEffectAllowed: [...(value.combatEffectAllowed ?? [])],
+    adoptionReasons: [...(value.adoptionReasons ?? [])],
+    rejectionReasons: [...(value.rejectionReasons ?? [])],
+    financeReasonZh: [...(value.financeReasonZh ?? [])],
+    auditReasons: [...(value.auditReasons ?? [])]
   };
 }
 
@@ -3354,9 +3581,9 @@ function previewRecord(value: Record<string, unknown> | undefined): string | und
 }
 
 function formatFinanceVerdictForText(value: string | undefined): string {
-  if (value === "challenge_landed") return "攻方质疑成立";
-  if (value === "thesis_defended") return "守方自证守住";
-  if (value === "contested_no_finance_resolution") return "金融攻防未分胜负";
+  if (value === "challenge_landed") return "挑战方击中关键主张";
+  if (value === "thesis_defended") return "立场方判断暂时守住";
+  if (value === "contested_no_finance_resolution") return "金融决策未分胜负";
   return value ? humanizeReason(value) : "未记录金融裁定";
 }
 

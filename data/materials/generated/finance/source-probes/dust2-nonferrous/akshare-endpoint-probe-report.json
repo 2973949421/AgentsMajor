@@ -1,0 +1,5256 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-19T15:37:20Z",
+  "financeScenarioSlug": "dust2-nonferrous",
+  "hexMapSlug": "dust2",
+  "akshareVersion": "1.18.64",
+  "accessProvider": "AKShare",
+  "collector": "akshare_python_package_v0",
+  "n56RequiredEvidenceKeys": [
+    "available_positive_proxy",
+    "china_supply_demand_proxy",
+    "commodity_context",
+    "commodity_price_context",
+    "commodity_price_momentum",
+    "declared_missing_evidence",
+    "domestic_inventory_or_spot_proxy",
+    "earnings_transmission_proxy",
+    "equity_market_reaction",
+    "equity_transmission_proxy",
+    "missing_evidence_policy",
+    "portfolio_stance_evidence_mix",
+    "risk_execution_rule",
+    "risk_reward_boundary",
+    "trade_flow_proxy",
+    "valuation_level",
+    "valuation_proxy"
+  ],
+  "decisionEnum": [
+    "blocked",
+    "candidate_only",
+    "ready_for_fact_bank",
+    "unavailable",
+    "usable_with_cap"
+  ],
+  "akshareEndpointProbes": [
+    {
+      "category": "futures_exchange",
+      "endpointName": "get_shfe_daily",
+      "functionName": "get_shfe_daily",
+      "functionSignature": "(date: str = '20220415') -> pandas.DataFrame",
+      "sourcePublisher": "SHFE",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "date": "20260619"
+        },
+        {
+          "date": "20260618"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "date": "20260619"
+          },
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": null
+        },
+        {
+          "params": {
+            "date": "20260618"
+          },
+          "status": "success",
+          "returnedRows": 305,
+          "returnedFields": [
+            "index",
+            "symbol",
+            "date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "open_interest",
+            "turnover",
+            "settle",
+            "pre_settle",
+            "variety"
+          ],
+          "samplePeriod": "20260618..20260618",
+          "failureReason": null
+        }
+      ],
+      "returnedRows": 305,
+      "returnedFields": [
+        "close",
+        "date",
+        "high",
+        "index",
+        "low",
+        "open",
+        "open_interest",
+        "pre_settle",
+        "settle",
+        "symbol",
+        "turnover",
+        "variety",
+        "volume"
+      ],
+      "samplePeriod": "20260618..20260618",
+      "frequency": "daily",
+      "entityCoverage": [
+        "CU",
+        "AL",
+        "ZN",
+        "NI",
+        "SN",
+        "PB",
+        "AU",
+        "AG"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "china_supply_demand_proxy",
+        "commodity_price_context",
+        "commodity_price_momentum"
+      ],
+      "allowedClaimTypes": [
+        "china_futures_context",
+        "commodity_trend",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed",
+        "full_industry_fundamentals_confirmed"
+      ],
+      "decisionForN57c": "ready_for_fact_bank",
+      "failureReason": null,
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持国内期货价格、结算、成交、持仓或库存/仓单代理；不能单独证明公司盈利。"
+      ]
+    },
+    {
+      "category": "futures_exchange",
+      "endpointName": "futures_settle_shfe",
+      "functionName": "futures_settle_shfe",
+      "functionSignature": "(date: str = '20260119') -> pandas.DataFrame",
+      "sourcePublisher": "SHFE",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "date": "20260619"
+        },
+        {
+          "date": "20260618"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "date": "20260619"
+          },
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": null
+        },
+        {
+          "params": {
+            "date": "20260618"
+          },
+          "status": "success",
+          "returnedRows": 302,
+          "returnedFields": [
+            "date",
+            "symbol",
+            "variety",
+            "settle_price",
+            "spec_long_margin_ratio",
+            "hedge_long_margin_ratio",
+            "spec_short_margin_ratio",
+            "hedge_short_margin_ratio",
+            "trade_fee_ratio",
+            "close_today_fee_ratio",
+            "is_close_today"
+          ],
+          "samplePeriod": "20260618..20260618",
+          "failureReason": null
+        }
+      ],
+      "returnedRows": 302,
+      "returnedFields": [
+        "close_today_fee_ratio",
+        "date",
+        "hedge_long_margin_ratio",
+        "hedge_short_margin_ratio",
+        "is_close_today",
+        "settle_price",
+        "spec_long_margin_ratio",
+        "spec_short_margin_ratio",
+        "symbol",
+        "trade_fee_ratio",
+        "variety"
+      ],
+      "samplePeriod": "20260618..20260618",
+      "frequency": "daily",
+      "entityCoverage": [
+        "CU",
+        "AL",
+        "ZN",
+        "NI",
+        "SN",
+        "PB",
+        "AU",
+        "AG"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "commodity_price_context",
+        "risk_reward_boundary"
+      ],
+      "allowedClaimTypes": [
+        "china_futures_context",
+        "commodity_trend",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed"
+      ],
+      "decisionForN57c": "ready_for_fact_bank",
+      "failureReason": null,
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持国内期货价格、结算、成交、持仓或库存/仓单代理；不能单独证明公司盈利。"
+      ]
+    },
+    {
+      "category": "futures_exchange",
+      "endpointName": "futures_shfe_warehouse_receipt",
+      "functionName": "futures_shfe_warehouse_receipt",
+      "functionSignature": "(date: str = '20200702') -> dict",
+      "sourcePublisher": "SHFE",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "date": "20260619"
+        },
+        {
+          "date": "20260618"
+        },
+        {
+          "date": "20260617"
+        },
+        {
+          "date": "20260616"
+        },
+        {
+          "date": "20260119"
+        },
+        {
+          "date": "20240419"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "date": "20260619"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "Exit1",
+            "message": "EndpointError: requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
+          }
+        },
+        {
+          "params": {
+            "date": "20260618"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "Exit1",
+            "message": "EndpointError: requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
+          }
+        },
+        {
+          "params": {
+            "date": "20260617"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "Exit1",
+            "message": "EndpointError: requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
+          }
+        },
+        {
+          "params": {
+            "date": "20260616"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "Exit1",
+            "message": "EndpointError: requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
+          }
+        },
+        {
+          "params": {
+            "date": "20260119"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "Exit1",
+            "message": "EndpointError: requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
+          }
+        },
+        {
+          "params": {
+            "date": "20240419"
+          },
+          "status": "success",
+          "returnedRows": 404,
+          "returnedFields": [
+            "螺纹钢厂库",
+            "REGNAME",
+            "WGHTUNIT",
+            "VARNAME",
+            "WHROWS",
+            "VARID",
+            "WHTYPE",
+            "WHABBRNAME",
+            "WRTWGHTS",
+            "ROWSTATUS",
+            "WRTCHANGE",
+            "丁二烯橡胶仓库",
+            "REGNAME",
+            "WGHTUNIT",
+            "VARNAME",
+            "WHROWS",
+            "VARID",
+            "WHTYPE",
+            "WHABBRNAME",
+            "WRTWGHTS",
+            "ROWSTATUS",
+            "WRTCHANGE",
+            "线材",
+            "REGNAME",
+            "WGHTUNIT",
+            "VARNAME",
+            "WHROWS",
+            "VARID",
+            "WHTYPE",
+            "WHABBRNAME",
+            "WRTWGHTS",
+            "ROWSTATUS",
+            "WRTCHANGE",
+            "石油沥青厂库",
+            "REGNAME",
+            "WGHTUNIT",
+            "VARNAME",
+            "WHROWS",
+            "VARID",
+            "WHTYPE",
+            "WHABBRNAME",
+            "WRTWGHTS",
+            "ROWSTATUS",
+            "WRTCHANGE",
+            "不锈钢仓库",
+            "REGNAME",
+            "WGHTUNIT",
+            "VARNAME",
+            "WHROWS",
+            "VARID",
+            "WHTYPE",
+            "WHABBRNAME",
+            "WRTWGHTS",
+            "ROWSTATUS",
+            "WRTCHANGE",
+            "纸浆仓库",
+            "REGNAME",
+            "WGHTUNIT",
+            "VARNAME",
+            "WHROWS",
+            "VARID",
+            "WHTYPE",
+            "WHABBRNAME",
+            "WRTWGHTS",
+            "ROWSTATUS",
+            "WRTCHANGE",
+            "热轧卷板",
+            "REGNAME",
+            "WGHTUNIT",
+            "VARNAME",
+            "WHROWS",
+            "VARID",
+            "WHTYPE",
+            "WHABBRNAME",
+            "WRTWGHTS",
+            "ROWSTATUS",
+            "WRTCHANGE",
+            "氧化铝厂库",
+            "REGNAME",
+            "WGHTUNIT"
+          ],
+          "samplePeriod": null,
+          "failureReason": null
+        }
+      ],
+      "returnedRows": 404,
+      "returnedFields": [
+        "REGNAME",
+        "ROWSTATUS",
+        "VARID",
+        "VARNAME",
+        "WGHTUNIT",
+        "WHABBRNAME",
+        "WHROWS",
+        "WHTYPE",
+        "WRTCHANGE",
+        "WRTWGHTS",
+        "丁二烯橡胶仓库",
+        "不锈钢仓库",
+        "氧化铝厂库",
+        "热轧卷板",
+        "石油沥青厂库",
+        "纸浆仓库",
+        "线材",
+        "螺纹钢厂库"
+      ],
+      "samplePeriod": null,
+      "frequency": "daily",
+      "entityCoverage": [
+        "CU",
+        "AL",
+        "ZN",
+        "NI",
+        "SN",
+        "PB",
+        "AU",
+        "AG"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "china_supply_demand_proxy",
+        "domestic_inventory_or_spot_proxy"
+      ],
+      "allowedClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure"
+      ],
+      "notAllowedClaimTypes": [
+        "a_share_relative_allocation_confirmed",
+        "company_earnings_confirmed"
+      ],
+      "decisionForN57c": "ready_for_fact_bank",
+      "failureReason": null,
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持国内期货价格、结算、成交、持仓或库存/仓单代理；不能单独证明公司盈利。"
+      ]
+    },
+    {
+      "category": "futures_exchange",
+      "endpointName": "futures_stock_shfe_js",
+      "functionName": "futures_stock_shfe_js",
+      "functionSignature": "(date: str = '20240419') -> pandas.DataFrame",
+      "sourcePublisher": "SHFE",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "date": "20260619"
+        },
+        {
+          "date": "20260618"
+        },
+        {
+          "date": "20260617"
+        },
+        {
+          "date": "20260616"
+        },
+        {
+          "date": "20260119"
+        },
+        {
+          "date": "20240419"
+        },
+        {
+          "date": "20240122"
+        },
+        {
+          "date": "20221223"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "date": "20260619"
+          },
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": null
+        },
+        {
+          "params": {
+            "date": "20260618"
+          },
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": null
+        },
+        {
+          "params": {
+            "date": "20260617"
+          },
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": null
+        },
+        {
+          "params": {
+            "date": "20260616"
+          },
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": null
+        },
+        {
+          "params": {
+            "date": "20260119"
+          },
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": null
+        },
+        {
+          "params": {
+            "date": "20240419"
+          },
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": null
+        },
+        {
+          "params": {
+            "date": "20240122"
+          },
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": null
+        },
+        {
+          "params": {
+            "date": "20221223"
+          },
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": null
+        }
+      ],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "frequency": "daily",
+      "entityCoverage": [
+        "CU",
+        "AL",
+        "ZN",
+        "NI",
+        "SN",
+        "PB",
+        "AU",
+        "AG"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "domestic_inventory_or_spot_proxy"
+      ],
+      "allowedClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed"
+      ],
+      "decisionForN57c": "unavailable",
+      "failureReason": "no_records_returned",
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持国内期货价格、结算、成交、持仓或库存/仓单代理；不能单独证明公司盈利。"
+      ]
+    },
+    {
+      "category": "futures_exchange",
+      "endpointName": "get_receipt",
+      "functionName": "get_receipt",
+      "functionSignature": "(start_date: str = None, end_date: str = None, vars_list: List = ['IF', 'IC', 'IM', 'IH', 'T', 'TF', 'TS', 'TL', 'C', 'CS', 'A', 'B', 'M', 'Y', 'P', 'FB', 'BB', 'JD', 'L', 'V', 'PP', 'J', 'JM', 'I', 'EG', 'RR', 'EB', 'PG', 'LH', 'LG', 'BZ', 'WH', 'PM', 'CF', 'SR', 'TA', 'OI', 'RI', 'MA', 'ME', 'FG', 'RS', 'RM', 'ZC', 'JR', 'LR', 'SF', 'SM', 'WT', 'TC', 'GN', 'RO', 'ER', 'SRX', 'SRY', 'WSX', 'WSY', 'CY', 'AP', 'UR', 'CJ', 'SA', 'PK', 'PF', 'PX', 'SH', 'PR', 'PL', 'CU', 'AL', 'ZN', 'PB', 'NI', 'SN', 'AU', 'AG', 'RB', 'WR', 'HC', 'FU', 'BU', 'RU', 'SC', 'NR', 'SP', 'SS', 'LU', 'BC', 'AO', 'BR', 'EC', 'AD', 'OP', 'SI', 'LC', 'PS'])",
+      "sourcePublisher": "Chinese futures exchanges",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "start_date": "20260617",
+          "end_date": "20260619",
+          "vars_list": [
+            "CU",
+            "AL",
+            "ZN",
+            "NI",
+            "SN",
+            "PB",
+            "AU",
+            "AG",
+            "BC",
+            "LC",
+            "SI"
+          ]
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "start_date": "20260617",
+            "end_date": "20260619",
+            "vars_list": [
+              "CU",
+              "AL",
+              "ZN",
+              "NI",
+              "SN",
+              "PB",
+              "AU",
+              "AG",
+              "BC",
+              "LC",
+              "SI"
+            ]
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "Exit1",
+            "message": "EndpointError: ValueError: No tables found"
+          }
+        }
+      ],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "frequency": "daily",
+      "entityCoverage": [
+        "CU",
+        "AL",
+        "ZN",
+        "NI",
+        "SN",
+        "PB",
+        "AU",
+        "AG",
+        "BC",
+        "LC",
+        "SI"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "china_supply_demand_proxy",
+        "domestic_inventory_or_spot_proxy"
+      ],
+      "allowedClaimTypes": [
+        "china_supply_demand",
+        "inventory_pressure"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed"
+      ],
+      "decisionForN57c": "unavailable",
+      "failureReason": "Exit1: EndpointError: ValueError: No tables found",
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持国内期货价格、结算、成交、持仓或库存/仓单代理；不能单独证明公司盈利。"
+      ]
+    },
+    {
+      "category": "futures_exchange",
+      "endpointName": "get_ine_daily",
+      "functionName": "get_ine_daily",
+      "functionSignature": "(date: str = '20241129') -> pandas.DataFrame",
+      "sourcePublisher": "INE",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "date": "20260619"
+        },
+        {
+          "date": "20260618"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "date": "20260619"
+          },
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": null
+        },
+        {
+          "params": {
+            "date": "20260618"
+          },
+          "status": "success",
+          "returnedRows": 67,
+          "returnedFields": [
+            "symbol",
+            "date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "open_interest",
+            "turnover",
+            "settle",
+            "pre_settle",
+            "variety"
+          ],
+          "samplePeriod": "20260618..20260618",
+          "failureReason": null
+        }
+      ],
+      "returnedRows": 67,
+      "returnedFields": [
+        "close",
+        "date",
+        "high",
+        "low",
+        "open",
+        "open_interest",
+        "pre_settle",
+        "settle",
+        "symbol",
+        "turnover",
+        "variety",
+        "volume"
+      ],
+      "samplePeriod": "20260618..20260618",
+      "frequency": "daily",
+      "entityCoverage": [
+        "BC"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "commodity_price_context",
+        "commodity_price_momentum"
+      ],
+      "allowedClaimTypes": [
+        "china_futures_context",
+        "commodity_trend"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed"
+      ],
+      "decisionForN57c": "ready_for_fact_bank",
+      "failureReason": null,
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持国内期货价格、结算、成交、持仓或库存/仓单代理；不能单独证明公司盈利。"
+      ]
+    },
+    {
+      "category": "futures_exchange",
+      "endpointName": "futures_settle_ine",
+      "functionName": "futures_settle_ine",
+      "functionSignature": "(date: str = '20260119') -> pandas.DataFrame",
+      "sourcePublisher": "INE",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "date": "20260619"
+        },
+        {
+          "date": "20260618"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "date": "20260619"
+          },
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": null
+        },
+        {
+          "params": {
+            "date": "20260618"
+          },
+          "status": "success",
+          "returnedRows": 64,
+          "returnedFields": [
+            "date",
+            "symbol",
+            "variety",
+            "settle_price",
+            "spec_long_margin_ratio",
+            "hedge_long_margin_ratio",
+            "spec_short_margin_ratio",
+            "hedge_short_margin_ratio",
+            "trade_fee_ratio",
+            "close_today_fee_ratio",
+            "is_close_today"
+          ],
+          "samplePeriod": "20260618..20260618",
+          "failureReason": null
+        }
+      ],
+      "returnedRows": 64,
+      "returnedFields": [
+        "close_today_fee_ratio",
+        "date",
+        "hedge_long_margin_ratio",
+        "hedge_short_margin_ratio",
+        "is_close_today",
+        "settle_price",
+        "spec_long_margin_ratio",
+        "spec_short_margin_ratio",
+        "symbol",
+        "trade_fee_ratio",
+        "variety"
+      ],
+      "samplePeriod": "20260618..20260618",
+      "frequency": "daily",
+      "entityCoverage": [
+        "BC"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "commodity_price_context",
+        "risk_reward_boundary"
+      ],
+      "allowedClaimTypes": [
+        "china_futures_context",
+        "commodity_trend",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed"
+      ],
+      "decisionForN57c": "ready_for_fact_bank",
+      "failureReason": null,
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持国内期货价格、结算、成交、持仓或库存/仓单代理；不能单独证明公司盈利。"
+      ]
+    },
+    {
+      "category": "futures_exchange",
+      "endpointName": "get_gfex_daily",
+      "functionName": "get_gfex_daily",
+      "functionSignature": "(date: str = '20221223') -> pandas.DataFrame",
+      "sourcePublisher": "GFEX",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "date": "20260619"
+        },
+        {
+          "date": "20260618"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "date": "20260619"
+          },
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": null
+        },
+        {
+          "params": {
+            "date": "20260618"
+          },
+          "status": "success",
+          "returnedRows": 48,
+          "returnedFields": [
+            "symbol",
+            "date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "open_interest",
+            "turnover",
+            "settle",
+            "pre_settle",
+            "variety"
+          ],
+          "samplePeriod": "20260618..20260618",
+          "failureReason": null
+        }
+      ],
+      "returnedRows": 48,
+      "returnedFields": [
+        "close",
+        "date",
+        "high",
+        "low",
+        "open",
+        "open_interest",
+        "pre_settle",
+        "settle",
+        "symbol",
+        "turnover",
+        "variety",
+        "volume"
+      ],
+      "samplePeriod": "20260618..20260618",
+      "frequency": "daily",
+      "entityCoverage": [
+        "LC",
+        "SI"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "commodity_price_context",
+        "risk_reward_boundary"
+      ],
+      "allowedClaimTypes": [
+        "candidate_battery_metal_context",
+        "commodity_trend"
+      ],
+      "notAllowedClaimTypes": [
+        "broad_nonferrous_allocation_confirmed"
+      ],
+      "decisionForN57c": "candidate_only",
+      "failureReason": null,
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持国内期货价格、结算、成交、持仓或库存/仓单代理；不能单独证明公司盈利。",
+        "当前只作为候选观察，不进入 N57c active fact bank 第一版。"
+      ]
+    },
+    {
+      "category": "futures_exchange",
+      "endpointName": "futures_gfex_warehouse_receipt",
+      "functionName": "futures_gfex_warehouse_receipt",
+      "functionSignature": "(date: str = '20240122') -> dict",
+      "sourcePublisher": "GFEX",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "date": "20260619"
+        },
+        {
+          "date": "20260618"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "date": "20260619"
+          },
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": null
+        },
+        {
+          "params": {
+            "date": "20260618"
+          },
+          "status": "success",
+          "returnedRows": 91,
+          "returnedFields": [
+            "SI",
+            "品种",
+            "仓库/分库",
+            "昨日仓单量",
+            "今日仓单量",
+            "增减",
+            "PD",
+            "品种",
+            "仓库/分库",
+            "昨日仓单量",
+            "今日仓单量",
+            "增减",
+            "PT",
+            "品种",
+            "仓库/分库",
+            "昨日仓单量",
+            "今日仓单量",
+            "增减",
+            "LC",
+            "品种",
+            "仓库/分库",
+            "昨日仓单量",
+            "今日仓单量",
+            "增减",
+            "PS",
+            "品种",
+            "仓库/分库",
+            "昨日仓单量",
+            "今日仓单量",
+            "增减"
+          ],
+          "samplePeriod": null,
+          "failureReason": null
+        }
+      ],
+      "returnedRows": 91,
+      "returnedFields": [
+        "LC",
+        "PD",
+        "PS",
+        "PT",
+        "SI",
+        "今日仓单量",
+        "仓库/分库",
+        "品种",
+        "增减",
+        "昨日仓单量"
+      ],
+      "samplePeriod": null,
+      "frequency": "daily",
+      "entityCoverage": [
+        "LC",
+        "SI"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "domestic_inventory_or_spot_proxy"
+      ],
+      "allowedClaimTypes": [
+        "candidate_battery_metal_context",
+        "inventory_pressure"
+      ],
+      "notAllowedClaimTypes": [
+        "broad_nonferrous_allocation_confirmed"
+      ],
+      "decisionForN57c": "candidate_only",
+      "failureReason": null,
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持国内期货价格、结算、成交、持仓或库存/仓单代理；不能单独证明公司盈利。",
+        "当前只作为候选观察，不进入 N57c active fact bank 第一版。"
+      ]
+    },
+    {
+      "category": "spot_commodity",
+      "endpointName": "futures_spot_price",
+      "functionName": "futures_spot_price",
+      "functionSignature": "(date: str = '20240430', vars_list: list = ['IF', 'IC', 'IM', 'IH', 'T', 'TF', 'TS', 'TL', 'C', 'CS', 'A', 'B', 'M', 'Y', 'P', 'FB', 'BB', 'JD', 'L', 'V', 'PP', 'J', 'JM', 'I', 'EG', 'RR', 'EB', 'PG', 'LH', 'LG', 'BZ', 'WH', 'PM', 'CF', 'SR', 'TA', 'OI', 'RI', 'MA', 'ME', 'FG', 'RS', 'RM', 'ZC', 'JR', 'LR', 'SF', 'SM', 'WT', 'TC', 'GN', 'RO', 'ER', 'SRX', 'SRY', 'WSX', 'WSY', 'CY', 'AP', 'UR', 'CJ', 'SA', 'PK', 'PF', 'PX', 'SH', 'PR', 'PL', 'CU', 'AL', 'ZN', 'PB', 'NI', 'SN', 'AU', 'AG', 'RB', 'WR', 'HC', 'FU', 'BU', 'RU', 'SC', 'NR', 'SP', 'SS', 'LU', 'BC', 'AO', 'BR', 'EC', 'AD', 'OP', 'SI', 'LC', 'PS']) -> pandas.DataFrame",
+      "sourcePublisher": "Chinese futures market public feeds",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "date": "20260619",
+          "vars_list": [
+            "CU",
+            "AL",
+            "ZN",
+            "NI",
+            "SN",
+            "PB",
+            "AU",
+            "AG",
+            "BC",
+            "LC",
+            "SI"
+          ]
+        },
+        {
+          "date": "20240430",
+          "vars_list": [
+            "CU",
+            "AL",
+            "ZN",
+            "NI",
+            "SN",
+            "PB",
+            "AU",
+            "AG",
+            "BC",
+            "LC",
+            "SI"
+          ]
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "date": "20260619",
+            "vars_list": [
+              "CU",
+              "AL",
+              "ZN",
+              "NI",
+              "SN",
+              "PB",
+              "AU",
+              "AG",
+              "BC",
+              "LC",
+              "SI"
+            ]
+          },
+          "status": "empty",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": null
+        },
+        {
+          "params": {
+            "date": "20240430",
+            "vars_list": [
+              "CU",
+              "AL",
+              "ZN",
+              "NI",
+              "SN",
+              "PB",
+              "AU",
+              "AG",
+              "BC",
+              "LC",
+              "SI"
+            ]
+          },
+          "status": "success",
+          "returnedRows": 10,
+          "returnedFields": [
+            "date",
+            "symbol",
+            "spot_price",
+            "near_contract",
+            "near_contract_price",
+            "dominant_contract",
+            "dominant_contract_price",
+            "near_month",
+            "dominant_month",
+            "near_basis",
+            "dom_basis",
+            "near_basis_rate",
+            "dom_basis_rate"
+          ],
+          "samplePeriod": "20240430..20240430",
+          "failureReason": null
+        }
+      ],
+      "returnedRows": 10,
+      "returnedFields": [
+        "date",
+        "dom_basis",
+        "dom_basis_rate",
+        "dominant_contract",
+        "dominant_contract_price",
+        "dominant_month",
+        "near_basis",
+        "near_basis_rate",
+        "near_contract",
+        "near_contract_price",
+        "near_month",
+        "spot_price",
+        "symbol"
+      ],
+      "samplePeriod": "20240430..20240430",
+      "frequency": "daily",
+      "entityCoverage": [
+        "CU",
+        "AL",
+        "ZN",
+        "NI",
+        "SN",
+        "PB",
+        "AU",
+        "AG",
+        "BC",
+        "LC",
+        "SI"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "commodity_price_context",
+        "domestic_inventory_or_spot_proxy"
+      ],
+      "allowedClaimTypes": [
+        "commodity_trend",
+        "spot_futures_basis_proxy"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed"
+      ],
+      "decisionForN57c": "usable_with_cap",
+      "failureReason": null,
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持现货或商品价格上下文；不能直接证明库存、产量或公司利润。",
+        "进入 N57c 时必须降权使用，并设置 score cap。"
+      ]
+    },
+    {
+      "category": "spot_commodity",
+      "endpointName": "futures_spot_price_daily",
+      "functionName": "futures_spot_price_daily",
+      "functionSignature": "(start_day: str = '20210201', end_day: str = '20210208', vars_list: list = ['IF', 'IC', 'IM', 'IH', 'T', 'TF', 'TS', 'TL', 'C', 'CS', 'A', 'B', 'M', 'Y', 'P', 'FB', 'BB', 'JD', 'L', 'V', 'PP', 'J', 'JM', 'I', 'EG', 'RR', 'EB', 'PG', 'LH', 'LG', 'BZ', 'WH', 'PM', 'CF', 'SR', 'TA', 'OI', 'RI', 'MA', 'ME', 'FG', 'RS', 'RM', 'ZC', 'JR', 'LR', 'SF', 'SM', 'WT', 'TC', 'GN', 'RO', 'ER', 'SRX', 'SRY', 'WSX', 'WSY', 'CY', 'AP', 'UR', 'CJ', 'SA', 'PK', 'PF', 'PX', 'SH', 'PR', 'PL', 'CU', 'AL', 'ZN', 'PB', 'NI', 'SN', 'AU', 'AG', 'RB', 'WR', 'HC', 'FU', 'BU', 'RU', 'SC', 'NR', 'SP', 'SS', 'LU', 'BC', 'AO', 'BR', 'EC', 'AD', 'OP', 'SI', 'LC', 'PS'])",
+      "sourcePublisher": "Chinese futures market public feeds",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "start_day": "20260219",
+          "end_day": "20260619",
+          "vars_list": [
+            "CU",
+            "AL",
+            "ZN",
+            "NI",
+            "SN",
+            "PB",
+            "AU",
+            "AG",
+            "BC",
+            "LC",
+            "SI"
+          ]
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "start_day": "20260219",
+            "end_day": "20260619",
+            "vars_list": [
+              "CU",
+              "AL",
+              "ZN",
+              "NI",
+              "SN",
+              "PB",
+              "AU",
+              "AG",
+              "BC",
+              "LC",
+              "SI"
+            ]
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "TimeoutExpired",
+            "message": "endpoint exceeded 18s"
+          }
+        }
+      ],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "frequency": "daily",
+      "entityCoverage": [
+        "CU",
+        "AL",
+        "ZN",
+        "NI",
+        "SN",
+        "PB",
+        "AU",
+        "AG",
+        "BC",
+        "LC",
+        "SI"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "commodity_price_context",
+        "domestic_inventory_or_spot_proxy"
+      ],
+      "allowedClaimTypes": [
+        "commodity_trend",
+        "spot_futures_basis_proxy"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed"
+      ],
+      "decisionForN57c": "unavailable",
+      "failureReason": "TimeoutExpired: endpoint exceeded 18s",
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持现货或商品价格上下文；不能直接证明库存、产量或公司利润。"
+      ]
+    },
+    {
+      "category": "spot_commodity",
+      "endpointName": "spot_goods",
+      "functionName": "spot_goods",
+      "functionSignature": "(symbol: str = '波罗的海干散货指数') -> pandas.DataFrame",
+      "sourcePublisher": "Sina commodity public feed",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "symbol": "铜"
+        },
+        {
+          "symbol": "铝"
+        },
+        {
+          "symbol": "锌"
+        },
+        {
+          "symbol": "镍"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "symbol": "铜"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "Exit1",
+            "message": "EndpointError: KeyError: '铜'"
+          }
+        },
+        {
+          "params": {
+            "symbol": "铝"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "Exit1",
+            "message": "EndpointError: KeyError: '铝'"
+          }
+        },
+        {
+          "params": {
+            "symbol": "锌"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "Exit1",
+            "message": "EndpointError: KeyError: '锌'"
+          }
+        },
+        {
+          "params": {
+            "symbol": "镍"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "Exit1",
+            "message": "EndpointError: KeyError: '镍'"
+          }
+        }
+      ],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "frequency": "daily_or_snapshot",
+      "entityCoverage": [
+        "copper",
+        "aluminum",
+        "zinc",
+        "nickel"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "commodity_price_context",
+        "domestic_inventory_or_spot_proxy"
+      ],
+      "allowedClaimTypes": [
+        "commodity_trend",
+        "spot_price_proxy"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed",
+        "domestic_inventory_confirmed"
+      ],
+      "decisionForN57c": "unavailable",
+      "failureReason": "Exit1: EndpointError: KeyError: '铜'; Exit1: EndpointError: KeyError: '铝'; Exit1: EndpointError: KeyError: '锌'; Exit1: EndpointError: KeyError: '镍'",
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持现货或商品价格上下文；不能直接证明库存、产量或公司利润。"
+      ]
+    },
+    {
+      "category": "spot_commodity",
+      "endpointName": "futures_news_shmet",
+      "functionName": "futures_news_shmet",
+      "functionSignature": "(symbol: str = '全部') -> pandas.DataFrame",
+      "sourcePublisher": "SHMET",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "symbol": "全部"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "symbol": "全部"
+          },
+          "status": "success",
+          "returnedRows": 10,
+          "returnedFields": [
+            "发布时间",
+            "内容"
+          ],
+          "samplePeriod": null,
+          "failureReason": null
+        }
+      ],
+      "returnedRows": 10,
+      "returnedFields": [
+        "内容",
+        "发布时间"
+      ],
+      "samplePeriod": null,
+      "frequency": "news_snapshot",
+      "entityCoverage": [
+        "nonferrous_news"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "commodity_price_context"
+      ],
+      "allowedClaimTypes": [
+        "contextual_market_news"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed",
+        "final_fact_without_manual_review"
+      ],
+      "decisionForN57c": "candidate_only",
+      "failureReason": null,
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持现货或商品价格上下文；不能直接证明库存、产量或公司利润。",
+        "当前只作为候选观察，不进入 N57c active fact bank 第一版。"
+      ]
+    },
+    {
+      "category": "company_fundamentals",
+      "endpointName": "stock_financial_abstract",
+      "functionName": "stock_financial_abstract",
+      "functionSignature": "(symbol: str = '600004') -> pandas.DataFrame",
+      "sourcePublisher": "Sina Finance",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "symbol": "601899"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "symbol": "601899"
+          },
+          "status": "success",
+          "returnedRows": 80,
+          "returnedFields": [
+            "选项",
+            "指标",
+            "20260331",
+            "20251231",
+            "20250930",
+            "20250630",
+            "20250331",
+            "20241231",
+            "20240930",
+            "20240630",
+            "20240331",
+            "20231231",
+            "20230930",
+            "20230630",
+            "20230331",
+            "20221231",
+            "20220930",
+            "20220630",
+            "20220331",
+            "20211231",
+            "20210930",
+            "20210630",
+            "20210331",
+            "20201231",
+            "20200930",
+            "20200630",
+            "20200331",
+            "20191231",
+            "20190930",
+            "20190630",
+            "20190331",
+            "20181231",
+            "20180930",
+            "20180630",
+            "20180331",
+            "20171231",
+            "20170930",
+            "20170630",
+            "20170331",
+            "20161231",
+            "20160930",
+            "20160630",
+            "20160331",
+            "20151231",
+            "20150930",
+            "20150630",
+            "20150331",
+            "20141231",
+            "20140930",
+            "20140630",
+            "20140331",
+            "20131231",
+            "20130930",
+            "20130630",
+            "20130331",
+            "20121231",
+            "20120930",
+            "20120630",
+            "20120331",
+            "20111231",
+            "20110930",
+            "20110630",
+            "20110331",
+            "20101231",
+            "20100930",
+            "20100630",
+            "20100331",
+            "20091231",
+            "20090930",
+            "20090630",
+            "20090331",
+            "20081231",
+            "20080930",
+            "20080630",
+            "20080331",
+            "20071231",
+            "20070930",
+            "20070630",
+            "20061231",
+            "20051231"
+          ],
+          "samplePeriod": null,
+          "failureReason": null
+        }
+      ],
+      "returnedRows": 80,
+      "returnedFields": [
+        "20051231",
+        "20061231",
+        "20070630",
+        "20070930",
+        "20071231",
+        "20080331",
+        "20080630",
+        "20080930",
+        "20081231",
+        "20090331",
+        "20090630",
+        "20090930",
+        "20091231",
+        "20100331",
+        "20100630",
+        "20100930",
+        "20101231",
+        "20110331",
+        "20110630",
+        "20110930",
+        "20111231",
+        "20120331",
+        "20120630",
+        "20120930",
+        "20121231",
+        "20130331",
+        "20130630",
+        "20130930",
+        "20131231",
+        "20140331",
+        "20140630",
+        "20140930",
+        "20141231",
+        "20150331",
+        "20150630",
+        "20150930",
+        "20151231",
+        "20160331",
+        "20160630",
+        "20160930",
+        "20161231",
+        "20170331",
+        "20170630",
+        "20170930",
+        "20171231",
+        "20180331",
+        "20180630",
+        "20180930",
+        "20181231",
+        "20190331",
+        "20190630",
+        "20190930",
+        "20191231",
+        "20200331",
+        "20200630",
+        "20200930",
+        "20201231",
+        "20210331",
+        "20210630",
+        "20210930",
+        "20211231",
+        "20220331",
+        "20220630",
+        "20220930",
+        "20221231",
+        "20230331",
+        "20230630",
+        "20230930",
+        "20231231",
+        "20240331",
+        "20240630",
+        "20240930",
+        "20241231",
+        "20250331",
+        "20250630",
+        "20250930",
+        "20251231",
+        "20260331",
+        "指标",
+        "选项"
+      ],
+      "samplePeriod": null,
+      "frequency": "quarterly_or_report",
+      "entityCoverage": [
+        "Zijin Mining",
+        "Jiangxi Copper",
+        "Chalco"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "earnings_transmission_proxy",
+        "valuation_level",
+        "valuation_proxy"
+      ],
+      "allowedClaimTypes": [
+        "company_financial_proxy",
+        "earnings_transmission_proxy",
+        "valuation_support"
+      ],
+      "notAllowedClaimTypes": [
+        "mine_output_confirmed",
+        "product_margin_confirmed"
+      ],
+      "decisionForN57c": "ready_for_fact_bank",
+      "failureReason": null,
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持公司财务代理；若无分产品、成本、产量字段，不能证明具体金属盈利弹性。"
+      ]
+    },
+    {
+      "category": "company_fundamentals",
+      "endpointName": "stock_financial_analysis_indicator",
+      "functionName": "stock_financial_analysis_indicator",
+      "functionSignature": "(symbol: str = '600004', start_year: str = '1900') -> pandas.DataFrame",
+      "sourcePublisher": "Sina Finance",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "symbol": "601899",
+          "start_year": "2021"
+        },
+        {
+          "symbol": "600362",
+          "start_year": "2021"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "symbol": "601899",
+            "start_year": "2021"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "TimeoutExpired",
+            "message": "endpoint exceeded 18s"
+          }
+        },
+        {
+          "params": {
+            "symbol": "600362",
+            "start_year": "2021"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "TimeoutExpired",
+            "message": "endpoint exceeded 18s"
+          }
+        }
+      ],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "frequency": "quarterly_or_report",
+      "entityCoverage": [
+        "Zijin Mining",
+        "Jiangxi Copper"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "earnings_transmission_proxy",
+        "risk_reward_boundary",
+        "valuation_proxy"
+      ],
+      "allowedClaimTypes": [
+        "company_financial_proxy",
+        "profitability_proxy",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "commodity_supply_demand_confirmed",
+        "product_margin_confirmed"
+      ],
+      "decisionForN57c": "unavailable",
+      "failureReason": "TimeoutExpired: endpoint exceeded 18s; TimeoutExpired: endpoint exceeded 18s",
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持公司财务代理；若无分产品、成本、产量字段，不能证明具体金属盈利弹性。"
+      ]
+    },
+    {
+      "category": "company_fundamentals",
+      "endpointName": "stock_profit_sheet_by_report_em",
+      "functionName": "stock_profit_sheet_by_report_em",
+      "functionSignature": "(symbol: str = 'SH600519') -> pandas.DataFrame",
+      "sourcePublisher": "Eastmoney",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "symbol": "SH601899"
+        },
+        {
+          "symbol": "SH600362"
+        },
+        {
+          "symbol": "SH601600"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "symbol": "SH601899"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "TimeoutExpired",
+            "message": "endpoint exceeded 18s"
+          }
+        },
+        {
+          "params": {
+            "symbol": "SH600362"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "TimeoutExpired",
+            "message": "endpoint exceeded 18s"
+          }
+        },
+        {
+          "params": {
+            "symbol": "SH601600"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "Exit1",
+            "message": "NetworkError: connection failed."
+          }
+        }
+      ],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "frequency": "quarterly_or_report",
+      "entityCoverage": [
+        "Zijin Mining",
+        "Jiangxi Copper",
+        "Chalco"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "earnings_transmission_proxy"
+      ],
+      "allowedClaimTypes": [
+        "earnings_transmission_proxy",
+        "income_statement_proxy"
+      ],
+      "notAllowedClaimTypes": [
+        "mine_output_confirmed",
+        "product_margin_confirmed"
+      ],
+      "decisionForN57c": "unavailable",
+      "failureReason": "TimeoutExpired: endpoint exceeded 18s; TimeoutExpired: endpoint exceeded 18s; Exit1: NetworkError: connection failed.",
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持公司财务代理；若无分产品、成本、产量字段，不能证明具体金属盈利弹性。"
+      ]
+    },
+    {
+      "category": "company_fundamentals",
+      "endpointName": "stock_balance_sheet_by_report_em",
+      "functionName": "stock_balance_sheet_by_report_em",
+      "functionSignature": "(symbol: str = 'SH600519') -> pandas.DataFrame",
+      "sourcePublisher": "Eastmoney",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "symbol": "SH601899"
+        },
+        {
+          "symbol": "SH600362"
+        },
+        {
+          "symbol": "SH601600"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "symbol": "SH601899"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "TimeoutExpired",
+            "message": "endpoint exceeded 18s"
+          }
+        },
+        {
+          "params": {
+            "symbol": "SH600362"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "TimeoutExpired",
+            "message": "endpoint exceeded 18s"
+          }
+        },
+        {
+          "params": {
+            "symbol": "SH601600"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "TimeoutExpired",
+            "message": "endpoint exceeded 18s"
+          }
+        }
+      ],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "frequency": "quarterly_or_report",
+      "entityCoverage": [
+        "Zijin Mining",
+        "Jiangxi Copper",
+        "Chalco"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "earnings_transmission_proxy",
+        "risk_reward_boundary"
+      ],
+      "allowedClaimTypes": [
+        "balance_sheet_proxy",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "commodity_supply_demand_confirmed",
+        "product_margin_confirmed"
+      ],
+      "decisionForN57c": "unavailable",
+      "failureReason": "TimeoutExpired: endpoint exceeded 18s; TimeoutExpired: endpoint exceeded 18s; TimeoutExpired: endpoint exceeded 18s",
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持公司财务代理；若无分产品、成本、产量字段，不能证明具体金属盈利弹性。"
+      ]
+    },
+    {
+      "category": "company_fundamentals",
+      "endpointName": "stock_cash_flow_sheet_by_report_em",
+      "functionName": "stock_cash_flow_sheet_by_report_em",
+      "functionSignature": "(symbol: str = 'SH600519') -> pandas.DataFrame",
+      "sourcePublisher": "Eastmoney",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "symbol": "SH601899"
+        },
+        {
+          "symbol": "SH600362"
+        },
+        {
+          "symbol": "SH601600"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "symbol": "SH601899"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "TimeoutExpired",
+            "message": "endpoint exceeded 18s"
+          }
+        },
+        {
+          "params": {
+            "symbol": "SH600362"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "TimeoutExpired",
+            "message": "endpoint exceeded 18s"
+          }
+        },
+        {
+          "params": {
+            "symbol": "SH601600"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "TimeoutExpired",
+            "message": "endpoint exceeded 18s"
+          }
+        }
+      ],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "frequency": "quarterly_or_report",
+      "entityCoverage": [
+        "Zijin Mining",
+        "Jiangxi Copper",
+        "Chalco"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "earnings_transmission_proxy",
+        "risk_reward_boundary"
+      ],
+      "allowedClaimTypes": [
+        "cash_flow_proxy",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "commodity_supply_demand_confirmed",
+        "product_margin_confirmed"
+      ],
+      "decisionForN57c": "unavailable",
+      "failureReason": "TimeoutExpired: endpoint exceeded 18s; TimeoutExpired: endpoint exceeded 18s; TimeoutExpired: endpoint exceeded 18s",
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持公司财务代理；若无分产品、成本、产量字段，不能证明具体金属盈利弹性。"
+      ]
+    },
+    {
+      "category": "industry_sector",
+      "endpointName": "stock_board_industry_name_em",
+      "functionName": "stock_board_industry_name_em",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "Eastmoney",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {}
+      ],
+      "attempts": [
+        {
+          "params": {},
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "TimeoutExpired",
+            "message": "endpoint exceeded 18s"
+          }
+        }
+      ],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "frequency": "snapshot",
+      "entityCoverage": [
+        "A-share industries"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "equity_market_reaction",
+        "portfolio_stance_evidence_mix"
+      ],
+      "allowedClaimTypes": [
+        "market_confirmation",
+        "sector_mapping"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed"
+      ],
+      "decisionForN57c": "unavailable",
+      "failureReason": "TimeoutExpired: endpoint exceeded 18s",
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持板块表现、成分和结构性线索；不能替代官方行业基本面。"
+      ]
+    },
+    {
+      "category": "industry_sector",
+      "endpointName": "stock_board_industry_cons_em",
+      "functionName": "stock_board_industry_cons_em",
+      "functionSignature": "(symbol: str = '小金属') -> pandas.DataFrame",
+      "sourcePublisher": "Eastmoney",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "symbol": "小金属"
+        },
+        {
+          "symbol": "贵金属"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "symbol": "小金属"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "Exit1",
+            "message": "NetworkError: connection failed."
+          }
+        },
+        {
+          "params": {
+            "symbol": "贵金属"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "Exit1",
+            "message": "NetworkError: connection failed."
+          }
+        }
+      ],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "frequency": "snapshot",
+      "entityCoverage": [
+        "minor_metals",
+        "precious_metals"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "equity_market_reaction",
+        "portfolio_stance_evidence_mix"
+      ],
+      "allowedClaimTypes": [
+        "market_confirmation",
+        "sector_constituent_mapping"
+      ],
+      "notAllowedClaimTypes": [
+        "company_product_exposure_confirmed"
+      ],
+      "decisionForN57c": "unavailable",
+      "failureReason": "Exit1: NetworkError: connection failed.; Exit1: NetworkError: connection failed.",
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持板块表现、成分和结构性线索；不能替代官方行业基本面。"
+      ]
+    },
+    {
+      "category": "industry_sector",
+      "endpointName": "stock_board_industry_hist_em",
+      "functionName": "stock_board_industry_hist_em",
+      "functionSignature": "(symbol: str = '小金属', start_date: str = '20211201', end_date: str = '20220401', period: str = '日k', adjust: str = '') -> pandas.DataFrame",
+      "sourcePublisher": "Eastmoney",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "symbol": "小金属",
+          "start_date": "20260219",
+          "end_date": "20260619",
+          "period": "日k",
+          "adjust": ""
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "symbol": "小金属",
+            "start_date": "20260219",
+            "end_date": "20260619",
+            "period": "日k",
+            "adjust": ""
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "Exit1",
+            "message": "NetworkError: connection failed."
+          }
+        }
+      ],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "frequency": "daily",
+      "entityCoverage": [
+        "minor_metals"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "equity_market_reaction",
+        "portfolio_stance_evidence_mix"
+      ],
+      "allowedClaimTypes": [
+        "market_confirmation",
+        "sector_price_momentum"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed"
+      ],
+      "decisionForN57c": "unavailable",
+      "failureReason": "Exit1: NetworkError: connection failed.",
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持板块表现、成分和结构性线索；不能替代官方行业基本面。"
+      ]
+    },
+    {
+      "category": "industry_sector",
+      "endpointName": "stock_board_concept_cons_em",
+      "functionName": "stock_board_concept_cons_em",
+      "functionSignature": "(symbol: str = '融资融券') -> pandas.DataFrame",
+      "sourcePublisher": "Eastmoney",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "symbol": "稀土永磁"
+        },
+        {
+          "symbol": "锂电池"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "symbol": "稀土永磁"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "Exit1",
+            "message": "NetworkError: connection failed."
+          }
+        },
+        {
+          "params": {
+            "symbol": "锂电池"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "Exit1",
+            "message": "NetworkError: connection failed."
+          }
+        }
+      ],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "frequency": "snapshot",
+      "entityCoverage": [
+        "rare_earth",
+        "lithium_battery"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "equity_market_reaction",
+        "portfolio_stance_evidence_mix"
+      ],
+      "allowedClaimTypes": [
+        "sector_constituent_mapping",
+        "structural_allocation"
+      ],
+      "notAllowedClaimTypes": [
+        "company_product_exposure_confirmed"
+      ],
+      "decisionForN57c": "unavailable",
+      "failureReason": "Exit1: NetworkError: connection failed.; Exit1: NetworkError: connection failed.",
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持板块表现、成分和结构性线索；不能替代官方行业基本面。"
+      ]
+    },
+    {
+      "category": "funds_trading",
+      "endpointName": "stock_sector_fund_flow_rank",
+      "functionName": "stock_sector_fund_flow_rank",
+      "functionSignature": "(indicator: str = '今日', sector_type: str = '行业资金流') -> pandas.DataFrame",
+      "sourcePublisher": "Eastmoney",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "indicator": "今日",
+          "sector_type": "行业资金流"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "indicator": "今日",
+            "sector_type": "行业资金流"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "Exit1",
+            "message": "EndpointError: requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
+          }
+        }
+      ],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "frequency": "daily_or_intraday",
+      "entityCoverage": [
+        "A-share industries"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "equity_market_reaction",
+        "risk_reward_boundary"
+      ],
+      "allowedClaimTypes": [
+        "fund_flow_proxy",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "fundamental_demand_confirmed"
+      ],
+      "decisionForN57c": "unavailable",
+      "failureReason": "Exit1: EndpointError: requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持资金和交易拥挤度代理；不能证明基本面需求。"
+      ]
+    },
+    {
+      "category": "funds_trading",
+      "endpointName": "stock_main_fund_flow",
+      "functionName": "stock_main_fund_flow",
+      "functionSignature": "(symbol: str = '全部股票') -> pandas.DataFrame",
+      "sourcePublisher": "Eastmoney",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "symbol": "全部股票"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "symbol": "全部股票"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "Exit1",
+            "message": "EndpointError: requests.exceptions.HTTPError: 502 Server Error: Bad Gateway for url: https://push2.eastmoney.com/api/qt/clist/get?fid=f184&po=1&pz=100&pn=1&np=1&fltt=2&invt=2&fields=f2%2Cf3%2Cf12"
+          }
+        }
+      ],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "frequency": "daily_or_intraday",
+      "entityCoverage": [
+        "A-share market"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "equity_market_reaction",
+        "risk_reward_boundary"
+      ],
+      "allowedClaimTypes": [
+        "fund_flow_proxy",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "fundamental_demand_confirmed"
+      ],
+      "decisionForN57c": "unavailable",
+      "failureReason": "Exit1: EndpointError: requests.exceptions.HTTPError: 502 Server Error: Bad Gateway for url: https://push2.eastmoney.com/api/qt/clist/get?fid=f184&po=1&pz=100&pn=1&np=1&fltt=2&invt=2&fields=f2%2Cf3%2Cf12",
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持资金和交易拥挤度代理；不能证明基本面需求。"
+      ]
+    },
+    {
+      "category": "funds_trading",
+      "endpointName": "stock_individual_fund_flow",
+      "functionName": "stock_individual_fund_flow",
+      "functionSignature": "(stock: str = '600094', market: str = 'sh') -> pandas.DataFrame",
+      "sourcePublisher": "Eastmoney",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "stock": "601899",
+          "market": "sh"
+        },
+        {
+          "stock": "000630",
+          "market": "sz"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "stock": "601899",
+            "market": "sh"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "Exit1",
+            "message": "NetworkError: connection failed."
+          }
+        },
+        {
+          "params": {
+            "stock": "000630",
+            "market": "sz"
+          },
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "Exit1",
+            "message": "NetworkError: connection failed."
+          }
+        }
+      ],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "frequency": "daily_or_intraday",
+      "entityCoverage": [
+        "Zijin Mining",
+        "Tongling Nonferrous"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "equity_market_reaction",
+        "risk_reward_boundary"
+      ],
+      "allowedClaimTypes": [
+        "risk_reward",
+        "stock_fund_flow_proxy"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed"
+      ],
+      "decisionForN57c": "unavailable",
+      "failureReason": "Exit1: NetworkError: connection failed.; Exit1: NetworkError: connection failed.",
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持资金和交易拥挤度代理；不能证明基本面需求。"
+      ]
+    },
+    {
+      "category": "funds_trading",
+      "endpointName": "stock_hsgt_fund_flow_summary_em",
+      "functionName": "stock_hsgt_fund_flow_summary_em",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "Eastmoney",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {}
+      ],
+      "attempts": [
+        {
+          "params": {},
+          "status": "success",
+          "returnedRows": 4,
+          "returnedFields": [
+            "交易日",
+            "类型",
+            "板块",
+            "资金方向",
+            "交易状态",
+            "成交净买额",
+            "资金净流入",
+            "当日资金余额",
+            "上涨数",
+            "持平数",
+            "下跌数",
+            "相关指数",
+            "指数涨跌幅"
+          ],
+          "samplePeriod": "2026-06-19..2026-06-19",
+          "failureReason": null
+        }
+      ],
+      "returnedRows": 4,
+      "returnedFields": [
+        "上涨数",
+        "下跌数",
+        "交易日",
+        "交易状态",
+        "当日资金余额",
+        "成交净买额",
+        "持平数",
+        "指数涨跌幅",
+        "板块",
+        "相关指数",
+        "类型",
+        "资金净流入",
+        "资金方向"
+      ],
+      "samplePeriod": "2026-06-19..2026-06-19",
+      "frequency": "daily",
+      "entityCoverage": [
+        "northbound_fund_flow"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "risk_reward_boundary"
+      ],
+      "allowedClaimTypes": [
+        "fund_flow_proxy",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed"
+      ],
+      "decisionForN57c": "usable_with_cap",
+      "failureReason": null,
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持资金和交易拥挤度代理；不能证明基本面需求。",
+        "进入 N57c 时必须降权使用，并设置 score cap。"
+      ]
+    },
+    {
+      "category": "funds_trading",
+      "endpointName": "stock_margin_sse",
+      "functionName": "stock_margin_sse",
+      "functionSignature": "(start_date: str = '20010106', end_date: str = '20230922') -> pandas.DataFrame",
+      "sourcePublisher": "SSE",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {
+          "start_date": "20260219",
+          "end_date": "20260619"
+        }
+      ],
+      "attempts": [
+        {
+          "params": {
+            "start_date": "20260219",
+            "end_date": "20260619"
+          },
+          "status": "success",
+          "returnedRows": 79,
+          "returnedFields": [
+            "信用交易日期",
+            "融资余额",
+            "融资买入额",
+            "融券余量",
+            "融券余量金额",
+            "融券卖出量",
+            "融资融券余额"
+          ],
+          "samplePeriod": null,
+          "failureReason": null
+        }
+      ],
+      "returnedRows": 79,
+      "returnedFields": [
+        "信用交易日期",
+        "融券余量",
+        "融券余量金额",
+        "融券卖出量",
+        "融资买入额",
+        "融资余额",
+        "融资融券余额"
+      ],
+      "samplePeriod": null,
+      "frequency": "daily",
+      "entityCoverage": [
+        "SSE margin trading"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "risk_reward_boundary"
+      ],
+      "allowedClaimTypes": [
+        "leverage_proxy",
+        "risk_reward"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed"
+      ],
+      "decisionForN57c": "usable_with_cap",
+      "failureReason": null,
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可支持资金和交易拥挤度代理；不能证明基本面需求。",
+        "进入 N57c 时必须降权使用，并设置 score cap。"
+      ]
+    },
+    {
+      "category": "macro_public",
+      "endpointName": "macro_china_pmi",
+      "functionName": "macro_china_pmi",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "China official macro public feed via AKShare",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {}
+      ],
+      "attempts": [
+        {
+          "params": {},
+          "status": "success",
+          "returnedRows": 221,
+          "returnedFields": [
+            "月份",
+            "制造业-指数",
+            "制造业-同比增长",
+            "非制造业-指数",
+            "非制造业-同比增长"
+          ],
+          "samplePeriod": null,
+          "failureReason": null
+        }
+      ],
+      "returnedRows": 221,
+      "returnedFields": [
+        "制造业-同比增长",
+        "制造业-指数",
+        "月份",
+        "非制造业-同比增长",
+        "非制造业-指数"
+      ],
+      "samplePeriod": null,
+      "frequency": "monthly",
+      "entityCoverage": [
+        "China PMI"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "macro_demand_proxy"
+      ],
+      "allowedClaimTypes": [
+        "global_cycle_signal",
+        "macro_demand_proxy"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed",
+        "short_term_inventory_confirmed"
+      ],
+      "decisionForN57c": "usable_with_cap",
+      "failureReason": null,
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可作为宏观背景代理；不能直接证明 1-3 个月国内有色供需。",
+        "进入 N57c 时必须降权使用，并设置 score cap。"
+      ]
+    },
+    {
+      "category": "macro_public",
+      "endpointName": "macro_china_ppi",
+      "functionName": "macro_china_ppi",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "China official macro public feed via AKShare",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {}
+      ],
+      "attempts": [
+        {
+          "params": {},
+          "status": "error",
+          "returnedRows": 0,
+          "returnedFields": [],
+          "samplePeriod": null,
+          "failureReason": {
+            "errorType": "TimeoutExpired",
+            "message": "endpoint exceeded 18s"
+          }
+        }
+      ],
+      "returnedRows": 0,
+      "returnedFields": [],
+      "samplePeriod": null,
+      "frequency": "monthly",
+      "entityCoverage": [
+        "China PPI"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "macro_demand_proxy",
+        "risk_reward_boundary"
+      ],
+      "allowedClaimTypes": [
+        "inflation_context",
+        "macro_demand_proxy"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed",
+        "short_term_inventory_confirmed"
+      ],
+      "decisionForN57c": "unavailable",
+      "failureReason": "TimeoutExpired: endpoint exceeded 18s",
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可作为宏观背景代理；不能直接证明 1-3 个月国内有色供需。"
+      ]
+    },
+    {
+      "category": "macro_public",
+      "endpointName": "macro_china_gyzjz",
+      "functionName": "macro_china_gyzjz",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "China official macro public feed via AKShare",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "testedParams": [
+        {}
+      ],
+      "attempts": [
+        {
+          "params": {},
+          "status": "success",
+          "returnedRows": 202,
+          "returnedFields": [
+            "月份",
+            "同比增长",
+            "累计增长",
+            "发布时间"
+          ],
+          "samplePeriod": null,
+          "failureReason": null
+        }
+      ],
+      "returnedRows": 202,
+      "returnedFields": [
+        "发布时间",
+        "同比增长",
+        "月份",
+        "累计增长"
+      ],
+      "samplePeriod": null,
+      "frequency": "monthly",
+      "entityCoverage": [
+        "China industrial value added"
+      ],
+      "supportsRequiredEvidenceKeys": [
+        "macro_demand_proxy"
+      ],
+      "allowedClaimTypes": [
+        "industrial_activity",
+        "macro_demand_proxy"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed",
+        "short_term_inventory_confirmed"
+      ],
+      "decisionForN57c": "usable_with_cap",
+      "failureReason": null,
+      "notes": [
+        "AKShare 是访问入口；事实发布方、endpoint、字段和变换口径必须保留。",
+        "可作为宏观背景代理；不能直接证明 1-3 个月国内有色供需。",
+        "进入 N57c 时必须降权使用，并设置 score cap。"
+      ]
+    }
+  ],
+  "reflectedCandidateEndpoints": [
+    {
+      "endpointName": "amac_futures_info",
+      "functionName": "amac_futures_info",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "bond_spot_deal",
+      "functionName": "bond_spot_deal",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "bond_spot_quote",
+      "functionName": "bond_spot_quote",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "bond_zh_hs_cov_spot",
+      "functionName": "bond_zh_hs_cov_spot",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "bond_zh_hs_spot",
+      "functionName": "bond_zh_hs_spot",
+      "functionSignature": "(start_page: str = '1', end_page: str = '10') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "business_value_artist",
+      "functionName": "business_value_artist",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "crypto_js_spot",
+      "functionName": "crypto_js_spot",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "forex_spot_em",
+      "functionName": "forex_spot_em",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "fund_balance_position_lg",
+      "functionName": "fund_balance_position_lg",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "fund_etf_spot_em",
+      "functionName": "fund_etf_spot_em",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "fund_etf_spot_ths",
+      "functionName": "fund_etf_spot_ths",
+      "functionSignature": "(date: str = '') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "fund_individual_profit_probability_xq",
+      "functionName": "fund_individual_profit_probability_xq",
+      "functionSignature": "(symbol: str = '000001', timeout: float = None) -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "fund_lof_spot_em",
+      "functionName": "fund_lof_spot_em",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_comex_inventory",
+      "functionName": "futures_comex_inventory",
+      "functionSignature": "(symbol: str = '黄金') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_comm_info",
+      "functionName": "futures_comm_info",
+      "functionSignature": "(symbol: str = '所有') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_comm_js",
+      "functionName": "futures_comm_js",
+      "functionSignature": "(date: str = '20260213') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_contract_detail",
+      "functionName": "futures_contract_detail",
+      "functionSignature": "(symbol: str = 'AP2101') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_contract_detail_em",
+      "functionName": "futures_contract_detail_em",
+      "functionSignature": "(symbol: str = 'v2602F') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_contract_info_cffex",
+      "functionName": "futures_contract_info_cffex",
+      "functionSignature": "(date: str = '20240228') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_contract_info_czce",
+      "functionName": "futures_contract_info_czce",
+      "functionSignature": "(date: str = '20240228') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_contract_info_dce",
+      "functionName": "futures_contract_info_dce",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_contract_info_gfex",
+      "functionName": "futures_contract_info_gfex",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_contract_info_ine",
+      "functionName": "futures_contract_info_ine",
+      "functionSignature": "(date: str = '20241129') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_contract_info_shfe",
+      "functionName": "futures_contract_info_shfe",
+      "functionSignature": "(date: str = '20240513') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_dce_position_rank",
+      "functionName": "futures_dce_position_rank",
+      "functionSignature": "(date: str = '20160919', vars_list=['IF', 'IC', 'IM', 'IH', 'T', 'TF', 'TS', 'TL', 'C', 'CS', 'A', 'B', 'M', 'Y', 'P', 'FB', 'BB', 'JD', 'L', 'V', 'PP', 'J', 'JM', 'I', 'EG', 'RR', 'EB', 'PG', 'LH', 'LG', 'BZ', 'WH', 'PM', 'CF', 'SR', 'TA', 'OI', 'RI', 'MA', 'ME', 'FG', 'RS', 'RM', 'ZC', 'JR', 'LR', 'SF', 'SM', 'WT', 'TC', 'GN', 'RO', 'ER', 'SRX', 'SRY', 'WSX', 'WSY', 'CY', 'AP', 'UR', 'CJ', 'SA', 'PK', 'PF', 'PX', 'SH', 'PR', 'PL', 'CU', 'AL', 'ZN', 'PB', 'NI', 'SN', 'AU', 'AG', 'RB', 'WR', 'HC', 'FU', 'BU', 'RU', 'SC', 'NR', 'SP', 'SS', 'LU', 'BC', 'AO', 'BR', 'EC', 'AD', 'OP', 'SI', 'LC', 'PS']) -> dict",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_dce_position_rank_other",
+      "functionName": "futures_dce_position_rank_other",
+      "functionSignature": "(date: str = '20160104')",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_delivery_czce",
+      "functionName": "futures_delivery_czce",
+      "functionSignature": "(date: str = '20210112') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_delivery_dce",
+      "functionName": "futures_delivery_dce",
+      "functionSignature": "(date: str = '202312') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_delivery_match_czce",
+      "functionName": "futures_delivery_match_czce",
+      "functionSignature": "(date: str = '20210106') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_delivery_match_dce",
+      "functionName": "futures_delivery_match_dce",
+      "functionSignature": "(symbol: str = 'a') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_delivery_shfe",
+      "functionName": "futures_delivery_shfe",
+      "functionSignature": "(date: str = '202312') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_display_main_sina",
+      "functionName": "futures_display_main_sina",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_fees_info",
+      "functionName": "futures_fees_info",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_foreign_commodity_realtime",
+      "functionName": "futures_foreign_commodity_realtime",
+      "functionSignature": "(symbol: Union[str, List[str]]) -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_foreign_commodity_subscribe_exchange_symbol",
+      "functionName": "futures_foreign_commodity_subscribe_exchange_symbol",
+      "functionSignature": "() -> list",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_foreign_detail",
+      "functionName": "futures_foreign_detail",
+      "functionSignature": "(symbol: str = 'ZSD') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_foreign_hist",
+      "functionName": "futures_foreign_hist",
+      "functionSignature": "(symbol: str = 'ZSD') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_gfex_position_rank",
+      "functionName": "futures_gfex_position_rank",
+      "functionSignature": "(date: str = '20231113', vars_list: list = None)",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_global_hist_em",
+      "functionName": "futures_global_hist_em",
+      "functionSignature": "(symbol: str = 'HG00Y') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_global_spot_em",
+      "functionName": "futures_global_spot_em",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_hist_daily_cffex",
+      "functionName": "futures_hist_daily_cffex",
+      "functionSignature": "(date: str = '20260403') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_hist_em",
+      "functionName": "futures_hist_em",
+      "functionSignature": "(symbol: str = '热卷主连', period: str = 'daily', start_date: str = '19900101', end_date: str = '20500101') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_hist_table_em",
+      "functionName": "futures_hist_table_em",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_hog_core",
+      "functionName": "futures_hog_core",
+      "functionSignature": "(symbol: str = '外三元') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_hog_cost",
+      "functionName": "futures_hog_cost",
+      "functionSignature": "(symbol: str = '玉米') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_hog_supply",
+      "functionName": "futures_hog_supply",
+      "functionSignature": "(symbol: str = '猪肉批发价') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_hold_pos_sina",
+      "functionName": "futures_hold_pos_sina",
+      "functionSignature": "(symbol: str = '成交量', contract: str = 'OI2501', date: str = '20240223') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_hq_subscribe_exchange_symbol",
+      "functionName": "futures_hq_subscribe_exchange_symbol",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_index_ccidx",
+      "functionName": "futures_index_ccidx",
+      "functionSignature": "(symbol: str = '中证商品期货指数') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_inventory_99",
+      "functionName": "futures_inventory_99",
+      "functionSignature": "(symbol: str = '豆一') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_inventory_em",
+      "functionName": "futures_inventory_em",
+      "functionSignature": "(symbol: str = 'a') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_main_sina",
+      "functionName": "futures_main_sina",
+      "functionSignature": "(symbol: str = 'V0', start_date: str = '19900101', end_date: str = '22220101') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_rule",
+      "functionName": "futures_rule",
+      "functionSignature": "(date: str = '20231205') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_settle",
+      "functionName": "futures_settle",
+      "functionSignature": "(date: str = '20260119', market: str = 'CFFEX') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_settle_cffex",
+      "functionName": "futures_settle_cffex",
+      "functionSignature": "(date: str = '20260119') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_settle_czce",
+      "functionName": "futures_settle_czce",
+      "functionSignature": "(date: str = '20260119') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_settle_gfex",
+      "functionName": "futures_settle_gfex",
+      "functionSignature": "(date: str = '20260119') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_settlement_price_sgx",
+      "functionName": "futures_settlement_price_sgx",
+      "functionSignature": "(date: str = '20231107') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_spot_price_previous",
+      "functionName": "futures_spot_price_previous",
+      "functionSignature": "(date: str = '20240430') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_spot_stock",
+      "functionName": "futures_spot_stock",
+      "functionSignature": "(symbol: str = '能源') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_spot_sys",
+      "functionName": "futures_spot_sys",
+      "functionSignature": "(symbol: str = '铜', indicator: str = '市场价格') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_symbol_mark",
+      "functionName": "futures_symbol_mark",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_to_spot_czce",
+      "functionName": "futures_to_spot_czce",
+      "functionSignature": "(date: str = '20231228') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_to_spot_dce",
+      "functionName": "futures_to_spot_dce",
+      "functionSignature": "(date: str = '202312') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_to_spot_shfe",
+      "functionName": "futures_to_spot_shfe",
+      "functionSignature": "(date: str = '202312') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_warehouse_receipt_czce",
+      "functionName": "futures_warehouse_receipt_czce",
+      "functionSignature": "(date: str = '20251103') -> dict",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_warehouse_receipt_dce",
+      "functionName": "futures_warehouse_receipt_dce",
+      "functionSignature": "(date: str = '20251027') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_zh_daily_sina",
+      "functionName": "futures_zh_daily_sina",
+      "functionSignature": "(symbol: str = 'RB0') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_zh_minute_sina",
+      "functionName": "futures_zh_minute_sina",
+      "functionSignature": "(symbol: str = 'IF2008', period: str = '1') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_zh_realtime",
+      "functionName": "futures_zh_realtime",
+      "functionSignature": "(symbol: str = 'PTA') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "futures_zh_spot",
+      "functionName": "futures_zh_spot",
+      "functionSignature": "(symbol: str = 'V2309', market: str = 'CF', adjust: str = '0') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "fx_spot_quote",
+      "functionName": "fx_spot_quote",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "get_futures_daily",
+      "functionName": "get_futures_daily",
+      "functionSignature": "(start_date: str = '20220208', end_date: str = '20220208', market: str = 'CFFEX') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "get_qhkc_index_profit_loss",
+      "functionName": "get_qhkc_index_profit_loss",
+      "functionSignature": "(name: ~AnyStr = '奇货商品', url: ~AnyStr = 'https://qhkch.com/ajax/indexes_profit_loss.php', start_date='', end_date='')",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "get_shfe_rank_table",
+      "functionName": "get_shfe_rank_table",
+      "functionSignature": "(date: str = None, vars_list: list = ['IF', 'IC', 'IM', 'IH', 'T', 'TF', 'TS', 'TL', 'C', 'CS', 'A', 'B', 'M', 'Y', 'P', 'FB', 'BB', 'JD', 'L', 'V', 'PP', 'J', 'JM', 'I', 'EG', 'RR', 'EB', 'PG', 'LH', 'LG', 'BZ', 'WH', 'PM', 'CF', 'SR', 'TA', 'OI', 'RI', 'MA', 'ME', 'FG', 'RS', 'RM', 'ZC', 'JR', 'LR', 'SF', 'SM', 'WT', 'TC', 'GN', 'RO', 'ER', 'SRX', 'SRY', 'WSX', 'WSY', 'CY', 'AP', 'UR', 'CJ', 'SA', 'PK', 'PF', 'PX', 'SH', 'PR', 'PL', 'CU', 'AL', 'ZN', 'PB', 'NI', 'SN', 'AU', 'AG', 'RB', 'WR', 'HC', 'FU', 'BU', 'RU', 'SC', 'NR', 'SP', 'SS', 'LU', 'BC', 'AO', 'BR', 'EC', 'AD', 'OP', 'SI', 'LC', 'PS']) -> dict",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "index_global_spot_em",
+      "functionName": "index_global_spot_em",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "index_hog_spot_price",
+      "functionName": "index_hog_spot_price",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_agricultural_index",
+      "functionName": "macro_china_agricultural_index",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_agricultural_product",
+      "functionName": "macro_china_agricultural_product",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_au_report",
+      "functionName": "macro_china_au_report",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_bank_financing",
+      "functionName": "macro_china_bank_financing",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_bdti_index",
+      "functionName": "macro_china_bdti_index",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_bond_public",
+      "functionName": "macro_china_bond_public",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_bsi_index",
+      "functionName": "macro_china_bsi_index",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_central_bank_balance",
+      "functionName": "macro_china_central_bank_balance",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_commodity_price_index",
+      "functionName": "macro_china_commodity_price_index",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_construction_index",
+      "functionName": "macro_china_construction_index",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_construction_price_index",
+      "functionName": "macro_china_construction_price_index",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_consumer_goods_retail",
+      "functionName": "macro_china_consumer_goods_retail",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_cpi",
+      "functionName": "macro_china_cpi",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_cpi_monthly",
+      "functionName": "macro_china_cpi_monthly",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_cpi_yearly",
+      "functionName": "macro_china_cpi_yearly",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_cx_pmi_yearly",
+      "functionName": "macro_china_cx_pmi_yearly",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_cx_services_pmi_yearly",
+      "functionName": "macro_china_cx_services_pmi_yearly",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_czsr",
+      "functionName": "macro_china_czsr",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_daily_energy",
+      "functionName": "macro_china_daily_energy",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_energy_index",
+      "functionName": "macro_china_energy_index",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_enterprise_boom_index",
+      "functionName": "macro_china_enterprise_boom_index",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_exports_yoy",
+      "functionName": "macro_china_exports_yoy",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_fdi",
+      "functionName": "macro_china_fdi",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_foreign_exchange_gold",
+      "functionName": "macro_china_foreign_exchange_gold",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_freight_index",
+      "functionName": "macro_china_freight_index",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_fx_gold",
+      "functionName": "macro_china_fx_gold",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_fx_reserves_yearly",
+      "functionName": "macro_china_fx_reserves_yearly",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_gdp",
+      "functionName": "macro_china_gdp",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_gdp_yearly",
+      "functionName": "macro_china_gdp_yearly",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_gdzctz",
+      "functionName": "macro_china_gdzctz",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_hgjck",
+      "functionName": "macro_china_hgjck",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_hk_building_amount",
+      "functionName": "macro_china_hk_building_amount",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_hk_building_volume",
+      "functionName": "macro_china_hk_building_volume",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_hk_cpi",
+      "functionName": "macro_china_hk_cpi",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_hk_cpi_ratio",
+      "functionName": "macro_china_hk_cpi_ratio",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_hk_gbp",
+      "functionName": "macro_china_hk_gbp",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_hk_gbp_ratio",
+      "functionName": "macro_china_hk_gbp_ratio",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_hk_market_info",
+      "functionName": "macro_china_hk_market_info",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_hk_ppi",
+      "functionName": "macro_china_hk_ppi",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_hk_rate_of_unemployment",
+      "functionName": "macro_china_hk_rate_of_unemployment",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_hk_trade_diff_ratio",
+      "functionName": "macro_china_hk_trade_diff_ratio",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_imports_yoy",
+      "functionName": "macro_china_imports_yoy",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_industrial_production_yoy",
+      "functionName": "macro_china_industrial_production_yoy",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_insurance",
+      "functionName": "macro_china_insurance",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_insurance_income",
+      "functionName": "macro_china_insurance_income",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_international_tourism_fx",
+      "functionName": "macro_china_international_tourism_fx",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_lpi_index",
+      "functionName": "macro_china_lpi_index",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_lpr",
+      "functionName": "macro_china_lpr",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_m2_yearly",
+      "functionName": "macro_china_m2_yearly",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_market_margin_sh",
+      "functionName": "macro_china_market_margin_sh",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_market_margin_sz",
+      "functionName": "macro_china_market_margin_sz",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_mobile_number",
+      "functionName": "macro_china_mobile_number",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_money_supply",
+      "functionName": "macro_china_money_supply",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_national_tax_receipts",
+      "functionName": "macro_china_national_tax_receipts",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_nbs_nation",
+      "functionName": "macro_china_nbs_nation",
+      "functionSignature": "(kind: Literal['月度数据', '季度数据', '年度数据'], path: str, period: str = 'LAST10') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_nbs_region",
+      "functionName": "macro_china_nbs_region",
+      "functionSignature": "(kind: Literal['分省月度数据', '分省季度数据', '分省年度数据', '主要城市月度价格', '主要城市年度数据', '港澳台月度数据', '港澳台年度数据'], path: str, indicator: Optional[str], region: Optional[str] = None, period: str = 'LAST10') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_new_financial_credit",
+      "functionName": "macro_china_new_financial_credit",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_new_house_price",
+      "functionName": "macro_china_new_house_price",
+      "functionSignature": "(city_first: str = '北京', city_second: str = '上海') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_non_man_pmi",
+      "functionName": "macro_china_non_man_pmi",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_passenger_load_factor",
+      "functionName": "macro_china_passenger_load_factor",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_pmi_yearly",
+      "functionName": "macro_china_pmi_yearly",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_postal_telecommunicational",
+      "functionName": "macro_china_postal_telecommunicational",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_ppi_yearly",
+      "functionName": "macro_china_ppi_yearly",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_qyspjg",
+      "functionName": "macro_china_qyspjg",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_real_estate",
+      "functionName": "macro_china_real_estate",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_reserve_requirement_ratio",
+      "functionName": "macro_china_reserve_requirement_ratio",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_retail_price_index",
+      "functionName": "macro_china_retail_price_index",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_rmb",
+      "functionName": "macro_china_rmb",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_shibor_all",
+      "functionName": "macro_china_shibor_all",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_shrzgm",
+      "functionName": "macro_china_shrzgm",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_society_electricity",
+      "functionName": "macro_china_society_electricity",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_society_traffic_volume",
+      "functionName": "macro_china_society_traffic_volume",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_stock_market_cap",
+      "functionName": "macro_china_stock_market_cap",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_supply_of_money",
+      "functionName": "macro_china_supply_of_money",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_swap_rate",
+      "functionName": "macro_china_swap_rate",
+      "functionSignature": "(start_date: str = '20231101', end_date: str = '20231204') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_trade_balance",
+      "functionName": "macro_china_trade_balance",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_urban_unemployment",
+      "functionName": "macro_china_urban_unemployment",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_vegetable_basket",
+      "functionName": "macro_china_vegetable_basket",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_wbck",
+      "functionName": "macro_china_wbck",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_whxd",
+      "functionName": "macro_china_whxd",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_xfzxx",
+      "functionName": "macro_china_xfzxx",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_china_yw_electronic_index",
+      "functionName": "macro_china_yw_electronic_index",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_euro_trade_balance",
+      "functionName": "macro_euro_trade_balance",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_japan_head_indicator",
+      "functionName": "macro_japan_head_indicator",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_usa_business_inventories",
+      "functionName": "macro_usa_business_inventories",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_usa_nfib_small_business",
+      "functionName": "macro_usa_nfib_small_business",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "macro_usa_trade_balance",
+      "functionName": "macro_usa_trade_balance",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "movie_boxoffice_cinema_daily",
+      "functionName": "movie_boxoffice_cinema_daily",
+      "functionSignature": "(date: str = '20240219') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "movie_boxoffice_cinema_weekly",
+      "functionName": "movie_boxoffice_cinema_weekly",
+      "functionSignature": "(date: str = '20240219') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "online_value_artist",
+      "functionName": "online_value_artist",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "option_cffex_hs300_spot_sina",
+      "functionName": "option_cffex_hs300_spot_sina",
+      "functionSignature": "(symbol: str = 'io2204') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "option_cffex_sz50_spot_sina",
+      "functionName": "option_cffex_sz50_spot_sina",
+      "functionSignature": "(symbol: str = 'ho2303') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "option_cffex_zz1000_spot_sina",
+      "functionName": "option_cffex_zz1000_spot_sina",
+      "functionSignature": "(symbol: str = 'mo2208') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "option_finance_board",
+      "functionName": "option_finance_board",
+      "functionSignature": "(symbol: str = '嘉实沪深300ETF期权', end_month: str = '2306') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "option_hist_gfex",
+      "functionName": "option_hist_gfex",
+      "functionSignature": "(symbol: str = '工业硅', trade_date: str = '20230724') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "option_hist_shfe",
+      "functionName": "option_hist_shfe",
+      "functionSignature": "(symbol: str = '铝期权', trade_date: str = '20250418') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "option_risk_indicator_sse",
+      "functionName": "option_risk_indicator_sse",
+      "functionSignature": "(date: str = '20240626') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "option_sse_spot_price_sina",
+      "functionName": "option_sse_spot_price_sina",
+      "functionSignature": "(symbol: str = '10003720') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "option_sse_underlying_spot_price_sina",
+      "functionName": "option_sse_underlying_spot_price_sina",
+      "functionSignature": "(symbol: str = 'sh510300') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "option_vol_gfex",
+      "functionName": "option_vol_gfex",
+      "functionSignature": "(symbol: str = '碳酸锂', trade_date: str = '20230724')",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "option_vol_shfe",
+      "functionName": "option_vol_shfe",
+      "functionSignature": "(symbol: str = '铝期权', trade_date: str = '20250418') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "rv_from_futures_zh_minute_sina",
+      "functionName": "rv_from_futures_zh_minute_sina",
+      "functionSignature": "(symbol: str = 'IF2008', period: str = '5') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "spot_corn_price_soozhu",
+      "functionName": "spot_corn_price_soozhu",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "spot_golden_benchmark_sge",
+      "functionName": "spot_golden_benchmark_sge",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "spot_hist_sge",
+      "functionName": "spot_hist_sge",
+      "functionSignature": "(symbol: str = 'Au99.99') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "spot_hog_crossbred_soozhu",
+      "functionName": "spot_hog_crossbred_soozhu",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "spot_hog_lean_price_soozhu",
+      "functionName": "spot_hog_lean_price_soozhu",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "spot_hog_soozhu",
+      "functionName": "spot_hog_soozhu",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "spot_hog_three_way_soozhu",
+      "functionName": "spot_hog_three_way_soozhu",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "spot_hog_year_trend_soozhu",
+      "functionName": "spot_hog_year_trend_soozhu",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "spot_mixed_feed_soozhu",
+      "functionName": "spot_mixed_feed_soozhu",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "spot_price_qh",
+      "functionName": "spot_price_qh",
+      "functionSignature": "(symbol: str = '螺纹钢') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "spot_price_table_qh",
+      "functionName": "spot_price_table_qh",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "spot_quotations_sge",
+      "functionName": "spot_quotations_sge",
+      "functionSignature": "(symbol: str = 'Au99.99') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "spot_silver_benchmark_sge",
+      "functionName": "spot_silver_benchmark_sge",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "spot_soybean_price_soozhu",
+      "functionName": "spot_soybean_price_soozhu",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "spot_symbol_table_sge",
+      "functionName": "spot_symbol_table_sge",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_balance_sheet_by_report_delisted_em",
+      "functionName": "stock_balance_sheet_by_report_delisted_em",
+      "functionSignature": "(symbol: str = 'SZ000013') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_balance_sheet_by_yearly_em",
+      "functionName": "stock_balance_sheet_by_yearly_em",
+      "functionSignature": "(symbol: str = 'SH600036') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_bj_a_spot_em",
+      "functionName": "stock_bj_a_spot_em",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_board_change_em",
+      "functionName": "stock_board_change_em",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_board_concept_hist_em",
+      "functionName": "stock_board_concept_hist_em",
+      "functionSignature": "(symbol: str = '绿色电力', period: str = 'daily', start_date: str = '20220101', end_date: str = '20221128', adjust: str = '') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_board_concept_hist_min_em",
+      "functionName": "stock_board_concept_hist_min_em",
+      "functionSignature": "(symbol: str = '长寿药', period: str = '5') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_board_concept_index_ths",
+      "functionName": "stock_board_concept_index_ths",
+      "functionSignature": "(symbol: str = '阿里巴巴概念', start_date: str = '20200101', end_date: str = '20250228') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_board_concept_info_ths",
+      "functionName": "stock_board_concept_info_ths",
+      "functionSignature": "(symbol: str = '阿里巴巴概念') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_board_concept_name_em",
+      "functionName": "stock_board_concept_name_em",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_board_concept_name_ths",
+      "functionName": "stock_board_concept_name_ths",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_board_concept_spot_em",
+      "functionName": "stock_board_concept_spot_em",
+      "functionSignature": "(symbol: str = '可燃冰') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_board_concept_summary_ths",
+      "functionName": "stock_board_concept_summary_ths",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_board_industry_hist_min_em",
+      "functionName": "stock_board_industry_hist_min_em",
+      "functionSignature": "(symbol: str = '小金属', period: str = '5') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_board_industry_index_ths",
+      "functionName": "stock_board_industry_index_ths",
+      "functionSignature": "(symbol: str = '元件', start_date: str = '20200101', end_date: str = '20240108') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_board_industry_info_ths",
+      "functionName": "stock_board_industry_info_ths",
+      "functionSignature": "(symbol: str = '半导体') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_board_industry_name_ths",
+      "functionName": "stock_board_industry_name_ths",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_board_industry_spot_em",
+      "functionName": "stock_board_industry_spot_em",
+      "functionSignature": "(symbol: str = '小金属') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_board_industry_summary_ths",
+      "functionName": "stock_board_industry_summary_ths",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_cash_flow_sheet_by_quarterly_em",
+      "functionName": "stock_cash_flow_sheet_by_quarterly_em",
+      "functionSignature": "(symbol: str = 'SH600519') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_cash_flow_sheet_by_report_delisted_em",
+      "functionName": "stock_cash_flow_sheet_by_report_delisted_em",
+      "functionSignature": "(symbol: str = 'SZ000013') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_cash_flow_sheet_by_yearly_em",
+      "functionName": "stock_cash_flow_sheet_by_yearly_em",
+      "functionSignature": "(symbol: str = 'SH600519') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_concept_fund_flow_hist",
+      "functionName": "stock_concept_fund_flow_hist",
+      "functionSignature": "(symbol: str = '数据要素') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_cy_a_spot_em",
+      "functionName": "stock_cy_a_spot_em",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_financial_abstract_new_ths",
+      "functionName": "stock_financial_abstract_new_ths",
+      "functionSignature": "(symbol: str = '000063', indicator: str = '按报告期') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_financial_abstract_ths",
+      "functionName": "stock_financial_abstract_ths",
+      "functionSignature": "(symbol: str = '000063', indicator: str = '按报告期') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_financial_analysis_indicator_em",
+      "functionName": "stock_financial_analysis_indicator_em",
+      "functionSignature": "(symbol: str = '301389.SZ', indicator: str = '按报告期') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_financial_benefit_new_ths",
+      "functionName": "stock_financial_benefit_new_ths",
+      "functionSignature": "(symbol: str = '000063', indicator: str = '按报告期') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_financial_benefit_ths",
+      "functionName": "stock_financial_benefit_ths",
+      "functionSignature": "(symbol: str = '000063', indicator: str = '按报告期') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_financial_cash_new_ths",
+      "functionName": "stock_financial_cash_new_ths",
+      "functionSignature": "(symbol: str = '000063', indicator: str = '按报告期') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_financial_cash_ths",
+      "functionName": "stock_financial_cash_ths",
+      "functionSignature": "(symbol: str = '000063', indicator: str = '按报告期') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_financial_debt_new_ths",
+      "functionName": "stock_financial_debt_new_ths",
+      "functionSignature": "(symbol: str = '000063', indicator: str = '按报告期') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_financial_debt_ths",
+      "functionName": "stock_financial_debt_ths",
+      "functionSignature": "(symbol: str = '000063', indicator: str = '按报告期') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_financial_hk_analysis_indicator_em",
+      "functionName": "stock_financial_hk_analysis_indicator_em",
+      "functionSignature": "(symbol: str = '00853', indicator: str = '年度') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_financial_hk_report_em",
+      "functionName": "stock_financial_hk_report_em",
+      "functionSignature": "(stock: str = '00700', symbol: str = '资产负债表', indicator: str = '年度') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_financial_report_sina",
+      "functionName": "stock_financial_report_sina",
+      "functionSignature": "(stock: str = 'sh600600', symbol: str = '资产负债表') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_financial_us_analysis_indicator_em",
+      "functionName": "stock_financial_us_analysis_indicator_em",
+      "functionSignature": "(symbol: str = 'TSLA', indicator: str = '年报') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_financial_us_report_em",
+      "functionName": "stock_financial_us_report_em",
+      "functionSignature": "(stock: str = 'TSLA', symbol: str = '资产负债表', indicator: str = '年报') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_fund_flow_big_deal",
+      "functionName": "stock_fund_flow_big_deal",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_fund_flow_concept",
+      "functionName": "stock_fund_flow_concept",
+      "functionSignature": "(symbol: str = '即时') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_fund_flow_individual",
+      "functionName": "stock_fund_flow_individual",
+      "functionSignature": "(symbol: str = '即时') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_fund_flow_industry",
+      "functionName": "stock_fund_flow_industry",
+      "functionSignature": "(symbol: str = '即时') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_hk_famous_spot_em",
+      "functionName": "stock_hk_famous_spot_em",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_hk_financial_indicator_em",
+      "functionName": "stock_hk_financial_indicator_em",
+      "functionSignature": "(symbol: str = '03900') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_hk_index_spot_em",
+      "functionName": "stock_hk_index_spot_em",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_hk_index_spot_sina",
+      "functionName": "stock_hk_index_spot_sina",
+      "functionSignature": "() -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    },
+    {
+      "endpointName": "stock_hk_indicator_eniu",
+      "functionName": "stock_hk_indicator_eniu",
+      "functionSignature": "(symbol: str = 'hk01093', indicator: str = '市盈率') -> pandas.DataFrame",
+      "sourcePublisher": "unknown_publisher",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "candidateReason": "matched_reflection_keyword",
+      "decisionForN57c": "candidate_only"
+    }
+  ],
+  "summary": {
+    "totalEndpoints": 30,
+    "byDecisionForN57c": {
+      "blocked": 0,
+      "candidate_only": 3,
+      "ready_for_fact_bank": 6,
+      "unavailable": 16,
+      "usable_with_cap": 5
+    },
+    "byCategoryAndDecision": {
+      "futures_exchange": {
+        "blocked": 0,
+        "candidate_only": 2,
+        "ready_for_fact_bank": 5,
+        "unavailable": 2,
+        "usable_with_cap": 0
+      },
+      "spot_commodity": {
+        "blocked": 0,
+        "candidate_only": 1,
+        "ready_for_fact_bank": 0,
+        "unavailable": 2,
+        "usable_with_cap": 1
+      },
+      "company_fundamentals": {
+        "blocked": 0,
+        "candidate_only": 0,
+        "ready_for_fact_bank": 1,
+        "unavailable": 4,
+        "usable_with_cap": 0
+      },
+      "industry_sector": {
+        "blocked": 0,
+        "candidate_only": 0,
+        "ready_for_fact_bank": 0,
+        "unavailable": 4,
+        "usable_with_cap": 0
+      },
+      "funds_trading": {
+        "blocked": 0,
+        "candidate_only": 0,
+        "ready_for_fact_bank": 0,
+        "unavailable": 3,
+        "usable_with_cap": 2
+      },
+      "macro_public": {
+        "blocked": 0,
+        "candidate_only": 0,
+        "ready_for_fact_bank": 0,
+        "unavailable": 1,
+        "usable_with_cap": 2
+      }
+    },
+    "readyOrUsableEndpointCount": 11,
+    "conclusionZh": "N57b 只判断 AKShare endpoint 可用性；可用 endpoint 仍需在 N57c 中转换成事实并写清来源链和 claim 边界。"
+  },
+  "probeErrors": [],
+  "secretsPolicy": {
+    "storedApiKeyValues": false,
+    "storedCookies": false,
+    "storedTokens": false,
+    "storedRawResponses": false
+  },
+  "nonMutationPolicy": {
+    "factBankLatestWritten": false,
+    "roundEvidencePacksWritten": false,
+    "runtimeTouched": false
+  }
+}

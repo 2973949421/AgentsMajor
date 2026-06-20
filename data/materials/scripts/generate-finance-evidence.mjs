@@ -166,14 +166,18 @@ const sourceAliases = {
   WorldBank: ["WORLD_BANK"],
   WORLD_BANK: ["WORLD_BANK"],
   "World Bank": ["WORLD_BANK"],
+  company_financials: ["SINA_FINANCE", "BAOSTOCK"],
+  CNINFO: ["SINA_FINANCE"],
+  ChinaCustoms: ["UN_COMTRADE"],
+  NBS: ["CHINA_MACRO_PUBLIC"],
+  marketRiskProxy: ["BAOSTOCK", "SHFE", "INE", "EASTMONEY", "SSE", "CHINA_FUTURES_SPOT"],
+  scoreCapPolicy: ["BAOSTOCK", "SHFE", "INE", "EASTMONEY", "SSE", "CHINA_FUTURES_SPOT"],
+  riskPolicy: ["BAOSTOCK", "SHFE", "INE", "EASTMONEY", "SSE", "CHINA_FUTURES_SPOT"],
   configured_proxy_fact: ["CONFIGURED_PROXY"],
   unavailable_observation: ["UNAVAILABLE"],
   missingEvidence: ["MISSING"],
   requiredEvidenceSchema: ["SCHEMA"],
   judgeLedger: ["JUDGE_LEDGER"],
-  scoreCapPolicy: ["SCORE_CAP_POLICY"],
-  riskPolicy: ["RISK_POLICY"],
-  marketRiskProxy: ["MARKET_RISK_PROXY"]
 };
 
 function normalizeSources(sourceNames) {
@@ -188,6 +192,80 @@ function claimMatches(fact, claimTypes) {
   const allowed = new Set(fact.allowedClaimTypes ?? []);
   if (allowed.size === 0) return true;
   return claimTypes.some((claimType) => allowed.has(claimType));
+}
+
+const requiredEvidenceKeyAliases = {
+  commodity_context: ["commodity_context", "commodity_price_context"],
+  commodity_price_context: ["commodity_price_context", "commodity_context"]
+};
+
+function requiredEvidenceKeyMatches(fact, requiredKey) {
+  const keys = new Set(fact.requiredEvidenceKeys ?? []);
+  if (!requiredKey || keys.size === 0) return true;
+  const aliases = requiredEvidenceKeyAliases[requiredKey] ?? [requiredKey];
+  return aliases.some((key) => keys.has(key));
+}
+
+const sourcePriorityByEvidenceKey = {
+  commodity_price_momentum: ["FRED", "SHFE", "INE", "CHINA_FUTURES_SPOT"],
+  commodity_price_context: ["FRED", "SHFE", "INE", "CHINA_FUTURES_SPOT"],
+  commodity_context: ["FRED", "SHFE", "INE", "CHINA_FUTURES_SPOT"],
+  china_supply_demand_proxy: ["SHFE", "CHINA_FUTURES_SPOT", "INE", "FRED"],
+  domestic_inventory_or_spot_proxy: ["SHFE", "CHINA_FUTURES_SPOT", "INE"],
+  trade_flow_proxy: ["UNAVAILABLE", "MISSING"],
+  equity_market_reaction: ["BAOSTOCK"],
+  equity_transmission_proxy: ["BAOSTOCK", "SINA_FINANCE"],
+  valuation_proxy: ["BAOSTOCK", "SINA_FINANCE"],
+  valuation_level: ["BAOSTOCK", "SINA_FINANCE"],
+  earnings_transmission_proxy: ["SINA_FINANCE", "BAOSTOCK"],
+  macro_demand_proxy: ["CHINA_MACRO_PUBLIC"],
+  risk_reward_boundary: ["EASTMONEY", "SSE", "CHINA_FUTURES_SPOT", "SHFE", "INE", "BAOSTOCK"],
+  risk_execution_rule: ["EASTMONEY", "SSE", "CHINA_FUTURES_SPOT", "SHFE", "INE", "BAOSTOCK"],
+  portfolio_stance_evidence_mix: ["FRED", "BAOSTOCK", "SHFE", "INE", "SINA_FINANCE"],
+  available_positive_proxy: ["FRED", "BAOSTOCK", "SHFE", "INE", "SINA_FINANCE"],
+  declared_missing_evidence: ["SCHEMA", "MISSING", "UNAVAILABLE"],
+  missing_evidence_policy: ["SCHEMA", "MISSING", "UNAVAILABLE"]
+};
+
+function sourceRankForEvidenceKey(requiredKey, fact) {
+  const priority = sourcePriorityByEvidenceKey[requiredKey] ?? [];
+  const source = factSourceKey(fact);
+  const index = priority.indexOf(source);
+  return index === -1 ? priority.length + 10 : index;
+}
+
+const metalEntityPriority = ["CU", "AL", "ZN", "NI", "SN", "PB", "AU", "AG", "BC"];
+
+function entityRank(fact) {
+  const entity = String(fact.entity ?? "").toUpperCase();
+  const index = metalEntityPriority.indexOf(entity);
+  return index === -1 ? metalEntityPriority.length + 10 : index;
+}
+
+function pickDiverseFacts(facts, requiredKey, minimum) {
+  const sorted = [...facts].sort((left, right) => {
+    const sourceRank = sourceRankForEvidenceKey(requiredKey, left) - sourceRankForEvidenceKey(requiredKey, right);
+    if (sourceRank !== 0) return sourceRank;
+    const leftEntityRank = entityRank(left);
+    const rightEntityRank = entityRank(right);
+    if (leftEntityRank !== rightEntityRank) return leftEntityRank - rightEntityRank;
+    return String(left.factId ?? "").localeCompare(String(right.factId ?? ""));
+  });
+  const result = [];
+  const seenSources = new Set();
+  for (const fact of sorted) {
+    const source = factSourceKey(fact);
+    if (seenSources.has(source)) continue;
+    result.push(fact);
+    seenSources.add(source);
+    if (result.length >= minimum + 1) return result;
+  }
+  for (const fact of sorted) {
+    if (result.includes(fact)) continue;
+    result.push(fact);
+    if (result.length >= minimum + 1) break;
+  }
+  return result;
 }
 
 function packFactFromFactBank(fact, index) {
@@ -219,23 +297,24 @@ function buildFactBankFacts({ round, factBank }) {
     const fallback = normalizeSources(evidenceItem.fallbackSources ?? []);
     const claimTypes = evidenceItem.requiredForClaimTypes ?? [];
     const minimum = Number(evidenceItem.minimumFactCount ?? 1);
+    const requiredKey = evidenceItem.requiredKey;
     const observedPreferred = factBank.facts.filter(
-      (fact) => fact.dataMode === "offline_observation_fact" && preferred.has(factSourceKey(fact)) && claimMatches(fact, claimTypes)
+      (fact) => fact.dataMode === "offline_observation_fact" && fact.activeSourceStatus !== "frozen" && preferred.has(factSourceKey(fact)) && requiredEvidenceKeyMatches(fact, requiredKey) && claimMatches(fact, claimTypes)
     );
     const observedFallback = factBank.facts.filter(
-      (fact) => fact.dataMode === "offline_observation_fact" && fallback.has(factSourceKey(fact)) && claimMatches(fact, claimTypes)
+      (fact) => fact.dataMode === "offline_observation_fact" && fact.activeSourceStatus !== "frozen" && fallback.has(factSourceKey(fact)) && requiredEvidenceKeyMatches(fact, requiredKey) && claimMatches(fact, claimTypes)
     );
     const unavailablePreferred = factBank.facts.filter(
-      (fact) => fact.dataMode === "unavailable_observation" && preferred.has(factSourceKey(fact))
+      (fact) => fact.dataMode === "unavailable_observation" && fact.activeSourceStatus !== "frozen" && preferred.has(factSourceKey(fact)) && requiredEvidenceKeyMatches(fact, requiredKey)
     );
-    const picks = observedPreferred.length >= minimum ? observedPreferred.slice(0, minimum + 1) : [...observedPreferred, ...observedFallback, ...unavailablePreferred.slice(0, 1)];
+    const picks = observedPreferred.length >= minimum ? pickDiverseFacts(observedPreferred, requiredKey, minimum) : [...pickDiverseFacts([...observedPreferred, ...observedFallback], requiredKey, minimum), ...unavailablePreferred.slice(0, 1)];
     for (const fact of picks) {
       if (fact.factId && !selected.has(fact.factId)) selected.set(fact.factId, fact);
     }
   }
   if (selected.size === 0) {
     const observedCoreFacts = factBank.facts.filter(
-      (fact) => fact.dataMode === "offline_observation_fact" && ["FRED", "BAOSTOCK"].includes(factSourceKey(fact))
+      (fact) => fact.dataMode === "offline_observation_fact" && fact.activeSourceStatus !== "frozen" && ["FRED", "BAOSTOCK", "SHFE", "INE", "SINA_FINANCE"].includes(factSourceKey(fact))
     );
     for (const fact of observedCoreFacts.slice(0, 4)) {
       if (fact.factId && !selected.has(fact.factId)) selected.set(fact.factId, fact);

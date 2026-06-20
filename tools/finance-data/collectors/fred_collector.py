@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from typing import Any
 
@@ -22,7 +22,14 @@ from common import (
 PRICE_ALLOWED_CLAIMS = [
     "commodity_trend",
     "commodity_price_momentum",
+    "commodity_price_context",
+    "global_price_anchor",
+    "relative_allocation_signal",
     "valuation_vs_commodity_signal",
+    "commodity_to_equity_transmission",
+    "trade_price_consistency",
+    "portfolio_allocation",
+    "position_sizing",
     "limited_positive_stance",
     "limited_negative_stance",
 ]
@@ -199,6 +206,7 @@ def collect_fred_facts(configs: dict[str, Any], *, limit: int) -> dict[str, Any]
                     not_allowed_claim_types=PRICE_NOT_ALLOWED_CLAIMS,
                     interpretation_hint="可支持商品价格动量和商品背景，不可直接支持中国国内供需或公司盈利确认。",
                     score_cap_policy="FRED commodity facts can support price momentum claims but cap China supply-demand and equity transmission claims unless paired with domestic or equity facts.",
+                    frequency="monthly",
                     extra={
                         "seriesId": series["seriesId"],
                         "commodity": series.get("commodity"),
@@ -265,6 +273,7 @@ def collect_fred_facts(configs: dict[str, Any], *, limit: int) -> dict[str, Any]
                 not_allowed_claim_types=PRICE_NOT_ALLOWED_CLAIMS,
                 interpretation_hint="多金属同步可增强商品背景；方向分化时只能支持结构性判断。",
                 score_cap_policy="multi metal divergence caps broad nonferrous allocation claims.",
+                frequency="monthly",
                 extra={
                     "syncLabel": sync_label,
                     "observedSeries": observed_series,

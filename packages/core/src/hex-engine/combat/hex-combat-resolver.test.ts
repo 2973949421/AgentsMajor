@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 
 import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
+import type { HexFinanceChallengeCard, HexFinanceStanceCard, HexRoundStartAgentOutputForAction } from "../action/index.js";
 import { buildFixtureHexRoundBusinessDuel } from "../business/index.js";
 import { buildHexRoundEconomyContext } from "../economy/index.js";
 import { buildHexRoundFinanceDuel } from "../finance/index.js";
@@ -57,31 +58,34 @@ describe("Hex combat resolver", () => {
         { agentId: "ct_0", teamId: "ct", side: "defense", role: "anchor" }
       ]
     });
+    const roundStartAgentOutputs = [
+      buildResolverStanceOutput({ evidenceRefs: ["FRED002"] }),
+      buildResolverChallengeOutput({ challengeId: "challenge_t_0_1", evidenceRefs: ["FRED002", "FRED003", "FRED004"] }),
+      buildResolverChallengeOutput({ challengeId: "challenge_t_1_1", evidenceRefs: ["FRED002", "FRED003"] })
+    ];
     const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
 
-    const resolution = resolveHexCombat({ asset, memory, contact, actions, financeDuel });
+    const resolution = resolveHexCombat({ asset, memory, contact, actions, financeDuel, roundStartAgentOutputs });
 
     expect(resolution.financeVerdict).toBe("challenge_landed");
     expect(resolution.businessVerdict).toBe("challenge_succeeded");
     expect(resolution.audit.financeEvidenceApplied).toBe(true);
     expect(resolution.scores.attack.financeScore).toBeGreaterThan(resolution.scores.defense.financeScore ?? 0);
     expect(resolution.financeReasons).toEqual(expect.arrayContaining([
-      "attack:finance_evidence_reference_used",
-      "attack:finance_missing_evidence_applied",
+      "attack:n59_accepted_evidence_present",
       "finance_verdict:challenge_landed"
     ]));
-    expect(resolution.financeEvidenceAdoption?.attack.acceptedEvidenceRefs).toEqual(expect.arrayContaining(["F001", "F002"]));
-    expect(resolution.financeEvidenceAdoption?.attack.missingEvidenceApplied).toContain("domestic_inventory");
-    expect(resolution.financeEvidenceAdoption?.attack.scoreCapRefs).toContain("proxy_fact_boundary");
+    expect(resolution.financeEvidenceAdoption?.attack.financialResult).toBe("challenge_breaks_stance");
+    expect(resolution.financeEvidenceAdoption?.attack.acceptedEvidenceRefs).toEqual(expect.arrayContaining(["FRED002", "FRED003"]));
+    expect(resolution.financeEvidenceAdoption?.attack.acceptedChallenges).toEqual(expect.arrayContaining(["challenge_t_0_1", "challenge_t_1_1"]));
     expect(resolution.financeReasonZh).toEqual(expect.arrayContaining([
-      expect.stringContaining("攻方采信证据")
+      expect.stringContaining("挑战方采信证据")
     ]));
     expect(resolution.casualties[0]).toEqual(expect.objectContaining({
       targetAgentId: "ct_0",
       killerAgentId: "t_0",
       assisterAgentIds: ["t_1"]
     }));
-    expect(resolution.casualties[0]?.attributionReasons).toEqual(expect.arrayContaining(["killer:t_0:finance_evidence_reference_used"]));
   });
 
   it("lets defense finance thesis stand when attack falls back and lacks usable evidence", () => {
@@ -116,22 +120,23 @@ describe("Hex combat resolver", () => {
         { agentId: "ct_0", teamId: "ct", side: "defense", role: "star rifler" }
       ]
     });
+    const roundStartAgentOutputs = [
+      buildResolverStanceOutput({ evidenceRefs: ["FRED002"] })
+    ];
     const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
 
-    const resolution = resolveHexCombat({ asset, memory, contact, actions, financeDuel });
+    const resolution = resolveHexCombat({ asset, memory, contact, actions, financeDuel, roundStartAgentOutputs });
 
     expect(resolution.financeVerdict).toBe("thesis_defended");
     expect(resolution.businessVerdict).toBe("proof_rebutted_challenge");
     expect(resolution.financeReasons).toEqual(expect.arrayContaining([
-      "attack:finance_fallback_not_positive_evidence",
-      "attack:finance_no_accepted_evidence",
-      "defense:finance_evidence_reference_used",
+      "attack:n59_no_accepted_evidence",
+      "defense:n59_accepted_evidence_present",
       "finance_verdict:thesis_defended"
     ]));
     expect(resolution.financeEvidenceAdoption?.attack.acceptedEvidenceRefs).toEqual([]);
-    expect(resolution.financeEvidenceAdoption?.attack.rejectionReasons).toContain("fallback_not_positive_finance_evidence");
-    expect(resolution.financeEvidenceAdoption?.defense.acceptedEvidenceRefs).toContain("F001");
-    expect(resolution.financeEvidenceAdoption?.defense.missingEvidenceApplied).toContain("domestic_inventory");
+    expect(resolution.financeEvidenceAdoption?.defense.acceptedEvidenceRefs).toContain("FRED002");
+    expect(resolution.financeEvidenceAdoption?.defense.acceptedClaims).toContain("claim_ct_0_1");
     expect(resolution.casualties[0]).toEqual(expect.objectContaining({
       targetAgentId: "t_0",
       killerAgentId: "ct_0"
@@ -175,12 +180,12 @@ describe("Hex combat resolver", () => {
     const resolution = resolveHexCombat({ asset, memory, contact, actions, financeDuel });
 
     expect(resolution.financeEvidenceAdoption?.attack.acceptedEvidenceRefs).toEqual([]);
-    expect(resolution.financeEvidenceAdoption?.attack.rejectedEvidenceRefs).toContain("F999:unknown_evidence_ref");
-    expect(resolution.financeEvidenceAdoption?.attack.missingEvidenceApplied).toContain("domestic_inventory");
-    expect(resolution.scores.attack.financeScore).toBeLessThan(65);
+    expect(resolution.financeEvidenceAdoption?.attack.rejectedEvidenceRefs).toEqual([]);
+    expect(resolution.financeEvidenceAdoption?.attack.financialResult).toBe("no_financial_win_allowed");
+    expect(resolution.scores.attack.financeScore).toBe(0);
     expect(resolution.financeReasons).toEqual(expect.arrayContaining([
-      "attack:finance_evidence_ref_rejected",
-      "attack:finance_score_cap_applied_without_evidence_reference"
+      "attack:n59_no_accepted_evidence",
+      "finance_verdict:contested_no_finance_resolution"
     ]));
   });
 
@@ -222,8 +227,8 @@ describe("Hex combat resolver", () => {
 
     expect(resolution.financeEvidenceAdoption?.attack.acceptedEvidenceRefs).toEqual([]);
     expect(resolution.financeEvidenceAdoption?.defense.acceptedEvidenceRefs).toEqual([]);
-    expect(resolution.financeEvidenceAdoption?.attack.missingEvidenceApplied).toEqual([]);
-    expect(resolution.financeEvidenceAdoption?.defense.missingEvidenceApplied).toEqual([]);
+    expect(resolution.financeEvidenceAdoption?.attack.missingEvidenceApplied).toEqual(expect.arrayContaining(["commodity_price_momentum"]));
+    expect(resolution.financeEvidenceAdoption?.defense.missingEvidenceApplied).toEqual(expect.arrayContaining(["commodity_price_momentum"]));
     expect(resolution.financeVerdict).toBe("contested_no_finance_resolution");
     expect(resolution.businessVerdict).toBe("contested_no_business_resolution");
     expect(resolution.financeReasons).toContain("finance_verdict:contested_no_finance_resolution");
@@ -262,9 +267,14 @@ describe("Hex combat resolver", () => {
         { agentId: "ct_0", teamId: "ct", side: "defense", role: "anchor" }
       ]
     });
+    const roundStartAgentOutputs = [
+      buildResolverStanceOutput({ evidenceRefs: ["FRED002"] }),
+      buildResolverChallengeOutput({ challengeId: "challenge_t_0_1", evidenceRefs: ["FRED002", "FRED003", "FRED004"] }),
+      buildResolverChallengeOutput({ challengeId: "challenge_t_1_1", evidenceRefs: ["FRED002", "FRED003"] })
+    ];
     const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
 
-    const resolution = resolveHexCombat({ asset, memory, contact, actions, financeDuel });
+    const resolution = resolveHexCombat({ asset, memory, contact, actions, financeDuel, roundStartAgentOutputs });
 
     expect(contact.minCellDistance).toBeGreaterThan(3);
     expect(contact.lethalEligible).toBe(false);
@@ -357,6 +367,135 @@ describe("Hex combat resolver", () => {
       "open_sight_no_cover",
       "implicit_duel_from_movement"
     ]));
+  });
+
+  it("keeps fully symmetric lethal movement as suppression instead of inventing a kill", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [attackCell, defenseCell] = findOpenSameRegionCells(asset, "a_site");
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_0", side: "attack", cellId: attackCell.cellId },
+      { agentId: "ct_0", side: "defense", cellId: defenseCell.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({
+        memory,
+        agentId: "t_0",
+        actionType: "move",
+        targetCellId: attackCell.cellId,
+        businessIntent: "本阶段执行移动并处理开阔枪线接触风险。"
+      }),
+      buildCombatAction({
+        memory,
+        agentId: "ct_0",
+        actionType: "move",
+        targetCellId: defenseCell.cellId,
+        businessIntent: "本阶段执行移动并处理开阔枪线接触风险。"
+      })
+    ];
+    const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
+    for (const participant of contact.participants) {
+      participant.currentFlags = [];
+      participant.targetFlags = [];
+      participant.currentPointIds = [];
+      participant.targetPointIds = [];
+      participant.roleLabel = "rifler";
+    }
+
+    const resolution = resolveHexCombat({ asset, memory, contact, actions });
+
+    expect(resolution.verdict).toBe("contested_suppression");
+    expect(resolution.advantage).toBe("contested");
+    expect(resolution.casualties).toEqual([]);
+    expect(resolution.csReasons).toEqual(expect.arrayContaining([
+      "lethal_duel_pressure_tiebreak",
+      "symmetric_lethal_duel_no_advantage"
+    ]));
+  });
+
+  it("uses direct duel pressure to turn tied lethal movement into a kill without randomizing", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [attackCell, defenseCell] = findOpenSameRegionCells(asset, "a_site");
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_entry", side: "attack", cellId: attackCell.cellId },
+      { agentId: "ct_support", side: "defense", cellId: defenseCell.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({
+        memory,
+        agentId: "t_entry",
+        actionType: "move",
+        targetCellId: attackCell.cellId,
+        businessIntent: "进攻方移动进入开阔枪线，准备争取击杀并换取包点空间。"
+      }),
+      buildCombatAction({
+        memory,
+        agentId: "ct_support",
+        actionType: "rotate",
+        targetCellId: defenseCell.cellId,
+        businessIntent: "守方转点进入同一开阔枪线，准备延缓进攻。"
+      })
+    ];
+    const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
+    contact.participants.find((participant) => participant.agentId === "t_entry")!.roleLabel = "entry";
+    contact.participants.find((participant) => participant.agentId === "ct_support")!.roleLabel = "support";
+
+    const resolution = resolveHexCombat({ asset, memory, contact, actions });
+
+    expect(contact.lethalEligible).toBe(true);
+    expect(contact.implicitDuelFromMovement).toBe(true);
+    expect(resolution.advantage).toBe("attack");
+    expect(resolution.verdict).toBe("kill");
+    expect(resolution.csReasons).toEqual(expect.arrayContaining([
+      "lethal_duel_pressure_tiebreak",
+      "direct_duel_pressure_delta_kill"
+    ]));
+    expect(resolution.csReasons.some((reason) => reason.startsWith("direct_duel_pressure_attack:"))).toBe(true);
+    expect(resolution.csReasons.some((reason) => reason.startsWith("direct_duel_pressure_defense:"))).toBe(true);
+    expect(resolution.casualties[0]).toEqual(expect.objectContaining({
+      targetAgentId: "ct_support",
+      killerAgentId: "t_entry"
+    }));
+  });
+
+  it("turns a one-point direct duel pressure edge into wound or forced-back instead of endless suppression", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [attackCell, defenseCell] = findOpenSameRegionCells(asset, "a_site");
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_0", side: "attack", cellId: attackCell.cellId },
+      { agentId: "ct_0", side: "defense", cellId: defenseCell.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({
+        memory,
+        agentId: "t_0",
+        actionType: "watch_angle",
+        targetCellId: attackCell.cellId,
+        businessIntent: "进攻方架住开阔枪线，只做有限交火准备。"
+      }),
+      buildCombatAction({
+        memory,
+        agentId: "ct_0",
+        actionType: "move",
+        targetCellId: defenseCell.cellId,
+        businessIntent: "守方移动进入同一开阔枪线，争取把压制转成伤害。"
+      })
+    ];
+    const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
+
+    const resolution = resolveHexCombat({ asset, memory, contact, actions });
+
+    expect(contact.lethalEligible).toBe(true);
+    expect(contact.implicitDuelFromMovement).toBe(true);
+    expect(resolution.advantage).toBe("defense");
+    expect(resolution.verdict).toBe("wound_or_forced_back");
+    expect(resolution.csReasons).toEqual(expect.arrayContaining([
+      "lethal_duel_pressure_tiebreak",
+      "direct_duel_pressure_delta_wound"
+    ]));
+    expect(resolution.casualties[0]).toEqual(expect.objectContaining({
+      targetAgentId: "t_0",
+      result: "wounded"
+    }));
   });
 
   it("keeps covered same-region movement out of the lethal gate", () => {
@@ -672,6 +811,86 @@ describe("Hex combat resolver", () => {
   });
 });
 
+function buildResolverStanceOutput(input: { evidenceRefs?: string[]; claimType?: string } = {}): HexRoundStartAgentOutputForAction {
+  const evidenceRefs = input.evidenceRefs ?? ["FRED002"];
+  const claimType = input.claimType ?? "commodity_price_momentum";
+  const stanceCard: HexFinanceStanceCard = {
+    cardId: "stance_ct_0",
+    agentId: "ct_0",
+    teamSide: "defense",
+    decisionQuestionZh: "未来 1-3 个月 A 股有色是否应相对超配？",
+    direction: "conditional_bullish",
+    target: "A 股有色",
+    horizon: "1-3 months",
+    confidence: 0.62,
+    positionSuggestion: "moderate_overweight",
+    coreClaims: [{
+      claimId: "claim_ct_0_1",
+      claimType,
+      claimZh: "商品价格动量支持有色配置线索。",
+      evidenceRefs,
+      reasoningBridge: "全球价格动量需要通过权益传导和估值约束后，才能支持 A 股有色配置。",
+      confidence: 0.62,
+      unsupportedIfEvidenceRejected: true
+    }],
+    riskBoundaries: ["缺少库存或权益传导证据时只能降权。"],
+    invalidatingConditions: ["商品价格动量回落。"],
+    auditSummaryZh: "ct_0 输出结构化立场卡。"
+  };
+  return {
+    outputId: "round_start_ct_0",
+    agentId: "ct_0",
+    usableForPhaseAction: true,
+    openingStatementZh: stanceCard.auditSummaryZh,
+    evidenceRefs,
+    riskBoundaryZh: stanceCard.riskBoundaries.join("；"),
+    buyConstraintAppliedZh: "买型允许中等强度配置表达。",
+    phaseActionCarryoverZh: "后续 phase 只能引用 claim_ct_0_1。",
+    source: "fixture_response",
+    cardKind: "stance",
+    stanceCard,
+    cardSummaryZh: stanceCard.auditSummaryZh,
+    allowedPhaseRefs: { claimIds: ["claim_ct_0_1"], challengeIds: [] }
+  };
+}
+
+function buildResolverChallengeOutput(input: { challengeId: string; evidenceRefs: string[]; reason?: string }): HexRoundStartAgentOutputForAction {
+  const challengeCard: HexFinanceChallengeCard = {
+    cardId: `challenge_card_${input.challengeId}`,
+    agentId: "t_0",
+    teamSide: "attack",
+    targetClaimId: "claim_ct_0_1",
+    challengeType: "proxy_mismatch",
+    challengedAssumption: "全球商品价格动量可以直接推出 A 股有色配置。",
+    evidenceRefs: input.evidenceRefs,
+    proxyMismatch: "FRED 商品价格只能说明全球价格动量，不能确认 A 股有色盈利传导。",
+    confidenceReduction: 0.25,
+    challenges: [{
+      challengeId: input.challengeId,
+      targetClaimId: "claim_ct_0_1",
+      challengeType: "proxy_mismatch",
+      evidenceRefs: input.evidenceRefs,
+      challengeReasonZh: input.reason ?? "该 claim 只用全球价格动量支持全有色配置，存在 proxy_mismatch，不能直接推出 A 股盈利传导。",
+      expectedEffect: "降低 commodity_to_equity_transmission 的置信度。"
+    }],
+    auditSummaryZh: "t_0 输出结构化挑战卡。"
+  };
+  return {
+    outputId: `round_start_${input.challengeId}`,
+    agentId: "t_0",
+    usableForPhaseAction: true,
+    openingStatementZh: challengeCard.auditSummaryZh,
+    evidenceRefs: input.evidenceRefs,
+    riskBoundaryZh: challengeCard.proxyMismatch,
+    buyConstraintAppliedZh: "买型允许挑战核心 claim。",
+    phaseActionCarryoverZh: `后续 phase 只能引用 ${input.challengeId}。`,
+    source: "fixture_response",
+    cardKind: "challenge",
+    challengeCard,
+    cardSummaryZh: challengeCard.auditSummaryZh,
+    allowedPhaseRefs: { claimIds: [], challengeIds: [input.challengeId] }
+  };
+}
 function buildPlan(
   teamId: string,
   posture: TeamEconomyPlan["posture"],

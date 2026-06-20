@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-06-19T20:08:27Z",
+  "financeScenarioSlug": "dust2-nonferrous",
+  "activeSourceIds": [
+    "BAOSTOCK",
+    "CHINA_FUTURES_SPOT",
+    "CHINA_MACRO_PUBLIC",
+    "EASTMONEY",
+    "FRED",
+    "INE",
+    "SHFE",
+    "SINA_FINANCE",
+    "SSE"
+  ],
+  "frozenSources": [
+    {
+      "sourceId": "world_bank",
+      "displayName": "World Bank",
+      "reason": "N57c freezes World Bank from active match evidence because it is annual and lagged.",
+      "sourceStatus": "frozen"
+    },
+    {
+      "sourceId": "un_comtrade",
+      "displayName": "UN Comtrade",
+      "reason": "N57c freezes UN Comtrade from active match evidence; trade flow is represented as a missing evidence gap.",
+      "sourceStatus": "frozen"
+    },
+    {
+      "sourceId": "nbs",
+      "displayName": "NBS",
+      "reason": "Candidate official source; not active in N57c collectors.",
+      "sourceStatus": "frozen"
+    },
+    {
+      "sourceId": "usgs",
+      "displayName": "USGS",
+      "reason": "Candidate annual supply background; not active in N57c collectors.",
+      "sourceStatus": "frozen"
+    },
+    {
+      "sourceId": "gacc",
+      "displayName": "China Customs",
+      "reason": "Candidate China trade anchor; not active in N57c collectors.",
+      "sourceStatus": "frozen"
+    },
+    {
+      "sourceId": "gfex",
+      "displayName": "GFEX",
+      "reason": "N57b classified GFEX as candidate_only for Dust2 nonferrous v1.",
+      "sourceStatus": "frozen"
+    },
+    {
+      "sourceId": "shmet_news",
+      "displayName": "SHMET News",
+      "reason": "News endpoint requires manual review and cannot become active fact.",
+      "sourceStatus": "frozen"
+    }
+  ],
+  "policyNotes": [
+    "Frozen sources are not deleted from history, but N57c excludes them from latest.json facts, coverage, and round evidence packs.",
+    "World Bank and UN Comtrade must not be used as accepted active evidence in N58/N59 until explicitly reactivated."
+  ]
+}

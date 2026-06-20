@@ -1,0 +1,29 @@
+﻿{
+  "schemaVersion": 1,
+  "policyId": "finance_active_source_policy_n57c",
+  "updatedAt": "2026-06-20",
+  "activeSources": [
+    { "sourceId": "fred", "sourcePublisher": "FRED", "accessProvider": "FRED API", "role": "global_commodity_price_anchor" },
+    { "sourceId": "baostock", "sourcePublisher": "BaoStock", "accessProvider": "BaoStock Python package", "role": "a_share_market_valuation_liquidity_proxy" },
+    { "sourceId": "shfe", "sourcePublisher": "SHFE", "accessProvider": "AKShare", "role": "domestic_futures_price_settlement_warehouse_proxy" },
+    { "sourceId": "ine", "sourcePublisher": "INE", "accessProvider": "AKShare", "role": "international_copper_futures_proxy" },
+    { "sourceId": "sina_finance", "sourcePublisher": "Sina Finance", "accessProvider": "AKShare", "role": "company_financial_abstract_proxy" },
+    { "sourceId": "eastmoney", "sourcePublisher": "Eastmoney", "accessProvider": "AKShare", "role": "fund_flow_risk_proxy" },
+    { "sourceId": "sse", "sourcePublisher": "SSE", "accessProvider": "AKShare", "role": "margin_financing_risk_proxy" },
+    { "sourceId": "china_macro_public", "sourcePublisher": "China public macro feed", "accessProvider": "AKShare", "role": "macro_demand_proxy_with_cap" }
+  ],
+  "frozenSources": [
+    { "sourceId": "world_bank", "reason": "年度滞后宏观背景，N57c 不进入当前 active match evidence。" },
+    { "sourceId": "un_comtrade", "reason": "贸易流当前不作为 active evidence，trade_flow_proxy 只能显示缺口。" },
+    { "sourceId": "nbs", "reason": "候选官方源，N57c 未接入 active collector。" },
+    { "sourceId": "usgs", "reason": "候选年度供给背景，N57c 未接入 active collector。" },
+    { "sourceId": "gacc", "reason": "候选中国贸易源，N57c 未接入 active collector。" },
+    { "sourceId": "gfex", "reason": "N57b 判定为 candidate_only。" },
+    { "sourceId": "shmet_news", "reason": "新闻类端点需要人工审核，不进入 active fact bank。" }
+  ],
+  "rules": [
+    "AKShare 是访问入口，不是 sourcePublisher。",
+    "frozen source 不得进入 latest.json facts、coverage-report 或 round-evidence-packs。",
+    "缺失证据只能进入 missing / unavailable policy，不能用冻结源补成功覆盖。"
+  ]
+}

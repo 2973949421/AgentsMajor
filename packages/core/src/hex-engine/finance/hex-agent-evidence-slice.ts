@@ -321,22 +321,22 @@ function buildRoleQuestionZh(input: {
   financeDuel: HexRoundFinanceDuel;
   economy?: HexAgentEconomyContext | undefined;
 }): string {
-  const sideVerb = input.side === "defense" ? "守住自证" : "提出质疑";
-  const target = input.side === "defense" ? input.financeDuel.defenseThesis.thesis : input.financeDuel.attackChallenge.thesis;
+  const sideVerb = input.side === "defense" ? "形成并守住有限投资立场" : "挑战具体主张和证据链断点";
+  const target = input.financeDuel.decisionQuestion.question;
   const buy = input.economy ? `当前买型 ${input.economy.buyType}，` : "";
   if (input.role === "portfolio_manager") {
-    return `${buy}围绕“${input.financeDuel.topic.topicTitle}”，判断是否能形成可执行配置强度，并${sideVerb}。`;
+    return `${buy}围绕决策题“${target}”，判断是否能形成可执行配置强度，并${sideVerb}。`;
   }
   if (input.role === "macro_strategy") {
-    return `${buy}用全球价格和宏观周期线索检验“${target}”是否有方向基础。`;
+    return `${buy}用全球价格和宏观周期线索检验决策题是否有方向基础。`;
   }
   if (input.role === "commodity_supply_demand") {
-    return `${buy}专门检查供需、贸易或库存线索是否足以支撑“${target}”。`;
+    return `${buy}专门检查供需、贸易或库存线索是否足以支撑某个允许立场。`;
   }
   if (input.role === "company_modeling") {
-    return `${buy}把“${target}”落到代表公司行情、估值和利润弹性代理。`;
+    return `${buy}把决策题落到代表公司行情、估值和利润弹性代理。`;
   }
-  return `${buy}专门寻找反证、scoreCaps、止损和仓位降级边界，避免代理事实被过度解释。`;
+  return `${buy}专门寻找反证、scoreCaps、止损和仓位降级边界；缺失证据只能降权，不能直接赢。`;
 }
 
 function buildActionBoundaryZh(input: {
@@ -344,7 +344,7 @@ function buildActionBoundaryZh(input: {
   side: HexSide;
   economy?: HexAgentEconomyContext | undefined;
 }): string {
-  const sideText = input.side === "defense" ? "防守时优先保护已声明的证据边界" : "进攻时优先验证对方主张的薄弱环节";
+  const sideText = input.side === "defense" ? "作为立场方优先保护已声明的证据边界" : "作为挑战方优先验证对方主张的薄弱环节";
   const resourceText = input.economy
     ? `资源层级 ${input.economy.resourceTier}，本阶段行动不能超过买型允许的论证强度。`
     : "经济上下文未记录，按保守论证强度处理。";

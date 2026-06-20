@@ -1,0 +1,157 @@
+{
+  "sourceId": "akshare_macro",
+  "collector": "akshare_python_package_v0",
+  "dataMode": "offline_observation_fact",
+  "facts": [
+    {
+      "factId": "AKM001",
+      "statementZh": "中国 PMI 公开宏观代理事实：PMI（macro_demand_proxy）。通过 AKShare 访问 China public macro feed / macro_china_pmi，目标品种匹配 221 行，样本期为 2026年05月份，样本合约或品种为 None，字段包括 制造业-同比增长, 制造业-指数, 月份, 非制造业-同比增长, 非制造业-指数。该事实只能按字段口径作为公开代理证据，不能单独证明完整行业基本面或公司盈利。",
+      "metricName": "china_pmi_public_proxy",
+      "value": 221,
+      "unit": "reported_public_field",
+      "period": "2026年05月份",
+      "source": "CHINA_MACRO_PUBLIC",
+      "domain": "finance_public_endpoint",
+      "entity": "macro_demand_proxy",
+      "locator": "macro_china_pmi:macro_demand_proxy",
+      "sourceType": "public_data_via_named_collector",
+      "sourcePublisher": "China public macro feed",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "endpoint": "macro_china_pmi",
+      "evidenceId": "EVID:CHINA_MACRO_PUBLIC:finance_public_endpoint:macro_demand_proxy:china_pmi_public_proxy:2026年05月份:macro_china_pmi:macro_demand_proxy:485f4d0a",
+      "confidence": 0.75,
+      "rawHash": "485f4d0a",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "akshare:macro_china_pmi:macro_demand_proxy:2026年05月份",
+      "transform": "filter endpoint rows to target metal macro_demand_proxy; sample matched target row field",
+      "reliabilityTier": "public_data_via_named_collector",
+      "allowedClaimTypes": [
+        "macro_demand_proxy",
+        "confidence_cap",
+        "projection_limit",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed",
+        "full_industry_fundamentals_confirmed",
+        "a_share_relative_allocation_confirmed",
+        "trade_flow_confirmed"
+      ],
+      "interpretationHint": "可用于 N56 requiredEvidenceSchema 的对应代理证据；强结论需要其他证据配合。",
+      "scoreCapPolicy": "PMI facts are lagged macro proxies and cannot prove short-cycle supply-demand alone.",
+      "requiredEvidenceKeys": [
+        "macro_demand_proxy"
+      ],
+      "frequency": "monthly",
+      "activeSourceStatus": "active",
+      "policyNotes": [
+        "AKShare 是访问入口，事实发布方和 endpoint 必须保留。",
+        "公开端点字段只能支持相应代理 claim，不能过度外推。",
+        "本事实已按目标金属过滤，未匹配目标金属的返回行不计入事实。"
+      ],
+      "dataMode": "offline_observation_fact",
+      "observedAt": "2026年05月份",
+      "generatedAt": "2026-06-19T20:12:52Z",
+      "targetSymbol": "macro_demand_proxy",
+      "targetNameZh": "PMI",
+      "matchedRecordCount": 221,
+      "returnedFields": [
+        "制造业-同比增长",
+        "制造业-指数",
+        "月份",
+        "非制造业-同比增长",
+        "非制造业-指数"
+      ],
+      "sampleRecord": {
+        "月份": "2026年05月份",
+        "制造业-指数": "50.0",
+        "制造业-同比增长": "1.01010101",
+        "非制造业-指数": "50.1",
+        "非制造业-同比增长": "-0.39761431"
+      }
+    },
+    {
+      "factId": "AKM002",
+      "statementZh": "中国工业增加值公开宏观代理事实：工业增加值（macro_demand_proxy）。通过 AKShare 访问 China public macro feed / macro_china_gyzjz，目标品种匹配 202 行，样本期为 2008年02月份，样本合约或品种为 None，字段包括 发布时间, 同比增长, 月份, 累计增长。该事实只能按字段口径作为公开代理证据，不能单独证明完整行业基本面或公司盈利。",
+      "metricName": "china_industrial_value_added_proxy",
+      "value": "15.4",
+      "unit": "reported_public_field",
+      "period": "2008年02月份",
+      "source": "CHINA_MACRO_PUBLIC",
+      "domain": "finance_public_endpoint",
+      "entity": "macro_demand_proxy",
+      "locator": "macro_china_gyzjz:macro_demand_proxy",
+      "sourceType": "public_data_via_named_collector",
+      "sourcePublisher": "China public macro feed",
+      "accessProvider": "AKShare",
+      "collector": "akshare_python_package_v0",
+      "endpoint": "macro_china_gyzjz",
+      "evidenceId": "EVID:CHINA_MACRO_PUBLIC:finance_public_endpoint:macro_demand_proxy:china_industrial_value_added_proxy:2008年02月份:macro_china_gyzjz:macro_demand_proxy:d0fe4273",
+      "confidence": 0.75,
+      "rawHash": "d0fe4273",
+      "parserVersion": "finance-fact-bank-collector-v2",
+      "originalLocation": "akshare:macro_china_gyzjz:macro_demand_proxy:2008年02月份",
+      "transform": "filter endpoint rows to target metal macro_demand_proxy; sample matched target row field",
+      "reliabilityTier": "public_data_via_named_collector",
+      "allowedClaimTypes": [
+        "macro_demand_proxy",
+        "confidence_cap",
+        "projection_limit",
+        "limited_positive_stance",
+        "limited_negative_stance"
+      ],
+      "notAllowedClaimTypes": [
+        "company_earnings_confirmed",
+        "full_industry_fundamentals_confirmed",
+        "a_share_relative_allocation_confirmed",
+        "trade_flow_confirmed"
+      ],
+      "interpretationHint": "可用于 N56 requiredEvidenceSchema 的对应代理证据；强结论需要其他证据配合。",
+      "scoreCapPolicy": "industrial value-added facts are macro background proxies with score caps.",
+      "requiredEvidenceKeys": [
+        "macro_demand_proxy"
+      ],
+      "frequency": "monthly",
+      "activeSourceStatus": "active",
+      "policyNotes": [
+        "AKShare 是访问入口，事实发布方和 endpoint 必须保留。",
+        "公开端点字段只能支持相应代理 claim，不能过度外推。",
+        "本事实已按目标金属过滤，未匹配目标金属的返回行不计入事实。"
+      ],
+      "dataMode": "offline_observation_fact",
+      "observedAt": "2008年02月份",
+      "generatedAt": "2026-06-19T20:12:57Z",
+      "targetSymbol": "macro_demand_proxy",
+      "targetNameZh": "工业增加值",
+      "matchedRecordCount": 202,
+      "returnedFields": [
+        "发布时间",
+        "同比增长",
+        "月份",
+        "累计增长"
+      ],
+      "sampleRecord": {
+        "月份": "2008年02月份",
+        "同比增长": "15.4",
+        "累计增长": "15.4",
+        "发布时间": "2008-02-01"
+      }
+    }
+  ],
+  "warnings": [
+    "ConnectionError: ('Connection aborted.', ConnectionResetError(10054, '远程主机强迫关闭了一个现有的连接。', None, 10054, None))",
+    "stock_margin_sse{'start_date': '20260220', 'end_date': '20260620'}: TimeoutExpired: Command '['B:\\\\sharewithlight\\\\LegendProject\\\\.venv\\\\Scripts\\\\python.exe', '-c', '\\nimport json\\nimport sys\\nkwargs = json.loads(sys.argv[2])\\nimport akshare as ak\\nvalue = getattr(ak, sys.argv[1])(**kwargs)\\nif hasattr(value, \"head\"):\\n    value = value.head(500)\\nif hasattr(value, \"to_dict\"):\\n    records = value.to_dict(\"records\")\\nelif isinstance(value, list):\\n    records = [item for item in value if isinstance(item, dict)][:80]\\nelif isinstance(value, dict):\\n    records = []\\n    for key, item in value.items():\\n        if hasattr(item, \"head\"):\\n            item = item.head(80)\\n        if hasattr(item, \"to_dict\"):\\n            for row in item.to_dict(\"records\"):\\n                row[\"bucket\"] = key\\n                records.append(row)\\n        elif isinstance(item, list):\\n            for row in item:\\n                if isinstance(row, dict):\\n                    row[\"bucket\"] = key\\n                    records.append(row)\\nelse:\\n    records = []\\nclean = []\\nfor row in records[:500]:\\n    clean.append({str(key): None if value is None else str(value) for key, value in row.items()})\\nprint"
+  ],
+  "candidateOnly": [
+    {
+      "sourceId": "GFEX",
+      "reason": "N57b classified GFEX as candidate_only for Dust2 nonferrous v1."
+    },
+    {
+      "sourceId": "SHMET_NEWS",
+      "reason": "News endpoints require manual review and do not enter active fact bank."
+    }
+  ]
+}

@@ -6,9 +6,9 @@
 
 ```text
 当前主线：HexGrid（蜂巢格）Phase 2.0-pre 路线。
-当前进度：N20-N55 已完成 HexGrid、Finance Major、中文审计和 phase0 真实开局输出收口第一版；旧 Node/Sector 实验线已退役并清理 active 入口。
+当前进度：N20-N55 已完成 HexGrid、Finance Major、中文审计和 phase0 真实开局输出收口第一版；旧 Node/Sector 实验线已退役并清理 active 入口。N56 起转向“证据绑定的投资决策攻防”，先修金融底座闭环。
 保留兼容线：Phase18 replay / live replay 仍保留，不属于旧 Node/Sector runtime。
-下一步：先做用户人工 Web 审计和文档 / 结构清理，再决定是否进入 N56。
+下一步：N56-N61，依次完成决策题、证据菜单、stance/challenge 卡、金融裁判证据绑定、金融结果与战斗投影解耦、小样本验收。
 ```
 
 ## 推荐阅读顺序
@@ -19,10 +19,12 @@
 3. docs/hex/phase-2.0-pre-hex-engine-implementation-plan.md
 4. docs/hex/phase-2.0-pre-hex-engine-runtime-contract.md
 5. docs/finance/finance-major-prototype-plan.md
-6. docs/finance/finance-evidence-mvp.md
-7. docs/finance/finance-data-asset-contract.md
-8. docs/finance/finance-n48-n55-iteration-log.md
-9. 按任务阅读 contracts、hex、backlog 或 archive
+6. docs/finance/finance-decision-question-contract.md
+7. docs/finance/finance-evidence-mvp.md
+8. docs/finance/finance-evidence-bound-round-roadmap.md
+9. docs/finance/finance-data-asset-contract.md
+10. docs/finance/finance-n48-n55-iteration-log.md
+11. 按任务阅读 contracts、hex、backlog 或 archive
 ```
 
 ## 文档分层
@@ -77,11 +79,13 @@ HexGrid 是当前比赛空间事实主线。旧 Node/Sector 不再作为 runtime
 ```text
 docs/finance/README.md
 docs/finance/finance-major-prototype-plan.md
+docs/finance/finance-decision-question-contract.md
 docs/finance/finance-evidence-mvp.md
+docs/finance/finance-evidence-bound-round-roadmap.md
 docs/finance/finance-data-asset-contract.md
 ```
 
-Finance Major 是 N42 起的下一阶段候选主线：复用 HexGrid 运行结构，但把旧 business duel（商业攻防）语义层替换为 finance duel（金融投资攻防）。当前测试落点是 `Dust2 有色 / 行业判断 / 6 round`。
+Finance Major 是 N42 起的语义主线：复用 HexGrid 运行结构。N56 起，当前目标从旧 business duel 和旧 finance duel 的证明题，改为证据绑定的投资决策攻防。当前测试落点是 `Dust2 有色 / 行业判断 / 6 round`。
 
 第一版数据事实层是“免费 API 代理事实版”，不是完整中国有色行业基本面系统。默认自动源是 FRED、BaoStock 和可选 UN Comtrade；CNINFO、国家统计局、工信部、SHFE、SMM 等先作为后置证据锚点或商业化替换源。裁判必须暴露 missingEvidence 和 scoreCaps，不能让 LLM 用代理事实冒充完整事实。
 

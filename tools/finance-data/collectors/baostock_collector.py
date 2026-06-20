@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import contextlib
 import datetime as dt
@@ -10,10 +10,18 @@ from common import confidence_for_tier, observation_fact, pct_change, percentile
 
 MARKET_ALLOWED_CLAIMS = [
     "a_share_relative_performance",
+    "a_share_relative_allocation",
     "market_confirmation",
     "valuation_support",
+    "valuation_proxy",
+    "valuation_level",
     "price_in_assessment",
     "commodity_to_equity_transmission",
+    "equity_transmission_proxy",
+    "portfolio_allocation",
+    "position_sizing",
+    "risk_reward",
+    "executability",
     "limited_positive_stance",
     "limited_negative_stance",
 ]
@@ -190,7 +198,9 @@ def collect_baostock_facts(configs: dict[str, Any], *, core_limit: int) -> dict[
                 )
             )
 
-        for index, company in enumerate(configs["baostockUniverse"]["coreUniverse"][:core_limit], start=1):
+        configured_universe = configs["baostockUniverse"].get("coreUniverse", []) + configs["baostockUniverse"].get("extendedUniverse", [])
+        company_universe = configured_universe[:core_limit] if core_limit > 0 else configured_universe
+        for index, company in enumerate(company_universe, start=1):
             fact_id = f"BAO{index:03d}"
             try:
                 with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
@@ -215,8 +225,12 @@ def collect_baostock_facts(configs: dict[str, Any], *, core_limit: int) -> dict[
                 latest_volume = _latest_numeric(rows, "volume")
                 pe_ttm = _latest_numeric(rows, "peTTM")
                 pb_mrq = _latest_numeric(rows, "pbMRQ")
+                ps_ttm = _latest_numeric(rows, "psTTM")
+                pcf_ncf_ttm = _latest_numeric(rows, "pcfNcfTTM")
                 pe_percentile = _field_percentile(rows, "peTTM", pe_ttm)
                 pb_percentile = _field_percentile(rows, "pbMRQ", pb_mrq)
+                ps_percentile = _field_percentile(rows, "psTTM", ps_ttm)
+                pcf_percentile = _field_percentile(rows, "pcfNcfTTM", pcf_ncf_ttm)
 
                 facts.append(
                     observation_fact(
@@ -228,7 +242,7 @@ def collect_baostock_facts(configs: dict[str, Any], *, core_limit: int) -> dict[
                             f"相对沪深300 1/3/6/12个月表现约为 {relative_returns['relativeReturn1mPct']}%、"
                             f"{relative_returns['relativeReturn3mPct']}%、{relative_returns['relativeReturn6mPct']}%、"
                             f"{relative_returns['relativeReturn12mPct']}%。PE TTM 为 {pe_ttm}，PB MRQ 为 {pb_mrq}。"
-                            "该事实只能作为市场反应、估值和权益传导代理，不能证明行业基本面或公司盈利已经改善。"
+                            "该事实只能作为市场反应、估值和权益传导代理，不能确认行业基本面或公司盈利改善。"
                         ),
                         metric_name="a_share_company_market_valuation_derived",
                         value=latest_close,
@@ -252,7 +266,8 @@ def collect_baostock_facts(configs: dict[str, Any], *, core_limit: int) -> dict[
                         allowed_claim_types=MARKET_ALLOWED_CLAIMS,
                         not_allowed_claim_types=MARKET_NOT_ALLOWED_CLAIMS,
                         interpretation_hint="可支持权益市场反应、估值代理和商品到权益传导的有限判断；不能证明行业基本面。",
-                        score_cap_policy="BaoStock market facts require commodity and risk evidence before supporting full allocation conclusions.",
+                        score_cap_policy="BaoStock market facts require commodity, risk and earnings evidence before supporting full allocation conclusions.",
+                        frequency="daily",
                         extra={
                             "companyName": company["name"],
                             "primaryExposure": company.get("primaryExposure"),
@@ -262,8 +277,12 @@ def collect_baostock_facts(configs: dict[str, Any], *, core_limit: int) -> dict[
                             "latestVolume": latest_volume,
                             "peTTM": pe_ttm,
                             "pbMRQ": pb_mrq,
+                            "psTTM": ps_ttm,
+                            "pcfNcfTTM": pcf_ncf_ttm,
                             "pePercentile": pe_percentile,
                             "pbPercentile": pb_percentile,
+                            "psPercentile": ps_percentile,
+                            "pcfPercentile": pcf_percentile,
                             "hs300BenchmarkWarning": hs300_warning,
                             **returns,
                             **relative_returns,

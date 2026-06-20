@@ -1,4 +1,4 @@
-# Finance Data Asset Contract：金融数据资产与环境规整契约
+﻿# Finance Data Asset Contract：金融数据资产与环境规整契约
 
 ## 1. 目标
 
@@ -91,8 +91,8 @@ collector（采集器） != source（事实来源） != evidence（证据） != 
 |---|---|---|
 | `fred` | 全球金属价格和宏观代理事实 | HTTP API，`FRED_API_KEY` |
 | `baostock` | A 股代表公司行情和估值代理事实 | Python package，无 key |
-| `un_comtrade` | 进出口滞后线索，可选 | Python package，`UN_COMTRADE_KEY` |
-| `akshare` | 可用采集入口 / access provider | Python package |
+| `un_comtrade` | 进出口滞后线索，N57c 后冻结出 active 主路径 | Python package，`UN_COMTRADE_KEY` |
+| `akshare` | 当前 active 采集入口 / access provider | Python package |
 
 `AKShare` 和 `BaoStock` 本质上都属于接入入口 / 采集器。区别不在于“谁高谁低”，而在于每条 fact 是否能说清楚来源链。若用 AKShare 抽取 SHFE、INE、GFEX、Sina 或其他页面，证据必须保留：
 
@@ -304,11 +304,28 @@ data/materials/generated/finance/fact-bank/dust2-nonferrous/coverage-report.json
 
 ```text
 Fact Bank v2：schemaVersion=2，覆盖原 latest.json。
-FRED：当前环境使用旧快照升级保底；联网环境可刷新深度派生指标。
-BaoStock：当前环境使用旧快照升级保底；联网环境可刷新收益窗口、估值和相对基准。
-SHFE / INE：通过 AKShare 访问入口接入，当前环境网络受限时写入 unavailable_observation。
-World Bank：public API 接入，当前环境网络受限时写入 unavailable_observation。
-UN Comtrade：使用 period / flow / direct HTTP fallback，当前环境网络受限时写入 unavailable_observation。
+FRED：已生成多窗口价格变化、36 个月分位、波动、回撤和多金属同步 / 背离事实。
+BaoStock：已生成核心公司收益窗口、相对沪深300表现、估值和流动性代理。
+SHFE / INE：通过 AKShare 访问入口接入，事实保留 sourcePublisher、accessProvider、collector、endpoint 和字段口径；期货、仓单和基差必须按目标金属过滤，不能把非有色样本行当成有色事实。
+World Bank：public API 接入，作为年度宏观背景；部分指标无记录时写入 unavailable_observation。
+UN Comtrade：使用 period / flow / direct HTTP fallback，成功时作为滞后贸易线索，失败时写入 unavailable_observation。
+```
+
+N57b / N57c 后的 active/frozen 口径：
+
+```text
+active：FRED、BaoStock、AKShare 采集到且通过 endpoint 级校验和目标品种匹配的数据。
+frozen：World Bank、UN Comtrade、NBS、USGS、CNINFO、SMM、GACC 等当前不进比赛主路径。
+```
+
+frozen 不等于删除。frozen 源仍可保留在 source registry、历史 source probe、文档和后续候选计划里，但不得进入当前：
+
+```text
+round evidence pack 主事实。
+agent evidence slice。
+N59 accepted evidence。
+coverage report 的 active 覆盖统计。
+Web 主审计可采信事实。
 ```
 
 比赛运行时仍读取：
@@ -361,3 +378,87 @@ N57 前置探测的当前结论：
 | UN Comtrade | `un_comtrade_python_package_v1` / direct HTTP | `usable_with_cap` | 2025 可能无记录，2024 指定 HS / flow 可返回；滞后贸易线索。 |
 
 任何进入 N57 的 fact 都不得省略来源链。如果通过 AKShare 抽取 SHFE / INE / GFEX，事实必须保留原交易所或行情发布方、接入提供方、采集器、endpoint、字段、日期和变换口径。质量等级由具体 endpoint 与字段稳定性决定，不由“AKShare”这个名字一刀切决定。
+
+## 11. N57b / N57c 数据源收敛契约
+
+N57b 是 AKShare endpoint 广探测，已输出 endpoint 级 JSON 和人类报告；N57c 是三主源 active fact bank 覆盖重建。它们不新增比赛 runtime 规则，也不改 N58 stance / challenge 结构。
+
+N57b 输出：
+
+```text
+AKShare endpoint catalog。
+每个 endpoint 的 sourcePublisher、endpointName、testedParams、returnedFields、returnedRows、samplePeriod、frequency、entityCoverage。
+每个 endpoint 的 requiredEvidenceKey 映射。
+每个 endpoint 的 decisionForN57c：ready_for_fact_bank / usable_with_cap / candidate_only / unavailable / blocked。
+```
+
+N57c 输出：
+
+```text
+覆盖原 fact bank latest.json。
+覆盖 round-evidence-packs.json。
+coverage-report 只按 active 三主源计算。
+sourceStatus 区分 active / frozen。
+World Bank / UN Comtrade 从当前比赛主路径冻结。
+```
+
+三主源职责：
+
+```text
+FRED：全球金属价格锚和价格动量派生。
+BaoStock：A 股有色公司池、行情、估值、相对表现和可取财报字段。
+AKShare：期货、现货、行业/板块、资金/交易、公司基本面和其他公开 endpoint 的广覆盖入口。
+```
+
+N57c 必须补的结构欠账：
+
+```text
+每条 fact 必须有顶层 entity 字段，不能只把实体藏在 evidenceId 或 statementZh。
+每条 AKShare fact 必须有 sourcePublisher / accessProvider / collector / endpoint / fieldDefinitions；期货、仓单和基差类 fact 还必须保留 targetSymbol / targetNameZh / matchedRecordCount。
+每条 fact 必须保留 allowedClaimTypes / notAllowedClaimTypes / interpretationHint / scoreCapPolicy。
+```
+
+## 12. N57c 目标品种匹配补丁契约
+
+```text
+端点成功不等于目标金属事实成功。
+SHFE 日行情 / 结算必须按 CU、AL、ZN、NI、SN、PB、AU、AG 拆成单品种事实。
+SHFE 仓单必须用 VARID / VARNAME 匹配目标品种；沥青、纸浆、螺纹钢等非有色样本不得进入有色事实。
+INE 国际铜必须匹配 BC；如果端点只返回 SC、EC 等其他合约，只能写 unavailable。
+现货 / 基差入口必须按目标品种拆分，BC 缺失时写缺口，不用其他品种顶替。
+coverage-report 和 round-evidence-packs 只能按匹配后的 active facts 统计和选择。
+```
+
+## 13. N57c ????????????????
+
+N57c ????????????????????????????????????????? active fact bank ???????
+
+```text
+data/materials/generated/finance/fact-bank/dust2-nonferrous/latest.json
+```
+
+??????????
+
+```text
+BaoStock????? A ??????1/3/6/12 ?????????300?????PE/PB/PS/PCF ?????????
+AKShare / Sina Finance??? stock_financial_abstract ????????????????????????????ROE?????????????????????EPS ???? facts?
+```
+
+??????? facts ?????
+
+```text
+sourcePublisher ??? Sina Finance ? BaoStock ?????????? AKShare?
+accessProvider ??? AKShare?
+collector ??? akshare_python_package_v0?
+???????? earnings_transmission_proxy?company_quality_proxy?valuation_proxy?risk_reward_boundary ??????
+???? company_earnings_confirmed?product_margin_confirmed?mine_output_confirmed?cost_curve_confirmed?trade_flow_confirmed?
+```
+
+???????
+
+```text
+data/materials/generated/finance/fact-bank/dust2-nonferrous/company-fundamental-facts.json
+data/materials/generated/finance/fact-bank/dust2-nonferrous/company-profile-facts.json
+```
+
+`round-evidence-packs.json` ??? / ?? / ???????????????????? facts??? `company_financial_abstract_table_summary` ?????????????????? agent evidence slice?

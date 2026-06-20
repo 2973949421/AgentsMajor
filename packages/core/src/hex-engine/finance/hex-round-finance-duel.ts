@@ -32,6 +32,43 @@ export interface HexFinanceJudgeLedger {
   prohibitedClaims: string[];
 }
 
+export type HexFinanceAllowedStance =
+  | "bullish"
+  | "bearish"
+  | "neutral"
+  | "structural"
+  | "conditional_bullish"
+  | "conditional_bearish"
+  | "no_trade";
+
+export interface HexFinanceRequiredEvidenceItem {
+  requiredKey: string;
+  requiredForClaimTypes: string[];
+  minimumFactCount: number;
+  preferredSources: string[];
+  fallbackSources: string[];
+  missingEffect: string;
+  notWinCondition: true;
+}
+
+export interface HexFinanceChallengePolicy {
+  mustTargetClaimId: true;
+  allowedChallengeTypes: string[];
+  invalidChallengePatterns: string[];
+  missingEvidenceCanOnlyCap: true;
+}
+
+export interface HexFinanceDecisionQuestion {
+  question: string;
+  decisionObject: string;
+  horizon: string;
+  benchmark: string;
+  allowedStance: HexFinanceAllowedStance[];
+  requiredOutput: string[];
+  requiredEvidenceSchema: HexFinanceRequiredEvidenceItem[];
+  challengePolicy: HexFinanceChallengePolicy;
+}
+
 export interface HexFinanceSideSwapPolicy {
   topicCycleRoundCount?: number;
   topicIndexFormula?: string;
@@ -51,8 +88,18 @@ export interface HexRoundFinanceEvidencePack {
   roundNumber: number;
   roundKey: string;
   topicTitle: string;
+  decisionQuestion: string;
+  decisionObject: string;
+  horizon: string;
+  benchmark: string;
+  allowedStance: HexFinanceAllowedStance[];
+  requiredOutput: string[];
+  requiredEvidenceSchema: HexFinanceRequiredEvidenceItem[];
+  challengePolicy: HexFinanceChallengePolicy;
   defenseThesisFocus: string;
   attackChallengeFocus: string;
+  legacyDefenseThesisFocus?: string;
+  legacyAttackChallengeFocus?: string;
   requiredSources: string[];
   optionalSources: string[];
   facts: HexFinanceEvidenceFact[];
@@ -78,8 +125,18 @@ export interface HexRoundFinanceTopic {
   roundNumber: number;
   roundKey: string;
   topicTitle: string;
+  decisionQuestion: string;
+  decisionObject: string;
+  horizon: string;
+  benchmark: string;
+  allowedStance: HexFinanceAllowedStance[];
+  requiredOutput: string[];
+  requiredEvidenceSchema: HexFinanceRequiredEvidenceItem[];
+  challengePolicy: HexFinanceChallengePolicy;
   defenseThesisFocus: string;
   attackChallengeFocus: string;
+  legacyDefenseThesisFocus?: string;
+  legacyAttackChallengeFocus?: string;
 }
 
 export interface HexTeamFinanceThesis {
@@ -128,6 +185,7 @@ export interface HexRoundFinanceDuel {
   attackTeamId: string;
   defenseTeamId: string;
   topic: HexRoundFinanceTopic;
+  decisionQuestion: HexFinanceDecisionQuestion;
   defenseThesis: HexTeamFinanceThesis;
   attackChallenge: HexTeamFinanceChallenge;
   agentAssignments: HexAgentFinanceAssignment[];
@@ -169,6 +227,15 @@ export interface BuildHexRoundFinanceDuelInput {
 }
 
 const defaultEvidencePath = "data/materials/generated/finance/maps/dust2-nonferrous/round-evidence-packs.json";
+const requiredAllowedStance: HexFinanceAllowedStance[] = [
+  "bullish",
+  "bearish",
+  "neutral",
+  "structural",
+  "conditional_bullish",
+  "conditional_bearish",
+  "no_trade"
+];
 
 export function buildHexRoundFinanceDuel(input: BuildHexRoundFinanceDuelInput): HexRoundFinanceDuel {
   const aggregate = input.evidenceAggregate ?? loadHexRoundFinanceEvidenceAggregate({
@@ -180,6 +247,7 @@ export function buildHexRoundFinanceDuel(input: BuildHexRoundFinanceDuelInput): 
     evidenceAggregate: aggregate
   });
   const pack = topicSelection.pack;
+  const decisionQuestion = buildDecisionQuestion(pack);
   const defenseThesis = buildDefenseThesis({
     roundNumber: input.roundNumber,
     defenseTeamId: input.defenseTeamId,
@@ -211,9 +279,20 @@ export function buildHexRoundFinanceDuel(input: BuildHexRoundFinanceDuelInput): 
       roundNumber: pack.roundNumber,
       roundKey: pack.roundKey,
       topicTitle: pack.topicTitle,
+      decisionQuestion: pack.decisionQuestion,
+      decisionObject: pack.decisionObject,
+      horizon: pack.horizon,
+      benchmark: pack.benchmark,
+      allowedStance: [...pack.allowedStance],
+      requiredOutput: [...pack.requiredOutput],
+      requiredEvidenceSchema: pack.requiredEvidenceSchema.map((item) => ({ ...item })),
+      challengePolicy: { ...pack.challengePolicy },
       defenseThesisFocus: pack.defenseThesisFocus,
-      attackChallengeFocus: pack.attackChallengeFocus
+      attackChallengeFocus: pack.attackChallengeFocus,
+      ...(pack.legacyDefenseThesisFocus ? { legacyDefenseThesisFocus: pack.legacyDefenseThesisFocus } : {}),
+      ...(pack.legacyAttackChallengeFocus ? { legacyAttackChallengeFocus: pack.legacyAttackChallengeFocus } : {})
     },
+    decisionQuestion,
     defenseThesis,
     attackChallenge,
     agentAssignments,
@@ -244,6 +323,8 @@ export function buildHexRoundFinanceDuel(input: BuildHexRoundFinanceDuelInput): 
       notes: [
         "finance_duel_replaces_business_prompt_semantics",
         "businessDuel_is_retained_only_for_trace_compatibility",
+        "n56_decision_question_contract_active",
+        "defenseThesis_attackChallenge_are_legacy_compatibility_names",
         ...(topicSelection.overtimeUnsupported ? ["overtime_not_defined_for_finance_duel_v1"] : [])
       ]
     }
@@ -308,6 +389,11 @@ export function validateHexRoundFinanceDuel(duel: HexRoundFinanceDuel): HexRound
     duel.source,
     duel.topic.roundKey,
     duel.topic.topicTitle,
+    duel.topic.decisionQuestion,
+    duel.decisionQuestion.question,
+    duel.decisionQuestion.decisionObject,
+    duel.decisionQuestion.horizon,
+    duel.decisionQuestion.benchmark,
     duel.topic.defenseThesisFocus,
     duel.topic.attackChallengeFocus,
     duel.defenseThesis.thesisId,
@@ -326,6 +412,17 @@ export function validateHexRoundFinanceDuel(duel: HexRoundFinanceDuel): HexRound
   }
   if (duel.evidence.promptFacts.length === 0) {
     throw new Error("hex_finance_duel_missing_prompt_facts");
+  }
+  for (const stance of requiredAllowedStance) {
+    if (!duel.decisionQuestion.allowedStance.includes(stance)) {
+      throw new Error(`hex_finance_duel_missing_allowed_stance:${stance}`);
+    }
+  }
+  if (duel.decisionQuestion.requiredEvidenceSchema.length === 0) {
+    throw new Error("hex_finance_duel_missing_required_evidence_schema");
+  }
+  if (!duel.decisionQuestion.challengePolicy.mustTargetClaimId || !duel.decisionQuestion.challengePolicy.missingEvidenceCanOnlyCap) {
+    throw new Error("hex_finance_duel_invalid_challenge_policy");
   }
   const assignmentIds = new Set<string>();
   for (const assignment of duel.agentAssignments) {
@@ -351,12 +448,13 @@ function buildDefenseThesis(input: {
   defenseTeamId: string;
   pack: HexRoundFinanceEvidencePack;
 }): HexTeamFinanceThesis {
+  const decisionSummary = buildDecisionSummary(input.pack);
   return {
     thesisId: `finance_thesis_${input.roundNumber}_${input.defenseTeamId}_${input.pack.roundKey}`,
     teamId: input.defenseTeamId,
     side: "defense",
     topicKey: input.pack.roundKey,
-    thesis: input.pack.defenseThesisFocus,
+    thesis: `立场方任务：${decisionSummary} ${input.pack.defenseThesisFocus}`,
     keyAssumptions: input.pack.promptFacts.slice(0, 3).map((fact) => fact.shortText),
     evidenceRefs: input.pack.promptFacts.slice(0, 5).map((fact) => fact.evidenceId),
     riskBoundary: buildRiskBoundary(input.pack)
@@ -371,12 +469,13 @@ function buildAttackChallenge(input: {
   const challengePoints = input.pack.judgeLedger.cappedClaims.length > 0
     ? input.pack.judgeLedger.cappedClaims.slice(0, 3)
     : input.pack.missingEvidence.slice(0, 3).map((item) => `缺少 ${item}，相关主张需要降级。`);
+  const decisionSummary = buildDecisionSummary(input.pack);
   return {
     challengeId: `finance_challenge_${input.roundNumber}_${input.attackTeamId}_${input.pack.roundKey}`,
     teamId: input.attackTeamId,
     side: "attack",
     topicKey: input.pack.roundKey,
-    thesis: input.pack.attackChallengeFocus,
+    thesis: `挑战方任务：${decisionSummary} ${input.pack.attackChallengeFocus}`,
     challengePoints,
     requiredDefense: input.pack.missingEvidence.slice(0, 4),
     evidenceRefs: input.pack.promptFacts.slice(0, 5).map((fact) => fact.evidenceId)
@@ -391,8 +490,8 @@ function buildAgentAssignment(input: {
 }): HexAgentFinanceAssignment {
   const role = input.agent.role?.trim() || "unknown";
   const sideTask = input.agent.side === "attack"
-    ? `质疑：${input.pack.attackChallengeFocus}`
-    : `自证：${input.pack.defenseThesisFocus}`;
+    ? `挑战：${input.pack.attackChallengeFocus}`
+    : `立场：${input.pack.defenseThesisFocus}`;
   return {
     assignmentId: `finance_assignment_${input.agent.agentId}_${input.pack.roundKey}`,
     agentId: input.agent.agentId,
@@ -401,14 +500,38 @@ function buildAgentAssignment(input: {
     role,
     topicKey: input.pack.roundKey,
     ...(input.agent.side === "attack" ? { linkedChallengeId: input.attackChallengeId } : { linkedThesisId: input.defenseThesisId }),
-    financeTask: `${sideTask} / 角色 ${role} 必须用本回合证据包内事实承载观点。`,
+    financeTask: `${sideTask} / 本回合决策题：${input.pack.decisionQuestion} / 角色 ${role} 必须在允许立场内表达判断或挑战具体主张。`,
     evidenceRules: [
       "只能引用 financeDuel.evidence.promptFacts 和 evidenceRefs。",
+      "缺失证据只能触发置信度上限、score cap 或投影限制，不能直接当作胜利理由。",
+      "挑战方必须攻击具体 claimId、证据缺口、代理错配、时间窗口、推理桥或风险收益，不能只说数据不足。",
       "不能把代理事实冒充完整行业数据库结论。",
       "不能写最终胜负、击杀、伤害、经济变化或数据库事实。",
       "缺失证据必须作为风险边界，不得用想象补齐。"
     ]
   };
+}
+
+function buildDecisionQuestion(pack: HexRoundFinanceEvidencePack): HexFinanceDecisionQuestion {
+  return {
+    question: pack.decisionQuestion,
+    decisionObject: pack.decisionObject,
+    horizon: pack.horizon,
+    benchmark: pack.benchmark,
+    allowedStance: [...pack.allowedStance],
+    requiredOutput: [...pack.requiredOutput],
+    requiredEvidenceSchema: pack.requiredEvidenceSchema.map((item) => ({ ...item })),
+    challengePolicy: {
+      mustTargetClaimId: pack.challengePolicy.mustTargetClaimId,
+      allowedChallengeTypes: [...pack.challengePolicy.allowedChallengeTypes],
+      invalidChallengePatterns: [...pack.challengePolicy.invalidChallengePatterns],
+      missingEvidenceCanOnlyCap: pack.challengePolicy.missingEvidenceCanOnlyCap
+    }
+  };
+}
+
+function buildDecisionSummary(pack: HexRoundFinanceEvidencePack): string {
+  return `围绕“${pack.decisionQuestion}”，可选立场包括 ${pack.allowedStance.join(" / ")}，缺失证据只允许降权或限制结论强度。`;
 }
 
 function buildRiskBoundary(pack: HexRoundFinanceEvidencePack): string {

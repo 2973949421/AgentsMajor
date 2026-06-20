@@ -176,6 +176,13 @@ N55 第一版仍然没有真实 phase0 开局输出层，只是把 phase action 
 - 大段复述 phase0 输出会触发 `phase_repeated_round_thesis`。
 - Web 默认展示“本局真实开局输出”。
 
+展示收窄补丁：
+
+- `/hex-lab/match` 审计抽屉主视图只保留金融攻防审计。
+- 主视图按选手折叠，先看 Phase0 真实开局输出和买型裁剪，再看当前 phase 的真实行动输出。
+- 系统输入卡、artifact id、raw JSON、裁判调试细节默认折叠，不再和 agent 输出混在一起。
+- 如果某个 agent 没有可消费真实输出，页面必须显示缺失或失败原因，不能用系统输入卡或 fallback 文案补成输出。
+
 当前验收口径：
 
 ```text

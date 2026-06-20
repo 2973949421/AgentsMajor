@@ -6,6 +6,33 @@
     "roundNumber": 0,
     "roundKey": "",
     "title": "",
+    "decisionQuestion": "",
+    "decisionObject": "",
+    "horizon": "",
+    "benchmark": "",
+    "allowedStance": [],
+    "requiredOutput": [],
+    "requiredEvidenceSchema": [
+      {
+        "requiredKey": "",
+        "requiredForClaimTypes": [],
+        "minimumFactCount": 0,
+        "preferredSources": [],
+        "fallbackSources": [],
+        "missingEffect": "",
+        "notWinCondition": true
+      }
+    ],
+    "challengePolicy": {
+      "mustTargetClaimId": true,
+      "allowedChallengeTypes": [],
+      "invalidChallengePatterns": [],
+      "missingEvidenceCanOnlyCap": true
+    },
+    "defenseThesisFocus": "",
+    "attackChallengeFocus": "",
+    "legacyDefenseThesisFocus": "",
+    "legacyAttackChallengeFocus": "",
     "facts": [
       {
         "factId": "F001",
@@ -51,4 +78,3 @@
     "Missing evidence and score caps must be carried into judge audit."
   ]
 }
-

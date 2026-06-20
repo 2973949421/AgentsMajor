@@ -29,6 +29,12 @@ describe("Hex round runner", () => {
     expect(trace.audit.providerMode).toBe("fixture");
     expect(trace.audit.totalLlmCallsAttempted).toBeGreaterThan(0);
     expect(trace.roundStartAgentOutputs).toHaveLength(10);
+    expect(trace.roundStartAgentOutputs.filter((output) => output.cardKind === "stance")).toHaveLength(5);
+    expect(trace.roundStartAgentOutputs.filter((output) => output.cardKind === "challenge")).toHaveLength(5);
+    expect(trace.roundStartAgentOutputs.every((output) => output.allowedPhaseRefs)).toBe(true);
+    expect(trace.roundStartAgentOutputs
+      .filter((output) => output.cardKind === "challenge")
+      .every((output) => output.challengeCard?.targetClaimId.startsWith("claim_"))).toBe(true);
     expect(trace.audit.roundStartLlmCallsAttempted).toBe(10);
     expect(trace.phases.every((phase) => phase.commandResult.actions.length === 10)).toBe(true);
     expect(trace.phases.flatMap((phase) => phase.commandResult.actions).every((action) => action.pathCellIds.length > 0)).toBe(true);

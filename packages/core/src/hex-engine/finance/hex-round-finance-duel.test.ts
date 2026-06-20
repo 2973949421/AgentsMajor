@@ -18,6 +18,9 @@ describe("Hex round finance duel", () => {
 
     expect(duel.source).toBe("hex_round_finance_duel");
     expect(duel.topic.roundKey).toBe("global_metal_price_signal");
+    expect(duel.decisionQuestion.question).toContain("是否足以支持");
+    expect(duel.decisionQuestion.allowedStance).toContain("structural");
+    expect(duel.decisionQuestion.challengePolicy.missingEvidenceCanOnlyCap).toBe(true);
     expect(duel.defenseThesis.teamId).toBe("team_ct");
     expect(duel.attackChallenge.teamId).toBe("team_t");
     expect(duel.evidence.promptFacts.length).toBeGreaterThan(0);
@@ -100,8 +103,39 @@ function createAggregate(): HexRoundFinanceEvidenceAggregate {
         roundNumber,
         roundKey: `topic_${roundNumber}`,
         topicTitle: `主题 ${roundNumber}`,
-        defenseThesisFocus: `守方自证 ${roundNumber}`,
-        attackChallengeFocus: `攻方质疑 ${roundNumber}`,
+        decisionQuestion: `开放决策题 ${roundNumber}`,
+        decisionObject: "测试决策对象",
+        horizon: "1-3个月",
+        benchmark: "测试基准",
+        allowedStance: [
+          "bullish",
+          "bearish",
+          "neutral",
+          "structural",
+          "conditional_bullish",
+          "conditional_bearish",
+          "no_trade"
+        ],
+        requiredOutput: ["选择允许立场", "说明证据和边界"],
+        requiredEvidenceSchema: [{
+          requiredKey: "test_required_key",
+          requiredForClaimTypes: ["test_claim"],
+          minimumFactCount: 1,
+          preferredSources: ["FRED"],
+          fallbackSources: ["configured_proxy_fact"],
+          missingEffect: "缺失只能降权，不能直接赢。",
+          notWinCondition: true
+        }],
+        challengePolicy: {
+          mustTargetClaimId: true,
+          allowedChallengeTypes: ["evidence_gap", "proxy_mismatch"],
+          invalidChallengePatterns: ["只说数据不足"],
+          missingEvidenceCanOnlyCap: true
+        },
+        defenseThesisFocus: `立场任务 ${roundNumber}`,
+        attackChallengeFocus: `挑战任务 ${roundNumber}`,
+        legacyDefenseThesisFocus: `守方自证 ${roundNumber}`,
+        legacyAttackChallengeFocus: `攻方质疑 ${roundNumber}`,
         requiredSources: ["fred"],
         optionalSources: [],
         facts: [{

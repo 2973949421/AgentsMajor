@@ -43,6 +43,24 @@ def _recent_trade_dates(limit: int = 8) -> list[str]:
     return dates
 
 
+def _historical_trade_dates(limit: int = 3) -> list[str]:
+    dates = _recent_trade_dates(limit)
+    today = dt.date.today()
+    for years_back in [1, 2]:
+        anchor = today.replace(year=today.year - years_back)
+        offset = 0
+        added = 0
+        while added < limit and offset < 15:
+            day = anchor - dt.timedelta(days=offset)
+            if day.weekday() < 5:
+                text = day.strftime("%Y%m%d")
+                if text not in dates:
+                    dates.append(text)
+                    added += 1
+            offset += 1
+    return dates
+
+
 def _to_records(value: Any) -> list[dict[str, Any]]:
     if value is None:
         return []
@@ -146,7 +164,7 @@ kwargs = json.loads(sys.argv[2])
 import akshare as ak
 value = getattr(ak, sys.argv[1])(**kwargs)
 if hasattr(value, "head"):
-    value = value.head(80)
+    value = value.head(500)
 if hasattr(value, "to_dict"):
     records = value.to_dict("records")
 elif isinstance(value, list):
@@ -168,7 +186,7 @@ elif isinstance(value, dict):
 else:
     records = []
 clean = []
-for row in records[:80]:
+for row in records[:500]:
     clean.append({str(key): None if value is None else str(value) for key, value in row.items()})
 print(json.dumps(clean, ensure_ascii=False))
 """
@@ -204,7 +222,7 @@ def _build_exchange_fact(
     statement_prefix: str,
 ) -> dict[str, Any]:
     matched = _matching_records(records, symbols)
-    sample = matched[0] if matched else records[0]
+    sample = matched[-1] if matched else records[-1]
     symbol_value = _pick(sample, ["symbol", "合约", "品种", "variety", "INSTRUMENTID", "contract"])
     price_value = _pick(sample, ["close", "收盘价", "settlement", "结算价", "price", "最新价"])
     volume_value = _pick(sample, ["volume", "成交量", "成交", "turnover", "持仓量", "open_interest"])
@@ -257,17 +275,25 @@ def collect_akshare_futures_facts(configs: dict[str, Any]) -> dict[str, Any]:
     facts: list[dict[str, Any]] = []
     warnings: list[str] = []
     confidence = confidence_for_tier(configs["policy"], "market_data_proxy")
-    dates = _recent_trade_dates()
+    dates = _historical_trade_dates()
 
     shfe_calls: list[tuple[str, Any]] = []
-    for date in dates[:1]:
+    for date in dates:
         shfe_calls.extend(
             [
                 (f"get_shfe_daily:{date}", lambda date=date: _run_akshare_endpoint("get_shfe_daily", {"date": date})),
                 (f"futures_settle_shfe:{date}", lambda date=date: _run_akshare_endpoint("futures_settle_shfe", {"date": date})),
             ]
         )
-    shfe_calls.append(("get_receipt", lambda: _run_akshare_endpoint("get_receipt", {"start_date": dates[-1], "end_date": dates[0], "vars_list": SHFE_SYMBOLS})))
+    for window_start in [0, 3, 6]:
+        window = dates[window_start : window_start + 3]
+        if window:
+            shfe_calls.append(
+                (
+                    f"get_receipt:{window[-1]}:{window[0]}",
+                    lambda window=window: _run_akshare_endpoint("get_receipt", {"start_date": window[-1], "end_date": window[0], "vars_list": SHFE_SYMBOLS}),
+                )
+            )
     shfe_endpoint, shfe_records, shfe_error = _call_first_success(shfe_calls)
     if shfe_records:
         facts.append(
@@ -299,7 +325,7 @@ def collect_akshare_futures_facts(configs: dict[str, Any]) -> dict[str, Any]:
         )
 
     ine_calls: list[tuple[str, Any]] = []
-    for date in dates[:1]:
+    for date in dates:
         ine_calls.append((f"futures_settle_ine:{date}", lambda date=date: _run_akshare_endpoint("futures_settle_ine", {"date": date})))
     ine_calls.append(("futures_zh_daily_sina:BC0", lambda: _run_akshare_endpoint("futures_zh_daily_sina", {"symbol": "BC0"})))
     ine_endpoint, ine_records, ine_error = _call_first_success(ine_calls)

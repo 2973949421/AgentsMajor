@@ -45,6 +45,7 @@ export interface HexValidatedAgentAction {
   businessIntent: string;
   briefRefId?: string;
   roundStartOutputId?: string;
+  phase0RefId?: string;
   actionRationaleZh?: string;
   tacticalIntent?: string;
   riskNotes: string[];
@@ -112,6 +113,9 @@ export function validateHexAgentActionDraft(input: ValidateHexAgentActionDraftIn
   }
   if (input.draft.roundStartOutputId) {
     validated.roundStartOutputId = input.draft.roundStartOutputId;
+  }
+  if (input.draft.phase0RefId) {
+    validated.phase0RefId = input.draft.phase0RefId;
   }
   if (input.draft.actionRationaleZh) {
     validated.actionRationaleZh = input.draft.actionRationaleZh;

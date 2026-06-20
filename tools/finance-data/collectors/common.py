@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import datetime as dt
@@ -10,6 +10,44 @@ from typing import Any
 
 
 PARSER_VERSION = "finance-fact-bank-collector-v2"
+
+
+CLAIM_TYPE_TO_REQUIRED_KEYS = {
+    "commodity_trend": ["commodity_price_context", "commodity_price_momentum"],
+    "commodity_price_momentum": ["commodity_price_momentum"],
+    "commodity_price_context": ["commodity_price_context"],
+    "global_price_anchor": ["commodity_price_context"],
+    "valuation_vs_commodity_signal": ["commodity_price_context", "valuation_proxy"],
+    "commodity_to_equity_transmission": ["equity_transmission_proxy"],
+    "trade_price_consistency": ["commodity_price_context"],
+    "china_supply_demand": ["china_supply_demand_proxy"],
+    "inventory_pressure": ["domestic_inventory_or_spot_proxy"],
+    "risk_reward": ["risk_reward_boundary"],
+    "risk_reward_boundary": ["risk_reward_boundary"],
+    "a_share_relative_performance": ["equity_market_reaction"],
+    "market_confirmation": ["equity_market_reaction"],
+    "valuation_support": ["valuation_proxy", "valuation_level"],
+    "price_in_assessment": ["valuation_level"],
+    "earnings_transmission_proxy": ["earnings_transmission_proxy"],
+    "macro_demand_proxy": ["macro_demand_proxy"],
+    "relative_allocation_signal": ["commodity_price_momentum", "portfolio_stance_evidence_mix"],
+    "a_share_relative_allocation": ["equity_transmission_proxy", "portfolio_stance_evidence_mix"],
+    "commodity_to_company_earnings": ["earnings_transmission_proxy"],
+    "profit_sensitivity": ["earnings_transmission_proxy"],
+    "company_quality_proxy": ["earnings_transmission_proxy", "risk_reward_boundary"],
+    "supply_demand_proxy": ["china_supply_demand_proxy"],
+    "trade_flow_signal": ["trade_flow_proxy"],
+    "risk_boundary": ["risk_reward_boundary"],
+    "executability": ["risk_execution_rule", "risk_reward_boundary"],
+    "invalidating_condition": ["risk_reward_boundary"],
+    "confidence_cap": ["declared_missing_evidence", "missing_evidence_policy"],
+    "no_trade_condition": ["declared_missing_evidence"],
+    "projection_limit": ["missing_evidence_policy"],
+    "portfolio_allocation": ["portfolio_stance_evidence_mix"],
+    "position_sizing": ["portfolio_stance_evidence_mix", "risk_reward_boundary"],
+    "limited_positive_stance": ["available_positive_proxy"],
+    "limited_negative_stance": ["available_positive_proxy"],
+}
 
 
 def repo_root() -> Path:
@@ -48,6 +86,13 @@ def to_float(value: Any) -> float | None:
     try:
         if value in (None, "", ".", "None", "nan", "NaN"):
             return None
+        if isinstance(value, str):
+            cleaned = value.strip().replace(",", "")
+            if cleaned in ("", ".", "--", "-", "None", "nan", "NaN"):
+                return None
+            if cleaned.endswith("%"):
+                cleaned = cleaned[:-1].strip()
+            return float(cleaned)
         return float(value)
     except (TypeError, ValueError):
         return None
@@ -137,6 +182,13 @@ def evidence_id(source: str, domain: str, entity: str, metric: str, period: str,
     return f"EVID:{source}:{domain}:{entity}:{clean_metric}:{period}:{locator}:{raw_hash}"
 
 
+def required_keys_for_claim_types(claim_types: list[str] | None) -> list[str]:
+    result: set[str] = set()
+    for claim_type in claim_types or []:
+        result.update(CLAIM_TYPE_TO_REQUIRED_KEYS.get(claim_type, []))
+    return sorted(result)
+
+
 def observation_fact(
     *,
     fact_id: str,
@@ -165,6 +217,9 @@ def observation_fact(
     not_allowed_claim_types: list[str] | None = None,
     interpretation_hint: str | None = None,
     score_cap_policy: str | None = None,
+    frequency: str = "unspecified",
+    required_evidence_keys: list[str] | None = None,
+    active_source_status: str = "active",
 ) -> dict[str, Any]:
     raw_hash = hash8(
         {
@@ -186,6 +241,9 @@ def observation_fact(
         "unit": unit,
         "period": period,
         "source": source,
+        "domain": domain,
+        "entity": entity,
+        "locator": locator,
         "sourceType": source_type,
         "sourcePublisher": source_publisher or source,
         "accessProvider": access_provider or collector,
@@ -202,6 +260,9 @@ def observation_fact(
         "notAllowedClaimTypes": not_allowed_claim_types or [],
         "interpretationHint": interpretation_hint or "",
         "scoreCapPolicy": score_cap_policy or "",
+        "requiredEvidenceKeys": required_evidence_keys or required_keys_for_claim_types(allowed_claim_types),
+        "frequency": frequency,
+        "activeSourceStatus": active_source_status,
         "policyNotes": policy_notes,
         "dataMode": "offline_observation_fact",
         "observedAt": observed_at,
@@ -210,7 +271,6 @@ def observation_fact(
     if extra:
         fact.update(extra)
     return fact
-
 
 def unavailable_fact(
     *,
@@ -236,6 +296,9 @@ def unavailable_fact(
     not_allowed_claim_types: list[str] | None = None,
     interpretation_hint: str | None = None,
     score_cap_policy: str | None = None,
+    frequency: str = "unavailable",
+    required_evidence_keys: list[str] | None = None,
+    active_source_status: str = "active",
 ) -> dict[str, Any]:
     raw_hash = hash8(
         {
@@ -254,6 +317,9 @@ def unavailable_fact(
         "unit": "",
         "period": "unavailable",
         "source": source,
+        "domain": domain,
+        "entity": entity,
+        "locator": locator,
         "sourceType": source_type,
         "sourcePublisher": source_publisher or source,
         "accessProvider": access_provider or collector,
@@ -270,6 +336,9 @@ def unavailable_fact(
         "notAllowedClaimTypes": not_allowed_claim_types or [],
         "interpretationHint": interpretation_hint or "",
         "scoreCapPolicy": score_cap_policy or "",
+        "requiredEvidenceKeys": required_evidence_keys or required_keys_for_claim_types(allowed_claim_types),
+        "frequency": frequency,
+        "activeSourceStatus": active_source_status,
         "policyNotes": policy_notes,
         "dataMode": "unavailable_observation",
         "unavailableReason": unavailable_reason,
@@ -277,11 +346,10 @@ def unavailable_fact(
         "generatedAt": utc_now(),
     }
 
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Collect Finance Major fact bank snapshots.")
     parser.add_argument("--map", default="dust2-nonferrous")
-    parser.add_argument("--core-limit", type=int, default=5)
+    parser.add_argument("--core-limit", type=int, default=35)
     parser.add_argument("--fred-limit", type=int, default=36)
     parser.add_argument("--comtrade-period", default=str(dt.datetime.now().year - 1))
     return parser.parse_args()

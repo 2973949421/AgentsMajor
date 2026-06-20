@@ -1,4 +1,4 @@
-import type { HexCell } from "@agent-major/shared";
+﻿import type { HexCell } from "@agent-major/shared";
 import type { HexValidatedAgentAction } from "../action/index.js";
 import type { HexEconomyCombatEvidence } from "../economy/index.js";
 import type { HexPhaseMemoryEvent, HexPhaseId, HexSide } from "../state/index.js";
@@ -28,6 +28,26 @@ export type HexCombatFinanceVerdict =
   | "thesis_defended"
   | "challenge_landed"
   | "contested_no_finance_resolution";
+
+export type HexCombatFinancialResult =
+  | "stance_survives"
+  | "challenge_breaks_stance"
+  | "contested"
+  | "no_financial_win_allowed";
+
+export type HexCombatEffectAllowed =
+  | "no_effect"
+  | "minor_delay"
+  | "pressure"
+  | "force_reposition"
+  | "map_control"
+  | "possible_kill";
+
+export interface HexCombatFinanceScoreCapAudit {
+  condition: string;
+  reason: string;
+  maxScore?: number;
+}
 
 export interface HexCombatParticipant {
   agentId: string;
@@ -165,9 +185,20 @@ export interface HexCombatFinanceEvidenceAdoption {
   rejectedEvidenceRefs: string[];
   missingEvidenceApplied: string[];
   scoreCapRefs: string[];
+  scoreCaps: HexCombatFinanceScoreCapAudit[];
+  acceptedClaims: string[];
+  rejectedClaims: string[];
+  acceptedChallenges: string[];
+  rejectedChallenges: string[];
+  sideScore: number;
+  stanceScore: number;
+  challengeScore: number;
+  financialResult: HexCombatFinancialResult;
+  combatEffectAllowed: HexCombatEffectAllowed[];
   adoptionReasons: string[];
   rejectionReasons: string[];
   financeReasonZh: string[];
+  auditReasons: string[];
 }
 
 export interface HexCombatEconomyAudit {
