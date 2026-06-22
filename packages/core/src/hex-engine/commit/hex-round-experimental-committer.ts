@@ -9,7 +9,7 @@ import { evaluateMapState } from "../../match/map-rules.js";
 import type { ArtifactStore } from "../../ports.js";
 import type { HexAgentCommandProgressSink } from "../action/index.js";
 import { buildHexRoundBusinessDuel } from "../business/index.js";
-import { runDust2HexRound, type HexRoundTrace } from "../round/index.js";
+import { runDust2HexRound, type HexPriorRoundTacticalSummary, type HexRoundTrace } from "../round/index.js";
 import { loadDust2HexRoundCommitContext } from "./hex-round-commit-context.js";
 import { buildHexRoundReport } from "./hex-round-report-bridge.js";
 import { writeHexRoundTraceArtifact } from "./hex-round-artifact-writer.js";
@@ -35,11 +35,13 @@ export interface CommitDust2HexRoundExperimentalInput {
 }
 
 export interface HexRoundExperimentalCommitResult {
+  commitStatus: "committed" | "invalid_round";
   round: Round;
-  roundReport: RoundReport;
+  roundReport?: RoundReport;
   hexTraceArtifact: Artifact;
   hexTrace: HexRoundTrace;
   events: Event[];
+  invalidRoundReason?: string;
 }
 
 type TransactionalRepositories = Repositories & {
@@ -94,6 +96,11 @@ async function commitDust2HexRoundExperimentalInner(
     },
     teamEconomyPlans: context.teamEconomyPlans
   });
+  const priorRoundTacticalSummaries = await loadPriorRoundTacticalSummaries({
+    repositories: input.repositories,
+    artifactStore: input.artifactStore,
+    mapGameId: context.mapGame.id
+  });
 
   const hexTrace = await runDust2HexRound({
     roundId: context.roundId,
@@ -103,6 +110,7 @@ async function commitDust2HexRoundExperimentalInner(
     activeAgents: context.runnerAgents,
     teamEconomyPlans: context.teamEconomyPlans,
     businessDuel,
+    priorRoundTacticalSummaries,
     providerMode: input.providerMode ?? "fixture",
     maxLlmCallsPerPhase: input.maxLlmCallsPerPhase ?? 10,
     artifactStore: input.artifactStore,
@@ -114,28 +122,6 @@ async function commitDust2HexRoundExperimentalInner(
     ...(input.progressSink ? { progressSink: input.progressSink } : {}),
     env: input.env ?? process.env
   });
-  const finalWinCondition = hexTrace.finalWinCondition;
-  if (!finalWinCondition.isRoundOver || !finalWinCondition.winnerTeamId || !finalWinCondition.loserTeamId || !finalWinCondition.judgeRoundWinType) {
-    throw new Error("Hex experimental round did not produce a hard final win condition; no round facts were committed.");
-  }
-
-  const winnerTeamId = finalWinCondition.winnerTeamId;
-  const loserTeamId = finalWinCondition.loserTeamId;
-  const roundWinType = finalWinCondition.judgeRoundWinType;
-  const scoreAfterRound = incrementScore(context.scoreBeforeRound, winnerTeamId, context.teamA.id);
-  const mapEvaluation = evaluateMapState(scoreAfterRound, context.roundNumber);
-  const economyDelta = calculateEconomyDelta({
-    beforeEconomy: context.beforeEconomy,
-    winnerTeamId,
-    loserTeamId,
-    teamAId: context.teamA.id,
-    teamBId: context.teamB.id,
-    roundWinType,
-    teamEconomyPlans: context.teamEconomyPlans,
-    activeA: context.activeA,
-    activeB: context.activeB
-  });
-
   const eventIds = buildHexRoundCommitEventIds(context.roundId);
   const eventBase = {
     repositories: input.repositories,
@@ -168,6 +154,54 @@ async function commitDust2HexRoundExperimentalInner(
       artifactId: hexTraceArtifact.id
     })
   );
+
+  const finalWinCondition = hexTrace.finalWinCondition;
+  if (hexTrace.audit.roundQualityStatus === "invalid_round") {
+    const failedRound: Round = {
+      ...runningRound,
+      status: "failed",
+      phase: "committing",
+      completedAt: createdAt
+    };
+    await input.repositories.rounds.save(failedRound);
+    if (context.match.status === "scheduled") {
+      await input.repositories.matches.save({ ...context.match, status: "running", startedAt: context.match.startedAt ?? createdAt });
+    }
+    return {
+      commitStatus: "invalid_round",
+      round: failedRound,
+      hexTraceArtifact,
+      hexTrace,
+      events,
+      invalidRoundReason: hexTrace.audit.roundQualitySummaryZh
+        ?? `roundQualityStatus=invalid_round; reasons=${hexTrace.audit.roundQualityReasons.join(",") || "unknown"}`
+    };
+  }
+
+  if (!finalWinCondition.isRoundOver || !finalWinCondition.winnerTeamId || !finalWinCondition.loserTeamId || !finalWinCondition.judgeRoundWinType) {
+    const qualitySummary = hexTrace.audit.roundQualityStatus && hexTrace.audit.roundQualityStatus !== "valid"
+      ? ` qualityStatus=${hexTrace.audit.roundQualityStatus}; reasons=${hexTrace.audit.roundQualityReasons.join(",")}; summary=${hexTrace.audit.roundQualitySummaryZh}`
+      : "";
+    throw new Error(`Hex experimental round did not produce a hard final win condition; no round facts were committed.${qualitySummary}; traceArtifactId=${hexTraceArtifact.id}`);
+  }
+
+  const winnerTeamId = finalWinCondition.winnerTeamId;
+  const loserTeamId = finalWinCondition.loserTeamId;
+  const roundWinType = finalWinCondition.judgeRoundWinType;
+  const scoreAfterRound = incrementScore(context.scoreBeforeRound, winnerTeamId, context.teamA.id);
+  const mapEvaluation = evaluateMapState(scoreAfterRound, context.roundNumber);
+  const economyDelta = calculateEconomyDelta({
+    beforeEconomy: context.beforeEconomy,
+    winnerTeamId,
+    loserTeamId,
+    teamAId: context.teamA.id,
+    teamBId: context.teamB.id,
+    roundWinType,
+    teamEconomyPlans: context.teamEconomyPlans,
+    activeA: context.activeA,
+    activeB: context.activeB
+  });
+
 
   const completedRound: Round = {
     ...runningRound,
@@ -244,6 +278,7 @@ async function commitDust2HexRoundExperimentalInner(
   );
 
   return {
+    commitStatus: "committed",
     round: completedRound,
     roundReport,
     hexTraceArtifact,
@@ -252,6 +287,91 @@ async function commitDust2HexRoundExperimentalInner(
   };
 }
 
+async function loadPriorRoundTacticalSummaries(input: {
+  repositories: Repositories;
+  artifactStore: ArtifactStore;
+  mapGameId: string;
+}): Promise<HexPriorRoundTacticalSummary[]> {
+  const reports = await input.repositories.roundReports.listByMapGame(input.mapGameId);
+  const traceArtifactIds = reports
+    .map((report) => report.nodeTraceArtifactId)
+    .filter((artifactId): artifactId is string => Boolean(artifactId))
+    .slice(-4);
+  const summaries: HexPriorRoundTacticalSummary[] = [];
+  for (const artifactId of traceArtifactIds) {
+    try {
+      const raw = JSON.parse(await input.artifactStore.readText(artifactId)) as unknown;
+      const trace = extractHexRoundTrace(raw);
+      if (trace) {
+        summaries.push(summarizePriorRoundTacticalTrace(trace));
+      }
+    } catch {
+      // Prior tactical memory is advisory. Missing legacy artifacts must not block a new round commit.
+    }
+  }
+  return summaries;
+}
+
+function extractHexRoundTrace(raw: unknown): HexRoundTrace | undefined {
+  if (!isRecord(raw)) {
+    return undefined;
+  }
+  const maybeTrace = isRecord(raw.trace) ? raw.trace : raw;
+  if (!isRecord(maybeTrace) || maybeTrace.source !== "hex_round_engine_trace") {
+    return undefined;
+  }
+  return maybeTrace as unknown as HexRoundTrace;
+}
+
+function summarizePriorRoundTacticalTrace(trace: HexRoundTrace): HexPriorRoundTacticalSummary {
+  const tacticalAudit = trace.audit.tacticalAudit;
+  const [fallbackAttackVariant, fallbackDefenseVariant] = splitStrategyVariant(trace.audit.strategyVariant);
+  const finalWinCondition = trace.finalWinCondition as HexRoundTrace["finalWinCondition"] & {
+    winnerSide?: unknown;
+    roundWinType?: unknown;
+    judgeRoundWinType?: unknown;
+  };
+  const summary: HexPriorRoundTacticalSummary = {
+    roundNumber: trace.roundNumber,
+    attackFocusRegions: tacticalAudit?.attackFocusRegions ?? [],
+    defenseFocusRegions: tacticalAudit?.defenseFocusRegions ?? [],
+    attackFocusPoints: [],
+    defenseFocusPoints: [],
+    bombPlanted: trace.phases.some((phase) => phase.memoryEvents.some((event) => event.type === "bomb_planted"))
+  };
+  const attackVariant = tacticalAudit?.selectedAttackVariant ?? fallbackAttackVariant;
+  const defenseVariant = tacticalAudit?.selectedDefenseVariant ?? fallbackDefenseVariant;
+  const c4SitePreference = tacticalAudit?.c4SitePreference;
+  const roundWinType = readString(finalWinCondition.roundWinType) || readString(finalWinCondition.judgeRoundWinType);
+  const winnerSide = readHexSide(finalWinCondition.winnerSide);
+  if (attackVariant) summary.attackVariant = attackVariant;
+  if (defenseVariant) summary.defenseVariant = defenseVariant;
+  if (c4SitePreference) summary.c4SitePreference = c4SitePreference;
+  if (roundWinType) summary.roundWinType = roundWinType;
+  if (winnerSide) summary.winnerSide = winnerSide;
+  if (trace.audit.roundQualityStatus) summary.roundQualityStatus = trace.audit.roundQualityStatus;
+  return summary;
+}
+
+function splitStrategyVariant(value: string | undefined): [string | undefined, string | undefined] {
+  if (!value) {
+    return [undefined, undefined];
+  }
+  const [attack, defense] = value.split("/").map((part) => part.trim()).filter((part) => part.length > 0);
+  return [attack, defense];
+}
+
+function readHexSide(value: unknown): HexPriorRoundTacticalSummary["winnerSide"] {
+  return value === "attack" || value === "defense" ? value : undefined;
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 function buildRunningRound(input: {
   roundId: string;
   mapGameId: string;

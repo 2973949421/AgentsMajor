@@ -31,11 +31,14 @@ describe("Hex round experimental committer", () => {
       enableExperimentalMode: true
     });
 
+    expect(result.commitStatus).toBe("committed");
     expect(result.round.status).toBe("completed");
     expect(result.round.roundNumber).toBe(1);
-    expect(result.roundReport.nodeTraceSource).toBe("hex_round_engine_committed");
-    expect(result.roundReport.nodeTraceArtifactId).toBe(result.hexTraceArtifact.id);
-    expect(result.roundReport.winnerTeamId).toBe(result.hexTrace.finalWinCondition.winnerTeamId);
+    expect(result.roundReport).toBeDefined();
+    const roundReport = result.roundReport!;
+    expect(roundReport.nodeTraceSource).toBe("hex_round_engine_committed");
+    expect(roundReport.nodeTraceArtifactId).toBe(result.hexTraceArtifact.id);
+    expect(roundReport.winnerTeamId).toBe(result.hexTrace.finalWinCondition.winnerTeamId);
     expect(result.hexTrace.finalWinCondition.isRoundOver).toBe(true);
 
     const storedReport = await repositories.roundReports.getByRoundId(result.round.id);
@@ -68,6 +71,46 @@ describe("Hex round experimental committer", () => {
     );
   });
 
+
+  it("stores invalid quality-gated rounds as failed trace-only attempts", async () => {
+    const repositories = createFixtureRepositories();
+    const artifactStore = new MemoryArtifactStore(repositories.artifacts);
+    await seedFixture(repositories);
+
+    const result = await commitDust2HexRoundExperimental({
+      repositories,
+      artifactStore,
+      mapGameId: "map_dust2",
+      enableExperimentalMode: true,
+      providerMode: "real",
+      env: {}
+    });
+
+    const storedRound = await repositories.rounds.getById(result.round.id);
+    const storedReport = await repositories.roundReports.getByRoundId(result.round.id);
+    const storedMap = await repositories.mapGames.getById("map_dust2");
+    const storedArtifactText = await artifactStore.readText(result.hexTraceArtifact.id);
+    const storedEvents = await repositories.events.listByRound(result.round.id);
+    const economyStates = await repositories.economyStates.listByRound(result.round.id);
+
+    expect(result.commitStatus).toBe("invalid_round");
+    expect(result.round.status).toBe("failed");
+    expect(result.round.roundReportId).toBeUndefined();
+    expect(result.roundReport).toBeUndefined();
+    expect(result.hexTrace.audit.roundQualityStatus).toBe("invalid_round");
+    expect(result.hexTrace.finalWinCondition.winnerTeamId).toBeUndefined();
+    expect(storedRound?.status).toBe("failed");
+    expect(storedReport).toBeNull();
+    expect(storedMap?.teamAScore).toBe(0);
+    expect(storedMap?.teamBScore).toBe(0);
+    expect(storedMap?.currentRoundNumber).toBe(0);
+    expect(economyStates).toHaveLength(0);
+    expect(storedArtifactText).toContain('"roundQualityStatus": "invalid_round"');
+    expect(storedEvents.map((event) => event.type)).toEqual([
+      "hex_round_experimental_started",
+      "hex_round_trace_artifact_created"
+    ]);
+  });
   it("refuses to run without explicit experimental mode", async () => {
     const repositories = createFixtureRepositories();
     await seedFixture(repositories);
@@ -91,7 +134,7 @@ describe("Hex round experimental committer", () => {
       mapGameId: "map_dust2",
       enableExperimentalMode: true
     });
-    const { nodeTraceArtifactId: _nodeTraceArtifactId, nodeTraceSource: _nodeTraceSource, ...legacyReport } = result.roundReport;
+    const { nodeTraceArtifactId: _nodeTraceArtifactId, nodeTraceSource: _nodeTraceSource, ...legacyReport } = result.roundReport!;
     await repositories.roundReports.save({
       ...legacyReport,
       id: "legacy_report_without_trace"

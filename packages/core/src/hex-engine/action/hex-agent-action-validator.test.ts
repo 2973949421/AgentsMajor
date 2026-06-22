@@ -189,6 +189,12 @@ describe("Hex agent action validator", () => {
       memory: plantMemory,
       draft: buildDraft(request, { actionType: "plant_bomb", targetCellId: spawn.cellId })
     });
+    const contestedPlantMemory = placeAgent(plantMemory, asset, "ct_0", bombsite.cellId);
+    const contestedPlant = validateHexAgentActionDraft({
+      asset,
+      memory: contestedPlantMemory,
+      draft: buildDraft(request, { actionType: "plant_bomb", targetCellId: bombsite.cellId })
+    });
     const repairedMoveToPlant = validateHexAgentActionDraft({
       asset,
       memory: plantMemory,
@@ -226,6 +232,9 @@ describe("Hex agent action validator", () => {
     expect(repairedMoveToPlant.valid).toBe(true);
     expect(repairedMoveToPlant.actionType).toBe("plant_bomb");
     expect(repairedMoveToPlant.repairReasons).toContain("repaired_move_to_plant_intent");
+    expect(contestedPlant.valid).toBe(true);
+    expect(contestedPlant.actionType).toBe("seek_duel");
+    expect(contestedPlant.repairReasons).toContain("repaired_plant_bomb_to_seek_duel_due_to_enemy_on_target");
     expect(invalidPlant.validationErrors).toContain("plant_requires_bombsite");
     expect(legalDefuse.valid).toBe(true);
     expect(tDefuse.validationErrors).toContain("defuse_requires_defense");

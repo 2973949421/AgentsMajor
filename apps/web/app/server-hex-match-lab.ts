@@ -184,6 +184,7 @@ export interface HexMatchLabMapSummary {
 export interface HexMatchLabRoundSummary {
   roundNumber: number;
   roundId: string;
+  commitStatus?: "committed" | "invalid_round" | undefined;
   reportId?: string | undefined;
   winnerTeamId?: string | undefined;
   roundWinType?: string | undefined;
@@ -192,6 +193,11 @@ export interface HexMatchLabRoundSummary {
   fallbackCount: number;
   combatResolutionCount: number;
   finalHardCondition?: HexMatchLabHardConditionSummary | undefined;
+  roundQualityStatus?: string | undefined;
+  roundQualityReasons?: string[] | undefined;
+  roundQualitySummaryZh?: string | undefined;
+  roundQualityCounts?: Record<string, number> | undefined;
+  tacticalAudit?: HexMatchLabTacticalAuditSummary | undefined;
 }
 
 export interface HexMatchLabRoundTraceDetail extends HexMatchLabRoundSummary {
@@ -741,6 +747,7 @@ export interface HexMatchLabCombatSummary {
   financeReasons: string[];
   csReasons: string[];
   financeEvidenceAdoption?: HexMatchLabFinanceEvidenceAdoptionSummary | undefined;
+  financeProjection?: HexMatchLabFinanceProjectionSummary | undefined;
   financeReasonZh: string[];
   csReasonZh: string[];
   casualties: string[];
@@ -776,6 +783,18 @@ export interface HexMatchLabCombatSummary {
   }>;
 }
 
+export interface HexMatchLabFinanceProjectionSummary {
+  financialResult: string;
+  combatEffectAllowed: string[];
+  appliedEffect: string;
+  blockedEffects: string[];
+  projectionReasons: string[];
+  projectionReasonsZh: string[];
+  financeMayExplainKill: boolean;
+  financeMayApplyPressure: boolean;
+  financeMayForceReposition: boolean;
+  financeMayApplyMapControl: boolean;
+}
 export interface HexMatchLabFinanceEvidenceAdoptionSummary {
   attack: HexMatchLabFinanceEvidenceAdoptionSideSummary;
   defense: HexMatchLabFinanceEvidenceAdoptionSideSummary;
@@ -824,6 +843,32 @@ export interface HexMatchLabEconomySummary {
   }>;
 }
 
+export interface HexMatchLabTacticalAuditSummary {
+  selectedVariant?: string | undefined;
+  selectedAttackVariant?: string | undefined;
+  selectedDefenseVariant?: string | undefined;
+  c4SitePreference?: string | undefined;
+  selectionReasons: string[];
+  previousRoundSignals: string[];
+  antiRepeatPenalties: string[];
+  antiRepeatRegions: string[];
+  antiRepeatPoints: string[];
+  economyAdjustment: string[];
+  routeDiversityWarnings: string[];
+  attackFocusRegions: string[];
+  defenseFocusRegions: string[];
+  attackAvoidRegions: string[];
+  defenseAvoidRegions: string[];
+  roleRouteAssignments: Array<{
+    side?: string | undefined;
+    role?: string | undefined;
+    routeIntent?: string | undefined;
+    focusRegions: string[];
+    focusPoints: string[];
+    avoidRegions?: string[] | undefined;
+  }>;
+}
+
 export interface HexMatchLabLlmAuditSummary {
   providerMode?: string | undefined;
   modelId?: string | undefined;
@@ -846,6 +891,11 @@ export interface HexMatchLabLlmAuditSummary {
   providerErrors: string[];
   roundStrategySeed?: string | undefined;
   strategyVariant?: string | undefined;
+  roundQualityStatus?: string | undefined;
+  roundQualityReasons?: string[] | undefined;
+  roundQualitySummaryZh?: string | undefined;
+  roundQualityCounts?: Record<string, number> | undefined;
+  tacticalAudit?: HexMatchLabTacticalAuditSummary | undefined;
 }
 
 export interface HexMatchLabMemorySummary {
@@ -890,6 +940,14 @@ interface ReadProgressInput {
 }
 
 type Row = Record<string, unknown>;
+
+type HexRoundTraceArtifactSummary = {
+  artifactId: string;
+  roundId: string;
+  roundNumber: number;
+  roundStatus?: string | undefined;
+  createdAt: string;
+};
 type AgentIdentity = {
   displayName: string;
   roleLabel: string;
@@ -1058,10 +1116,12 @@ async function readHexMatchLabProgress(input: ReadProgressInput & {
     ? await readMapSummary(input.repositories, input.projectRoot, summaryArtifactId)
     : undefined;
   const roundReports = await input.repositories.roundReports.listByMapGame(mapGame.id);
+  const roundTraceArtifacts = listRoundTraceArtifactSummaries(input.repositories, mapGame.id);
   const roundSummaries = buildRoundSummaries({
     ...(mapSummary?.summary ? { summary: mapSummary.summary } : {}),
     ...(summaryArtifactId ? { summaryArtifactId } : {}),
-    reports: roundReports
+    reports: roundReports,
+    traceArtifacts: roundTraceArtifacts
   });
   const selectedTraceArtifactId = input.roundTraceArtifactId
     ?? roundSummaries.at(-1)?.hexTraceArtifactId
@@ -1236,6 +1296,33 @@ function listDust2MapOptions(repositories: SqliteRepositoryBundle): HexMatchLabM
     teamBName: readString(row.teamBName),
     latestSummaryArtifactId: readString(row.latestSummaryArtifactId)
   }));
+}
+
+function listRoundTraceArtifactSummaries(repositories: SqliteRepositoryBundle, mapGameId: string): HexRoundTraceArtifactSummary[] {
+  const rows = repositories.sqlite
+    .prepare(
+      `SELECT
+         a.id AS artifactId,
+         a.round_id AS roundId,
+         a.created_at AS createdAt,
+         r.round_number AS roundNumber,
+         r.status AS roundStatus
+       FROM artifacts a
+       LEFT JOIN rounds r ON r.id = a.round_id
+       WHERE a.map_game_id = ?
+         AND a.artifact_type = 'hex_round_trace'
+       ORDER BY COALESCE(r.round_number, 0) ASC, a.created_at ASC, a.id ASC`
+    )
+    .all(mapGameId) as Row[];
+  return rows
+    .filter((row) => row.artifactId && row.roundId)
+    .map((row) => ({
+      artifactId: String(row.artifactId),
+      roundId: String(row.roundId),
+      roundNumber: Number(row.roundNumber ?? 0),
+      roundStatus: readString(row.roundStatus),
+      createdAt: String(row.createdAt ?? "")
+    }));
 }
 
 function findLatestDust2MapGameId(
@@ -1450,12 +1537,16 @@ function buildRoundSummaries(input: {
   summary?: HexMapExperimentalSummary;
   summaryArtifactId?: string;
   reports: RoundReport[];
+  traceArtifacts: HexRoundTraceArtifactSummary[];
 }): HexMatchLabRoundSummary[] {
-  const summaryRounds = input.summary?.rounds ?? [];
-  if (summaryRounds.length > 0) {
-    return summaryRounds.map((round) => ({
+  const byArtifactId = new Map<string, HexMatchLabRoundSummary>();
+  const byRoundId = new Map<string, HexMatchLabRoundSummary>();
+
+  for (const round of input.summary?.rounds ?? []) {
+    const summary: HexMatchLabRoundSummary = {
       roundNumber: round.roundNumber,
       roundId: round.roundId,
+      commitStatus: round.commitStatus,
       reportId: round.reportId,
       winnerTeamId: round.winnerTeamId,
       roundWinType: round.roundWinType,
@@ -1463,18 +1554,27 @@ function buildRoundSummaries(input: {
       hexTraceArtifactId: round.hexTraceArtifactId,
       fallbackCount: round.fallbackCount,
       combatResolutionCount: round.combatResolutionCount,
-      finalHardCondition: summarizeHardCondition(round.finalWinCondition)
-    }));
+      finalHardCondition: summarizeHardCondition(round.finalWinCondition),
+      roundQualityStatus: round.roundQualityStatus,
+      roundQualityReasons: round.roundQualityReasons,
+      roundQualitySummaryZh: round.roundQualitySummaryZh
+    };
+    byArtifactId.set(round.hexTraceArtifactId, summary);
+    byRoundId.set(round.roundId, summary);
   }
 
-  return input.reports
-    .map((report) => ({ report, traceReference: getRoundTraceReference(report) }))
-    .filter((entry): entry is { report: RoundReport; traceReference: { traceArtifactId: string; traceSource: "hex_round_engine_committed" } } =>
-      entry.traceReference !== null
-    )
-    .map(({ report, traceReference }) => ({
+  for (const report of input.reports) {
+    const traceReference = getRoundTraceReference(report);
+    if (!traceReference) {
+      continue;
+    }
+    if (byArtifactId.has(traceReference.traceArtifactId) || byRoundId.has(report.roundId)) {
+      continue;
+    }
+    const summary: HexMatchLabRoundSummary = {
       roundNumber: report.roundNumber,
       roundId: report.roundId,
+      commitStatus: "committed",
       reportId: report.id,
       winnerTeamId: report.winnerTeamId,
       roundWinType: report.judgeResult.roundWinType,
@@ -1488,7 +1588,29 @@ function buildRoundSummaries(input: {
         roundWinType: report.judgeResult.roundWinType,
         reason: report.judgeResult.reason
       }
-    }));
+    };
+    byArtifactId.set(traceReference.traceArtifactId, summary);
+    byRoundId.set(report.roundId, summary);
+  }
+
+  for (const artifact of input.traceArtifacts) {
+    if (byArtifactId.has(artifact.artifactId)) {
+      continue;
+    }
+    const summary: HexMatchLabRoundSummary = {
+      roundNumber: artifact.roundNumber,
+      roundId: artifact.roundId,
+      commitStatus: artifact.roundStatus === "failed" ? "invalid_round" : undefined,
+      hexTraceArtifactId: artifact.artifactId,
+      fallbackCount: 0,
+      combatResolutionCount: 0,
+      roundQualityStatus: artifact.roundStatus === "failed" ? "invalid_round" : undefined,
+      roundQualitySummaryZh: artifact.roundStatus === "failed" ? "本 round 未通过质量闸门；打开 trace 查看具体原因。" : undefined
+    };
+    byArtifactId.set(artifact.artifactId, summary);
+  }
+
+  return [...byArtifactId.values()].sort((left, right) => left.roundNumber - right.roundNumber || (left.hexTraceArtifactId ?? "").localeCompare(right.hexTraceArtifactId ?? ""));
 }
 
 function getRoundTraceReference(report: RoundReport): { traceArtifactId: string; traceSource: "hex_round_engine_committed" } | null {
@@ -1516,7 +1638,11 @@ function summarizeTrace(
     hexTraceArtifactId: artifactId,
     fallbackCount: trace.audit.fallbackCount,
     combatResolutionCount: trace.audit.combatResolutionCount,
-    finalHardCondition: summarizeHardCondition(trace.finalWinCondition)
+    finalHardCondition: summarizeHardCondition(trace.finalWinCondition),
+    roundQualityStatus: trace.audit.roundQualityStatus,
+    roundQualityReasons: trace.audit.roundQualityReasons,
+    roundQualitySummaryZh: trace.audit.roundQualitySummaryZh,
+    roundQualityCounts: trace.audit.roundQualityCounts
   };
   const economySummary = summarizeEconomy(trace.economyContext);
   const firstPhase = trace.phases[0];
@@ -1538,7 +1664,14 @@ function summarizeTrace(
   const roundStartAgentOutputs = summarizeRoundStartAgentOutputs(trace, agentIdentities);
   return {
     ...roundSummary,
+    fallbackCount: trace.audit.fallbackCount,
+    combatResolutionCount: trace.audit.combatResolutionCount,
+    finalHardCondition: summarizeHardCondition(trace.finalWinCondition),
     hexTraceArtifactId: artifactId,
+    roundQualityStatus: audit.roundQualityStatus,
+    roundQualityReasons: audit.roundQualityReasons,
+    roundQualitySummaryZh: audit.roundQualitySummaryZh,
+    roundQualityCounts: audit.roundQualityCounts,
     source: "hex_round_engine_committed",
     roundStartAgentOutputs,
     phaseSummaries,
@@ -1789,7 +1922,9 @@ function buildHumanAudit(input: {
       failedRoundStartOutputCount: failedRoundStartOutputs.length
     }),
     sampleQualityWarningsZh,
-    winnerSummaryZh: input.finalHardCondition ? humanizeHardWinner(input.finalHardCondition) : undefined,
+    winnerSummaryZh: input.audit.roundQualityStatus === "invalid_round"
+      ? `${input.audit.roundQualitySummaryZh ?? "本 round 未通过质量闸门。"} 未计为可信比赛结果；hard winner 仅保留在技术细节。`
+      : input.finalHardCondition ? humanizeHardWinner(input.finalHardCondition) : undefined,
     roundStartOutputDigests: usableRoundStartOutputs,
     roundStartOutputFailures: failedRoundStartOutputs,
     agentOutputDigests: buildAgentOutputDigests({
@@ -1823,6 +1958,9 @@ function buildHumanRoundValidationSummary(input: {
   const provider = input.audit.providerMode === "real"
     ? "真实 provider"
     : input.audit.providerMode ? `${input.audit.providerMode} provider` : "未记录 provider";
+  if (input.audit.roundQualityStatus && input.audit.roundQualityStatus !== "valid") {
+    return `样本审计：${provider}，${input.phaseSummaries.length} 个 phase，${input.usableRoundStartOutputCount} 条可消费真实 phase0 结构化卡片，${input.failedRoundStartOutputCount} 条 phase0 卡片失败。${input.audit.roundQualitySummaryZh ?? "本 round 未通过质量闸门。"}`;
+  }
   const adoptionCount = input.phaseSummaries.reduce(
     (sum, phase) => sum + phase.combats.filter((combat) => combat.financeEvidenceAdoption).length,
     0
@@ -1837,8 +1975,16 @@ function buildHumanSampleQualityWarnings(input: {
   roundStartAgentOutputs: HexMatchLabRoundStartAgentOutput[];
   failedRoundStartOutputCount: number;
   finalHardCondition?: HexMatchLabHardConditionSummary | undefined;
+  roundQualityStatus?: string | undefined;
+  roundQualityReasons?: string[] | undefined;
+  roundQualitySummaryZh?: string | undefined;
+  roundQualityCounts?: Record<string, number> | undefined;
+  tacticalAudit?: HexMatchLabTacticalAuditSummary | undefined;
 }): string[] {
   const warnings: string[] = [];
+  if (input.audit.roundQualityStatus && input.audit.roundQualityStatus !== "valid") {
+    warnings.push(`${input.audit.roundQualitySummaryZh ?? "本 round 未通过质量闸门。"} 该样本不应作为正式比赛审计或计分样本。`);
+  }
   if (input.audit.providerMode !== "real") {
     warnings.push("当前样本不是 real provider，不能作为真实模型验收样本。");
   }
@@ -2404,6 +2550,7 @@ function buildHumanCombatStory(
     impactZh: `${killText}。${combat.regionControlHint ? `控图倾向：${combat.regionControlHint}。` : ""}`,
     reasonsZh: [
       humanizeContactThreat(combat),
+      ...(combat.financeProjection?.projectionReasonsZh ?? []).slice(0, 2),
       ...combat.financeReasonZh.slice(0, 3),
       ...combat.csReasonZh.slice(0, 3),
       ...combat.financeReasons.slice(0, 3).map(humanizeReason),
@@ -2418,7 +2565,7 @@ function buildHumanCombatStory(
       participants: [...combat.participants],
       rawFinanceVerdict: combat.financeVerdict,
       rawBusinessVerdict: combat.businessVerdict,
-      rawReasons: [...combat.financeReasons, ...combat.businessReasons, ...combat.csReasons, ...combat.financeReasonZh, ...combat.csReasonZh]
+      rawReasons: [...combat.financeReasons, ...combat.businessReasons, ...combat.csReasons, ...(combat.financeProjection?.projectionReasons ?? []), ...(combat.financeProjection?.projectionReasonsZh ?? []), ...combat.financeReasonZh, ...combat.csReasonZh]
     }
   };
 }
@@ -2570,7 +2717,13 @@ function humanizeReason(reason: string): string {
     repaired_missing_roundStartOutputId: "已补齐真实开局输出引用",
     repaired_invalid_roundStartOutputId: "已修正为当前选手自己的真实开局输出",
     repaired_invalid_phase0_ref: "已修正为当前选手自己的 phase0 claim / challenge 引用",
+    repaired_actionType_from_move_to_plant_bomb_due_to_c4_phase_clock: "C4 已在可下包位置，系统将普通移动修正为下包行动",
+    repaired_actionType_from_move_to_defuse_bomb_due_to_phase_clock: "防守方已在拆包位置，系统将普通移动修正为拆包行动",
+    repaired_actionType_from_move_to_retake_due_to_phase_clock: "残局/拆包压力下，系统将普通移动修正为回防行动",
+    repaired_actionType_from_move_to_execute_pressure_due_to_phase_clock: "阶段压力下进入包点路径，系统将普通移动修正为包点执行/主动接战",
+    repaired_actionType_from_move_to_duel_pressure_due_to_phase_clock: "进入枪线或接触风险区，系统将普通移动修正为主动对枪压力",
     "draft:invalid_phase0RefId": "phase0 claim / challenge 引用无效",
+    "draft:final_phase_future_setup_intent": "最后阶段仍写为后续铺垫，已拒绝",
     provider_error: "真实模型供应器失败",
     external_blocked: "外部调用被阻断",
     no_accepted_finance_evidence: "没有被裁判正向采信的金融证据",
@@ -2609,6 +2762,11 @@ function buildFinanceReview(input: {
   financeDuel: HexMatchLabFinanceDuelSummary;
   phaseSummaries: HexMatchLabPhaseSummary[];
   finalHardCondition?: HexMatchLabHardConditionSummary | undefined;
+  roundQualityStatus?: string | undefined;
+  roundQualityReasons?: string[] | undefined;
+  roundQualitySummaryZh?: string | undefined;
+  roundQualityCounts?: Record<string, number> | undefined;
+  tacticalAudit?: HexMatchLabTacticalAuditSummary | undefined;
 }): HexMatchLabFinanceReview {
   const assignmentsByAgentId = new Map(input.financeDuel.assignments.map((assignment) => [assignment.agentId, assignment]));
   const hardWinnerStory = input.finalHardCondition
@@ -2708,6 +2866,11 @@ function buildBusinessReview(input: {
   businessDuel: HexMatchLabBusinessDuelSummary;
   phaseSummaries: HexMatchLabPhaseSummary[];
   finalHardCondition?: HexMatchLabHardConditionSummary | undefined;
+  roundQualityStatus?: string | undefined;
+  roundQualityReasons?: string[] | undefined;
+  roundQualitySummaryZh?: string | undefined;
+  roundQualityCounts?: Record<string, number> | undefined;
+  tacticalAudit?: HexMatchLabTacticalAuditSummary | undefined;
 }): HexMatchLabBusinessReview {
   const assignmentsByAgentId = new Map(input.businessDuel.assignments.map((assignment) => [assignment.agentId, assignment]));
   const hardWinnerStory = input.finalHardCondition
@@ -2950,6 +3113,7 @@ function summarizePhase(
         attack: cloneFinanceEvidenceAdoptionSide(resolution.financeEvidenceAdoption.attack),
         defense: cloneFinanceEvidenceAdoptionSide(resolution.financeEvidenceAdoption.defense)
       } : undefined,
+      financeProjection: resolution.financeProjection ? cloneFinanceProjection(resolution.financeProjection) : undefined,
       financeReasonZh: resolution.financeReasonZh ?? [],
       csReasonZh: resolution.csReasonZh ?? [],
       casualties: resolution.casualties.map((casualty) => `${casualty.targetAgentId ?? casualty.agentId}:${casualty.result}`),
@@ -3001,6 +3165,7 @@ function summarizePhase(
 
 function summarizeTraceAudit(trace: HexRoundTrace): HexMatchLabLlmAuditSummary {
   const phaseAudits = trace.phases.flatMap((phase) => phase.commandResult.audits);
+  const tacticalAudit = summarizeTacticalAudit(trace.audit);
   return {
     providerMode: trace.audit.providerMode,
     modelId: trace.audit.modelId,
@@ -3022,7 +3187,44 @@ function summarizeTraceAudit(trace: HexRoundTrace): HexMatchLabLlmAuditSummary {
     fallbackReasons: uniqueStrings(phaseAudits.map((audit) => audit.fallbackReason)),
     providerErrors: uniqueStrings(phaseAudits.flatMap((audit) => audit.errors).filter((error) => error.startsWith("provider_error"))),
     roundStrategySeed: trace.audit.roundStrategySeed,
-    strategyVariant: trace.audit.strategyVariant
+    strategyVariant: trace.audit.strategyVariant,
+    roundQualityStatus: trace.audit.roundQualityStatus,
+    roundQualityReasons: trace.audit.roundQualityReasons ?? [],
+    roundQualitySummaryZh: trace.audit.roundQualitySummaryZh,
+    roundQualityCounts: trace.audit.roundQualityCounts,
+    tacticalAudit
+  };
+}
+
+function summarizeTacticalAudit(audit: HexRoundTrace["audit"]): HexMatchLabTacticalAuditSummary | undefined {
+  const tacticalAudit = (audit as HexRoundTrace["audit"] & { tacticalAudit?: HexRoundTrace["audit"]["tacticalAudit"] }).tacticalAudit;
+  if (!tacticalAudit) {
+    return undefined;
+  }
+  return {
+    selectedVariant: tacticalAudit.selectedVariant,
+    selectedAttackVariant: tacticalAudit.selectedAttackVariant,
+    selectedDefenseVariant: tacticalAudit.selectedDefenseVariant,
+    c4SitePreference: tacticalAudit.c4SitePreference,
+    selectionReasons: [...(tacticalAudit.selectionReasons ?? [])],
+    previousRoundSignals: [...(tacticalAudit.previousRoundSignals ?? [])],
+    antiRepeatPenalties: [...(tacticalAudit.antiRepeatPenalties ?? [])],
+    antiRepeatRegions: [...(tacticalAudit.antiRepeatRegions ?? [])],
+    antiRepeatPoints: [...(tacticalAudit.antiRepeatPoints ?? [])],
+    economyAdjustment: [...(tacticalAudit.economyAdjustment ?? [])],
+    routeDiversityWarnings: [...(tacticalAudit.routeDiversityWarnings ?? [])],
+    attackFocusRegions: [...(tacticalAudit.attackFocusRegions ?? [])],
+    defenseFocusRegions: [...(tacticalAudit.defenseFocusRegions ?? [])],
+    attackAvoidRegions: [...(tacticalAudit.attackAvoidRegions ?? [])],
+    defenseAvoidRegions: [...(tacticalAudit.defenseAvoidRegions ?? [])],
+    roleRouteAssignments: (tacticalAudit.roleRouteAssignments ?? []).map((assignment) => ({
+      side: assignment.side,
+      role: assignment.role,
+      routeIntent: assignment.routeIntent,
+      focusRegions: [...(assignment.focusRegions ?? [])],
+      focusPoints: [...(assignment.focusPoints ?? [])],
+      avoidRegions: assignment.avoidRegions ? [...assignment.avoidRegions] : undefined
+    }))
   };
 }
 
@@ -3166,6 +3368,20 @@ function materializeLiveRunStatus(record: LiveRunRecord): HexMatchLabLiveRunStat
   };
 }
 
+function cloneFinanceProjection(value: Partial<HexMatchLabFinanceProjectionSummary>): HexMatchLabFinanceProjectionSummary {
+  return {
+    financialResult: value.financialResult ?? "contested",
+    combatEffectAllowed: [...(value.combatEffectAllowed ?? [])],
+    appliedEffect: value.appliedEffect ?? "none",
+    blockedEffects: [...(value.blockedEffects ?? [])],
+    projectionReasons: [...(value.projectionReasons ?? [])],
+    projectionReasonsZh: [...(value.projectionReasonsZh ?? [])],
+    financeMayExplainKill: Boolean(value.financeMayExplainKill),
+    financeMayApplyPressure: Boolean(value.financeMayApplyPressure),
+    financeMayForceReposition: Boolean(value.financeMayForceReposition),
+    financeMayApplyMapControl: Boolean(value.financeMayApplyMapControl)
+  };
+}
 function cloneFinanceEvidenceAdoptionSide(value: Partial<HexMatchLabFinanceEvidenceAdoptionSideSummary> & { side?: string | undefined }): HexMatchLabFinanceEvidenceAdoptionSideSummary {
   return {
     side: value.side ?? "unknown",

@@ -21,6 +21,7 @@ import {
   type HexAgentActionDraft,
   type HexAgentCommandRequest,
   type HexAgentSemanticLanguageAudit,
+  type HexRoundRouteMemory,
   type HexRoundTacticalPlan
 } from "./hex-agent-command-boundary.js";
 import type { HexRoundStartAgentOutputForAction } from "./hex-round-start-agent-output.js";
@@ -102,6 +103,7 @@ export interface RunHexAgentPhaseCommandHarnessInput {
   businessDuel?: HexRoundBusinessDuel;
   financeDuel?: HexRoundFinanceDuel;
   roundStartAgentOutputs?: readonly HexRoundStartAgentOutputForAction[];
+  roundRouteMemory?: HexRoundRouteMemory | undefined;
 }
 
 export interface HexAgentCommandAudit {
@@ -238,6 +240,7 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
       ...(input.businessDuel ? { businessDuel: input.businessDuel } : {}),
       ...(input.financeDuel ? { financeDuel: input.financeDuel } : {}),
       ...(input.roundStartAgentOutputs ? { roundStartAgentOutputs: input.roundStartAgentOutputs } : {}),
+      ...(input.roundRouteMemory ? { roundRouteMemory: input.roundRouteMemory } : {}),
       ...(input.economyContext ? { economyContext: input.economyContext } : {})
     });
     const compactRequest = buildHexAgentCompactCommandRequest(request);

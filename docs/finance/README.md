@@ -1,4 +1,4 @@
-﻿# Finance Major 文档入口
+# Finance Major 文档入口
 
 本目录只保留 Finance Major（金融投资对抗）当前主线的最小阅读集合。旧的逐 N 详细计划已经汇总到迭代日志，不再作为日常入口堆在本目录。
 
@@ -8,8 +8,8 @@
 主线：在 HexGrid 工程骨架上运行金融投资对抗。
 当前地图：Dust2 有色。
 当前轮次：行业判断。
-当前目标：N57c 已完成三主源 active fact bank 覆盖重建；下一步进入 N59 金融裁判证据绑定重写。
-最新口径：Dust2 有色 6 个 round 已改为 decisionQuestion（决策题）主线；N57b 探测 30 个 AKShare endpoint，其中 6 个 ready_for_fact_bank、5 个 usable_with_cap、3 个 candidate_only；N57c 已据此覆盖重建 active fact bank，当前 latest.json 有 65 条 active facts，coverage-report 为 15/18，round evidence packs 不再包含 World Bank / UN Comtrade。
+当前目标：N61 已完成 real provider 小样本验收；结论为 fail，失败点是 phase0 真实结构化卡片 0/10 可消费。
+最新口径：real provider 已成功执行第 6 局；26 个 finance verdict 中 0 次无采信金融胜利，26 个 combat explanation 全部分清金融与 CS，但 10 条 phase0 输出全部不可消费，因此 N61 不能通过。下一步回到 N58 做真实模型结构化输出窄修。
 ```
 
 ## 必读顺序
@@ -22,7 +22,8 @@
 5. docs/finance/finance-evidence-bound-round-roadmap.md
 6. docs/finance/n57-data-source-probe-report.md
 7. docs/finance/finance-data-asset-contract.md
-8. docs/finance/finance-n48-n55-iteration-log.md
+8. docs/finance/n61-evidence-bound-round-validation-report.md
+9. docs/finance/finance-n48-n55-iteration-log.md
 ```
 
 关联横向契约：
@@ -48,13 +49,16 @@ finance-evidence-mvp.md
   免费 API 代理事实版证据层契约，说明 FRED / BaoStock / AKShare 三主源能证明什么、不能证明什么，并标注 World Bank / UN Comtrade 的 frozen 状态。
 
 finance-evidence-bound-round-roadmap.md
-  N56-N61 强依赖路线，说明每一步输入、输出、阻断条件；当前新增 N57b / N57c 数据源收敛计划。
+  N56-N61 强依赖路线，说明每一步输入、输出、阻断条件；当前记录 N61 real provider 已跑但 phase0 结构化卡片失败。
 
 n57-data-source-probe-report.md
   N57 前置探测报告，说明 FRED / BaoStock / AKShare-SHFE/INE/GFEX / World Bank / UN Comtrade 的真实可用性、字段和 N56 requiredEvidenceSchema 映射。
 
 finance-data-asset-contract.md
   金融数据资产、环境变量、事实库、地图绑定和材料目录边界。
+
+n61-evidence-bound-round-validation-report.md
+  N61 小样本验收报告，记录 real provider 样本、phase0 卡片失败、采信链安全结果和后续 gap。
 
 finance-n48-n55-iteration-log.md
   N48-N55 的历史收口日志，保留背景，但不是当前下一步执行入口。

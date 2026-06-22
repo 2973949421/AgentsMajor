@@ -95,8 +95,45 @@ describe("Hex round runner", () => {
     });
 
     expect(trace.finalWinCondition.isRoundOver).toBe(true);
+    expect(trace.finalWinCondition.winnerTeamId).toBeUndefined();
     expect(trace.audit.fallbackCount).toBeGreaterThan(0);
+    expect(trace.audit.roundQualityStatus).toBe("invalid_round");
+    expect(trace.audit.roundQualityReasons).toEqual(expect.arrayContaining(["phase_action_provider_failed"]));
+    expect(trace.phases).toHaveLength(1);
     expect(JSON.stringify(trace.finalWinCondition)).not.toContain("winnerFromDraft");
+  });
+
+  it("invalidates the round before phase actions when phase0 has no usable cards", async () => {
+    const trace = await runDust2HexRound({
+      roundId: "round_hex_phase0_provider_down",
+      roundNumber: 1,
+      attackTeamId: "team_t",
+      defenseTeamId: "team_ct",
+      activeAgents: createAgents(),
+      teamEconomyPlans: buildEconomyPlans(),
+      roundStartProvider: () => {
+        throw new Error("round_start_provider_down");
+      },
+      provider: () => {
+        throw new Error("phase_provider_should_not_be_called");
+      },
+      providerMode: "fixture",
+      maxLlmCallsPerPhase: 10
+    });
+
+    expect(trace.phases).toHaveLength(0);
+    expect(trace.finalWinCondition.isRoundOver).toBe(true);
+    expect(trace.finalWinCondition.winnerTeamId).toBeUndefined();
+    expect(trace.audit.roundQualityStatus).toBe("invalid_round");
+    expect(trace.audit.roundQualityReasons).toEqual(expect.arrayContaining([
+      "no_usable_phase0",
+      "phase0_stance_insufficient",
+      "phase0_challenge_insufficient",
+      "provider_error_threshold_exceeded"
+    ]));
+    expect(trace.audit.roundQualityCounts.usableRoundStartCount).toBe(0);
+    expect(trace.audit.roundQualityCounts.roundStartProviderErrorCount).toBe(5);
+    expect(trace.audit.totalLlmCallsAttempted).toBe(10);
   });
 
   it("keeps invalid round-start outputs out of phase action requests", async () => {
@@ -141,7 +178,10 @@ describe("Hex round runner", () => {
     expect(trace.roundStartAgentOutputs).toHaveLength(10);
     expect(trace.roundStartAgentOutputs.every((output) => output.source === "invalid_response")).toBe(true);
     expect(trace.roundStartAgentOutputs.every((output) => output.usableForPhaseAction === false)).toBe(true);
-    expect(observedRoundStartRefs.every((outputId) => outputId === undefined)).toBe(true);
+    expect(trace.phases).toHaveLength(0);
+    expect(trace.audit.roundQualityStatus).toBe("invalid_round");
+    expect(trace.audit.roundQualityReasons).toEqual(expect.arrayContaining(["no_usable_phase0"]));
+    expect(observedRoundStartRefs).toHaveLength(0);
   });
 
   it("resets AP at the start of each phase while preserving the previous phase snapshot", async () => {
@@ -188,6 +228,42 @@ describe("Hex round runner", () => {
     expect(new Set(starts).size).toBe(starts.length);
   });
 
+
+  it("uses deterministic shuffled spawn cells per round without overlaps", async () => {
+    const first = await runDust2HexRound({
+      roundId: "round_hex_seeded_spawn",
+      roundNumber: 2,
+      attackTeamId: "team_t",
+      defenseTeamId: "team_ct",
+      activeAgents: createAgents(),
+      teamEconomyPlans: buildEconomyPlans()
+    });
+    const repeat = await runDust2HexRound({
+      roundId: "round_hex_seeded_spawn",
+      roundNumber: 2,
+      attackTeamId: "team_t",
+      defenseTeamId: "team_ct",
+      activeAgents: createAgents(),
+      teamEconomyPlans: buildEconomyPlans()
+    });
+    const nextRound = await runDust2HexRound({
+      roundId: "round_hex_seeded_spawn_next",
+      roundNumber: 3,
+      attackTeamId: "team_t",
+      defenseTeamId: "team_ct",
+      activeAgents: createAgents(),
+      teamEconomyPlans: buildEconomyPlans()
+    });
+
+    const firstStarts = first.phases[0]!.memoryBefore.agents.map((agent) => agent.currentCellId);
+    const repeatStarts = repeat.phases[0]!.memoryBefore.agents.map((agent) => agent.currentCellId);
+    const nextStarts = nextRound.phases[0]!.memoryBefore.agents.map((agent) => agent.currentCellId);
+
+    expect(firstStarts).toEqual(repeatStarts);
+    expect(new Set(firstStarts).size).toBe(firstStarts.length);
+    expect(new Set(nextStarts).size).toBe(nextStarts.length);
+    expect(nextStarts).not.toEqual(firstStarts);
+  });
   it("deduplicates repeated killed casualties before they become phase facts", () => {
     const memory = buildMinimalCombatMemory();
     const deduped = dedupeHexPhaseCombatResolutions({
@@ -210,9 +286,33 @@ describe("Hex round runner", () => {
     )).toBe(false);
   });
 
-  it("rotates deterministic tactical plans by round number", () => {
-    expect(buildRoundTacticalPlan(1).attackVariant).not.toBe(buildRoundTacticalPlan(2).attackVariant);
-    expect(buildRoundTacticalPlan(1).c4SitePreference).not.toBe(buildRoundTacticalPlan(2).c4SitePreference);
+  it("rotates tactical plans while penalizing previous route repetition", () => {
+    const first = buildRoundTacticalPlan({ roundNumber: 1, roundId: "tactical_r1" });
+    const second = buildRoundTacticalPlan({
+      roundNumber: 2,
+      roundId: "tactical_r2",
+      priorRounds: [{
+        roundNumber: 1,
+        attackVariant: first.attackVariant,
+        defenseVariant: first.defenseVariant,
+        c4SitePreference: first.c4SitePreference,
+        attackFocusRegions: first.attackFocusRegions,
+        defenseFocusRegions: first.defenseFocusRegions,
+        attackFocusPoints: first.attackFocusPoints,
+        defenseFocusPoints: first.defenseFocusPoints,
+        winnerSide: "defense",
+        roundWinType: "defense_elimination"
+      }]
+    });
+
+    expect(second.attackVariant).not.toBe(first.attackVariant);
+    expect(second.previousRoundSignals?.join(" ")).toContain("R1");
+    expect(second.antiRepeatReasons?.length).toBeGreaterThan(0);
+        expect(second.antiRepeatRegions).toEqual(expect.arrayContaining(first.attackFocusRegions.slice(0, 1)));
+    expect(second.antiRepeatRegions).toEqual(expect.arrayContaining(first.defenseFocusRegions.slice(0, 1)));
+    expect(second.antiRepeatPoints).toEqual(expect.arrayContaining(first.attackFocusPoints.slice(0, 1)));
+    expect(second.antiRepeatPoints).toEqual(expect.arrayContaining(first.defenseFocusPoints.slice(0, 1)));
+expect(second.roleRouteAssignments?.some((assignment) => assignment.side === "attack" && assignment.role === "entry")).toBe(true);
   });
 
   it("applies a surviving plant action after movement and combat resolution", async () => {
@@ -292,7 +392,9 @@ describe("Hex round runner", () => {
     });
 
     const firstPhase = trace.phases[0];
-    expect(firstPhase?.commandResult.actions.find((action) => action.agentId === "t_0")?.actionType).toBe("plant_bomb");
+    const contestedPlantAction = firstPhase?.commandResult.actions.find((action) => action.agentId === "t_0");
+    expect(contestedPlantAction?.actionType).toBe("seek_duel");
+    expect(contestedPlantAction?.repairReasons).toContain("repaired_plant_bomb_to_seek_duel_due_to_enemy_on_target");
     expect(firstPhase?.memoryEvents.some((event) => event.type === "bomb_planted")).toBe(false);
     expect(firstPhase?.memoryAfter.bombState.planted).toBe(false);
     expect(firstPhase?.memoryAfter.bombState.plantedCellId).toBeUndefined();

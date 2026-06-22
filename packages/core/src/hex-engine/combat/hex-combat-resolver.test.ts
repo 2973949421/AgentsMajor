@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
 import type { HexFinanceChallengeCard, HexFinanceStanceCard, HexRoundStartAgentOutputForAction } from "../action/index.js";
@@ -71,6 +71,12 @@ describe("Hex combat resolver", () => {
     expect(resolution.businessVerdict).toBe("challenge_succeeded");
     expect(resolution.audit.financeEvidenceApplied).toBe(true);
     expect(resolution.scores.attack.financeScore).toBeGreaterThan(resolution.scores.defense.financeScore ?? 0);
+    expect(resolution.scores.attack.totalScore).toBe(resolution.scores.attack.csScore);
+    expect(resolution.scores.defense.totalScore).toBe(resolution.scores.defense.csScore);
+    expect(resolution.financeProjection).toEqual(expect.objectContaining({
+      appliedEffect: "possible_kill",
+      financeMayExplainKill: true
+    }));
     expect(resolution.financeReasons).toEqual(expect.arrayContaining([
       "attack:n59_accepted_evidence_present",
       "finance_verdict:challenge_landed"
@@ -137,6 +143,12 @@ describe("Hex combat resolver", () => {
     expect(resolution.financeEvidenceAdoption?.attack.acceptedEvidenceRefs).toEqual([]);
     expect(resolution.financeEvidenceAdoption?.defense.acceptedEvidenceRefs).toContain("FRED002");
     expect(resolution.financeEvidenceAdoption?.defense.acceptedClaims).toContain("claim_ct_0_1");
+    expect(resolution.scores.attack.totalScore).toBe(resolution.scores.attack.csScore);
+    expect(resolution.scores.defense.totalScore).toBe(resolution.scores.defense.csScore);
+    expect(resolution.financeProjection).toEqual(expect.objectContaining({
+      appliedEffect: "possible_kill",
+      financeMayExplainKill: true
+    }));
     expect(resolution.casualties[0]).toEqual(expect.objectContaining({
       targetAgentId: "t_0",
       killerAgentId: "ct_0"
@@ -183,6 +195,11 @@ describe("Hex combat resolver", () => {
     expect(resolution.financeEvidenceAdoption?.attack.rejectedEvidenceRefs).toEqual([]);
     expect(resolution.financeEvidenceAdoption?.attack.financialResult).toBe("no_financial_win_allowed");
     expect(resolution.scores.attack.financeScore).toBe(0);
+    expect(resolution.scores.attack.totalScore).toBe(resolution.scores.attack.csScore);
+    expect(resolution.financeProjection).toEqual(expect.objectContaining({
+      appliedEffect: "none",
+      financeMayExplainKill: false
+    }));
     expect(resolution.financeReasons).toEqual(expect.arrayContaining([
       "attack:n59_no_accepted_evidence",
       "finance_verdict:contested_no_finance_resolution"
@@ -231,6 +248,12 @@ describe("Hex combat resolver", () => {
     expect(resolution.financeEvidenceAdoption?.defense.missingEvidenceApplied).toEqual(expect.arrayContaining(["commodity_price_momentum"]));
     expect(resolution.financeVerdict).toBe("contested_no_finance_resolution");
     expect(resolution.businessVerdict).toBe("contested_no_business_resolution");
+    expect(resolution.scores.attack.totalScore).toBe(resolution.scores.attack.csScore);
+    expect(resolution.scores.defense.totalScore).toBe(resolution.scores.defense.csScore);
+    expect(resolution.financeProjection).toEqual(expect.objectContaining({
+      appliedEffect: "none",
+      financeMayExplainKill: false
+    }));
     expect(resolution.financeReasons).toContain("finance_verdict:contested_no_finance_resolution");
   });
 
@@ -281,6 +304,8 @@ describe("Hex combat resolver", () => {
     expect(contact.contactThreatLevel).not.toBe("lethal");
     expect(resolution.verdict).not.toBe("kill");
     expect(resolution.casualties).toEqual([]);
+    expect(resolution.financeProjection?.blockedEffects).toContain("possible_kill");
+    expect(resolution.financeProjection?.financeMayExplainKill).toBe(false);
     expect(resolution.audit.contactThreat?.lethalGateBlockedReasons).toEqual(expect.arrayContaining([
       "distance_exceeds_lethal_gate",
       "abstract_contact_only"
@@ -660,6 +685,127 @@ describe("Hex combat resolver", () => {
     ]));
   });
 
+  it("deprioritizes a recent killer when another direct rifler can take the duel", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [starCell, defenseCell, riflerCell] = findCellsInRegion(asset, "a_site", 3);
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_star", side: "attack", cellId: starCell!.cellId },
+      { agentId: "t_rifler", side: "attack", cellId: riflerCell!.cellId },
+      { agentId: "ct_anchor", side: "defense", cellId: defenseCell!.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({
+        memory,
+        agentId: "t_star",
+        actionType: "peek",
+        targetCellId: defenseCell!.cellId,
+        businessIntent: "Star rifler already has prior kills but still peeks the A site angle."
+      }),
+      buildCombatAction({
+        memory,
+        agentId: "t_rifler",
+        actionType: "execute_site",
+        targetCellId: defenseCell!.cellId,
+        businessIntent: "Rifler takes the direct duel and should be available for kill attribution."
+      }),
+      buildCombatAction({
+        memory,
+        agentId: "ct_anchor",
+        actionType: "hold_position",
+        targetCellId: defenseCell!.cellId,
+        businessIntent: "",
+        valid: false
+      })
+    ];
+    const businessDuel = buildFixtureHexRoundBusinessDuel({
+      roundNumber: 1,
+      attackTeamId: "t",
+      defenseTeamId: "ct",
+      agents: [
+        { agentId: "t_star", teamId: "t", side: "attack" },
+        { agentId: "t_rifler", teamId: "t", side: "attack" },
+        { agentId: "ct_anchor", teamId: "ct", side: "defense" }
+      ]
+    });
+    businessDuel.agentAssignments = businessDuel.agentAssignments.map((assignment) => {
+      if (assignment.agentId === "t_star") return { ...assignment, role: "star rifler" };
+      if (assignment.agentId === "t_rifler") return { ...assignment, role: "rifler" };
+      return assignment;
+    });
+    const contacts = buildHexCombatContacts({ asset, memory, actions, businessDuel });
+    const baseContact = contacts.find((candidate) => candidate.attackAgentIds.includes("t_rifler"))!;
+    const starParticipant = contacts.flatMap((candidate) => candidate.participants).find((participant) => participant.agentId === "t_star")!;
+    const contact = {
+      ...baseContact,
+      attackAgentIds: [...new Set([...baseContact.attackAgentIds, "t_star"])],
+      participants: [
+        ...baseContact.participants.map((participant) => participant.agentId === "t_rifler" ? { ...participant, roleLabel: "rifler" } : participant),
+        { ...starParticipant, roleLabel: "star_rifler", supportParticipant: false }
+      ]
+    };
+
+    const resolution = resolveHexCombat({
+      asset,
+      memory,
+      contact,
+      actions,
+      businessDuel,
+      attributionHistory: {
+        roundKillCountsByAgent: { t_star: 2 },
+        phaseKillCountsByAgent: {},
+        lastKillPhaseIndexByAgent: { t_star: contact.phaseIndex }
+      }
+    });
+
+    expect(resolution.casualties[0]).toEqual(expect.objectContaining({
+      targetAgentId: "ct_anchor",
+      killerAgentId: "t_rifler"
+    }));
+    expect(resolution.audit.roleContributions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        agentId: "t_star",
+        reasons: expect.arrayContaining(["recent_kill_deprioritized:2", `last_phase_kill_deprioritized:${contact.phaseIndex}`])
+      })
+    ]));
+  });
+
+  it("only lets a setup role become killer when it is the sole direct candidate", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [attackCell, defenseCell] = findCellsInRegion(asset, "a_site", 2);
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_0", side: "attack", cellId: attackCell!.cellId },
+      { agentId: "ct_support", side: "defense", cellId: defenseCell!.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({
+        memory,
+        agentId: "t_0",
+        actionType: "hold_position",
+        businessIntent: "",
+        valid: false
+      }),
+      buildCombatAction({
+        memory,
+        agentId: "ct_support",
+        actionType: "map_control",
+        targetCellId: attackCell!.cellId,
+        businessIntent: "Support is the only valid defender in this direct contact, so attribution may fall back to it."
+      })
+    ];
+    const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
+    contact.participants.find((participant) => participant.agentId === "ct_support")!.roleLabel = "support";
+
+    const resolution = resolveHexCombat({ asset, memory, contact, actions });
+
+    expect(resolution.casualties[0]).toEqual(expect.objectContaining({
+      targetAgentId: "t_0",
+      killerAgentId: "ct_support"
+    }));
+    expect(resolution.casualties[0]?.attributionReasons).toEqual(expect.arrayContaining([
+      "killer:ct_support:role_setup_limited_to_assist",
+      "killer:ct_support:sole_direct_candidate_allowed"
+    ]));
+  });
   it("lets defense proof rebut a weak attack challenge without using fallback as positive business evidence", () => {
     const asset = loadOfficialDust2HexMap();
     const [attackCell, defenseCell] = findCellsInRegion(asset, "a_site", 2);

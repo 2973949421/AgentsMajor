@@ -6,23 +6,37 @@
 
 ```text
 当前主线：HexGrid（蜂巢格）Phase 2.0-pre。
-当前进度：N20-N55 已完成第一版 Web 中文审计收口；N55 收口修正已新增 phase0 真实开局输出层，并把后续 phase 行动改成只引用可消费开局输出。N56 已把金融 round 改成投资决策题，N57 已覆盖升级现有 fact bank 到 v2，N58 已把 phase0 输出从自然语言段落升级为结构化 `stanceCard / challengeCard`。provider 失败、无效响应、非法证据引用、非法立场或非法 targetClaimId 只能作为失败审计保存，不能进入局内行动层。N59 已完成第一版金融证据绑定裁判：裁判从 `stanceCard / challengeCard`、Fact Bank v2 metadata 和 required evidence schema 产出 accepted / rejected / missing / scoreCaps、stanceScore / challengeScore、financialResult 和 combatEffectAllowed；没有 accepted evidence 时只能是 `no_financial_win_allowed` 或 `contested`，不能判金融胜利。N55 后 combat 窄修补丁已完成接触门槛和低分差伤亡修正；下一步主线是 N60，把 N59 金融结果与 combat projection 做受限解耦。
+当前进度：N20-N55 已完成第一版 Web 中文审计收口；N55 收口修正已新增 phase0 真实开局输出层，并把后续 phase 行动改成只引用可消费开局输出。N56 已把金融 round 改成投资决策题，N57 已覆盖升级现有 fact bank 到 v2，N58 已把 phase0 输出从自然语言段落升级为结构化 `stanceCard / challengeCard`。provider 失败、无效响应、非法证据引用、非法立场或非法 targetClaimId 只能作为失败审计保存，不能进入局内行动层。N59 已完成第一版金融证据绑定裁判：裁判从 `stanceCard / challengeCard`、Fact Bank v2 metadata 和 required evidence schema 产出 accepted / rejected / missing / scoreCaps、stanceScore / challengeScore、financialResult 和 combatEffectAllowed；没有 accepted evidence 时只能是 `no_financial_win_allowed` 或 `contested`，不能判金融胜利。N60 已完成第一版金融结果与战斗投影解耦：金融分只保留为审计，combat 总分不再直接吃金融作文或 N59 分数；战斗裁定新增 `financeProjection`，只按 `combatEffectAllowed` 说明金融可解释的压制、退让、控图或 possible_kill，击杀仍必须由 CS 致命接触产生。N61 已完成 real provider 小样本验收：第 6 局失败样本暴露 N58 real schema 适配问题；随后完成 N58/N61 窄修并生成第 7 局真实 trace。第 7 局 10 条 phase0 全部为可消费真实结构化卡片，5 条 stanceCard、5 条 challengeCard，claim / challenge 绑定率 100%，33 个 finance verdict 中 0 个无采信金融胜利，33 个 combat 解释全部区分金融与 CS，整体结论为 `pass`。
 当前入口：/hex-lab/match。
 当前底层事实：official Dust2 Hex map、Hex phase memory、Hex action/combat/economy/round runner、Hex map runner、Hex trace artifacts。
-下一阶段候选：N56 已完成第一版，N57 前置数据源探测已完成，N57 Fact Bank v2 已按原路径完成第一版覆盖升级；N57b 已完成 AKShare endpoint 广探测；N57c 已完成三主源 active fact bank 收敛；N58 已完成第一版结构化 phase0 卡片；N59 已完成第一版金融裁判证据绑定重写。下一步进入 N60：金融结果与 Combat Projection 解耦。
+下一阶段候选：N56-N61 已完成第一版闭环，但真实 map 样本进一步暴露 provider 断线、phase0 0/10 可消费和 action 50/50 fallback 仍会被 timeout/no plant 包装成正常结果的 P0 风险。P0/P1 合并修复补丁已把 invalid round 提交闭环、Web/N61 可审计读取、战术 anti-repeat 目标填充和击杀归因去重后历史更新落地；下一步可以进入 P2 审计台可读性专项或正式 Web 人工大审计。
 ```
+
+补充状态：Hex RoundReport 已重新接回经济 Output Gate。Hex action 先作为 RawOutput 进入审计，再按 `buyType / economyPosture / outputBudget` 裁剪成 `SubmittedOutput`；`RoundReport.agentOutputs` 使用裁剪后投影，`tokenSubmission.submittedOutputs` 保存完整提交元数据，Judge / RoundReport 不再消费被裁掉的 raw 字段。Web dev 启动前已改为直接 TypeScript 编译 shared / db / llm / core，避免源码已更新但 `@agent-major/core/dist` 仍旧导致页面吃不到新内核。
 
 HexGrid 现在是新的比赛事实主线。它负责地图可走性、AP、阶段记忆、agent action、局部 combat、economy evidence、单回合提交、完整 Dust2 地图灰度和 Web 验收。
 
 N55 后 combat 第二个窄修补丁的当前口径：`lethalEligible=true` 后不再继续等 `margin >= 12` 才产生击杀；高烈度致命接触会进入低分差对枪结算，分差 3 以上可击杀，分差 1-2 至少受伤或退让，分差 0 时用直接对枪压力作确定性判定。非致命接触仍禁止击杀。该补丁已经停止作为下一阶段主线，后续先修 Finance Major 的证据绑定链路。
 
+已完成并行 fork：`fork-p1-finance-judge-balance`。该分支只修 N59 金融裁判平衡：安全 claimType 同义归一、score cap 真正封顶、missing-only challenge 不能赢。它不替代 P0 round 质量闸门，也不宣称坏 round 可以进入正式 map 统计。
+
+已完成并行 fork：`fork-p1-cs-tactical-realism`。范围只限 CS 战术真实性第一层：前局战术记忆、anti-repeat route penalty、经济感知路线、角色路线分配和 Web 战术审计展示。P0/P1 合并修复后，`antiRepeatRegions / antiRepeatPoints` 已从最近 1-2 个 prior rounds 真实派生并进入路线候选惩罚。
+
+已完成并行 fork：`fork-p1-kill-attribution-realism`。范围只限击杀归因真实性：记录同局击杀历史，降低刚杀过人的主杀优先级，限制 IGL / support 这类 setup 角色抢主杀，并保留可审计原因。P0/P1 合并修复后，击杀归因历史只从 dedupe 后最终落账的 combat resolutions 更新，不再吃会被去重删除的 casualty。
+
+已完成窄修：行动急迫感、C4 收敛、主动交火与随机出生点。phaseClock 已进入 action / compact request；C4 carrier 在 late / final 阶段路线候选向合法包点收敛，并对同 round 折返旧 cell / region / point 降权；危险 move 会在有限条件下修复为下包、拆包、回防、包点执行或主动对枪；每 round spawn_t / spawn_ct 使用稳定 seed 洗牌，5 人出生点不重叠且可复盘。
+
 当前最高风险：
+
+```text
+真实 provider 断线或输出退化时，不能再把 phase0 不可消费、action 全 fallback 的坏 round 包装成 timeout/no plant 正常胜负。fork-p0-round-quality-gate 要求 invalid round 保留 trace 和 artifact，但 Web / N61 / map 审计优先读取 roundQualityStatus，不把坏样本计为可信比赛结果。
+```
 
 ```text
 N59 已把 acceptedEvidenceRefs 设为金融胜负硬门槛，缺数据、泛金融意图、角色任务或风险提示不能再直接形成金融胜负。
 没有 acceptedEvidenceRefs 时，金融层只能是 no_financial_win_allowed 或 contested。
 missingEvidence 只能降权、触发 score cap 或限制投影权限，不能直接赢。
-N60 仍需继续把金融结果与 combat projection 完整解耦，避免战斗解释混淆金融主动权与 CS 执行事实。
+N60 已把金融结果限制为 `financeProjection` 投影权限：金融无采信时不放大战斗 margin、不解释击杀；CS 仍可独立产生击杀、受伤、压制或退让。
 ```
 
 N56-N61 必须按强依赖链执行，不能跳步：
@@ -32,8 +46,8 @@ N56 已定义 decisionQuestion、allowedStance、requiredEvidenceSchema 和 chal
 N57 前置已探测 FRED / BaoStock / AKShare-SHFE/INE/GFEX / World Bank / UN Comtrade，并输出 source-probe JSON 和人类报告；N57 已把现有 `latest.json` 覆盖升级为 Fact Bank v2，并生成 coverage report。N57b 已进一步探测 30 个 AKShare endpoint：6 个 `ready_for_fact_bank`、5 个 `usable_with_cap`、3 个 `candidate_only`、16 个 `unavailable`。N57c 已把 active 主路径收敛为 FRED + BaoStock + AKShare，World Bank / UN Comtrade 只保留 frozen/candidate 状态。
 N58 已基于 N56 / N57 生成 stanceCard / challengeCard，phase1+ 只能引用当前 agent 自己的 claimId / challengeId，不能让 agent 自由发明 evidence 或新增 stance。
 N59 已完成第一版机械采信：校验 claimType 与 evidence.allowedClaimTypes，只有 accepted evidence 才能支撑金融胜负，并输出 financialResult / combatEffectAllowed。
-N60 继续把 financialResult / combatEffectAllowed 作为唯一金融投影接口，不能让金融作文分直接拉爆 margin。
-N61 用最小样本验收整条链，不能用主观观感替代采信链。
+N60 已把 financialResult / combatEffectAllowed 固化为唯一金融投影接口，金融分只做审计，不再进入 combat 总分。
+N61 已用 real provider 小样本验收结构链路，不能用主观观感替代采信链；第 7 局 real 样本已通过，后续进入 Web 人工大审计清理。
 ```
 
 ## 2. 保留兼容线
@@ -93,7 +107,7 @@ apps/web/.next-dev-3001.err.log
 
 ## 5. 下一步候选
 
-当前下一步不建议继续调 combat，也不建议立刻做结构封板第二轮。N42-N55 已经把 Finance Major（金融投资对抗）原型接入到证据包、队伍资产、真实 phase0 输出、局内行动、裁判采信链和 Web 中文审计；N56 已把旧“守方自证 / 攻方质疑”的证明题口径改成“决策题 + 立场方 / 挑战方 + 必需证据结构”；N57 已按原路径覆盖升级 Fact Bank v2；N57b / N57c 已把 active 数据底座收敛为 FRED + BaoStock + AKShare 三主源；N58 已把 phase0 变成结构化 stance / challenge 卡片；N59 已把金融裁判改为证据绑定第一版。下一步是 N60：金融结果与 Combat Projection 解耦。
+当前下一步不建议继续调 combat，也不建议立刻做结构封板第二轮。N42-N55 已经把 Finance Major（金融投资对抗）原型接入到证据包、队伍资产、真实 phase0 输出、局内行动、裁判采信链和 Web 中文审计；N56 已把旧“守方自证 / 攻方质疑”的证明题口径改成“决策题 + 立场方 / 挑战方 + 必需证据结构”；N57 已按原路径覆盖升级 Fact Bank v2；N57b / N57c 已把 active 数据底座收敛为 FRED + BaoStock + AKShare 三主源；N58 已把 phase0 变成结构化 stance / challenge 卡片；N59 已把金融裁判改为证据绑定第一版，N60 已完成金融投影权限隔离第一版。N61 real 小样本已完成，第 7 局真实输出曾达标；但真实 map 样本已暴露 provider 退化坏 round 仍会污染胜负统计。P0/P1 合并修复补丁已完成质量闸门提交闭环、战术反重复输入闭环和击杀归因历史去重；下一步进入 P2 审计台可读性专项或正式 Web 人工大审计。
 
 ```text
 N42：Finance Evidence + Finance Duel 契约。（已完成）
@@ -119,8 +133,8 @@ N57b：AKShare Endpoint 广探测。（已完成；30 个 endpoint，6 ready、5
 N57c：三主源 Active Fact Bank 覆盖重建。（已完成目标品种匹配补丁；94 条 active facts，coverage 15/18，World Bank / UN Comtrade 已冻结出 active path）
 N58：Phase0 Stance Card / Challenge Card。（已完成第一版）
 N59：金融裁判证据绑定重写。（已完成第一版）
-N60：金融结果与 Combat Projection 解耦。
-N61：Evidence-bound Round v1 小样本验收。
+N60：金融结果与 Combat Projection 解耦。（已完成第一版）
+N61：Evidence-bound Round v1 小样本验收。（real provider 已跑；第 7 局通过，结论 pass）
 ```
 
 Finance Major 的核心不是重写 HexGrid，而是保留最新 Hex 工程骨架，把旧泛商业语义替换为金融投资决策攻防。第一版测试范围固定为 `Dust2 有色 / 行业判断 / 6 round`。N56 已把金融层从“守方自证 / 攻方质疑”改成“立场方 / 挑战方”：round 是投资决策题，stance 可以看多、看空、中性、结构性分化、条件判断或暂不交易，challenge 必须攻击具体 claimId。CS 层仍保留 attack / defense。
@@ -170,6 +184,6 @@ FRED、BaoStock、SHFE、INE、World Bank、UN Comtrade 已进入同一个事实
 当前 generated round evidence pack 优先消费 Fact Bank v2；只有真实缺口才保留 unavailable / score cap。
 N57b 已证明 AKShare 可用端点主要集中在 SHFE/INE 期货、Sina 财务摘要、部分资金和宏观公开项；N57c 的目标是把 active 事实库再收敛为三主源：FRED 价格锚、BaoStock 公司行情/估值/可取财报字段、AKShare 可用 endpoint；World Bank / UN Comtrade 从 active pack 和 agent slice 中冻结。
 比赛运行时读到了 evidence pack，但不是实时 API 数据。
-N51 已按专家角色切片给 agent；N52 已硬隔离行动边界；N53 已完成裁判采信链第一版；N54 已处理中文人工审计；N55 已隔离真实 LLM 输出摘要和系统输入卡；N59 已完成金融证据绑定裁判第一版；真实成功样本仍需 N61 小样本验收。
+N51 已按专家角色切片给 agent；N52 已硬隔离行动边界；N53 已完成裁判采信链第一版；N54 已处理中文人工审计；N55 已隔离真实 LLM 输出摘要和系统输入卡；N59 已完成金融证据绑定裁判第一版；N60 已完成金融投影权限隔离第一版；N61 real provider 已执行，第 7 局真实 phase0 结构化卡片 10/10 可消费，当前结论为 pass。
 N55 收口修正已新增 `roundStartAgentOutputs`，它们是真实 phase0 开局输出；`agentOpeningBrief` 继续存在，但只作为系统输入卡。只有 `llm_response_artifact` 或 `fixture_response` 且校验通过、证据引用合法的输出可以进入后续 phase；`provider_error`、`invalid_response` 和非法 evidence refs 只能作为失败审计展示。N55 后 combat 窄修补丁又新增接触强度审计：`observation / suppression / lethal`，只有通过 lethal gate 的接触才能产生击杀；枪线暴露、开阔无掩体、同点位、包点暴露和移动触发的隐式交火都进入审计链。金融采信为 0 时，combat trace 不得把局部胜负包装成金融裁判胜利。
 ```

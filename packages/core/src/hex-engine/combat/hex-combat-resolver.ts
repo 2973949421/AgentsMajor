@@ -1,4 +1,4 @@
-﻿import type { HexMapAsset } from "@agent-major/shared";
+import type { HexMapAsset } from "@agent-major/shared";
 import type { HexRoundStartAgentOutputForAction, HexValidatedAgentAction } from "../action/index.js";
 import type { HexRoundBusinessDuel } from "../business/index.js";
 import { summarizeHexEconomyEvidence, type HexEconomyCombatEvidence, type HexRoundEconomyContext } from "../economy/index.js";
@@ -10,12 +10,15 @@ import type { HexCombatAttributionScore } from "./hex-combat-casualties.js";
 import { materializeHexCombatMemoryEvents } from "./hex-combat-events.js";
 import type {
   HexCombatAudit,
+  HexCombatAttributionHistory,
   HexCombatAdvantage,
   HexCombatBusinessVerdict,
   HexCombatCasualty,
   HexCombatContact,
   HexCombatControlHint,
+  HexCombatEffectAllowed,
   HexCombatFinanceEvidenceAdoption,
+  HexCombatFinanceProjection,
   HexCombatFinanceVerdict,
   HexCombatParticipant,
   HexCombatResolution,
@@ -39,6 +42,7 @@ export interface ResolveHexCombatInput {
   roundStartAgentOutputs?: readonly HexRoundStartAgentOutputForAction[];
   varianceMode?: HexCombatVarianceMode;
   seed?: string;
+  attributionHistory?: HexCombatAttributionHistory;
 }
 
 export interface HexCombatVarianceInput {
@@ -136,10 +140,19 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
     contact: input.contact,
     actions: input.actions,
     businessDuel: input.businessDuel,
-    financeDuel: input.financeDuel
+    financeDuel: input.financeDuel,
+    ...(input.attributionHistory ? { attributionHistory: input.attributionHistory } : {})
   });
   const casualties = buildHexCombatCasualties(input.contact, advantage, verdict, attributionScores);
   const suppressions = buildHexCombatSuppressions(input.contact, advantage, verdict, casualties);
+  const financeProjection = financeEvidenceAdoption
+    ? buildFinanceProjection({
+        adoption: financeEvidenceAdoption,
+        contact: input.contact,
+        verdict,
+        casualties
+      })
+    : undefined;
   const businessReasons = [
     ...adjustedScores.attack.reasons.filter((reason) => reason.includes(":business")),
     ...adjustedScores.defense.reasons.filter((reason) => reason.includes(":business")),
@@ -152,12 +165,13 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
     ? [
         ...adjustedScores.attack.reasons.filter((reason) => reason.includes(":finance") || reason.includes(":n59")),
         ...adjustedScores.defense.reasons.filter((reason) => reason.includes(":finance") || reason.includes(":n59")),
+        ...(financeProjection?.projectionReasons ?? []),
         `finance_verdict:${financeVerdict}`
       ]
     : undefined;
   const csReasons = [
-    ...adjustedScores.attack.reasons.filter((reason) => !reason.includes(":business") && !reason.includes(":finance")),
-    ...adjustedScores.defense.reasons.filter((reason) => !reason.includes(":business") && !reason.includes(":finance")),
+    ...adjustedScores.attack.reasons.filter(isCsReason),
+    ...adjustedScores.defense.reasons.filter(isCsReason),
     `contact:threat_level:${input.contact.contactThreatLevel ?? "observation"}`,
     ...(input.contact.lethalEligible ? ["contact:lethal_gate_passed"] : ["contact:lethal_gate_blocked"]),
     ...(input.contact.lethalGateReasons ?? []).map((reason) => `contact:${reason}`),
@@ -229,6 +243,7 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
     businessVerdict,
     ...(financeVerdict ? { financeVerdict } : {}),
     ...(financeEvidenceAdoption ? { financeEvidenceAdoption } : {}),
+    ...(financeProjection ? { financeProjection } : {}),
     ...(financeReasonZh ? { financeReasonZh } : {}),
     csReasonZh,
     businessReasons,
@@ -285,6 +300,13 @@ export function applyHexCombatVariance(input: HexCombatVarianceInput): HexCombat
   });
 }
 
+function isCsReason(reason: string): boolean {
+  return !reason.includes(":business")
+    && !reason.includes(":finance")
+    && !reason.includes(":n59")
+    && !reason.includes(":n60");
+}
+
 function scoreSide(input: {
   side: HexSide;
   contact: HexCombatContact;
@@ -313,7 +335,7 @@ function scoreSide(input: {
   const financeScore = input.financeDuel
     ? scoreFinanceEvidence(financeEvidenceAdoption)
     : undefined;
-  const businessScore = financeScore ?? scoreBusinessEvidence(input.side, participants, sideActionsNearContact, input.memory, input.businessDuel);
+  const businessScore = input.financeDuel ? 0 : scoreBusinessEvidence(input.side, participants, sideActionsNearContact, input.memory, input.businessDuel);
   const csScore = scoreCsEvidence(input.side, participants, input.contact, sideActionsNearContact, input.economyEvidence);
   return {
     businessScore,
@@ -431,6 +453,9 @@ function buildFinanceReasons(
   }
   if ((adoption?.acceptedEvidenceRefs.length ?? 0) > 0) {
     reasons.push(`${side}:n59_accepted_evidence_present`);
+    if (scoreFinanceEvidence(adoption) > 0) {
+      reasons.push(`${side}:n60_finance_score_audit_only`);
+    }
   } else {
     reasons.push(`${side}:n59_no_accepted_evidence`);
   }
@@ -448,6 +473,100 @@ function buildFinanceReasons(
   }
   reasons.push(...(adoption?.auditReasons ?? []).map((reason) => `${side}:n59:${reason}`));
   return uniqueStrings(reasons);
+}
+function buildFinanceProjection(input: {
+  adoption: { attack: HexCombatFinanceEvidenceAdoption; defense: HexCombatFinanceEvidenceAdoption };
+  contact: HexCombatContact;
+  verdict: HexCombatVerdict;
+  casualties: HexCombatCasualty[];
+}): HexCombatFinanceProjection {
+  const financialResult = input.adoption.attack.financialResult ?? input.adoption.defense.financialResult ?? "contested";
+  const combatEffectAllowed = uniqueCombatEffects([
+    ...input.adoption.attack.combatEffectAllowed,
+    ...input.adoption.defense.combatEffectAllowed
+  ]);
+  const projectionReasons: string[] = [];
+  const projectionReasonsZh: string[] = [];
+  const blockedEffects: HexCombatEffectAllowed[] = [];
+  const hasKill = input.verdict === "kill" && input.casualties.some((casualty) => casualty.result === "killed");
+  const hasWoundOrForcedBack = input.verdict === "wound_or_forced_back" || input.casualties.some((casualty) => casualty.result === "wounded");
+  const financeDisabled = financialResult === "no_financial_win_allowed" || combatEffectAllowed.includes("no_effect") || combatEffectAllowed.length === 0;
+  let appliedEffect: HexCombatFinanceProjection["appliedEffect"] = "none";
+
+  if (financeDisabled) {
+    projectionReasons.push("finance_projection:no_financial_effect");
+    projectionReasonsZh.push("金融未形成采信胜负，不参与战斗放大。");
+    if (hasKill) {
+      projectionReasons.push("finance_projection:cs_only_kill_when_no_financial_win");
+      projectionReasonsZh.push("本次击杀只能由 CS 执行事实解释，不能包装成金融胜利。");
+    }
+  } else if (hasKill) {
+    if (combatEffectAllowed.includes("possible_kill") && input.contact.lethalEligible) {
+      appliedEffect = "possible_kill";
+      projectionReasons.push("finance_projection:possible_kill_allowed_by_n59_and_cs_lethal");
+      projectionReasonsZh.push("N59 允许金融参与击杀解释，但击杀仍由 CS 致命接触产生。");
+    } else {
+      blockedEffects.push("possible_kill");
+      projectionReasons.push("finance_projection:kill_explanation_blocked");
+      projectionReasonsZh.push("金融投影未允许击杀解释，本次击杀只能由 CS 执行事实解释。");
+    }
+  } else if (hasWoundOrForcedBack) {
+    if (combatEffectAllowed.includes("force_reposition")) {
+      appliedEffect = "force_reposition";
+      projectionReasons.push("finance_projection:force_reposition_allowed");
+      projectionReasonsZh.push("金融投影允许解释退让或被迫换位，但不直接制造伤亡。");
+    } else if (combatEffectAllowed.includes("pressure")) {
+      appliedEffect = "pressure";
+      projectionReasons.push("finance_projection:pressure_allowed_for_wound_or_forced_back");
+      projectionReasonsZh.push("金融投影只允许解释压制，伤亡仍由 CS 执行事实决定。");
+    } else if (combatEffectAllowed.includes("minor_delay")) {
+      appliedEffect = "minor_delay";
+      projectionReasons.push("finance_projection:minor_delay_only");
+      projectionReasonsZh.push("金融投影仅允许轻微延缓，不解释伤亡。");
+    }
+  } else if (combatEffectAllowed.includes("pressure")) {
+    appliedEffect = "pressure";
+    projectionReasons.push("finance_projection:pressure_allowed");
+    projectionReasonsZh.push("金融投影允许解释压制，但没有形成金融击杀权限。");
+  } else if (combatEffectAllowed.includes("map_control")) {
+    appliedEffect = "map_control";
+    projectionReasons.push("finance_projection:map_control_allowed");
+    projectionReasonsZh.push("金融投影允许解释控图主动权，但不直接制造伤亡。");
+  } else if (combatEffectAllowed.includes("minor_delay")) {
+    appliedEffect = "minor_delay";
+    projectionReasons.push("finance_projection:minor_delay_only");
+    projectionReasonsZh.push("金融投影仅允许轻微延缓。");
+  }
+
+  if (!input.contact.lethalEligible && combatEffectAllowed.includes("possible_kill")) {
+    blockedEffects.push("possible_kill");
+    projectionReasons.push("finance_projection:possible_kill_blocked_by_non_lethal_contact");
+    projectionReasonsZh.push("金融允许的 possible_kill 被 CS 致命门槛阻断：本次接触不是致命接触。");
+    if (appliedEffect === "possible_kill") {
+      appliedEffect = "none";
+    }
+  }
+
+  if (appliedEffect !== "none") {
+    projectionReasons.push(`finance_projection:applied:${appliedEffect}`);
+  }
+
+  return {
+    financialResult,
+    combatEffectAllowed,
+    appliedEffect,
+    blockedEffects: uniqueCombatEffects(blockedEffects),
+    projectionReasons: uniqueStrings(projectionReasons),
+    projectionReasonsZh: uniqueStrings(projectionReasonsZh),
+    financeMayExplainKill: appliedEffect === "possible_kill" && hasKill,
+    financeMayApplyPressure: appliedEffect === "pressure",
+    financeMayForceReposition: appliedEffect === "force_reposition",
+    financeMayApplyMapControl: appliedEffect === "map_control"
+  };
+}
+
+function uniqueCombatEffects(effects: readonly HexCombatEffectAllowed[]): HexCombatEffectAllowed[] {
+  return [...new Set(effects)];
 }
 interface FinanceEvidenceRefInfo {
   ref: string;
@@ -1169,6 +1288,7 @@ function buildAttributionScores(input: {
   actions: HexValidatedAgentAction[];
   businessDuel: HexRoundBusinessDuel | undefined;
   financeDuel: HexRoundFinanceDuel | undefined;
+  attributionHistory?: HexCombatAttributionHistory;
 }): Map<string, HexCombatAttributionScore> {
   const actionByAgent = new Map(input.actions.map((action) => [action.agentId, action]));
   const financeEvidenceIndex = input.financeDuel ? buildFinanceEvidenceIndex(input.financeDuel) : undefined;
@@ -1223,6 +1343,22 @@ function buildAttributionScores(input: {
     killerScore += roleContribution.killerDelta;
     assistScore += roleContribution.assistDelta;
     reasons.push(...roleContribution.reasons);
+    if (isSetupRoleRestrictedToAssist(roleContribution.roleLabel, action)) {
+      assistScore += 4;
+      killerScore = Math.min(killerScore, 1);
+      reasons.push("role_setup_limited_to_assist");
+    }
+    const roundKillCount = input.attributionHistory?.roundKillCountsByAgent[participant.agentId] ?? 0;
+    if (roundKillCount > 0) {
+      const penalty = roundKillCount >= 2 ? 8 : 4;
+      killerScore -= penalty;
+      reasons.push(`recent_kill_deprioritized:${roundKillCount}`);
+    }
+    const lastKillPhaseIndex = input.attributionHistory?.lastKillPhaseIndexByAgent[participant.agentId];
+    if (lastKillPhaseIndex !== undefined && lastKillPhaseIndex >= input.contact.phaseIndex - 1) {
+      killerScore -= 4;
+      reasons.push(`last_phase_kill_deprioritized:${lastKillPhaseIndex}`);
+    }
     if (participant.supportParticipant) {
       assistScore += 6;
       killerScore = 0;
@@ -1277,6 +1413,10 @@ function scoreRoleContribution(input: {
     reasons.push(`role_${input.roleLabel}_neutral`);
   }
   return { roleLabel: input.roleLabel, killerDelta, assistDelta, reasons };
+}
+
+function isSetupRoleRestrictedToAssist(roleLabel: string, action: HexValidatedAgentAction): boolean {
+  return ["igl", "support"].includes(roleLabel) && !isDirectDuelAction(action);
 }
 
 function resolveRoleLabel(

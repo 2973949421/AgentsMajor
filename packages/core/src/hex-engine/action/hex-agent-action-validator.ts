@@ -260,6 +260,15 @@ function resolveActionType(
 ): HexAgentActionType {
   if (
     agent?.carryingC4
+    && input.draft.actionType === "plant_bomb"
+    && targetCell
+    && isBombsiteCell(targetCell)
+    && isEnemyOccupyingCell(input.memory, agent, targetCell.cellId)
+  ) {
+    return "seek_duel";
+  }
+  if (
+    agent?.carryingC4
     && input.draft.actionType === "move"
     && targetCell
     && isBombsiteCell(targetCell)
@@ -276,13 +285,27 @@ function buildRepairReasons(
   targetCell: HexCell | undefined,
   actionType: HexAgentActionType
 ): string[] {
-  return actionType !== input.draft.actionType
+  if (
+    actionType !== input.draft.actionType
     && actionType === "plant_bomb"
     && agent.carryingC4
     && targetCell
     && isBombsiteCell(targetCell)
-    ? ["repaired_move_to_plant_intent"]
-    : [];
+  ) {
+    return ["repaired_move_to_plant_intent"];
+  }
+  if (
+    actionType !== input.draft.actionType
+    && actionType === "seek_duel"
+    && input.draft.actionType === "plant_bomb"
+    && agent.carryingC4
+    && targetCell
+    && isBombsiteCell(targetCell)
+    && isEnemyOccupyingCell(input.memory, agent, targetCell.cellId)
+  ) {
+    return ["repaired_plant_bomb_to_seek_duel_due_to_enemy_on_target"];
+  }
+  return [];
 }
 
 function isWithinBudgetForAction(apCost: number | undefined, apRemaining: number, actionType: HexAgentActionType): boolean {
@@ -299,6 +322,15 @@ function isBombsiteCell(cell: HexCell): boolean {
 
 function mentionsPlantIntent(text: string): boolean {
   return /\bplant\b|\bc4\b|\bbomb\b|下包|埋包|安包/i.test(text);
+}
+
+function isEnemyOccupyingCell(memory: HexRoundMemory, agent: HexAgentPhaseMemory, cellId: string): boolean {
+  return memory.agents.some((candidate) =>
+    candidate.agentId !== agent.agentId
+    && candidate.teamId !== agent.teamId
+    && candidate.lifeStatus !== "dead"
+    && candidate.currentCellId === cellId
+  );
 }
 
 function isObjectiveAction(actionType: HexAgentActionType): boolean {

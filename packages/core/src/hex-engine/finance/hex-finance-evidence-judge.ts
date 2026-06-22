@@ -1,5 +1,6 @@
-﻿import type {
+import type {
   HexFinanceChallenge,
+  HexFinanceChallengeCard,
   HexFinanceCoreClaim,
   HexFinanceStanceCard,
   HexRoundStartAgentOutputForAction
@@ -70,6 +71,7 @@ interface FactMetadata extends HexFinanceEvidenceFact {
   factBankSource?: string;
   requiredEvidenceKeys?: string[];
   unavailableReason?: string;
+  period?: string;
 }
 
 interface EvidenceIndex {
@@ -97,6 +99,23 @@ interface MutableSideResult {
   rejectionReasons: Set<string>;
   auditReasons: Set<string>;
 }
+
+const financialWinDelta = 15;
+const defaultMissingEvidenceCap = 70;
+const missingOnlyChallengeCap = 35;
+
+const claimTypeAliases: Record<string, string> = {
+  commodity_price_signal: "commodity_price_momentum",
+  price_signal: "commodity_price_momentum",
+  commodity_signal: "commodity_price_momentum",
+  equity_signal: "equity_transmission_proxy",
+  equity_market_signal: "equity_transmission_proxy",
+  a_share_market_signal: "a_share_relative_performance",
+  valuation_signal: "valuation_proxy",
+  valuation_context: "valuation_proxy",
+  risk_boundary: "risk_reward_boundary",
+  execution_risk: "risk_reward_boundary"
+};
 
 export function judgeHexFinanceEvidence(input: {
   financeDuel: HexRoundFinanceDuel;
@@ -139,15 +158,17 @@ export function judgeHexFinanceEvidence(input: {
   applyRequiredEvidenceCaps(defense, input.financeDuel.decisionQuestion.requiredEvidenceSchema);
   applyRequiredEvidenceCaps(attack, input.financeDuel.decisionQuestion.requiredEvidenceSchema);
 
-  const stanceScore = clampScore(defense.score);
-  const challengeScore = clampScore(attack.score);
+  const stanceScore = applyScoreCaps(defense, defense.score);
+  const challengeScore = applyScoreCaps(attack, attack.score);
   const totalAcceptedEvidence = defense.acceptedEvidenceRefs.size + attack.acceptedEvidenceRefs.size;
   const financialResult = buildFinancialResult({
     stanceScore,
     challengeScore,
     totalAcceptedEvidence,
     acceptedClaims: defense.acceptedClaims.size,
-    acceptedChallenges: attack.acceptedChallenges.size
+    acceptedChallenges: attack.acceptedChallenges.size,
+    acceptedStanceEvidence: defense.acceptedEvidenceRefs.size,
+    acceptedChallengeEvidence: attack.acceptedEvidenceRefs.size
   });
   const combatEffectAllowed = buildCombatEffectAllowed(financialResult);
 
@@ -303,7 +324,8 @@ function evaluateChallengeCard(input: {
       input.sideResult.auditReasons.add(`${challenge.challengeId}:missing_evidence_key_applied:${key}`);
       addScoreCap(input.sideResult, {
         condition: key,
-        reason: resolveMissingEffect(key, input.financeDuel.decisionQuestion.requiredEvidenceSchema)
+        reason: resolveMissingEffect(key, input.financeDuel.decisionQuestion.requiredEvidenceSchema),
+        maxScore: evaluation.acceptedRefs.length > 0 ? defaultMissingEvidenceCap : missingOnlyChallengeCap
       });
     }
 
@@ -314,8 +336,19 @@ function evaluateChallengeCard(input: {
     }
 
     input.sideResult.acceptedChallenges.add(challenge.challengeId);
-    input.sideResult.score += evaluation.acceptedRefs.length > 0 ? 22 + Math.min(14, evaluation.acceptedRefs.length * 5) : 6;
-    if (["proxy_mismatch", "horizon_mismatch", "reasoning_bridge_break", "risk_reward_failure"].includes(challenge.challengeType)) {
+    const missingOnlyChallenge = evaluation.acceptedRefs.length === 0 && missingKeys.length > 0;
+    if (missingOnlyChallenge) {
+      input.sideResult.score += 4;
+      input.sideResult.auditReasons.add(`${challenge.challengeId}:missing_only_challenge_capped`);
+      addScoreCap(input.sideResult, {
+        condition: `${challenge.challengeId}:missing_only_challenge`,
+        reason: "挑战只指出预声明缺失证据时，只能限制置信度，不能直接打穿立场。",
+        maxScore: missingOnlyChallengeCap
+      });
+    } else {
+      input.sideResult.score += 22 + Math.min(14, evaluation.acceptedRefs.length * 5);
+    }
+    if (!missingOnlyChallenge && ["proxy_mismatch", "horizon_mismatch", "reasoning_bridge_break", "risk_reward_failure"].includes(challenge.challengeType)) {
       input.sideResult.score += 8;
     }
     input.sideResult.adoptionReasons.add(`${challenge.challengeId}:challenge_targets_claim:${challenge.targetClaimId}`);
@@ -340,6 +373,10 @@ function evaluateEvidenceRefs(input: {
   const missingRefs: string[] = [];
   const scoreCaps: HexFinanceEvidenceJudgeScoreCap[] = [];
   const reasons: string[] = [];
+  const canonicalClaim = input.claimType ? canonicalClaimType(input.claimType) : undefined;
+  if (input.claimType && canonicalClaim && canonicalClaim !== normalizeClaimType(input.claimType)) {
+    reasons.push(`${input.contextId}:normalized_claim_type:${input.claimType}:${canonicalClaim}`);
+  }
   for (const ref of input.refs) {
     const fact = input.evidenceIndex.byRef.get(normalizeRef(ref));
     if (!fact) {
@@ -354,18 +391,18 @@ function evaluateEvidenceRefs(input: {
       addFactScoreCap(scoreCaps, fact);
       continue;
     }
-    if (input.claimType) {
-      const notAllowed = fact.notAllowedClaimTypes ?? [];
-      if (notAllowed.includes(input.claimType)) {
-        rejectedRefs.push(`${ref}:claim_type_not_allowed:${input.claimType}`);
-        reasons.push(`${input.contextId}:claim_type_not_allowed:${input.claimType}:${ref}`);
+    if (canonicalClaim) {
+      const notAllowed = canonicalClaimTypes(fact.notAllowedClaimTypes);
+      if (notAllowed.includes(canonicalClaim)) {
+        rejectedRefs.push(`${ref}:claim_type_not_allowed:${canonicalClaim}`);
+        reasons.push(`${input.contextId}:claim_type_not_allowed:${canonicalClaim}:${ref}`);
         addFactScoreCap(scoreCaps, fact);
         continue;
       }
-      const allowed = fact.allowedClaimTypes ?? [];
-      if (allowed.length > 0 && !allowed.includes(input.claimType)) {
-        rejectedRefs.push(`${ref}:claim_type_not_supported:${input.claimType}`);
-        reasons.push(`${input.contextId}:claim_type_not_supported:${input.claimType}:${ref}`);
+      const allowed = canonicalClaimTypes(fact.allowedClaimTypes);
+      if (allowed.length > 0 && !allowed.includes(canonicalClaim)) {
+        rejectedRefs.push(`${ref}:claim_type_not_supported:${canonicalClaim}`);
+        reasons.push(`${input.contextId}:claim_type_not_supported:${canonicalClaim}:${ref}`);
         addFactScoreCap(scoreCaps, fact);
         continue;
       }
@@ -412,7 +449,8 @@ function applyRequiredEvidenceCaps(sideResult: MutableSideResult, requiredEviden
       sideResult.missingEvidenceApplied.add(required.requiredKey);
       addScoreCap(sideResult, {
         condition: required.requiredKey,
-        reason: required.missingEffect
+        reason: required.missingEffect,
+        maxScore: defaultMissingEvidenceCap
       });
     }
   }
@@ -452,14 +490,16 @@ function buildFinancialResult(input: {
   totalAcceptedEvidence: number;
   acceptedClaims: number;
   acceptedChallenges: number;
+  acceptedStanceEvidence: number;
+  acceptedChallengeEvidence: number;
 }): HexFinanceEvidenceFinancialResult {
   if (input.totalAcceptedEvidence === 0) {
     return "no_financial_win_allowed";
   }
-  if (input.acceptedClaims > 0 && input.stanceScore - input.challengeScore >= 15) {
+  if (input.acceptedClaims > 0 && input.acceptedStanceEvidence > 0 && input.stanceScore - input.challengeScore >= financialWinDelta) {
     return "stance_survives";
   }
-  if (input.acceptedChallenges > 0 && input.challengeScore - input.stanceScore >= 15) {
+  if (input.acceptedChallenges > 0 && input.acceptedChallengeEvidence > 0 && input.challengeScore - input.stanceScore >= financialWinDelta) {
     return "challenge_breaks_stance";
   }
   return "contested";
@@ -574,6 +614,21 @@ function resolveMissingEffect(requiredKey: string, requiredEvidenceSchema: reado
     ?? "该必需证据缺失，只能降权或限制结论强度。";
 }
 
+function applyScoreCaps(sideResult: MutableSideResult, rawScore: number): number {
+  const clampedRawScore = clampScore(rawScore);
+  const numericCaps = [...sideResult.scoreCaps.values()]
+    .map((cap) => cap.maxScore)
+    .filter((cap): cap is number => typeof cap === "number" && Number.isFinite(cap));
+  if (numericCaps.length === 0) {
+    return clampedRawScore;
+  }
+  const strongestCap = Math.max(0, Math.min(...numericCaps));
+  if (clampedRawScore > strongestCap) {
+    sideResult.auditReasons.add(`score_cap_applied:${strongestCap}`);
+  }
+  return Math.min(clampedRawScore, strongestCap);
+}
+
 function isGenericMissingDataChallenge(challenge: HexFinanceChallenge, card: { proxyMismatch: string; challengedAssumption: string }): boolean {
   const text = normalizeText(`${challenge.challengeReasonZh} ${challenge.expectedEffect} ${card.proxyMismatch} ${card.challengedAssumption}`);
   const mentionsOnlyMissing = /数据不足|证据不足|缺少数据|无法判断/.test(text)
@@ -583,6 +638,19 @@ function isGenericMissingDataChallenge(challenge: HexFinanceChallenge, card: { p
 
 function normalizeRef(ref: string): string {
   return ref.trim().toUpperCase();
+}
+
+function canonicalClaimTypes(claimTypes: readonly string[] | undefined): string[] {
+  return uniqueStrings((claimTypes ?? []).map((claimType) => canonicalClaimType(claimType)));
+}
+
+function canonicalClaimType(claimType: string): string {
+  const normalized = normalizeClaimType(claimType);
+  return claimTypeAliases[normalized] ?? normalized;
+}
+
+function normalizeClaimType(claimType: string): string {
+  return claimType.trim().toLowerCase().replace(/[\s-]+/g, "_");
 }
 
 function normalizeText(text: string): string {

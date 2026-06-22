@@ -215,9 +215,8 @@ export async function runHexRoundStartAgentOutputHarness(
   const claimCatalog: HexRoundStartClaimCatalogItem[] = [];
   const stanceBriefs = input.roundOpeningBrief.agentBriefs.filter((brief) => brief.teamSide === "defense");
   const challengeBriefs = input.roundOpeningBrief.agentBriefs.filter((brief) => brief.teamSide === "attack");
-  const orderedBriefs = [...stanceBriefs, ...challengeBriefs];
 
-  for (const brief of orderedBriefs) {
+  for (const brief of stanceBriefs) {
     const economy = input.economyContext?.agents.find((agent) => agent.agentId === brief.agentId);
     const request = buildHexRoundStartAgentOutputRequest({
       roundOpeningBrief: input.roundOpeningBrief,
@@ -236,6 +235,29 @@ export async function runHexRoundStartAgentOutputHarness(
     }
   }
 
+  for (const brief of challengeBriefs) {
+    const economy = input.economyContext?.agents.find((agent) => agent.agentId === brief.agentId);
+    const request = buildHexRoundStartAgentOutputRequest({
+      roundOpeningBrief: input.roundOpeningBrief,
+      agentOpeningBrief: brief,
+      economy,
+      claimCatalog
+    });
+    if (claimCatalog.length === 0) {
+      outputs.push(await buildNoValidClaimCatalogOutput({
+        input,
+        request,
+        brief
+      }));
+      continue;
+    }
+    outputs.push(await runSingleRoundStartOutput({
+      input,
+      request,
+      brief
+    }));
+  }
+
   return outputs;
 }
 
@@ -244,7 +266,7 @@ async function runSingleRoundStartOutput(input: {
   request: HexRoundStartAgentOutputRequest;
   brief: HexAgentOpeningBrief;
 }): Promise<HexRoundStartAgentOutput> {
-  const callId = `hex_${input.input.roundId}_round_start_${input.brief.agentId}`;
+  const callId = buildRoundStartCallId(input.input.roundId, input.brief.agentId);
   const requestArtifactId = await writeRoundStartArtifact(input.input, {
     callId,
     agentId: input.brief.agentId,
@@ -299,6 +321,39 @@ async function runSingleRoundStartOutput(input: {
       modelId: input.input.modelId
     });
   }
+}
+
+async function buildNoValidClaimCatalogOutput(input: {
+  input: RunHexRoundStartAgentOutputHarnessInput;
+  request: HexRoundStartAgentOutputRequest;
+  brief: HexAgentOpeningBrief;
+}): Promise<HexRoundStartAgentOutput> {
+  const callId = buildRoundStartCallId(input.input.roundId, input.brief.agentId);
+  const requestArtifactId = await writeRoundStartArtifact(input.input, {
+    callId,
+    agentId: input.brief.agentId,
+    suffix: "request",
+    artifactType: "hex_round_start_agent_output_request",
+    content: {
+      schemaVersion: 1,
+      callId,
+      skippedReason: "round_start:no_valid_claim_catalog",
+      request: input.request
+    }
+  });
+  return buildInvalidRoundStartOutput({
+    request: input.request,
+    requestArtifactId,
+    errors: ["round_start:no_valid_claim_catalog"],
+    normalizationSummaryZh: "立场方没有合法 claimCatalog，挑战方未调用真实模型。",
+    validationSummaryZh: "phase0 挑战卡未生成：没有可绑定的真实 targetClaimId。",
+    providerMode: input.input.providerMode,
+    modelId: input.input.modelId
+  });
+}
+
+function buildRoundStartCallId(roundId: string, agentId: string): string {
+  return `hex_${roundId}_round_start_${agentId}`;
 }
 
 export function buildHexRoundStartAgentOutputRequest(input: {
@@ -478,7 +533,7 @@ export function createEnvHexRoundStartAgentOutputProvider(
         responseFormat: "json_object",
         modelTier: "standard",
         temperature: 0.3,
-        maxOutputTokens: 1100,
+        maxOutputTokens: 1600,
         extraParams: { thinking: { type: "disabled" } },
         messages: buildRealHexRoundStartAgentOutputMessages(request)
       });
@@ -494,20 +549,84 @@ export function createEnvHexRoundStartAgentOutputProvider(
   };
 }
 
+function buildRoundStartJsonExample(request: HexRoundStartAgentOutputRequest): Record<string, unknown> {
+  const inputEvidenceRefs = request.systemInputCard.evidenceRefs ?? [];
+  const firstEvidenceRef = inputEvidenceRefs[0] ?? "NO_AVAILABLE_EVIDENCE_REF";
+  const secondEvidenceRef = inputEvidenceRefs[1] ?? firstEvidenceRef;
+  if (request.cardKind === "stance") {
+    return {
+      cardKind: "stance",
+      stanceCard: {
+        cardId: `stance_${request.agent.agentId}`,
+        agentId: request.agent.agentId,
+        teamSide: request.agent.teamSide,
+        decisionQuestionZh: request.decisionQuestionZh ?? request.topicTitle,
+        direction: request.allowedStance?.[0] ?? "neutral",
+        target: request.decisionQuestionZh ?? request.topicTitle,
+        horizon: "1-3个月",
+        confidence: 0.58,
+        positionSuggestion: "有限仓位参与，等待关键缺口确认后再扩大。",
+        coreClaims: [{
+          claimId: `claim_${request.agent.agentId}_1`,
+          claimType: "commodity_price_signal",
+          claimZh: "可用证据支持有限强度的有色配置判断。",
+          evidenceRefs: [firstEvidenceRef, secondEvidenceRef].filter((ref, index, refs) => ref !== "NO_AVAILABLE_EVIDENCE_REF" && refs.indexOf(ref) === index),
+          reasoningBridge: "该证据只能支持对应指标方向，不能直接外推成完整行业胜负。",
+          confidence: 0.58,
+          unsupportedIfEvidenceRejected: true
+        }],
+        riskBoundaries: ["关键缺失证据会限制置信度和仓位。"],
+        invalidatingConditions: ["证据方向反转或关键缺口持续无法验证。"],
+        auditSummaryZh: "本卡片给出证据绑定的有限立场。"
+      },
+      cardSummaryZh: "结构化 stanceCard：有限立场、证据绑定、缺口降权。"
+    };
+  }
+  const targetClaim = request.claimCatalog?.[0];
+  return {
+    cardKind: "challenge",
+    challengeCard: {
+      cardId: `challenge_${request.agent.agentId}`,
+      agentId: request.agent.agentId,
+      teamSide: request.agent.teamSide,
+      targetClaimId: targetClaim?.claimId ?? "COPY_A_REAL_CLAIM_ID_FROM_CLAIM_CATALOG",
+      challengeType: "proxy_mismatch",
+      challengedAssumption: "对方把代理证据外推到更强结论。",
+      evidenceRefs: [firstEvidenceRef].filter((ref) => ref !== "NO_AVAILABLE_EVIDENCE_REF"),
+      proxyMismatch: "该证据最多支持局部代理，不能直接支持完整配置结论。",
+      confidenceReduction: 0.18,
+      challenges: [{
+        challengeId: `challenge_${request.agent.agentId}_1`,
+        targetClaimId: targetClaim?.claimId ?? "COPY_A_REAL_CLAIM_ID_FROM_CLAIM_CATALOG",
+        challengeType: "proxy_mismatch",
+        evidenceRefs: [firstEvidenceRef].filter((ref) => ref !== "NO_AVAILABLE_EVIDENCE_REF"),
+        challengeReasonZh: "挑战对方 claim 的代理错配或推理桥断裂。",
+        expectedEffect: "降低置信度并限制金融投影强度。"
+      }],
+      auditSummaryZh: "本卡片挑战一个真实 targetClaimId。"
+    },
+    cardSummaryZh: "结构化 challengeCard：绑定 claimId，攻击证据或推理桥。"
+  };
+}
 export function buildRealHexRoundStartAgentOutputMessages(request: HexRoundStartAgentOutputRequest) {
+  const example = buildRoundStartJsonExample(request);
   return [
     {
       role: "system" as const,
       content: [
         "你是 Finance Major 的选手 agent，正在输出 phase0 结构化投资卡片。",
-        "这不是局内行动，不要输出地图 cell、击杀、胜负或经济变化。",
+        "这不是局内行动，不要输出地图 cell、击杀、胜负、伤害或经济变化。",
         request.cardKind === "stance"
-          ? "你是立场方：必须输出 stanceCard，选择 allowedStance 中的方向，并用 evidenceRefs 支持 coreClaims。"
-          : "你是挑战方：必须输出 challengeCard，targetClaimId 必须来自 claimCatalog，并攻击具体 claim。",
-        "输出必须是一个 JSON object，字段名保持英文，字段内容必须为中文。",
-        "所有 evidenceRefs 只能从 systemInputCard.evidenceRefs 中选择；不能新增证据编号。",
+          ? "你是立场方：必须输出 stanceCard，direction 必须从 allowedStance 里复制一个值；coreClaims 只写 1-2 条。"
+          : "你是挑战方：必须输出 challengeCard，只写 1 条 challenge；targetClaimId 必须从 claimCatalog 里原样复制。",
+        "输出只能是一个 JSON object，不要 Markdown，不要解释段落，不要包裹代码块。",
+        "字段名必须严格使用示例里的英文键名；字段内容使用中文。",
+        "所有 evidenceRefs 只能从 systemInputCard.evidenceRefs 中原样选择；不能新增证据编号。",
         "缺失证据只能降权或限制置信度，不是直接胜利。",
-        "phase1+ 只会引用 claimId 或 challengeId，因此必须提供稳定编号。"
+        "不要输出超过 2 个 claim，不要写长文；每个中文字段尽量 1 句。",
+        "phase1+ 只会引用 claimId 或 challengeId，因此必须提供稳定编号。",
+        "严格 JSON 示例如下，真实输出必须替换为本请求里的 agent、claimCatalog 和 evidenceRefs：",
+        JSON.stringify(example)
       ].join("\n")
     },
     {
@@ -583,7 +702,7 @@ export function normalizeHexRoundStartAgentOutputDraft(
   const cardSummaryZh = readString(draftObject.cardSummaryZh);
 
   if (cardKind === "stance") {
-    const stance = normalizeStanceCard(draftObject.stanceCard, context, errors, repairedFields);
+    const stance = normalizeStanceCard(draftObject.stanceCard, context, errors, repairedFields, cardSummaryZh);
     if (containsGarbledText(cardSummaryZh) || (stance && containsGarbledText(stance.auditSummaryZh))) {
       errors.push("round_start:garbled_text");
     }
@@ -612,7 +731,7 @@ export function normalizeHexRoundStartAgentOutputDraft(
     };
   }
 
-  const challenge = normalizeChallengeCard(draftObject.challengeCard, context, errors, repairedFields);
+  const challenge = normalizeChallengeCard(draftObject.challengeCard, context, errors, repairedFields, cardSummaryZh);
   if (containsGarbledText(cardSummaryZh) || (challenge && containsGarbledText(challenge.auditSummaryZh))) {
     errors.push("round_start:garbled_text");
   }
@@ -648,13 +767,14 @@ function normalizeStanceCard(
   raw: unknown,
   context: NormalizeCardContext,
   errors: string[],
-  repairedFields: string[]
+  repairedFields: string[],
+  cardSummaryZh = ""
 ): HexFinanceStanceCard | undefined {
   if (!isRecord(raw)) {
     errors.push("round_start:missing_stanceCard");
     return undefined;
   }
-  const direction = readString(raw.direction);
+  const direction = readStringField(raw, ["direction", "stance", "investmentDirection"], repairedFields, "repaired_stance_direction");
   if (!direction) {
     errors.push("round_start:missing_stance_direction");
   } else if (context.allowedStance.size > 0 && !context.allowedStance.has(direction)) {
@@ -665,23 +785,47 @@ function normalizeStanceCard(
   if (!readString(raw.cardId)) {
     repairedFields.push("repaired_missing_stance_cardId");
   }
-  const auditSummaryZh = readString(raw.auditSummaryZh);
+  let auditSummaryZh = readStringField(raw, ["auditSummaryZh"], repairedFields, "repaired_stance_auditSummaryZh");
+  if (!auditSummaryZh && cardSummaryZh) {
+    auditSummaryZh = cardSummaryZh;
+    repairedFields.push("repaired_stance_auditSummaryZh_from_cardSummaryZh");
+  }
   if (!auditSummaryZh) {
     errors.push("round_start:missing_stance_auditSummaryZh");
   }
-  const riskBoundaries = readStringArray(raw.riskBoundaries);
-  const invalidatingConditions = readStringArray(raw.invalidatingConditions);
-  const confidence = readConfidence(raw.confidence);
+  const riskBoundaries = readStringArrayField(raw, [
+    "riskBoundaries",
+    "riskRewardBoundary",
+    "evidenceBoundaryApplied",
+    "missingEvidenceImpact",
+    "scoreCapReason"
+  ], repairedFields, "repaired_stance_riskBoundaries");
+  const invalidatingConditions = readStringArrayField(raw, [
+    "invalidatingConditions",
+    "triggerConditions",
+    "conditionalTriggers"
+  ], repairedFields, "repaired_stance_invalidatingConditions");
+  const confidence = readConfidenceField(raw, ["confidence", "confidenceScore"], repairedFields, "repaired_stance_confidence");
+  let target = readStringField(raw, ["target", "targetAsset", "decisionTarget"], repairedFields, "repaired_stance_target");
+  if (!target && context.decisionQuestionZh) {
+    target = context.decisionQuestionZh;
+    repairedFields.push("repaired_stance_target_from_decisionQuestion");
+  }
+  let horizon = readStringField(raw, ["horizon", "timeWindow", "holdingPeriod"], repairedFields, "repaired_stance_horizon");
+  if (!horizon && /1\s*[-–—至到]\s*3|1-3/.test(context.decisionQuestionZh)) {
+    horizon = "1-3个月";
+    repairedFields.push("repaired_stance_horizon_from_decisionQuestion");
+  }
   const stance: HexFinanceStanceCard = {
     cardId,
     agentId: readString(raw.agentId) || context.agentId || "unknown",
     teamSide: readSide(raw.teamSide) ?? context.teamSide ?? "defense",
     decisionQuestionZh: readString(raw.decisionQuestionZh) || context.decisionQuestionZh,
     direction,
-    target: readString(raw.target),
-    horizon: readString(raw.horizon),
+    target,
+    horizon,
     confidence: confidence ?? 0.5,
-    positionSuggestion: readString(raw.positionSuggestion),
+    positionSuggestion: readStringField(raw, ["positionSuggestion", "positionBoundary", "allocationSuggestion"], repairedFields, "repaired_stance_positionSuggestion"),
     coreClaims,
     riskBoundaries,
     invalidatingConditions,
@@ -695,7 +839,6 @@ function normalizeStanceCard(
   if (stance.invalidatingConditions.length === 0) errors.push("round_start:missing_invalidatingConditions");
   return stance;
 }
-
 function normalizeCoreClaims(
   raw: unknown,
   context: NormalizeCardContext,
@@ -718,10 +861,10 @@ function normalizeCoreClaims(
       repairedFields.push("repaired_coreClaim_claimId");
     }
     seen.add(claimId);
-    const evidenceRefs = validateEvidenceRefs(readStringArray(item.evidenceRefs), context, errors);
+    const evidenceRefs = validateEvidenceRefs(readStringArrayField(item, ["evidenceRefs"], repairedFields, `repaired_coreClaim_evidenceRefs:${claimId}`), context, errors);
     const claimType = readString(item.claimType);
-    const claimZh = readString(item.claimZh);
-    const reasoningBridge = readString(item.reasoningBridge);
+    const claimZh = readStringField(item, ["claimZh", "claimText", "claim", "statementZh"], repairedFields, `repaired_claimZh:${claimId}`);
+    const reasoningBridge = readStringField(item, ["reasoningBridge", "reasoning", "bridge"], repairedFields, `repaired_reasoningBridge:${claimId}`);
     if (!claimType) errors.push(`round_start:missing_claimType:${claimId}`);
     if (!claimZh) errors.push(`round_start:missing_claimZh:${claimId}`);
     if (evidenceRefs.length === 0) errors.push(`round_start:missing_claimEvidenceRefs:${claimId}`);
@@ -732,17 +875,17 @@ function normalizeCoreClaims(
       claimZh,
       evidenceRefs,
       reasoningBridge,
-      confidence: readConfidence(item.confidence) ?? 0.5,
+      confidence: readConfidenceField(item, ["confidence", "confidenceScore"], repairedFields, `repaired_claim_confidence:${claimId}`) ?? 0.5,
       unsupportedIfEvidenceRejected: readBoolean(item.unsupportedIfEvidenceRejected) ?? true
     };
   }).filter((claim): claim is HexFinanceCoreClaim => Boolean(claim));
 }
-
 function normalizeChallengeCard(
   raw: unknown,
   context: NormalizeCardContext,
   errors: string[],
-  repairedFields: string[]
+  repairedFields: string[],
+  cardSummaryZh = ""
 ): HexFinanceChallengeCard | undefined {
   if (!isRecord(raw)) {
     errors.push("round_start:missing_challengeCard");
@@ -758,20 +901,41 @@ function normalizeChallengeCard(
   } else if (!context.claimCatalog.has(targetClaimId)) {
     errors.push(`round_start:invalid_targetClaimId:${targetClaimId}`);
   }
-  const challenges = normalizeChallenges(raw.challenges, targetClaimId, context, errors, repairedFields);
-  const evidenceRefs = validateEvidenceRefs(readStringArray(raw.evidenceRefs), context, errors);
+  const evidenceRefs = validateEvidenceRefs(
+    readStringArrayField(raw, ["evidenceRefs", "observedEvidence"], repairedFields, "repaired_challenge_evidenceRefs"),
+    context,
+    errors
+  );
+  const challengeType = readString(raw.challengeType);
+  const challengedAssumption = readStringField(raw, ["challengedAssumption", "inference"], repairedFields, "repaired_challengedAssumption");
+  const proxyMismatch = readStringField(raw, ["proxyMismatch", "disconfirmingSignal"], repairedFields, "repaired_proxyMismatch");
+  let auditSummaryZh = readStringField(raw, ["auditSummaryZh"], repairedFields, "repaired_challenge_auditSummaryZh");
+  if (!auditSummaryZh && cardSummaryZh) {
+    auditSummaryZh = cardSummaryZh;
+    repairedFields.push("repaired_challenge_auditSummaryZh_from_cardSummaryZh");
+  }
+  const challenges = normalizeChallenges(raw.challenges, {
+    cardTargetClaimId: targetClaimId,
+    context,
+    errors,
+    repairedFields,
+    fallbackEvidenceRefs: evidenceRefs,
+    fallbackChallengeType: challengeType,
+    fallbackChallengeReasonZh: readStringField(raw, ["challengeReasonZh", "inference", "disconfirmingSignal"], repairedFields, "repaired_challengeReasonZh"),
+    fallbackExpectedEffect: readStringField(raw, ["expectedEffect", "positionBoundary"], repairedFields, "repaired_expectedEffect")
+  });
   const challenge: HexFinanceChallengeCard = {
     cardId,
     agentId: readString(raw.agentId) || context.agentId || "unknown",
     teamSide: readSide(raw.teamSide) ?? context.teamSide ?? "attack",
     targetClaimId,
-    challengeType: readString(raw.challengeType),
-    challengedAssumption: readString(raw.challengedAssumption),
+    challengeType,
+    challengedAssumption,
     evidenceRefs,
-    proxyMismatch: readString(raw.proxyMismatch),
-    confidenceReduction: readConfidence(raw.confidenceReduction) ?? 0.15,
+    proxyMismatch,
+    confidenceReduction: readConfidenceField(raw, ["confidenceReduction", "confidenceScore", "confidence"], repairedFields, "repaired_confidenceReduction") ?? 0.15,
     challenges,
-    auditSummaryZh: readString(raw.auditSummaryZh)
+    auditSummaryZh
   };
   if (!challenge.challengeType) errors.push("round_start:missing_challengeType");
   if (!challenge.challengedAssumption) errors.push("round_start:missing_challengedAssumption");
@@ -784,39 +948,71 @@ function normalizeChallengeCard(
 
 function normalizeChallenges(
   raw: unknown,
-  cardTargetClaimId: string,
-  context: NormalizeCardContext,
-  errors: string[],
-  repairedFields: string[]
+  input: {
+    cardTargetClaimId: string;
+    context: NormalizeCardContext;
+    errors: string[];
+    repairedFields: string[];
+    fallbackEvidenceRefs: string[];
+    fallbackChallengeType: string;
+    fallbackChallengeReasonZh: string;
+    fallbackExpectedEffect: string;
+  }
 ): HexFinanceChallenge[] {
   if (!Array.isArray(raw)) {
-    errors.push("round_start:missing_challenges");
+    if (
+      input.cardTargetClaimId
+      && input.context.claimCatalog.has(input.cardTargetClaimId)
+      && input.fallbackChallengeType
+      && input.fallbackEvidenceRefs.length > 0
+      && input.fallbackChallengeReasonZh
+      && input.fallbackExpectedEffect
+    ) {
+      input.repairedFields.push("repaired_challenges_from_top_level");
+      return [{
+        challengeId: `challenge_${input.context.agentId ?? "unknown"}_1`,
+        targetClaimId: input.cardTargetClaimId,
+        challengeType: input.fallbackChallengeType,
+        evidenceRefs: [...input.fallbackEvidenceRefs],
+        challengeReasonZh: input.fallbackChallengeReasonZh,
+        expectedEffect: input.fallbackExpectedEffect
+      }];
+    }
+    input.errors.push("round_start:missing_challenges");
     return [];
   }
   const seen = new Set<string>();
   return raw.map((item, index) => {
     if (!isRecord(item)) {
-      errors.push(`round_start:invalid_challenge:${index}`);
+      input.errors.push(`round_start:invalid_challenge:${index}`);
       return undefined;
     }
     let challengeId = readString(item.challengeId);
     if (!challengeId || seen.has(challengeId)) {
-      challengeId = `challenge_${context.agentId ?? "unknown"}_${index + 1}`;
-      repairedFields.push("repaired_challengeId");
+      challengeId = `challenge_${input.context.agentId ?? "unknown"}_${index + 1}`;
+      input.repairedFields.push("repaired_challengeId");
     }
     seen.add(challengeId);
-    const targetClaimId = readString(item.targetClaimId) || cardTargetClaimId;
-    if (!targetClaimId || !context.claimCatalog.has(targetClaimId)) {
-      errors.push(`round_start:invalid_challenge_targetClaimId:${targetClaimId || "missing"}`);
+    const targetClaimId = readString(item.targetClaimId) || input.cardTargetClaimId;
+    if (!targetClaimId || !input.context.claimCatalog.has(targetClaimId)) {
+      input.errors.push(`round_start:invalid_challenge_targetClaimId:${targetClaimId || "missing"}`);
     }
-    const evidenceRefs = validateEvidenceRefs(readStringArray(item.evidenceRefs), context, errors);
-    const challengeType = readString(item.challengeType);
-    const challengeReasonZh = readString(item.challengeReasonZh);
-    const expectedEffect = readString(item.expectedEffect);
-    if (!challengeType) errors.push(`round_start:missing_challengeType:${challengeId}`);
-    if (evidenceRefs.length === 0) errors.push(`round_start:missing_challengeEvidenceRefs:${challengeId}`);
-    if (!challengeReasonZh) errors.push(`round_start:missing_challengeReasonZh:${challengeId}`);
-    if (!expectedEffect) errors.push(`round_start:missing_expectedEffect:${challengeId}`);
+    let evidenceRefs = validateEvidenceRefs(
+      readStringArrayField(item, ["evidenceRefs", "observedEvidence"], input.repairedFields, `repaired_nested_challenge_evidenceRefs:${challengeId}`),
+      input.context,
+      input.errors
+    );
+    if (evidenceRefs.length === 0 && input.fallbackEvidenceRefs.length > 0) {
+      evidenceRefs = [...input.fallbackEvidenceRefs];
+      input.repairedFields.push(`repaired_nested_challenge_evidenceRefs_from_card:${challengeId}`);
+    }
+    const challengeType = readString(item.challengeType) || input.fallbackChallengeType;
+    const challengeReasonZh = readStringField(item, ["challengeReasonZh", "inference", "disconfirmingSignal"], input.repairedFields, `repaired_nested_challengeReasonZh:${challengeId}`) || input.fallbackChallengeReasonZh;
+    const expectedEffect = readStringField(item, ["expectedEffect", "positionBoundary"], input.repairedFields, `repaired_nested_expectedEffect:${challengeId}`) || input.fallbackExpectedEffect;
+    if (!challengeType) input.errors.push(`round_start:missing_challengeType:${challengeId}`);
+    if (evidenceRefs.length === 0) input.errors.push(`round_start:missing_challengeEvidenceRefs:${challengeId}`);
+    if (!challengeReasonZh) input.errors.push(`round_start:missing_challengeReasonZh:${challengeId}`);
+    if (!expectedEffect) input.errors.push(`round_start:missing_expectedEffect:${challengeId}`);
     return {
       challengeId,
       targetClaimId,
@@ -827,7 +1023,6 @@ function normalizeChallenges(
     };
   }).filter((challenge): challenge is HexFinanceChallenge => Boolean(challenge));
 }
-
 function validateEvidenceRefs(refs: string[], context: NormalizeCardContext, errors: string[]): string[] {
   const uniqueRefs = uniqueStrings(refs);
   for (const ref of uniqueRefs) {
@@ -902,6 +1097,47 @@ function buildRoundStartOutput(input: {
       repairedFields: [...input.normalized.repairedFields],
       providerMode: input.providerResult.providerMode,
       modelId: input.providerResult.modelId
+    }
+  };
+}
+
+function buildInvalidRoundStartOutput(input: {
+  request: HexRoundStartAgentOutputRequest;
+  requestArtifactId?: string | undefined;
+  errors: string[];
+  normalizationSummaryZh: string;
+  validationSummaryZh: string;
+  providerMode?: string | undefined;
+  modelId?: string | undefined;
+}): HexRoundStartAgentOutput {
+  const fallbackDraft = buildFallbackDraft(input.request, input.errors);
+  return {
+    outputId: `round_start_${input.request.roundNumber}_${input.request.agent.agentId}`,
+    roundNumber: input.request.roundNumber,
+    agentId: input.request.agent.agentId,
+    displayName: input.request.agent.displayName,
+    teamSide: input.request.agent.teamSide,
+    financeRole: input.request.agent.financeRole,
+    financeRoleCn: input.request.agent.financeRoleCn,
+    buyType: input.request.economy?.buyType,
+    resourceTier: input.request.economy?.resourceTier,
+    source: "invalid_response",
+    usableForPhaseAction: false,
+    requestArtifactId: input.requestArtifactId,
+    rawOutputSummaryZh: input.validationSummaryZh,
+    openingStatementZh: fallbackDraft.cardSummaryZh,
+    evidenceRefs: [],
+    riskBoundaryZh: fallbackDraft.riskBoundaryZh,
+    buyConstraintAppliedZh: fallbackDraft.buyConstraintAppliedZh,
+    phaseActionCarryoverZh: fallbackDraft.phaseActionCarryoverZh,
+    cardSummaryZh: fallbackDraft.cardSummaryZh,
+    normalizationSummaryZh: input.normalizationSummaryZh,
+    validationSummaryZh: input.validationSummaryZh,
+    technicalRefs: {
+      errors: [...input.errors],
+      repairedFields: [],
+      providerMode: input.providerMode,
+      modelId: input.modelId
     }
   };
 }
@@ -1053,20 +1289,95 @@ function readString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function readStringField(
+  record: Record<string, unknown>,
+  keys: readonly string[],
+  repairedFields: string[],
+  repairPrefix: string
+): string {
+  for (const [index, key] of keys.entries()) {
+    const value = readString(record[key]);
+    if (value) {
+      if (index > 0) {
+        repairedFields.push(`${repairPrefix}_from_${key}`);
+      }
+      return value;
+    }
+  }
+  return "";
+}
+
 function readStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) {
+  if (Array.isArray(value)) {
+    return value.flatMap(readTextValues).map((item) => item.trim()).filter(Boolean);
+  }
+  return readTextValues(value).map((item) => item.trim()).filter(Boolean);
+}
+
+function readStringArrayField(
+  record: Record<string, unknown>,
+  keys: readonly string[],
+  repairedFields: string[],
+  repairPrefix: string
+): string[] {
+  for (const [index, key] of keys.entries()) {
+    const values = readStringArray(record[key]);
+    if (values.length > 0) {
+      if (index > 0) {
+        repairedFields.push(`${repairPrefix}_from_${key}`);
+      }
+      return values;
+    }
+  }
+  return [];
+}
+
+function readTextValues(value: unknown): string[] {
+  if (typeof value === "string") {
+    return [value];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap(readTextValues);
+  }
+  if (!isRecord(value)) {
     return [];
   }
-  return value.map(readString).filter(Boolean);
+  return Object.values(value).flatMap((item) => {
+    if (typeof item === "string") {
+      return [item];
+    }
+    if (Array.isArray(item)) {
+      return item.flatMap(readTextValues);
+    }
+    return [];
+  });
 }
 
 function readConfidence(value: unknown): number | undefined {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     return undefined;
   }
-  return Math.max(0, Math.min(1, value));
+  const normalized = value > 1 && value <= 100 ? value / 100 : value;
+  return Math.max(0, Math.min(1, normalized));
 }
 
+function readConfidenceField(
+  record: Record<string, unknown>,
+  keys: readonly string[],
+  repairedFields: string[],
+  repairPrefix: string
+): number | undefined {
+  for (const [index, key] of keys.entries()) {
+    const value = readConfidence(record[key]);
+    if (value !== undefined) {
+      if (index > 0) {
+        repairedFields.push(`${repairPrefix}_from_${key}`);
+      }
+      return value;
+    }
+  }
+  return undefined;
+}
 function readBoolean(value: unknown): boolean | undefined {
   return typeof value === "boolean" ? value : undefined;
 }

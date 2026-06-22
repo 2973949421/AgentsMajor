@@ -152,7 +152,10 @@ function buildAttribution(input: {
     }))
     .sort((left, right) => right.killerScore - left.killerScore || left.agentId.localeCompare(right.agentId));
   const killerCandidates = contributors.filter((candidate) => !participantById.get(candidate.agentId)?.supportParticipant);
-  const killer = (killerCandidates.length > 0 ? killerCandidates : contributors)[0];
+  const unrestrictedKillerCandidates = killerCandidates.filter((candidate) => !candidate.reasons.includes("role_setup_limited_to_assist"));
+  const restrictedOnly = unrestrictedKillerCandidates.length === 0 && killerCandidates.length > 0;
+  const killerPool = unrestrictedKillerCandidates.length > 0 ? unrestrictedKillerCandidates : killerCandidates.length > 0 ? killerCandidates : contributors;
+  const killer = killerPool[0];
   const assisters = contributors
     .filter((candidate) => candidate.agentId !== killer?.agentId)
     .sort((left, right) => right.assistScore - left.assistScore || left.agentId.localeCompare(right.agentId))
@@ -163,6 +166,7 @@ function buildAttribution(input: {
     assisterAgentIds: assisters.map((candidate) => candidate.agentId),
     attributionReasons: [
       ...(killer ? killer.reasons.map((reason) => `killer:${killer.agentId}:${reason}`) : []),
+      ...(killer && restrictedOnly ? [`killer:${killer.agentId}:sole_direct_candidate_allowed`] : []),
       ...assisters.flatMap((candidate) => candidate.reasons.map((reason) => `assist:${candidate.agentId}:${reason}`))
     ]
   };

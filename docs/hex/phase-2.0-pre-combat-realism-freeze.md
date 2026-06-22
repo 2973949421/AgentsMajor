@@ -303,3 +303,85 @@ combat synthesis 本身就是按固定索引配对生成击杀。
 - 前端伪造 HP、枪械、护甲、投掷物或雷达信息。
 - 为了观感让 `roundWinType`、judge reason、summary、kill feed 和 combat resolution 互相矛盾。
 - 把本次有限解冻扩大成完整枪械/HP/投掷物模拟。
+
+## 10. fork-p1-cs-tactical-realism Narrow Patch
+
+This fork is not a casualty-threshold change and does not unlock full combat resolver rewrites. It only improves the tactical inputs before combat:
+
+```text
+prior-round tactical summary -> current playbook selection -> anti-repeat penalty -> economy-aware route selection -> role route assignment -> Web tactical audit
+```
+
+Allowed changes:
+
+- The round runner may read previous Hex trace `tacticalAudit` summaries for current route selection.
+- `HexRoundTacticalPlan` may record anti-repeat reasons, economy adjustments, previous-round signals, anti-repeat regions / points, and role route assignments.
+- The action request and compact request may pass only the current agent's role route and anti-repeat constraints to the LLM.
+- The Web audit may display why the tactic was selected, which route was penalized, and how roles were split.
+
+Still forbidden:
+
+- Changing combat kill / wound thresholds.
+- Letting the LLM write kills, deaths, hard winner, or KDA.
+- Letting the frontend fabricate tactical facts.
+- Treating a bad round as a credible match sample.
+
+## 11. fork-p1-kill-attribution-realism Narrow Patch
+
+该 fork 只修击杀归因集中问题，不改变接触门槛、伤亡门槛、hard winner、KDA 记账来源或金融裁判。
+
+允许实施：
+
+```text
+round 内记录每个 agent 的击杀归因历史。
+刚拿过击杀、尤其连续拿过击杀的 agent，在后续同局 contact 中降低 killer 优先级。
+上一 phase 刚拿过击杀的 agent 继续降低主杀优先级。
+IGL / support 这类 setup 角色默认转为 assist / suppression，不轻易成为 killer。
+当 setup 角色是唯一有效直接候选时，仍允许 fallback 为 killer，并必须写入审计原因。
+```
+
+仍然禁止：
+
+```text
+不按固定 quota 平均分配击杀。
+不让 LLM 或前端写 killer / victim / assister。
+不改变 lethal gate、kill threshold、combat verdict 或 hard winner。
+不把 support 直接踢出 contact；只限制其主杀归因权重。`phaseAttributionHistory` 只能由去重后最终落账的 combat resolutions 更新，不能记录同 phase 内随后会被 dedupe 删除的 casualty。
+```
+
+验收重点：
+
+```text
+同一局内不应长期由同一名 IGL / support 或刚杀过人的 agent 收割所有击杀。
+击杀归因应优先给直接对枪者，setup 角色更多进入助攻原因。
+审计中必须能看到 recent_kill_deprioritized、last_phase_kill_deprioritized、role_setup_limited_to_assist 或 sole_direct_candidate_allowed。
+```
+
+## 12. N61 后行动急迫感、C4 收敛与主动交火窄修
+
+本补丁不改变 combat kill threshold、lethal gate、KDA、经济或 hard winner。它只修有效 round 中“行动 accepted 但战术空转”的上游输入：
+
+```text
+phaseClock 进入 action request，让 agent 知道 totalPhases=5、remainingPhases 和 isFinalPhase。
+C4 carrier 在 late / final 阶段的 route candidate 更偏向合法包点、包点路径和直接执行。
+同一 round 内已访问 cell / region / point 会进入折返降权，防止 C4 在非包点之间来回跑。
+危险 move 可被 normalizer 安全修复为 plant_bomb / defuse_bomb / retake / execute_site / seek_duel / peek，并写入 repairedFields。
+每 round 对 spawn_t / spawn_ct 用稳定 seed 洗牌分配 5 个不重叠出生点，保证复盘可复现且不同 round 不死板。
+```
+
+验收重点：
+
+```text
+final 阶段 attack 未下包时，不再继续写“为后续准备”。
+C4 中后期朝包点或包点路径收敛。
+`no_active_combat_action` 不应继续因为危险区域纯 move 而大量出现。
+出生点同 round 可复现、不同 round 有变化、同队不重叠。
+```
+
+仍然禁止：
+
+```text
+不伪造 plant。
+不让 LLM 或前端写 kill / damage / winner。
+不借行动急迫感修改金融裁判、经济、KDA 或 hard winner。
+```

@@ -492,7 +492,7 @@ Web human audit 的默认解释顺序必须是：
 
 ### 8.8 N56-N61 Finance Major 证据绑定裁判
 
-当前实现状态：N56 已完成第一版，决策题、允许立场、必需证据结构和挑战规则已经进入材料、finance duel、prompt 和 Web 审计；N58 已提供结构化 `stanceCard / challengeCard`；N59 已完成第一版证据绑定裁判，能够输出 accepted / rejected / missing / scoreCaps、stanceScore / challengeScore、financialResult 和 combatEffectAllowed。N60 仍是后续硬化范围：金融结果必须只通过受限投影接口影响战斗，不能重新读取金融作文分。
+当前实现状态：N56 已完成第一版，决策题、允许立场、必需证据结构和挑战规则已经进入材料、finance duel、prompt 和 Web 审计；N58 已提供结构化 `stanceCard / challengeCard`；N59 已完成第一版证据绑定裁判，能够输出 accepted / rejected / missing / scoreCaps、stanceScore / challengeScore、financialResult 和 combatEffectAllowed。N60 已完成第一版：金融结果只通过 `financeProjection` 受限投影接口影响战斗解释，不能重新读取金融作文分。
 
 N56 起，Finance Major 的金融层不再使用“守方自证 / 攻方质疑”作为当前主语。CS 层仍可使用 attack / defense，金融层必须使用：
 
@@ -552,11 +552,47 @@ possible_kill
 
 N59 已落实的硬门槛：`finance_intent_present`、`businessIntent`、`actionRationaleZh` 和系统角色任务不能形成正向金融胜负；没有 accepted evidence 时，金融层只能输出 `no_financial_win_allowed` 或 `contested`。
 
-N60 继续处理的边界：金融结果与 combat projection（战斗投影）必须解耦：
+fork-p1-finance-judge-balance 追加硬约束：
+
+```text
+claimType 只允许在明确白名单内做安全同义归一，归一结果必须写入 auditReasons。
+scoreCaps 必须作用到最终 stanceScore / challengeScore，不能只作为审计装饰。
+missingEvidence-only challenge 只能触发降权、score cap 或投影限制，不能形成 challenge_breaks_stance。
+stance_survives / challenge_breaks_stance 必须基于封顶后的分数差，且分差至少 15。
+challenge_breaks_stance 必须有 accepted challenge evidence；只指出 requiredEvidenceSchema 缺口不算采信证据。
+```
+
+该补丁只调整 N59 裁判平衡，不改变 N58 卡片生成、不改变 N60 战斗投影接口、不绕过 P0 round 质量闸门。
+
+N60 已落实的边界：金融结果与 combat projection（战斗投影）必须解耦。Combat resolver 保留金融分作为审计字段，但 Finance Major 模式下 combat 总分不直接加入金融分；战斗裁定新增 `financeProjection`，记录 `financialResult`、`combatEffectAllowed`、`appliedEffect`、`blockedEffects`、中文投影原因，以及金融是否可参与击杀解释：
 
 - 金融无采信时，金融层不能放大 combat margin。
 - 金融无采信时，金融层不能解释击杀、全歼或战斗胜负。
 - CS 枪线、站位、目标暴露、人数和行动仍可独立产生击杀、受伤、压制或退让。
 - 如果击杀由纯 CS 事实产生，Web 审计必须显示为 CS 执行结果，不能包装成金融胜利。
+- possible_kill 只是解释权限，不是击杀事实；仍必须先通过 CS 致命接触和 casualty 生成。
 
 Web 可以组织和翻译裁判链路，但不能替 trace 编造 accepted evidence、rejected evidence、score cap 或 financialResult。
+
+### 8.9 fork-p0-round-quality-gate：Round 质量闸门
+
+N61 后真实 map 样本暴露出新的 P0 风险：当 provider 断线、phase0 结构化卡片不可消费、phase action 大面积 fallback 时，系统不能继续把 timeout、no plant 或 elimination 包装成正常比赛结果。
+
+质量闸门固定为 trace 事实，而不是 Web 文案：
+
+- `roundQualityStatus` 只能是 `valid`、`provider_degraded` 或 `invalid_round`。
+- `roundQualityReasons` 必须记录触发原因，例如 `phase0_stance_insufficient`、`phase0_challenge_insufficient`、`no_usable_phase0`、`phase_action_provider_failed`、`phase_action_degraded`、`provider_error_threshold_exceeded`、`action_fallback_threshold_exceeded`。
+- `roundQualityCounts` 必须记录 phase0 可消费数、provider error 数、invalid 数、fallback 数、最大 phase fallback 和连续降级 phase 数。
+- `invalid_round` 必须保留 trace、artifact、已完成 phase 和错误原因，但不得作为正常 hard winner 或正式 map 计分样本展示。
+- Web 和 N61 验收必须优先读取 `roundQualityStatus`；如果质量状态不是 `valid`，hard winner 只能进入技术细节，不能作为人类审计主结论。
+- 旧 trace 没有质量闸门字段时，页面和脚本必须显示“旧 trace 未记录质量闸门”，不能假定它是有效 round。
+
+第一版闸门只拦截明显坏样本，不修金融评分、战术重复、击杀归因或 combat 阈值。后续 P1/P2 fork 不能绕过该质量状态来包装失败样本。
+
+P0/P1 合并修复后，提交层也必须遵守同一质量事实：
+
+- `invalid_round` 可以保存 failed `Round` 和 `hex_round_trace` artifact，用于审计和排障。
+- `invalid_round` 不生成 `RoundReport`，不写正常 `round_completed` / `hex_round_experimental_committed` 事件，不推进 map 分数、经济或 KDA。
+- Web / map progress / N61 验收必须能读取没有 `RoundReport` 的 trace-only invalid round，并把它展示为“未通过质量闸门”，不能再显示成正常 timeout/no plant 或 elimination 胜负。
+- map summary 中 `roundsCommitted` 只统计正常 committed round；invalid attempt 只能进入 invalid round 统计和 trace artifact 列表。
+- 如果旧 trace 没有质量字段，只能标注旧 trace 缺字段，不能反推为 valid。

@@ -2,6 +2,7 @@ import type {
   Agent,
   AgentOutput,
   EconomyPosture,
+  SubmittedAgentOutput,
   Event,
   JudgeResult,
   JudgeRoundWinType,
@@ -16,6 +17,7 @@ import type {
 } from "@agent-major/shared";
 
 import { sortAgentsForRound, type TeamEconomyPlan } from "../../economy/economy-rules.js";
+import { buildSubmittedAgentOutputs } from "../../economy/submitted-output-gate.js";
 import type { HexRoundTrace } from "../round/index.js";
 
 export interface BuildHexRoundReportInput {
@@ -44,7 +46,12 @@ export interface BuildHexRoundReportInput {
 
 export function buildHexRoundReport(input: BuildHexRoundReportInput): RoundReport {
   const mvpAgent = selectMvpAgent(input.winnerAgents, input.hexTrace);
-  const agentOutputs = buildAgentOutputs(input.activeAgents, input.hexTrace);
+  const rawAgentOutputs = buildAgentOutputs(input.activeAgents, input.hexTrace);
+  const submittedAgentOutputs = buildSubmittedAgentOutputs({
+    agentOutputs: rawAgentOutputs,
+    buyDecisionByAgent: buildBuyDecisionByAgent(input.teamEconomyPlans)
+  });
+  const agentOutputs = submittedAgentOutputs.map(toRoundReportAgentOutput);
   const killLedger = buildKillLedger(input.hexTrace, agentOutputs);
   const keyEvents = buildKeyEvents({
     roundId: input.round.id,
@@ -79,10 +86,7 @@ export function buildHexRoundReport(input: BuildHexRoundReportInput): RoundRepor
       decisiveEvidence: input.finalWinCondition.evidence.join("; ") || input.finalWinCondition.reason
     }
   };
-  const totalOutputBudget = Object.values(input.teamEconomyPlans).reduce(
-    (sum, plan) => sum + plan.decisions.reduce((teamSum, decision) => teamSum + decision.outputBudget, 0),
-    0
-  );
+  const totalOutputBudget = submittedAgentOutputs.reduce((sum, output) => sum + output.outputBudget, 0);
   const teamPostures: Record<string, EconomyPosture> = {};
   for (const plan of Object.values(input.teamEconomyPlans)) {
     teamPostures[plan.teamId] = plan.posture;
@@ -106,11 +110,12 @@ export function buildHexRoundReport(input: BuildHexRoundReportInput): RoundRepor
     economyDelta: input.economyDelta,
     tokenSubmission: {
       activeAgentIds: agentOutputs.map((output) => output.agentId),
-      submittedOutputIds: agentOutputs.map((output) => output.id),
+      submittedOutputIds: submittedAgentOutputs.map((output) => output.id),
+      submittedOutputs: submittedAgentOutputs,
       totalOutputBudget,
       outputGate: {
-        applied: false,
-        reason: "Hex experimental commit uses validated Hex trace as the audit source.",
+        applied: true,
+        reason: "Hex Output Gate 已按经济姿态裁剪 RawOutput，Judge 和 RoundReport 只能消费 SubmittedOutput；完整 raw action 仅保留在 Hex trace 与 LLM artifact 审计中。",
         teamPostures
       }
     },
@@ -128,6 +133,34 @@ export function buildHexRoundReport(input: BuildHexRoundReportInput): RoundRepor
     },
     createdAt: input.createdAt
   };
+}
+function buildBuyDecisionByAgent(teamEconomyPlans: Record<string, TeamEconomyPlan>): Map<string, TeamEconomyPlan["decisions"][number]> {
+  const decisions = new Map<string, TeamEconomyPlan["decisions"][number]>();
+  for (const plan of Object.values(teamEconomyPlans)) {
+    for (const decision of plan.decisions) {
+      decisions.set(decision.agentId, decision);
+    }
+  }
+  return decisions;
+}
+
+function toRoundReportAgentOutput(output: SubmittedAgentOutput): AgentOutput {
+  const projected: AgentOutput = {
+    id: output.id,
+    agentId: output.agentId,
+    teamId: output.teamId,
+    role: output.role,
+    driverModelId: output.driverModelId,
+    confidence: output.confidence,
+    rawFingerprint: output.rawFingerprint
+  };
+  if (output.action) {
+    projected.action = output.action;
+  }
+  if (output.actionDetail) {
+    projected.actionDetail = output.actionDetail;
+  }
+  return projected;
 }
 
 function buildKillLedger(trace: HexRoundTrace, agentOutputs: AgentOutput[]): RoundKillLedgerEntry[] {

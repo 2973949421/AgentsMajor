@@ -94,6 +94,44 @@ describe("Hex map experimental runner", () => {
     );
   });
 
+
+  it("keeps invalid quality-gated rounds in the summary without committing score", async () => {
+    const repositories = createFixtureRepositories();
+    const artifactStore = new MemoryArtifactStore(repositories.artifacts);
+    await seedFixture(repositories);
+
+    const result = await runDust2HexMapExperimental({
+      repositories,
+      artifactStore,
+      mapGameId: "map_dust2",
+      enableExperimentalMode: true,
+      providerMode: "real",
+      env: {},
+      maxRounds: 3
+    });
+
+    const storedMap = await repositories.mapGames.getById("map_dust2");
+    const rounds = await repositories.rounds.listByMapGame("map_dust2");
+    const reports = await repositories.roundReports.listByMapGame("map_dust2");
+    const summaryText = await artifactStore.readText(result.summaryArtifact.id);
+
+    expect(result.status).toBe("failed");
+    expect(result.completionReason).toBe("round_invalid");
+    expect(result.roundsCommitted).toBe(0);
+    expect(result.roundResults).toHaveLength(1);
+    expect(result.roundResults[0]?.commitStatus).toBe("invalid_round");
+    expect(result.summary.roundsCommitted).toBe(0);
+    expect(result.summary.invalidRoundsCount).toBe(1);
+    expect(result.summary.rounds[0]?.commitStatus).toBe("invalid_round");
+    expect(result.summary.rounds[0]?.hexTraceArtifactId).toBe(result.roundResults[0]?.hexTraceArtifact.id);
+    expect(storedMap?.teamAScore).toBe(0);
+    expect(storedMap?.teamBScore).toBe(0);
+    expect(storedMap?.currentRoundNumber).toBe(0);
+    expect(rounds).toHaveLength(1);
+    expect(rounds[0]?.status).toBe("failed");
+    expect(reports).toHaveLength(0);
+    expect(summaryText).toContain("round_invalid");
+  });
   it("refuses completed maps and invalid round caps before committing", async () => {
     const repositories = createFixtureRepositories();
     await seedFixture(repositories, { status: "completed", winnerTeamId: "team_a", completedAt: "2026-05-01T00:00:00.000Z" });

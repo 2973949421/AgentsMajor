@@ -1,4 +1,4 @@
-﻿import type { HexCell } from "@agent-major/shared";
+import type { HexCell } from "@agent-major/shared";
 import type { HexValidatedAgentAction } from "../action/index.js";
 import type { HexEconomyCombatEvidence } from "../economy/index.js";
 import type { HexPhaseMemoryEvent, HexPhaseId, HexSide } from "../state/index.js";
@@ -42,6 +42,21 @@ export type HexCombatEffectAllowed =
   | "force_reposition"
   | "map_control"
   | "possible_kill";
+
+export type HexCombatFinanceProjectionEffect = HexCombatEffectAllowed | "none";
+
+export interface HexCombatFinanceProjection {
+  financialResult: HexCombatFinancialResult;
+  combatEffectAllowed: HexCombatEffectAllowed[];
+  appliedEffect: HexCombatFinanceProjectionEffect;
+  blockedEffects: HexCombatEffectAllowed[];
+  projectionReasons: string[];
+  projectionReasonsZh: string[];
+  financeMayExplainKill: boolean;
+  financeMayApplyPressure: boolean;
+  financeMayForceReposition: boolean;
+  financeMayApplyMapControl: boolean;
+}
 
 export interface HexCombatFinanceScoreCapAudit {
   condition: string;
@@ -119,6 +134,12 @@ export interface HexCombatCasualty {
   assisterAgentIds: string[];
   attributionReasons?: string[];
   targetSelectionReasons?: string[];
+}
+
+export interface HexCombatAttributionHistory {
+  roundKillCountsByAgent: Record<string, number>;
+  phaseKillCountsByAgent: Record<string, number>;
+  lastKillPhaseIndexByAgent: Record<string, number>;
 }
 
 export interface HexCombatSuppression {
@@ -221,6 +242,7 @@ export interface HexCombatResolutionCore {
     attack: HexCombatFinanceEvidenceAdoption;
     defense: HexCombatFinanceEvidenceAdoption;
   };
+  financeProjection?: HexCombatFinanceProjection;
   financeReasonZh?: string[];
   csReasonZh?: string[];
   businessReasons: string[];

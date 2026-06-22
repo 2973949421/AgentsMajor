@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import type { HexFinanceChallengeCard, HexFinanceStanceCard, HexRoundStartAgentOutputForAction } from "../action/hex-round-start-agent-output.js";
 import { buildHexRoundFinanceDuel } from "./hex-round-finance-duel.js";
@@ -23,6 +23,22 @@ describe("Hex finance evidence judge", () => {
     expect(result.stanceScore).toBeGreaterThan(result.challengeScore);
   });
 
+  it("normalizes safe claim type aliases before checking fact metadata", () => {
+    const financeDuel = buildTestFinanceDuel();
+    const result = judgeHexFinanceEvidence({
+      financeDuel,
+      roundStartAgentOutputs: [
+        buildStanceOutput({
+          claimType: "commodity_price_signal",
+          evidenceRefs: ["FRED002"]
+        })
+      ]
+    });
+
+    expect(result.financialResult).toBe("stance_survives");
+    expect(result.defense.acceptedEvidenceRefs).toContain("FRED002");
+    expect(result.defense.auditReasons).toContain("claim_ct_0_1:normalized_claim_type:commodity_price_signal:commodity_price_momentum");
+  });
   it("rejects unavailable observations and claim types blocked by fact metadata", () => {
     const financeDuel = buildTestFinanceDuel();
     financeDuel.evidence.facts.push({
@@ -79,6 +95,32 @@ describe("Hex finance evidence judge", () => {
     expect(result.attack.rejectedChallenges).toContain("challenge_t_0_1:generic_missing_data_not_specific");
   });
 
+  it("does not let repeated missing-evidence-only challenges break a stance", () => {
+    const financeDuel = buildTestFinanceDuel();
+    const missingOnlyChallenges = Array.from({ length: 5 }, (_, index) => buildChallengeOutput({
+      challengeId: `challenge_t_0_missing_${index}`,
+      challengeReasonZh: "该 claim 缺少 china_supply_demand_proxy 库存或国内供需代理，只能降低置信度。",
+      expectedEffect: "触发 china_supply_demand_proxy 评分上限，不能直接判挑战方获胜。",
+      proxyMismatch: "缺少 china_supply_demand_proxy，无法把全球价格动量直接外推为国内供需改善。",
+      evidenceRefs: []
+    }));
+    const result = judgeHexFinanceEvidence({
+      financeDuel,
+      roundStartAgentOutputs: [
+        buildStanceOutput({
+          claimType: "commodity_price_momentum",
+          evidenceRefs: ["FRED002"]
+        }),
+        ...missingOnlyChallenges
+      ]
+    });
+
+    expect(result.financialResult).not.toBe("challenge_breaks_stance");
+    expect(result.attack.challengeScore).toBeLessThanOrEqual(35);
+    expect(result.attack.auditReasons).toContain("challenge_t_0_missing_0:missing_only_challenge_capped");
+    expect(result.attack.scoreCapRefs).toContain("challenge_t_0_missing_0:missing_only_challenge");
+    expect(result.attack.acceptedEvidenceRefs).toEqual([]);
+  });
   it("lets a specific evidence-bound challenge break a weak stance", () => {
     const financeDuel = buildTestFinanceDuel();
     const result = judgeHexFinanceEvidence({
@@ -109,6 +151,8 @@ describe("Hex finance evidence judge", () => {
     expect(result.attack.acceptedChallenges).toEqual(expect.arrayContaining(["challenge_t_0_1", "challenge_t_0_2"]));
     expect(result.attack.acceptedEvidenceRefs).toEqual(expect.arrayContaining(["FRED002", "FRED003"]));
     expect(result.challengeScore).toBeGreaterThan(result.stanceScore);
+    expect(result.challengeScore).toBeLessThanOrEqual(70);
+    expect(result.attack.auditReasons).toContain("score_cap_applied:70");
   });
 });
 

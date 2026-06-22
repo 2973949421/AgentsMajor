@@ -16,7 +16,8 @@ export type HexMapExperimentalStatus = "completed" | "failed";
 export type HexMapExperimentalCompletionReason =
   | "map_completed"
   | "max_rounds_exceeded"
-  | "round_commit_failed";
+  | "round_commit_failed"
+  | "round_invalid";
 
 export interface RunDust2HexMapExperimentalInput {
   repositories: Repositories;
@@ -32,14 +33,18 @@ export interface RunDust2HexMapExperimentalInput {
 export interface HexMapExperimentalRoundSummary {
   roundId: string;
   roundNumber: number;
-  reportId: string;
-  winnerTeamId: string;
-  roundWinType: string;
-  scoreAfterRound: ScorePair;
+  commitStatus: "committed" | "invalid_round";
+  reportId?: string;
+  winnerTeamId?: string;
+  roundWinType?: string;
+  scoreAfterRound?: ScorePair;
   hexTraceArtifactId: string;
   finalWinCondition: HexWinConditionResult;
   fallbackCount: number;
   combatResolutionCount: number;
+  roundQualityStatus?: string;
+  roundQualityReasons?: string[];
+  roundQualitySummaryZh?: string;
 }
 
 export interface HexMapExperimentalFallbackSummary {
@@ -57,6 +62,8 @@ export interface HexMapExperimentalSummary {
   initialScore: ScorePair;
   finalScore: ScorePair;
   roundsCommitted: number;
+  invalidRoundsCount: number;
+  invalidRoundTraceArtifactIds: string[];
   completionReason: HexMapExperimentalCompletionReason;
   rounds: HexMapExperimentalRoundSummary[];
   fallbackSummary: HexMapExperimentalFallbackSummary;
@@ -157,6 +164,17 @@ export async function runDust2HexMapExperimental(
         ...(input.env ? { env: input.env } : {})
       });
       roundResults.push(roundResult);
+      if (roundResult.commitStatus === "invalid_round") {
+        failure = {
+          completionReason: "round_invalid",
+          error: new Error(roundResult.invalidRoundReason ?? "round_invalid")
+        };
+        currentMap = (await input.repositories.mapGames.getById(initialMap.id)) ?? currentMap;
+        break;
+      }
+      if (!roundResult.roundReport) {
+        throw new Error(`Committed Hex round result is missing RoundReport: ${roundResult.round.id}`);
+      }
       events.push(
         await appendMapEvent(input.repositories, {
           id: mapEventId(mapRunId, `round_${roundResult.round.roundNumber}_committed`),
@@ -259,7 +277,7 @@ export async function runDust2HexMapExperimental(
         mapRunId,
         status,
         completionReason,
-        roundsCommitted: roundResults.length,
+        roundsCommitted: countCommittedRounds(roundResults),
         finalScore,
         summaryArtifactId: summaryArtifact.id,
         writesDb: true,
@@ -274,7 +292,7 @@ export async function runDust2HexMapExperimental(
     mapGameId: initialMap.id,
     initialScore,
     finalScore,
-    roundsCommitted: roundResults.length,
+    roundsCommitted: countCommittedRounds(roundResults),
     roundResults,
     summary,
     summaryArtifact,
@@ -307,6 +325,8 @@ function buildSummary(input: {
   error?: unknown;
 }): HexMapExperimentalSummary {
   const rounds = input.roundResults.map(roundResultToSummary);
+  const committedRounds = rounds.filter((round) => round.commitStatus === "committed");
+  const invalidRounds = rounds.filter((round) => round.commitStatus === "invalid_round");
   const fallbackSummary: HexMapExperimentalFallbackSummary = {
     totalFallbackCount: rounds.reduce((sum, round) => sum + round.fallbackCount, 0),
     totalCombatResolutionCount: rounds.reduce((sum, round) => sum + round.combatResolutionCount, 0),
@@ -320,7 +340,9 @@ function buildSummary(input: {
     status: input.status,
     initialScore: input.initialScore,
     finalScore: input.finalScore,
-    roundsCommitted: rounds.length,
+    roundsCommitted: committedRounds.length,
+    invalidRoundsCount: invalidRounds.length,
+    invalidRoundTraceArtifactIds: invalidRounds.map((round) => round.hexTraceArtifactId),
     completionReason: input.completionReason,
     rounds,
     fallbackSummary,
@@ -333,21 +355,34 @@ function buildSummary(input: {
 }
 
 function roundResultToSummary(result: HexRoundExperimentalCommitResult): HexMapExperimentalRoundSummary {
-  return {
+  const summary: HexMapExperimentalRoundSummary = {
     roundId: result.round.id,
     roundNumber: result.round.roundNumber,
-    reportId: result.roundReport.id,
-    winnerTeamId: result.roundReport.winnerTeamId,
-    roundWinType: result.roundReport.judgeResult.roundWinType
-      ?? result.hexTrace.finalWinCondition.judgeRoundWinType
-      ?? result.hexTrace.finalWinCondition.roundWinType
-      ?? "unknown",
-    scoreAfterRound: result.roundReport.scoreAfterRound,
+    commitStatus: result.commitStatus,
     hexTraceArtifactId: result.hexTraceArtifact.id,
     finalWinCondition: result.hexTrace.finalWinCondition,
     fallbackCount: result.hexTrace.audit.fallbackCount,
-    combatResolutionCount: result.hexTrace.audit.combatResolutionCount
+    combatResolutionCount: result.hexTrace.audit.combatResolutionCount,
+    roundQualityStatus: result.hexTrace.audit.roundQualityStatus,
+    roundQualityReasons: result.hexTrace.audit.roundQualityReasons,
+    roundQualitySummaryZh: result.hexTrace.audit.roundQualitySummaryZh
   };
+  if (result.roundReport) {
+    summary.reportId = result.roundReport.id;
+    summary.winnerTeamId = result.roundReport.winnerTeamId;
+    summary.roundWinType = result.roundReport.judgeResult.roundWinType
+      ?? result.hexTrace.finalWinCondition.judgeRoundWinType
+      ?? result.hexTrace.finalWinCondition.roundWinType
+      ?? "unknown";
+    summary.scoreAfterRound = result.roundReport.scoreAfterRound;
+  } else {
+    summary.roundWinType = result.hexTrace.audit.roundQualityStatus ?? "invalid_round";
+  }
+  return summary;
+}
+
+function countCommittedRounds(roundResults: readonly HexRoundExperimentalCommitResult[]): number {
+  return roundResults.filter((roundResult) => roundResult.commitStatus === "committed").length;
 }
 
 function errorPayload(error: unknown): Pick<HexMapExperimentalSummary, "error"> | Record<string, never> {

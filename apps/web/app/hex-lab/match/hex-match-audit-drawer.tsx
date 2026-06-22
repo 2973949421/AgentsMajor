@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import type {
   HexMatchLabPhaseSummary,
@@ -56,75 +56,71 @@ function PlayerFinanceAudit(props: {
     list.push(digest);
     actionDigestsByAgentId.set(digest.agentId, list);
   }
+  const stanceCount = props.humanAudit.roundStartOutputDigests.filter((output) => output.cardKind === "stance").length;
+  const challengeCount = props.humanAudit.roundStartOutputDigests.filter((output) => output.cardKind === "challenge").length;
 
   return (
     <div className={styles.auditStack}>
       <article className={styles.auditCard}>
-        <h3>按选手折叠的金融决策审计</h3>
-        <p>主视图只展示真实 agent 输出：Phase0 结构化立场卡 / 挑战卡、买型裁剪、以及当前 phase 的局内行动输出；系统输入卡默认折叠，不冒充选手发言。</p>
-        {props.phaseStory ? <p>当前查看：Phase {props.phaseStory.phaseIndex}</p> : <p>未选中具体 phase，展示已记录的局内行动输出。</p>}
+        <h3>这页按三步读</h3>
+        <ol>
+          <li><strong>先看 Phase0 金融卡：</strong>选手本局真实立场或挑战，带 claim / challenge 编号、证据和买型裁剪。</li>
+          <li><strong>再看当前 Phase 行动：</strong>这里只看局内移动、控图、下包、补枪等真实行动输出。</li>
+          <li><strong>最后看裁判与战斗：</strong>金融层只解释采信 / 未采信和投影权限，击杀仍由 CS 执行事实与硬条件解释。</li>
+        </ol>
+        <p><strong>本 round 决策题：</strong>{props.humanAudit.decisionQuestionZh ?? props.humanAudit.roundStoryZh}</p>
+        <p>{props.humanAudit.roundValidationSummaryZh}</p>
+        <p>当前可读卡片：{stanceCount} 张立场卡，{challengeCount} 张挑战卡；失败卡片 {props.humanAudit.roundStartOutputFailures.length} 张。</p>
+        {props.phaseStory ? <p>当前查看：Phase {props.phaseStory.phaseIndex}。{props.phaseStory.phaseValidationSummaryZh}</p> : <p>未选中具体 phase，展示所有可提取行动。</p>}
+        {props.humanAudit.sampleQualityWarningsZh.length > 0 ? (
+          <details>
+            <summary>样本警告</summary>
+            <ul>
+              {props.humanAudit.sampleQualityWarningsZh.map((warning) => <li key={warning}>{warning}</li>)}
+            </ul>
+          </details>
+        ) : null}
       </article>
 
-      {props.humanAudit.roundStartOutputDigests.length > 0 ? (
-        props.humanAudit.roundStartOutputDigests.map((output) => (
-          <details key={output.outputId} className={styles.auditCard}>
-            <summary>
-              <strong>{output.displayName}</strong>
-              {" / "}
-              {output.teamSide ?? "未知阵营"}
-              {" / "}
-              {output.financeRoleCn ?? output.financeRole ?? "金融角色未记录"}
-              {" / 买型："}
-              {formatBuyType(output)}
-            </summary>
-            <div className={styles.auditStack}>
-              <section>
-                <h4>Phase0 真实{output.cardKind === "stance" ? "立场卡" : output.cardKind === "challenge" ? "挑战卡" : "结构化卡片"}</h4>
-                <p>{output.cardSummaryZh || output.rawOutputSummaryZh || "该选手没有可展示的真实 phase0 卡片。"}</p>
+      <article className={styles.auditCard}>
+        <h3>1. Phase0 金融攻防卡</h3>
+        <p className={styles.guardText}>这里只展示真实可消费卡片。系统输入卡、provider 失败和无效结构不会混进这里。</p>
+        {props.humanAudit.roundStartOutputDigests.length > 0 ? (
+          <div className={styles.auditStack}>
+            {props.humanAudit.roundStartOutputDigests.map((output) => (
+              <details key={output.outputId}>
+                <summary>
+                  <strong>{output.displayName}</strong>
+                  {" / "}{formatCardKindZh(output.cardKind)}
+                  {" / "}{output.financeRoleCn ?? output.financeRole ?? "金融角色未记录"}
+                  {" / "}{formatBuyType(output)}
+                  {"："}{buildRoundStartHeadline(output)}
+                </summary>
                 <RoundStartCardSummary output={output} />
                 <p><strong>买型裁剪：</strong>{output.buyConstraintAppliedZh || "未记录买型裁剪。"}</p>
-                <p><strong>风险边界：</strong>{output.riskBoundaryZh || "未记录风险边界。"}</p>
-                <p><strong>后续引用：</strong>{output.phaseActionCarryoverZh || "未记录后续行动引用方式。"}</p>
-                {output.evidenceRefs.length > 0 ? (
-                  <p><strong>证据引用：</strong>{output.evidenceRefs.join("、")}</p>
-                ) : <p><strong>证据引用：</strong>未记录。</p>}
-              </section>
-
-              <section>
-                <h4>Phase1+ 局内行动输出</h4>
-                <PlayerPhaseOutputs digests={actionDigestsByAgentId.get(output.agentId) ?? []} />
-              </section>
-
-              <details>
-                <summary>真实输出技术细节</summary>
-                <ul>
-                  <li>source：{output.source}</li>
-                  <li>outputId：{output.outputId}</li>
-                  <li>request artifact：{output.requestArtifactId ?? "未记录"}</li>
-                  <li>response artifact：{output.responseArtifactId ?? "未记录"}</li>
-                  <li>cardKind：{output.cardKind ?? "旧 trace 未记录"}</li>
-                  <li>allowed claim refs：{output.allowedPhaseRefs?.claimIds.join("、") || "无"}</li>
-                  <li>allowed challenge refs：{output.allowedPhaseRefs?.challengeIds.join("、") || "无"}</li>
-                  <li>normalization：{output.normalizationSummaryZh}</li>
-                  <li>validation：{output.validationSummaryZh}</li>
-                  {output.technicalRefs.errors.length > 0 ? (
-                    <li>errors：{output.technicalRefs.errors.join("；")}</li>
-                  ) : null}
-                </ul>
+                <p><strong>后续局内引用：</strong>{formatAllowedPhaseRefs(output)}</p>
+                <details>
+                  <summary>卡片技术细节</summary>
+                  <ul>
+                    <li>source：{output.source}</li>
+                    <li>outputId：{output.outputId}</li>
+                    <li>request artifact：{output.requestArtifactId ?? "未记录"}</li>
+                    <li>response artifact：{output.responseArtifactId ?? "未记录"}</li>
+                    <li>normalization：{output.normalizationSummaryZh}</li>
+                    <li>validation：{output.validationSummaryZh}</li>
+                    <li>errors：{output.technicalRefs.errors.join("；") || "无"}</li>
+                    <li>repaired fields：{output.technicalRefs.repairedFields.join("；") || "无"}</li>
+                  </ul>
+                </details>
               </details>
-            </div>
-          </details>
-        ))
-      ) : (
-        <article className={styles.auditCard}>
-          <h3>本局没有可消费的真实 phase0 结构化卡片</h3>
-          <p>没有 response artifact、结构校验失败或旧 trace 缺字段时，系统不会用输入卡、降级文案或前端推测冒充 agent 输出。</p>
-        </article>
-      )}
+            ))}
+          </div>
+        ) : <p>本局没有可消费的真实 phase0 结构化卡片；系统不会用输入卡或自然语言补成功。</p>}
+      </article>
 
       {props.humanAudit.roundStartOutputFailures.length > 0 ? (
         <details className={styles.auditCard}>
-          <summary>phase0 卡片失败（不进入后续行动层）</summary>
+          <summary>Phase0 失败卡片</summary>
           <ul>
             {props.humanAudit.roundStartOutputFailures.map((failure) => (
               <li key={failure.outputId}>
@@ -136,8 +132,78 @@ function PlayerFinanceAudit(props: {
         </details>
       ) : null}
 
+      <article className={styles.auditCard}>
+        <h3>2. 当前 Phase 局内行动</h3>
+        {props.phaseStory ? <p>{props.phaseStory.summaryZh}</p> : null}
+        {selectedOutputDigests.length > 0 ? (
+          <div className={styles.auditStack}>
+            {selectedOutputDigests.map((digest) => (
+              <details key={`${digest.agentId}-${digest.phaseIndex}-${digest.responseArtifactId ?? digest.source}`}>
+                <summary><strong>{digest.displayName}</strong>：{digest.declaredActionZh}</summary>
+                <p>{digest.declaredReasonZh}</p>
+                {digest.declaredRiskNotesZh.length > 0 ? <p><strong>风险：</strong>{digest.declaredRiskNotesZh.join("；")}</p> : null}
+                {digest.declaredEvidenceRefs.length > 0 ? <p><strong>短句引用证据：</strong>{digest.declaredEvidenceRefs.join("、")}</p> : null}
+                <p>{digest.judgeAdoptionSummaryZh}</p>
+                <details>
+                  <summary>行动技术细节</summary>
+                  <ul>
+                    <li>source：{digest.source}</li>
+                    <li>phase：{digest.phaseLabel ?? `Phase ${digest.phaseIndex}`}</li>
+                    <li>request artifact：{digest.requestArtifactId ?? "未记录"}</li>
+                    <li>response artifact：{digest.responseArtifactId ?? "未记录"}</li>
+                    <li>actionType：{digest.technicalRefs.actionType ?? "未记录"}</li>
+                    <li>targetCellId：{digest.technicalRefs.targetCellId ?? "未记录"}</li>
+                    <li>roundStartOutputId：{digest.technicalRefs.roundStartOutputId ?? "未记录"}</li>
+                    <li>phase0RefId：{digest.technicalRefs.phase0RefId ?? "未记录"}</li>
+                    <li>normalization：{digest.normalizationSummaryZh}</li>
+                    <li>validation：{digest.validationSummaryZh}</li>
+                  </ul>
+                </details>
+              </details>
+            ))}
+          </div>
+        ) : <p>当前 phase 没有可审计的真实 agent 行动输出。</p>}
+      </article>
+
+      <article className={styles.auditCard}>
+        <h3>3. 金融采信与 CS 结果</h3>
+        <p className={styles.guardText}>金融层只说明证据是否采信和允许的投影权限；击杀、淘汰、下包、拆包和最终胜负来自 CS 执行事实与 hard condition。</p>
+        {props.phaseStory?.combatStories.length ? (
+          <div className={styles.auditStack}>
+            {props.phaseStory.combatStories.slice(0, 8).map((combat) => (
+              <details key={combat.contactId}>
+                <summary><strong>{combat.verdictZh}</strong>：{combat.impactZh}</summary>
+                {combat.contactThreatZh ? <p>{combat.contactThreatZh}</p> : null}
+                <p><strong>采信：</strong>{combat.acceptedEvidenceZh.join("；") || "无正向采信"}</p>
+                {combat.rejectedEvidenceZh.length > 0 ? <p><strong>未采信：</strong>{combat.rejectedEvidenceZh.join("；")}</p> : null}
+                {combat.missingEvidenceZh.length > 0 ? <p><strong>缺失 / 降权：</strong>{combat.missingEvidenceZh.join("；")}</p> : null}
+                <p><strong>金融解释：</strong>{combat.financeReasonZh.join("；") || "金融层未形成额外胜负解释"}</p>
+                <p><strong>CS 执行解释：</strong>{combat.csReasonZh.join("；") || combat.reasonsZh.join("；") || "未记录"}</p>
+                <details>
+                  <summary>裁判技术细节</summary>
+                  <ul>
+                    <li>contactId：{combat.contactId}</li>
+                    <li>participants：{combat.technicalRefs.participants.join("、") || "未记录"}</li>
+                    <li>raw finance verdict：{combat.technicalRefs.rawFinanceVerdict ?? "未记录"}</li>
+                    <li>raw reasons：{combat.technicalRefs.rawReasons.join("；") || "未记录"}</li>
+                  </ul>
+                </details>
+              </details>
+            ))}
+            {props.phaseStory.combatStories.length > 8 ? <p>本 phase 还有 {props.phaseStory.combatStories.length - 8} 条战斗裁定，技术细节暂折叠到 raw trace。</p> : null}
+          </div>
+        ) : <p>当前 phase 没有战斗裁定。</p>}
+      </article>
+
+      {props.humanAudit.winnerSummaryZh ? (
+        <article className={styles.auditCard}>
+          <h3>硬胜负</h3>
+          <p>{props.humanAudit.winnerSummaryZh}</p>
+        </article>
+      ) : null}
+
       <details className={styles.auditCard}>
-        <summary>系统输入材料（折叠，非 agent 输出）</summary>
+        <summary>系统输入材料（非 agent 输出）</summary>
         <p>这些是后端给模型的输入上下文，不是选手自己说的话；主审计不会用它们冒充真实输出。</p>
         <ul>
           {props.humanAudit.agentOpeningBriefs.map((brief) => (
@@ -146,6 +212,13 @@ function PlayerFinanceAudit(props: {
             </li>
           ))}
         </ul>
+      </details>
+
+      <details className={styles.auditCard}>
+        <summary>技术细节</summary>
+        <p>request artifacts: {props.humanAudit.technicalRefs.requestArtifactIds.join(", ") || "未记录"}</p>
+        <p>response artifacts: {props.humanAudit.technicalRefs.responseArtifactIds.join(", ") || "未记录"}</p>
+        <p>raw reason count: {props.humanAudit.technicalRefs.rawReasonCount}</p>
       </details>
     </div>
   );
@@ -156,50 +229,34 @@ function RoundStartCardSummary(props: { output: HexMatchLabRoundStartOutputDiges
   if (output.stanceCard) {
     return (
       <div>
-        <p>
-          <strong>立场：</strong>{output.stanceCard.direction}；
-          <strong>标的：</strong>{output.stanceCard.target}；
-          <strong>周期：</strong>{output.stanceCard.horizon}；
-          <strong>置信度：</strong>{formatPercent(output.stanceCard.confidence)}
-        </p>
+        <p><strong>立场：</strong>{output.stanceCard.direction}；<strong>周期：</strong>{output.stanceCard.horizon}；<strong>置信度：</strong>{formatPercent(output.stanceCard.confidence)}</p>
         <p><strong>仓位建议：</strong>{output.stanceCard.positionSuggestion}</p>
-        <p><strong>审计摘要：</strong>{output.stanceCard.auditSummaryZh}</p>
         <ul>
           {output.stanceCard.coreClaims.map((claim) => (
             <li key={claim.claimId}>
-              <strong>{claim.claimId}</strong> / {claim.claimType}：{claim.claimZh}
-              <br />
-              <span>证据：{claim.evidenceRefs.join("、") || "未记录"}</span>
-              <br />
-              <span>推理桥：{claim.reasoningBridge}</span>
+              <strong>{claim.claimId}</strong>：{claim.claimZh}
+              <br />证据：{claim.evidenceRefs.join("、") || "未记录"}
+              <br />推理桥：{claim.reasoningBridge}
             </li>
           ))}
         </ul>
-        {output.stanceCard.invalidatingConditions.length > 0 ? (
-          <p><strong>失效条件：</strong>{output.stanceCard.invalidatingConditions.join("；")}</p>
-        ) : null}
+        {output.stanceCard.riskBoundaries.length > 0 ? <p><strong>风险边界：</strong>{output.stanceCard.riskBoundaries.join("；")}</p> : null}
+        {output.stanceCard.invalidatingConditions.length > 0 ? <p><strong>失效条件：</strong>{output.stanceCard.invalidatingConditions.join("；")}</p> : null}
       </div>
     );
   }
   if (output.challengeCard) {
     return (
       <div>
-        <p>
-          <strong>目标 claim：</strong>{output.challengeCard.targetClaimId}；
-          <strong>挑战类型：</strong>{output.challengeCard.challengeType}；
-          <strong>置信度压降：</strong>{formatPercent(output.challengeCard.confidenceReduction)}
-        </p>
+        <p><strong>目标 claim：</strong>{output.challengeCard.targetClaimId}；<strong>挑战类型：</strong>{output.challengeCard.challengeType}；<strong>置信度压降：</strong>{formatPercent(output.challengeCard.confidenceReduction)}</p>
         <p><strong>被挑战假设：</strong>{output.challengeCard.challengedAssumption}</p>
         <p><strong>代理错配：</strong>{output.challengeCard.proxyMismatch}</p>
-        <p><strong>审计摘要：</strong>{output.challengeCard.auditSummaryZh}</p>
         <ul>
           {output.challengeCard.challenges.map((challenge) => (
             <li key={challenge.challengeId}>
-              <strong>{challenge.challengeId}</strong> → {challenge.targetClaimId} / {challenge.challengeType}：{challenge.challengeReasonZh}
-              <br />
-              <span>证据：{challenge.evidenceRefs.join("、") || "未记录"}</span>
-              <br />
-              <span>预期影响：{challenge.expectedEffect}</span>
+              <strong>{challenge.challengeId}</strong> → {challenge.targetClaimId}：{challenge.challengeReasonZh}
+              <br />证据：{challenge.evidenceRefs.join("、") || "未记录"}
+              <br />预期影响：{challenge.expectedEffect}
             </li>
           ))}
         </ul>
@@ -209,52 +266,30 @@ function RoundStartCardSummary(props: { output: HexMatchLabRoundStartOutputDiges
   return <p>旧 trace 未记录 stanceCard / challengeCard，不能作为 N58 结构化卡片审计。</p>;
 }
 
-function PlayerPhaseOutputs(props: { digests: HexMatchLabAgentOutputDigest[] }) {
-  if (props.digests.length === 0) {
-    return <p>当前 phase 没有该选手的真实行动输出。</p>;
+function buildRoundStartHeadline(output: HexMatchLabRoundStartOutputDigest): string {
+  if (output.stanceCard) {
+    const claim = output.stanceCard.coreClaims[0];
+    return claim ? `${output.stanceCard.direction}，${claim.claimZh}` : output.stanceCard.auditSummaryZh;
   }
-
-  return (
-    <ul>
-      {props.digests.map((digest) => (
-        <li key={`${digest.agentId}-${digest.phaseIndex}-${digest.responseArtifactId ?? digest.source}`}>
-          <strong>{digest.phaseLabel ?? `Phase ${digest.phaseIndex}`}：</strong>
-          {isConsumableAgentDigest(digest) ? (
-            <>
-              <span>{digest.declaredActionZh}</span>
-              <p>{digest.declaredReasonZh}</p>
-              {digest.declaredRiskNotesZh.length > 0 ? <p>风险：{digest.declaredRiskNotesZh.join("；")}</p> : null}
-              {digest.declaredEvidenceRefs.length > 0 ? <p>证据：{digest.declaredEvidenceRefs.join("、")}</p> : null}
-              <p>{digest.normalizationSummaryZh}</p>
-              <p>{digest.validationSummaryZh}</p>
-              <p>{digest.judgeAdoptionSummaryZh}</p>
-            </>
-          ) : (
-            <span>{digest.rawOutputSummaryZh || "本阶段没有可审计的真实 agent 输出。"}</span>
-          )}
-          <details>
-            <summary>行动技术细节</summary>
-            <ul>
-              <li>source：{digest.source}</li>
-              <li>request artifact：{digest.requestArtifactId ?? "未记录"}</li>
-              <li>response artifact：{digest.responseArtifactId ?? "未记录"}</li>
-              <li>actionType：{digest.technicalRefs.actionType ?? "未记录"}</li>
-              <li>targetCellId：{digest.technicalRefs.targetCellId ?? "未记录"}</li>
-              <li>roundStartOutputId：{digest.technicalRefs.roundStartOutputId ?? "未记录"}</li>
-              <li>phase0RefId：{digest.technicalRefs.phase0RefId ?? "未记录"}</li>
-              <li>rawText：{digest.technicalRefs.rawTextPreview ?? "未记录"}</li>
-            </ul>
-          </details>
-        </li>
-      ))}
-    </ul>
-  );
+  if (output.challengeCard) {
+    const challenge = output.challengeCard.challenges[0];
+    return challenge ? `挑战 ${challenge.targetClaimId}：${challenge.challengeReasonZh}` : output.challengeCard.auditSummaryZh;
+  }
+  return output.cardSummaryZh || output.rawOutputSummaryZh || "未记录摘要";
 }
 
-function isConsumableAgentDigest(digest: HexMatchLabAgentOutputDigest): boolean {
-  return digest.source === "llm_response_artifact" || digest.source === "fixture_response";
+function formatCardKindZh(kind: HexMatchLabRoundStartOutputDigest["cardKind"]): string {
+  if (kind === "stance") return "立场卡";
+  if (kind === "challenge") return "挑战卡";
+  return "结构化卡片";
 }
 
+function formatAllowedPhaseRefs(output: HexMatchLabRoundStartOutputDigest): string {
+  const claimIds = output.allowedPhaseRefs?.claimIds ?? [];
+  const challengeIds = output.allowedPhaseRefs?.challengeIds ?? [];
+  const refs = [...claimIds, ...challengeIds];
+  return refs.length > 0 ? refs.join("、") : "没有可引用编号";
+}
 function formatBuyType(output: HexMatchLabRoundStartOutputDigest): string {
   const buyType = output.buyType ?? "未记录";
   return output.resourceTier ? `${buyType} / ${output.resourceTier}` : buyType;
@@ -695,6 +730,15 @@ function LlmAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; phase
       <MetricLine label="模型" value={audit.modelId ?? "未记录"} />
       <MetricLine label="战术变化" value={audit.strategyVariant ?? "未记录"} />
       <MetricLine label="策略种子" value={audit.roundStrategySeed ?? "未记录"} />
+      {audit.tacticalAudit ? <TacticalAuditCard audit={audit.tacticalAudit} /> : null}
+      {audit.roundQualityStatus ? (
+        <article className={styles.auditCard}>
+          <h3>Round 质量闸门</h3>
+          <p>{audit.roundQualityStatus === "valid" ? "通过质量闸门，可作为正式 round 审计。" : audit.roundQualitySummaryZh ?? "本 round 未通过质量闸门。"}</p>
+          {audit.roundQualityStatus !== "valid" ? <p className={styles.guardText}>本 round 不应作为正式比赛审计或计分样本；hard winner 只保留在技术细节中。</p> : null}
+          {audit.roundQualityReasons?.length ? <p>原因：{audit.roundQualityReasons.join("；")}</p> : null}
+        </article>
+      ) : null}
       <MetricLine label="预期 / 实际调用" value={`${audit.expectedCalls} / ${audit.totalLlmCallsAttempted}`} />
       <MetricLine label="接受 / 拒绝 / 降级" value={`${audit.acceptedDrafts} / ${audit.rejectedDrafts} / ${audit.fallbackCount}`} />
       <MetricLine label="紧凑请求数量" value={`${audit.compactRequestCount}`} />
@@ -717,6 +761,43 @@ function LlmAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; phase
   );
 }
 
+function TacticalAuditCard(props: { audit: NonNullable<HexMatchLabRoundTraceDetail["audit"]["tacticalAudit"]> }) {
+  const audit = props.audit;
+  const routeAssignments = audit.roleRouteAssignments.slice(0, 10);
+  return (
+    <article className={styles.auditCard}>
+      <h3>战术选择审计</h3>
+      <p><strong>本局路线：</strong>{audit.selectedVariant ?? "未记录"}；C4 默认偏向 {audit.c4SitePreference?.toUpperCase() ?? "未记录"}。</p>
+      <p><strong>进攻重点：</strong>{audit.attackFocusRegions.join("、") || "未记录"}；避开 {audit.attackAvoidRegions.join("、") || "未记录"}。</p>
+      <p><strong>防守重点：</strong>{audit.defenseFocusRegions.join("、") || "未记录"}；避开 {audit.defenseAvoidRegions.join("、") || "未记录"}。</p>
+      <details>
+        <summary>为什么选这套</summary>
+        <ul>
+          {audit.selectionReasons.map((reason) => <li key={`select-${reason}`}>{reason}</li>)}
+          {audit.previousRoundSignals.map((signal) => <li key={`signal-${signal}`}>上一局信号：{signal}</li>)}
+          {audit.antiRepeatPenalties.map((reason) => <li key={`repeat-${reason}`}>反复读：{reason}</li>)}
+          {audit.economyAdjustment.map((reason) => <li key={`economy-${reason}`}>经济裁剪：{reason}</li>)}
+          {audit.routeDiversityWarnings.map((warning) => <li key={`warning-${warning}`}>路线警告：{warning}</li>)}
+        </ul>
+      </details>
+      {routeAssignments.length > 0 ? (
+        <details>
+          <summary>角色路线分工</summary>
+          <ul>
+            {routeAssignments.map((assignment, index) => (
+              <li key={`${assignment.side ?? "side"}-${assignment.role ?? "role"}-${index}`}>
+                {assignment.side === "attack" ? "进攻" : assignment.side === "defense" ? "防守" : assignment.side ?? "未知阵营"} / {assignment.role ?? "未知角色"}：{assignment.routeIntent ?? "未记录意图"}
+                <br />重点区域：{assignment.focusRegions.join("、") || "未记录"}；重点点位：{assignment.focusPoints.join("、") || "未记录"}
+                {assignment.avoidRegions?.length ? <><br />避开区域：{assignment.avoidRegions.join("、")}</> : null}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+    </article>
+  );
+}
+
 function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
   const combats = props.phase?.combats ?? [];
   return (
@@ -727,6 +808,7 @@ function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
           <p>金融裁定: {formatFinanceVerdict(combat.financeVerdict)}</p>
           <p>{formatN59JudgeSummary(combat.financeEvidenceAdoption)}</p>
           <p>{formatCombatEffects(combat.financeEvidenceAdoption)}</p>
+          <p>{formatFinanceProjection(combat.financeProjection)}</p>
           <p>接触强度: {formatContactThreat(combat)}</p>
           <p>战斗结论: {combat.killAttributions.length > 0 ? "形成击杀" : combat.suppressions.length > 0 ? "形成压制" : "未形成击杀或压制"}</p>
           <p>
@@ -771,6 +853,7 @@ function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
               trade: {combat.tradeOpportunity ? "yes" : "no"}
             </p>
             <p>finance A/D {combat.financeScoreAttack ?? combat.businessScoreAttack ?? 0}/{combat.financeScoreDefense ?? combat.businessScoreDefense ?? 0}; CS A/D {combat.csScoreAttack ?? 0}/{combat.csScoreDefense ?? 0}</p>
+            <p>finance projection reasons: {combat.financeProjection?.projectionReasons.join("; ") || "未记录"}</p>
             <p>finance reasons: {combat.financeReasons.join("; ") || "无"}</p>
             <p>compat business reasons: {combat.businessReasons.join("; ") || "无"}</p>
             <p>CS reasons: {combat.csReasons.join("; ") || "无"}</p>
@@ -802,8 +885,18 @@ function formatCombatEffects(adoption: HexMatchLabPhaseSummary["combats"][number
   return `金融投影权限：${effects.map(formatCombatEffect).join("、")}。`;
 }
 
+function formatFinanceProjection(projection: HexMatchLabPhaseSummary["combats"][number]["financeProjection"]): string {
+  if (!projection) return "N60 金融投影：旧 trace 未记录。";
+  const applied = formatCombatEffect(projection.appliedEffect);
+  const blocked = projection.blockedEffects.length > 0 ? `；阻断 ${projection.blockedEffects.map(formatCombatEffect).join("、")}` : "";
+  const killText = projection.financeMayExplainKill ? "金融可参与击杀解释" : "击杀只能由 CS 执行事实解释";
+  const reason = projection.projectionReasonsZh.join("；") || "未记录中文投影理由";
+  return `N60 金融投影：实际应用 ${applied}${blocked}；${killText}；${reason}`;
+}
+
 function formatCombatEffect(effect: string): string {
   const labels: Record<string, string> = {
+    none: "未应用金融投影",
     no_effect: "不提供金融加成",
     minor_delay: "轻微延缓",
     pressure: "压制",
@@ -813,7 +906,6 @@ function formatCombatEffect(effect: string): string {
   };
   return labels[effect] ?? effect;
 }
-
 function formatClaimsAndChallenges(adoption: HexMatchLabPhaseSummary["combats"][number]["financeEvidenceAdoption"]): string {
   if (!adoption) return "旧 trace 未记录";
   const claims = adoption.defense.acceptedClaims.length > 0 ? `立场 claim ${adoption.defense.acceptedClaims.join("、")}` : "立场无采信 claim";

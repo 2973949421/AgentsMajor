@@ -408,6 +408,39 @@ phase1+ 禁止：
 
 prompt 必须明确：缺失证据只能限制结论、降低置信度或限制战斗投影，不能直接成为获胜理由。
 
+### 5.12 N61 后行动急迫感与 phaseClock 补丁
+
+N61 后真实 map 审计发现：provider、phase0 和 action 都正常时，agent 仍可能在有限 phase 内持续写“为后续准备”、C4 折返、不下包、不主动处理枪线，最终 timeout。该问题属于局内行动约束，不属于金融裁判或 hard winner。
+
+`agent_action` compact request 必须包含 `phaseClock`：
+
+```text
+totalPhases
+phaseNumber
+remainingPhases
+isFinalPhase
+urgencyLevel
+clockPressureZh
+```
+
+`phaseClock` 只能表达阶段预算和硬条件风险，不能写成“固定第几个 phase 必须决胜负”。最后阶段 attack 未下包时，prompt 必须明确不能继续写“为后续下包 / 后续决策创造空间”，应选择下包、包点执行、主动对枪换人、保枪或说明无法执行。defense 在最后阶段应阻止最后下包路线；已下包时应 retake / defuse。
+
+阶段行动边界补充：
+
+```text
+C4 carrier 在中后期应向合法包点或包点路径收敛。
+同一 round 内重复旧 cell / region / point 会进入路线候选降权。
+进入长门、包点入口、开阔枪线、已知敌人接近、下包 / 拆包附近时，不应只写 move。
+必要时 normalizer 可以把 move 安全修复为 plant_bomb、defuse_bomb、retake、execute_site、seek_duel 或 peek，并记录 repairedFields。
+```
+
+仍然禁止：
+
+```text
+LLM 写 winner / kill / damage / economyDelta。
+前端补战斗事实。
+为了急迫感降低 combat lethal gate 或伪造 plant。
+```
 ## 6. Judge Scorecard v6
 
 `judge_verdict` 必须输出 `judgeScorecard`。评分标准由代码生成并写入输入中的 `rubricProfile`，LLM 只能消费，不能修改。

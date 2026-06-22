@@ -183,6 +183,54 @@ describe("Hex agent command boundary", () => {
     expect(request.constraints.some((line) => line.includes("businessAssignment"))).toBe(true);
   });
 
+  it("adds role route and anti-repeat tactical context to phase requests", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset),
+      bombCarrierAgentId: "t_0"
+    });
+    const tacticalPlan = {
+      roundNumber: 2,
+      attackVariant: "B contact into mid pinch",
+      defenseVariant: "B doors crossfire and mid support",
+      attackFocusRegions: ["outside_tunnels", "b_tunnels", "b_site"],
+      defenseFocusRegions: ["b_site", "ct_mid_rotate"],
+      attackFocusPoints: ["upper_tunnels", "lower_tunnels", "b_bombsite"],
+      defenseFocusPoints: ["b_bombsite", "b_doors"],
+      attackAvoidRegions: ["a_long_approach"],
+      antiRepeatRegions: ["a_long_approach"],
+      antiRepeatPoints: ["long_doors_point"],
+      antiRepeatReasons: ["previous Long A default route is penalized"],
+      economyTacticalAdjustment: ["low resource attack should prefer short contact routes"],
+      c4SitePreference: "b" as const,
+      instruction: "Attack should pressure B contact and avoid repeating long A.",
+      roleRouteAssignments: [{
+        side: "attack" as const,
+        role: "support",
+        routeIntent: "escort C4 and prepare B plant support",
+        focusRegions: ["b_tunnels", "b_site"],
+        focusPoints: ["upper_tunnels", "b_bombsite"],
+        avoidRegions: ["a_long_approach"]
+      }]
+    };
+
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_0",
+      tacticalPlan
+    });
+    const compact = buildHexAgentCompactCommandRequest(request);
+
+    expect(request.tacticalRoleAssignment?.role).toBe("support");
+    expect(compact.tacticalPlan?.roleRouteAssignment?.routeIntent).toContain("escort C4");
+    expect(compact.tacticalPlan?.avoidRegions).toContain("a_long_approach");
+    expect(compact.tacticalPlan?.antiRepeatRegions).toContain("a_long_approach");
+    expect(request.constraints.some((line) => line.includes("Do not repeat the stale map route"))).toBe(true);
+    expect(request.constraints.some((line) => line.includes("Role route assignment"))).toBe(true);
+  });
+
   it("builds a compact real-provider payload without sending full reachable cells", () => {
     const asset = loadOfficialDust2HexMap();
     const memory = initializeHexRoundMemory({
@@ -823,6 +871,139 @@ describe("Hex agent command boundary", () => {
     expect(result.errors).toContain("draft:garbled_text");
   });
 
+  it("adds phase clock and route history to compact phase requests", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset),
+      bombCarrierAgentId: "t_0"
+    });
+    const startCellId = memory.agents[0]!.currentCellId;
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_0",
+      roundRouteMemory: {
+        agents: {
+          t_0: {
+            visitedCellIds: [startCellId],
+            visitedRegionIds: [memory.agents[0]!.currentRegionId ?? "spawn_t"],
+            visitedPointIds: [...memory.agents[0]!.currentPointIds]
+          }
+        }
+      }
+    });
+    const compact = buildHexAgentCompactCommandRequest(request);
+
+    expect(request.phaseClock.totalPhases).toBe(5);
+    expect(request.phaseClock.remainingPhases).toBe(4);
+    expect(request.phaseClock.isFinalPhase).toBe(false);
+    expect(compact.phase.totalPhases).toBe(5);
+    expect(compact.phase.clockPressureZh).toContain("阶段预算有限");
+    expect(compact.routeHistory?.visitedCellIds).toContain(startCellId);
+    expect(compact.hardConstraints).toEqual(expect.arrayContaining([request.phaseClock.clockPressureZh]));
+  });
+
+  it("repairs C4 move on a legal final bombsite into plant_bomb", () => {
+    const asset = loadOfficialDust2HexMap();
+    const bombsite = findCellsWithFlag(asset, "bombsite_a")[0]!;
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset).map((agent) =>
+        agent.agentId === "t_0"
+          ? { ...agent, startCellId: bombsite.cellId, carryingC4: true }
+          : { ...agent, carryingC4: false }
+      ),
+      bombCarrierAgentId: "t_0"
+    });
+    memory.phaseId = "post_plant_or_clutch";
+    memory.phaseIndex = 4;
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_0"
+    });
+    const result = normalizeHexAgentActionDraft({
+      request,
+      rawDraft: {
+        agentId: "t_0",
+        phaseId: request.phaseId,
+        currentCellId: request.agent.currentCellId,
+        targetCellId: request.agent.currentCellId,
+        actionType: "move",
+        businessIntent: "最后阶段已经在包点，立即下包争取硬条件胜负。",
+        actionRationaleZh: "C4 已到合法包点，直接执行下包。"
+      }
+    });
+
+    expect(result.errors).toEqual([]);
+    expect(result.draft?.actionType).toBe("plant_bomb");
+    expect(result.repairedFields).toContain("repaired_actionType_from_move_to_plant_bomb_due_to_c4_phase_clock");
+  });
+
+  it("repairs dangerous phase1+ move drafts into active duel pressure", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset),
+      bombCarrierAgentId: "t_0"
+    });
+    memory.phaseId = "first_contact";
+    memory.phaseIndex = 1;
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_0"
+    });
+    const target = request.targetCandidates[0]!;
+    const result = normalizeHexAgentActionDraft({
+      request,
+      rawDraft: {
+        agentId: "t_0",
+        phaseId: request.phaseId,
+        currentCellId: request.agent.currentCellId,
+        targetCellId: target.targetCellId,
+        actionType: "move",
+        businessIntent: "进入接触线清点并主动对枪，争取击杀或换人。",
+        actionRationaleZh: "该行动不是抽象移动，而是抢枪线处理接触风险。"
+      }
+    });
+
+    expect(result.errors).toEqual([]);
+    expect(result.draft?.actionType).toBe("seek_duel");
+    expect(result.repairedFields).toContain("repaired_actionType_from_move_to_duel_pressure_due_to_phase_clock");
+  });
+
+  it("rejects final attack actions that only prepare future phases", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset),
+      bombCarrierAgentId: "t_0"
+    });
+    memory.phaseId = "post_plant_or_clutch";
+    memory.phaseIndex = 4;
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_0"
+    });
+    const result = normalizeHexAgentActionDraft({
+      request,
+      rawDraft: {
+        agentId: "t_0",
+        phaseId: request.phaseId,
+        currentCellId: request.agent.currentCellId,
+        targetCellId: request.targetCandidates[0]!.targetCellId,
+        actionType: "move",
+        businessIntent: "为后续下包创造空间，下一阶段再决定是否进包点。",
+        actionRationaleZh: "继续为后续决策准备。"
+      }
+    });
+
+    expect(result.draft).toBeUndefined();
+    expect(result.errors).toContain("draft:final_phase_future_setup_intent");
+  });
   it("audits natural-language fields for Chinese without flagging code identifiers", () => {
     const zh = auditHexAgentDraftSemanticLanguage({
       agentId: "t_0",

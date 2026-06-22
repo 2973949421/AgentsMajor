@@ -1,7 +1,7 @@
 import { roundReportSchema, type Agent, type MapGame, type Match, type Round, type RoundReport, type Team } from "@agent-major/shared";
 import { describe, expect, it } from "vitest";
 
-import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
+import { outputBudgetForEconomyPosture, type TeamEconomyPlan } from "../../economy/economy-rules.js";
 import { buildFixtureHexRoundBusinessDuel } from "../business/index.js";
 import { buildHexRoundFinanceDuel } from "../finance/index.js";
 import type { HexRoundTrace } from "../round/index.js";
@@ -53,6 +53,11 @@ describe("Hex round report bridge", () => {
     expect(report.judgeResult.winnerTeamId).toBe(teamA.id);
     expect(report.judgeResult.reason).toBe(trace.finalWinCondition.reason);
     expect(report.agentOutputs).toHaveLength(2);
+    expect(report.tokenSubmission.outputGate.applied).toBe(true);
+    expect(report.tokenSubmission.submittedOutputs).toHaveLength(2);
+    expect(report.tokenSubmission.submittedOutputIds).toEqual(report.agentOutputs.map((output) => output.id));
+    expect(report.agentOutputs[0]?.id).toMatch(/^sub_hex_output_/);
+    expect(report.tokenSubmission.submittedOutputs?.[0]?.rawOutputId).toBe("hex_output_round_hex_1_agent_a");
     const firstOutput = report.agentOutputs[0];
     expect(firstOutput).toBeDefined();
     expect(firstOutput!.actionDetail).toBeDefined();
@@ -66,6 +71,57 @@ describe("Hex round report bridge", () => {
       "round_report_created",
       "round_completed"
     ]);
+  });
+
+  it("clips Hex raw action output through the economy Output Gate before judge-facing report output", () => {
+    const createdAt = "2026-05-01T00:00:00.000Z";
+    const teamA = team("team_a", "Falcon", createdAt);
+    const teamB = team("team_b", "Vitallmty", createdAt);
+    const agentA = agent("agent_a", teamA.id, "entry", createdAt);
+    const agentB = agent("agent_b", teamB.id, "support", createdAt);
+    const trace = minimalTrace(agentA, teamA.id, teamB.id);
+    const report = buildHexRoundReport({
+      id: "report_round_hex_eco",
+      match: match(teamA.id, teamB.id, createdAt),
+      mapGame: mapGame(createdAt),
+      round: round(createdAt),
+      roundNumber: 1,
+      teamA,
+      teamB,
+      scoreBeforeRound: { teamA: 0, teamB: 0 },
+      scoreAfterRound: { teamA: 1, teamB: 0 },
+      winnerTeamId: teamA.id,
+      loserTeamId: teamB.id,
+      roundWinType: "attack_elimination",
+      finalWinCondition: trace.finalWinCondition,
+      winnerAgents: [agentA],
+      activeAgents: [agentA, agentB],
+      economyDelta: emptyEconomyDelta(),
+      teamEconomyPlans: {
+        [teamA.id]: economyPlan(teamA.id, "attack", agentA.id, "full_eco"),
+        [teamB.id]: economyPlan(teamB.id, "defense", agentB.id, "full_eco")
+      },
+      hexTraceArtifactId: "artifact_hex_trace_eco",
+      createdAt,
+      eventIds: [
+        "evt_round_hex_eco_hex_started",
+        "evt_round_hex_eco_hex_trace_artifact",
+        "evt_round_hex_eco_hex_committed",
+        "evt_round_hex_eco_round_report_created",
+        "evt_round_hex_eco_round_completed"
+      ],
+      hexTrace: trace
+    });
+
+    const submitted = report.tokenSubmission.submittedOutputs?.[0];
+    expect(submitted).toBeDefined();
+    expect(submitted!.outputBudget).toBe(360);
+    expect(submitted!.omittedFields).toEqual(["riskRead", "contingencyPlan", "expectedContribution"]);
+    expect(report.agentOutputs[0]?.id).toBe(submitted!.id);
+    expect(report.agentOutputs[0]?.actionDetail?.riskRead).not.toBe("No Hex action risk note.");
+    expect(report.agentOutputs[0]?.actionDetail?.contingencyPlan).not.toBe("Fallback to validated Hex trace state.");
+    expect(report.tokenSubmission.outputGate.reason).toContain("SubmittedOutput");
+    expect(roundReportSchema.parse(report)).toEqual(report);
   });
 });
 
@@ -146,13 +202,18 @@ function agent(id: string, teamId: string, role: string, createdAt: string): Age
   } as Agent;
 }
 
-function economyPlan(teamId: string, side: "attack" | "defense", agentId: string): TeamEconomyPlan {
+function economyPlan(
+  teamId: string,
+  side: "attack" | "defense",
+  agentId: string,
+  posture: TeamEconomyPlan["posture"] = "pistol_round"
+): TeamEconomyPlan {
   return {
     teamId,
     side,
     phase: "pistol_round",
     lossCount: 1,
-    posture: "pistol_round",
+    posture,
     postureReason: "test",
     summaryBuyType: "eco",
     totalCash: 800,
@@ -164,10 +225,10 @@ function economyPlan(teamId: string, side: "attack" | "defense", agentId: string
         tokenBankBefore: 800,
         tokenBankAfterDrop: 800,
         buyType: "eco",
-        economyPosture: "pistol_round",
-        loadoutPackage: "pistol_round_pack",
-        spend: 650,
-        outputBudget: 650,
+        economyPosture: posture,
+        loadoutPackage: posture === "full_eco" ? "pistol_eco_pack" : "pistol_round_pack",
+        spend: posture === "full_eco" ? 0 : 650,
+        outputBudget: outputBudgetForEconomyPosture(posture),
         dropSent: 0,
         dropReceived: 0,
         notes: []
@@ -285,7 +346,39 @@ function minimalTrace(agentA: Agent, attackTeamId: string, defenseTeamId: string
       combatResolutionCount: 0,
       rejectedEventCount: 0,
       roundStrategySeed: "fixture_round_1_seed",
-      strategyVariant: "a_short_split / site_anchor"
+      strategyVariant: "a_short_split / site_anchor",
+      roundQualityStatus: "valid",
+      roundQualityReasons: [],
+      roundQualitySummaryZh: "Round quality gate passed.",
+      roundQualityCounts: {
+        usableRoundStartCount: 10,
+        usableStanceCount: 5,
+        usableChallengeCount: 5,
+        roundStartProviderErrorCount: 0,
+        roundStartInvalidCount: 0,
+        totalActionFallbackCount: 0,
+        maxPhaseFallbackCount: 0,
+        consecutiveDegradedPhaseCount: 0,
+        phaseActionProviderErrorCount: 0
+      },
+      tacticalAudit: {
+        selectedVariant: "a_short_split / site_anchor",
+        selectedAttackVariant: "a_short_split",
+        selectedDefenseVariant: "site_anchor",
+        c4SitePreference: "a",
+        selectionReasons: [],
+        previousRoundSignals: [],
+        antiRepeatPenalties: [],
+        antiRepeatRegions: [],
+        antiRepeatPoints: [],
+        economyAdjustment: [],
+        routeDiversityWarnings: [],
+        attackFocusRegions: [],
+        defenseFocusRegions: [],
+        attackAvoidRegions: [],
+        defenseAvoidRegions: [],
+        roleRouteAssignments: []
+      }
     }
   };
 }
