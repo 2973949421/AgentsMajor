@@ -10,7 +10,7 @@ Simulation First, Broadcast Second.
 ```
 
 当前主线仍是 HexGrid 工程骨架，不是旧 Node/Sector，也不是继续扩 Phase18。N42 起的下一阶段，是在 HexGrid 上切换到 Finance Major（金融投资对抗）原型。
-N61 后真实 map 样本新增 P0：provider 断线、phase0 卡片不可消费或 phase action 大面积 fallback 时，round 必须被质量闸门拦截。P0/P1 合并修复补丁已把 `invalid_round` 提交闭环、Web/N61 可审计读取、战术 anti-repeat 实效和击杀归因去重后历史更新落地；下一步优先进入 P2 审计台可读性专项或正式 Web 人工大审计。
+N61 后真实 map 样本新增 P0：provider 断线、phase0 卡片不可消费或 phase action 大面积 fallback 时，round 必须被质量闸门拦截。P0/P1 合并修复补丁已把 `invalid_round` 提交闭环、Web/N61 可审计读取、战术 anti-repeat 实效和击杀归因去重后历史更新落地；N62 已完成 phase0 金融经济裁剪提交门，raw 卡只保留审计，submitted finance card 成为 N59 judge 主线输入。下一步进入 N63：finance firepower 接回 combat 主链路；P2 审计台大清理后移到 N65-full 后。
 
 并行 fork 说明：`fork-p1-finance-judge-balance` 已按 N59 裁判平衡范围落地。它不能替代 P0 round 质量闸门，也不能把 provider 退化、phase0 不可消费或 action fallback 的坏样本包装成有效 round。
 
@@ -57,6 +57,20 @@ Node/Sector 实验线：已退役并清理 active mode / runtime / Web progress 
 工程修复补记：Web dev 已在 `dev` 前直接编译 shared / db / llm / core，避免重启 dev 后仍读取陈旧 core dist。Hex RoundReport 已恢复经济裁剪契约：raw action 只保留审计，SubmittedOutput 才进入 Judge / RoundReport / tokenSubmission。
 
 ## 3. 近期优先级
+
+### Next：N63-N65 修订路线，金融火力接回战斗主链
+
+GPT Pro 审查后的近期主线不再直接进入 P2 审计台大清理。N62 已完成提交门，当前优先级压缩为三个后续正式 N，加一个 N65-lite 前置薄层：
+
+```text
+N62：Phase0 金融经济裁剪提交门。（已完成）
+N63：Finance Firepower 接回 Combat 主链路。
+N65-lite：最小 duel pair / fire lane pressure key。
+N64：Combat 压力收敛与审计首屏。
+N65-full：N 对 N / 1 对 N 对枪配对与归因。
+```
+
+执行顺序不能颠倒：N62 已保证经济裁剪后的 submitted finance card 是唯一 judge 输入；N63 再把 submitted card 经 N59 采信形成 pressureScore / lethalScore / totalScore，并与 CS 执行分共同进入 combat；N65-lite 必须先生成 duelPair / fireLane / pressureKey，避免 N64 在 side-level 或 region-level 上堆压力；N64 再用这些 key 做持续接触收敛和 Web 首屏可读性；N65-full 最后补齐 1vN / NvN、多枪线 assist、support/IGL fallback killer 和去重后归因。P2 审计台专项只作为 N64/N65-full 的展示收口，不提前替代主链修复。
 
 ### Done：P0/P1 合并修复，坏 Round 闸门与战术 / 归因收口
 

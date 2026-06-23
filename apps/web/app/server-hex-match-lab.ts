@@ -202,7 +202,8 @@ export interface HexMatchLabRoundSummary {
 
 export interface HexMatchLabRoundTraceDetail extends HexMatchLabRoundSummary {
   source: "hex_round_engine_committed";
-  roundStartAgentOutputs: HexMatchLabRoundStartAgentOutput[];
+roundStartAgentOutputs: HexMatchLabRoundStartAgentOutput[];
+  submittedFinanceOutputs: HexMatchLabSubmittedFinanceOutput[];
   phaseSummaries: HexMatchLabPhaseSummary[];
   audit: HexMatchLabLlmAuditSummary;
   economySummary: HexMatchLabEconomySummary[];
@@ -277,6 +278,36 @@ export interface HexMatchLabRoundStartAgentOutput {
   };
 }
 
+export interface HexMatchLabSubmittedFinanceOutput {
+  submittedOutputId: string;
+  rawOutputId: string;
+  agentId: string;
+  displayName: string;
+  cardKind: "stance" | "challenge";
+  buyType: string;
+  economyPosture: string;
+  loadoutPackage: string;
+  outputBudget: number;
+  clippingTier: string;
+  combatEffectCap: string;
+  judgeInputRef: string;
+  factBankSnapshotId: string;
+  decisionQuestionId: string;
+  evidenceMenuVersion: string;
+  clippingPolicyVersion: string;
+  omittedFields: string[];
+  cappedFields: string[];
+  orphanedChallenge: boolean;
+  rawFingerprint: string;
+  submittedFingerprint: string;
+  rawParseStatus: string;
+  submittedUsableForJudge: boolean;
+  submittedUsableForCombat: boolean;
+  gateSummary: string;
+  rawCardSummaryZh?: string | undefined;
+  submittedStanceCard?: HexMatchLabFinanceStanceCard | undefined;
+  submittedChallengeCard?: HexMatchLabFinanceChallengeCard | undefined;
+}
 export interface HexMatchLabFinanceCoreClaim {
   claimId: string;
   claimType: string;
@@ -1660,8 +1691,9 @@ function summarizeTrace(
   const businessDuel = summarizeBusinessDuel(trace);
   const financeDuel = summarizeFinanceDuel(trace);
   const finalHardCondition = summarizeHardCondition(trace.finalWinCondition);
-  const audit = summarizeTraceAudit(trace);
+const audit = summarizeTraceAudit(trace);
   const roundStartAgentOutputs = summarizeRoundStartAgentOutputs(trace, agentIdentities);
+  const submittedFinanceOutputs = summarizeSubmittedFinanceOutputs(trace, agentIdentities, roundStartAgentOutputs);
   return {
     ...roundSummary,
     fallbackCount: trace.audit.fallbackCount,
@@ -1673,7 +1705,8 @@ function summarizeTrace(
     roundQualitySummaryZh: audit.roundQualitySummaryZh,
     roundQualityCounts: audit.roundQualityCounts,
     source: "hex_round_engine_committed",
-    roundStartAgentOutputs,
+roundStartAgentOutputs,
+    submittedFinanceOutputs,
     phaseSummaries,
     audit,
     economySummary,
@@ -1856,6 +1889,54 @@ function summarizeRoundStartAgentOutputs(
   });
 }
 
+function summarizeSubmittedFinanceOutputs(
+  trace: HexRoundTrace,
+  agentIdentities: Map<string, AgentIdentity>,
+  roundStartAgentOutputs: HexMatchLabRoundStartAgentOutput[]
+): HexMatchLabSubmittedFinanceOutput[] {
+  const traceWithSubmitted = trace as HexRoundTrace & { submittedFinanceOutputs?: unknown[] | undefined };
+  const outputs = Array.isArray(traceWithSubmitted.submittedFinanceOutputs) ? traceWithSubmitted.submittedFinanceOutputs : [];
+  const rawById = new Map(roundStartAgentOutputs.map((output) => [output.outputId, output]));
+  return outputs.map((rawSubmitted) => {
+    const submitted = rawSubmitted as Record<string, unknown>;
+    const rawOutputId = String(submitted.rawOutputId ?? "");
+    const rawOutput = rawById.get(rawOutputId);
+    const agentId = String(submitted.agentId ?? rawOutput?.agentId ?? "unknown_agent");
+    return {
+      submittedOutputId: String(submitted.submittedOutputId ?? `submitted_${rawOutputId || agentId}`),
+      rawOutputId,
+      agentId,
+      displayName: rawOutput?.displayName ?? formatAgentName(agentId, agentIdentities),
+      cardKind: submitted.cardKind === "challenge" ? "challenge" : "stance",
+      buyType: String(submitted.buyType ?? rawOutput?.buyType ?? "unknown_buy"),
+      economyPosture: String(submitted.economyPosture ?? "unknown_posture"),
+      loadoutPackage: String(submitted.loadoutPackage ?? "unknown_loadout"),
+      outputBudget: typeof submitted.outputBudget === "number" ? submitted.outputBudget : 0,
+      clippingTier: String(submitted.clippingTier ?? "unknown_tier"),
+      combatEffectCap: String(submitted.combatEffectCap ?? "unknown_cap"),
+      judgeInputRef: String(submitted.judgeInputRef ?? "unknown_judge_input"),
+      factBankSnapshotId: String(submitted.factBankSnapshotId ?? "unknown_snapshot"),
+      decisionQuestionId: String(submitted.decisionQuestionId ?? "unknown_decision"),
+      evidenceMenuVersion: String(submitted.evidenceMenuVersion ?? "unknown_evidence_menu"),
+      clippingPolicyVersion: String(submitted.clippingPolicyVersion ?? "unknown_policy"),
+      omittedFields: toStringArray(submitted.omittedFields),
+      cappedFields: toStringArray(submitted.cappedFields),
+      orphanedChallenge: submitted.orphanedChallenge === true,
+      rawFingerprint: String(submitted.rawFingerprint ?? ""),
+      submittedFingerprint: String(submitted.submittedFingerprint ?? ""),
+      rawParseStatus: String(submitted.rawParseStatus ?? "unknown_raw_parse_status"),
+      submittedUsableForJudge: submitted.submittedUsableForJudge === true,
+      submittedUsableForCombat: submitted.submittedUsableForCombat === true,
+      gateSummary: String(submitted.gateSummary ?? "N62 提交门未记录摘要。"),
+      rawCardSummaryZh: rawOutput?.cardSummaryZh ?? rawOutput?.rawOutputSummaryZh,
+      submittedStanceCard: submitted.submittedStanceCard as HexMatchLabFinanceStanceCard | undefined,
+      submittedChallengeCard: submitted.submittedChallengeCard as HexMatchLabFinanceChallengeCard | undefined
+    };
+  });
+}
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((item) => String(item)).filter(Boolean) : [];
+}
 function isUsableHexMatchLabRoundStartOutput(output: HexMatchLabRoundStartAgentOutput): boolean {
   return isUsableHexMatchLabRoundStartOutputSource(output);
 }

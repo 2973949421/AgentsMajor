@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import type { HexFinanceChallengeCard, HexFinanceStanceCard, HexRoundStartAgentOutputForAction } from "../action/hex-round-start-agent-output.js";
+import type { HexRoundEconomyContext } from "../economy/index.js";
 import { buildHexRoundFinanceDuel } from "./hex-round-finance-duel.js";
 import { judgeHexFinanceEvidence } from "./hex-finance-evidence-judge.js";
+import { buildSubmittedFinanceOutputs } from "./hex-submitted-finance-output.js";
 
 describe("Hex finance evidence judge", () => {
   it("lets a stance survive only when a claim has accepted evidence and a reasoning bridge", () => {
@@ -154,6 +156,64 @@ describe("Hex finance evidence judge", () => {
     expect(result.challengeScore).toBeLessThanOrEqual(70);
     expect(result.attack.auditReasons).toContain("score_cap_applied:70");
   });
+  it("judges submitted finance outputs instead of raw clipped evidence", () => {
+    const financeDuel = buildTestFinanceDuel();
+    const rawOutput = buildStanceOutput({
+      claimType: "commodity_price_momentum",
+      evidenceRefs: ["UNKNOWN_FIRST", "FRED002"]
+    });
+    const submittedFinanceOutputs = buildSubmittedFinanceOutputs({
+      financeDuel,
+      economyContext: buildEconomyContext([
+        buildEconomyAgent("ct_0", "force_buy", "forceBuy", 650)
+      ]),
+      roundStartAgentOutputs: [rawOutput]
+    });
+
+    const result = judgeHexFinanceEvidence({
+      financeDuel,
+      submittedFinanceOutputs,
+      roundStartAgentOutputs: [rawOutput]
+    });
+
+    expect(result.auditReasons).toContain("judge_input:submitted_finance_outputs");
+    expect(result.defense.auditReasons).toContain("judge_input:submitted_finance_outputs");
+    expect(result.defense.acceptedEvidenceRefs).not.toContain("FRED002");
+    expect(result.defense.rejectedEvidenceRefs).toContain("UNKNOWN_FIRST:unknown_evidence_ref");
+  });
+
+  it("keeps orphaned challenge cards as audit-only failures without retargeting", () => {
+    const financeDuel = buildTestFinanceDuel();
+    const rawStance = buildStanceOutput({
+      claimType: "commodity_price_momentum",
+      evidenceRefs: ["FRED002"]
+    });
+    const rawChallenge = buildChallengeOutput({
+      challengeReasonZh: "该 claim 的权益传导路径不成立。",
+      expectedEffect: "降低 stance 置信度。",
+      proxyMismatch: "商品价格动量不能自动推出 A 股盈利传导。",
+      evidenceRefs: ["FRED002"]
+    });
+    const submittedFinanceOutputs = buildSubmittedFinanceOutputs({
+      financeDuel,
+      economyContext: buildEconomyContext([
+        buildEconomyAgent("ct_0", "full_eco", "save", 360),
+        buildEconomyAgent("t_0", "rifle_buy", "fullBuy", 1200)
+      ]),
+      roundStartAgentOutputs: [rawStance, rawChallenge]
+    });
+
+    const submittedChallenge = submittedFinanceOutputs.find((output) => output.cardKind === "challenge");
+    const result = judgeHexFinanceEvidence({
+      financeDuel,
+      submittedFinanceOutputs
+    });
+
+    expect(submittedChallenge?.orphanedChallenge).toBe(true);
+    expect(result.attack.acceptedChallenges).toEqual([]);
+    expect(result.attack.rejectedChallenges).toContain("challenge_t_0_1:orphaned_challenge_target_clipped_out");
+    expect(result.attack.rejectionReasons).toContain("orphaned_challenge_target_clipped_out");
+  });
 });
 
 function buildTestFinanceDuel() {
@@ -168,6 +228,41 @@ function buildTestFinanceDuel() {
   });
 }
 
+function buildEconomyContext(agents: HexRoundEconomyContext["agents"]): HexRoundEconomyContext {
+  return {
+    teams: [],
+    warnings: [],
+    agents
+  };
+}
+
+function buildEconomyAgent(
+  agentId: string,
+  economyPosture: string,
+  buyType: string,
+  outputBudget: number
+): HexRoundEconomyContext["agents"][number] {
+  return {
+    agentId,
+    teamId: agentId.startsWith("ct") ? "ct" : "t",
+    side: agentId.startsWith("ct") ? "defense" : "attack",
+    economyPosture: economyPosture as never,
+    buyType: buyType as never,
+    loadoutPackage: "test_pack" as never,
+    tokenBankBefore: 10000,
+    tokenBankAfterDrop: 10000,
+    tokenBankAfterSpend: 5000,
+    spend: 5000,
+    outputBudget,
+    dropSent: 0,
+    dropReceived: 0,
+    resourceTier: "high",
+    utilityTier: "high",
+    allowedActionTypes: [],
+    constraints: [],
+    notes: []
+  };
+}
 function buildStanceOutput(input: {
   claimType: string;
   evidenceRefs: string[];

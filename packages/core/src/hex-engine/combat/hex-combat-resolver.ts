@@ -3,7 +3,7 @@ import type { HexRoundStartAgentOutputForAction, HexValidatedAgentAction } from 
 import type { HexRoundBusinessDuel } from "../business/index.js";
 import { summarizeHexEconomyEvidence, type HexEconomyCombatEvidence, type HexRoundEconomyContext } from "../economy/index.js";
 import { judgeHexFinanceEvidence, type HexFinanceEvidenceJudgeSideResult } from "../finance/index.js";
-import type { HexRoundFinanceDuel } from "../finance/index.js";
+import type { HexRoundFinanceDuel, HexSubmittedFinanceOutput } from "../finance/index.js";
 import type { HexRoundMemory, HexSide } from "../state/index.js";
 import { buildHexCombatCasualties, buildHexCombatSuppressions } from "./hex-combat-casualties.js";
 import type { HexCombatAttributionScore } from "./hex-combat-casualties.js";
@@ -40,6 +40,7 @@ export interface ResolveHexCombatInput {
   businessDuel?: HexRoundBusinessDuel;
   financeDuel?: HexRoundFinanceDuel;
   roundStartAgentOutputs?: readonly HexRoundStartAgentOutputForAction[];
+  submittedFinanceOutputs?: readonly HexSubmittedFinanceOutput[];
   varianceMode?: HexCombatVarianceMode;
   seed?: string;
   attributionHistory?: HexCombatAttributionHistory;
@@ -91,6 +92,7 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
   const financeJudge = input.financeDuel
     ? judgeHexFinanceEvidence({
         financeDuel: input.financeDuel,
+        ...(input.submittedFinanceOutputs ? { submittedFinanceOutputs: input.submittedFinanceOutputs } : {}),
         roundStartAgentOutputs: input.roundStartAgentOutputs ?? []
       })
     : undefined;

@@ -13,7 +13,9 @@ import {
 } from "../business/index.js";
 import {
   buildHexRoundFinanceDuel,
-  type HexRoundFinanceDuel
+  buildSubmittedFinanceOutputs,
+  type HexRoundFinanceDuel,
+  type HexSubmittedFinanceOutput
 } from "../finance/index.js";
 import {
   buildHexCombatContacts,
@@ -167,6 +169,7 @@ export interface HexRoundTrace {
   financeDuel: HexRoundFinanceDuel;
   economyContext: HexRoundEconomyContext;
   roundStartAgentOutputs: HexRoundStartAgentOutput[];
+  submittedFinanceOutputs: HexSubmittedFinanceOutput[];
   phases: HexRoundPhaseTrace[];
   finalWinCondition: HexWinConditionResult;
   audit: {
@@ -297,6 +300,11 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
     ...(artifactOwner ? { artifactOwner } : {})
   });
   const usableRoundStartAgentOutputs = roundStartAgentOutputs.filter(isUsableRoundStartAgentOutput);
+  const submittedFinanceOutputs = buildSubmittedFinanceOutputs({
+    financeDuel,
+    economyContext,
+    roundStartAgentOutputs: usableRoundStartAgentOutputs
+  });
   const phases: HexRoundPhaseTrace[] = [];
   let roundQualityAudit = buildHexRoundQualityAudit(roundStartAgentOutputs, phases);
   let finalWinCondition: HexWinConditionResult | undefined;
@@ -362,6 +370,7 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
         economyContext,
         businessDuel,
         financeDuel,
+        submittedFinanceOutputs,
         roundStartAgentOutputs: usableRoundStartAgentOutputs,
         attributionHistory: phaseAttributionHistory
       });
@@ -458,6 +467,7 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
     financeDuel,
     economyContext,
     roundStartAgentOutputs,
+    submittedFinanceOutputs,
     phases,
     finalWinCondition,
     audit: {

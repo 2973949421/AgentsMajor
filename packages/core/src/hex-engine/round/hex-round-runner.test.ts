@@ -32,6 +32,9 @@ describe("Hex round runner", () => {
     expect(trace.roundStartAgentOutputs.filter((output) => output.cardKind === "stance")).toHaveLength(5);
     expect(trace.roundStartAgentOutputs.filter((output) => output.cardKind === "challenge")).toHaveLength(5);
     expect(trace.roundStartAgentOutputs.every((output) => output.allowedPhaseRefs)).toBe(true);
+    expect(trace.submittedFinanceOutputs).toHaveLength(10);
+    expect(trace.submittedFinanceOutputs.every((output) => output.rawOutputId.startsWith("round_start_"))).toBe(true);
+    expect(trace.submittedFinanceOutputs.every((output) => output.judgeInputRef.startsWith("submitted_finance:"))).toBe(true);
     expect(trace.roundStartAgentOutputs
       .filter((output) => output.cardKind === "challenge")
       .every((output) => output.challengeCard?.targetClaimId.startsWith("claim_"))).toBe(true);
@@ -43,6 +46,13 @@ describe("Hex round runner", () => {
     expect(trace.financeDuel.topic.roundKey).toBe("global_metal_price_signal");
     expect(trace.financeDuel.evidence.promptFacts.length).toBeGreaterThan(0);
     expect(trace.financeDuel.agentAssignments).toHaveLength(10);
+    const combatAuditReasons = trace.phases.flatMap((phase) => phase.combatResolutions.flatMap((resolution) => [
+      ...(resolution.financeEvidenceAdoption?.attack.auditReasons ?? []),
+      ...(resolution.financeEvidenceAdoption?.defense.auditReasons ?? [])
+    ]));
+    if (combatAuditReasons.length > 0) {
+      expect(combatAuditReasons).toContain("judge_input:submitted_finance_outputs");
+    }
     expectNoDuplicateKilledCasualties(trace.phases);
   });
 

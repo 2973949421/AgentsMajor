@@ -1,6 +1,6 @@
-# N56-N61 Evidence-bound Round Roadmap
+# N56-N65 Evidence-bound Round Roadmap
 
-本文是 Finance Major 在 N55 后的正式路线。它不是路线宣言，而是后续实现必须遵守的工程依赖链契约。当前状态：N56 已完成第一版，N57 前置数据源探测已完成，N57 Fact Bank v2 已按原路径完成第一版覆盖升级；N57b 已广探 AKShare endpoint；N57c 已把当前比赛主路径收敛为 FRED + BaoStock + AKShare 三主源，并将 World Bank / UN Comtrade 冻结出 active evidence、coverage 和 round evidence packs。
+本文是 Finance Major 在 N55 后的正式路线。它不是路线宣言，而是后续实现必须遵守的工程依赖链契约。当前状态：N56-N61 已完成第一版闭环，N62 已完成 phase0 raw 金融卡到 submitted finance card 的经济裁剪提交门；外部静态审查指出当前最大偏差不是方向错误，而是 N60 安全隔离过头：金融证据链已可审计，但 phase0 有效观点火力没有真正作为 combat 主火力进入伤亡裁定。因此 N62-N65 不扩成长串路线，但必须按 PRO 修订为：N62、N63、N65-lite、N64、N65-full。N65-lite 是 N65 的前置薄层，不新增大阶段，只为 N64 提供压力归属 key。
 
 核心结论：
 
@@ -13,6 +13,11 @@ N58 让 phase0 只能基于 N56/N57 的 schema 和 evidence 生成 stanceCard / 
 N59 已让裁判第一版只采信 claim 与 evidence 合法绑定的内容。
 N60 已让金融结果只能通过受限接口影响战斗投影。
 N61 已用 real provider 小样本验证链路；第 7 局 10/10 phase0 卡片可消费，N59/N60 安全链路有效，当前可以宣称 pass。
+N62 已补齐 phase0 金融卡的 raw -> economy clipped submitted card -> judge 输入门。
+N63 必须把 submitted finance output 经 N59 裁判形成的 finance firepower 接回 combat 主评分，恢复“phase0 有效观点火力 60-70% + phase1+ CS 执行 30-40%”。
+N65-lite 必须在 N64 前先提供最小 duelPair / fireLane / pressureKey，否则持续压力会继续在 side-level 或 region-level 上污染归因。
+N64 必须基于 N65-lite 的 pressureKey 做持续对枪压力、质量闸门和 Web 首屏审计闭环，证明同点位/开阔枪线不会长期纯压制，同时 Web 能看懂 raw / clipped / judge / combat 链。
+N65-full 必须补齐 N 对 N / 1 对 N 的完整配对和归因规则，避免 side-level winner + 单 target + 单 killer 把多人混战压扁成伪 1v1。
 ```
 
 如果某个 N 的阻断条件没有解决，不能靠下一个 N 的 prompt、Web 展示或 combat 阈值补过去。
@@ -57,6 +62,11 @@ Web 看起来有金融胜负，实际没有证据采信链。
 | N59 | N58 的结构化卡片和 N57 的 Fact Bank v2 | `acceptedEvidenceRefs`、`rejectedEvidenceRefs`、`missingEvidenceApplied`、`scoreCaps`、stanceScore / challengeScore、financialResult、combatEffectAllowed | 已完成第一版；若无 accepted evidence 仍判金融胜负，或 Web/trace 不能追溯采信链，则 N59 不合格 |
 | N60 | N59 的金融结果和 combat effect 权限 | 已完成第一版：`financeProjection`、金融分 audit-only、combat 总分只看 CS / 非金融旧兼容分 | 若 combat 再直接读金融作文分、金融无采信仍放大战斗 margin，则 N60 回归 |
 | N61 | N56-N60 的完整链路 | Evidence-bound Round v1 验收报告 | 已完成 real provider 小样本验收；第 7 局 pass，10/10 phase0 卡片可消费，金融胜负硬门槛和金融 / CS 分离均达标。 |
+| N62 | N58 的 raw phase0 card、经济 / 买型 / 装备预算、N57 evidence pack | `submittedFinanceOutputs`、raw/submitted diff、clipping audit；N59 judge 只读 submitted（已落地） | 若 judge 仍直接读 raw phase0 card，或经济裁剪只是 prompt 文案，不能进入 N63 |
+| N63 | N62 submitted finance output、N59 accepted/rejected/missing、N60 projection gate、CS action score | `financeFirepowerScore.pressureScore / lethalScore / totalScore` + `tacticalExecutionScore` 共同进入 combat；finance 60-70%、CS 30-40%，但 kill 仍受 contact/lethal/casualty gate 限制 | 若 no accepted evidence 可产生金融 lethalScore，或 financeScore 仍 audit-only，N63 不合格 |
+| N65-lite | N63 combat firepower、contact candidates、agent positions/actions、cover/LoS | 最小 `duelPair / fireLane / objectiveExposure` 与 `pressureKey`；N64 只能基于这些 key 累积压力 | 若 N64 仍按 team/side/region 累积压力，N65-lite 不合格 |
+| N64 | N65-lite pressureKey、持续接触压力、round quality、Web audit projection | 持续对枪压力、forced_back / casualty 收敛、Web 首屏链路：quality -> hard winner -> submitted finance -> combat -> raw 技术细节 | 若同点位/开阔枪线仍长期纯压制，或 Web 仍需要读 raw JSON 才能理解，N64 不合格 |
+| N65-full | N64 pressure history、combat participants、role/equipment、assist/attribution history | 完整 1vN surrounded pressure、NvN 多枪线贡献、assist attribution、per-phase casualty cap 和去重后归因 | 若 N 对 N 仍只按 side-level winner 选一个 target / killer，或支援/IGL/多人夹击归因混乱，N65-full 不合格 |
 
 ## 3. N56：决策题与立场 / 挑战契约
 
@@ -674,4 +684,223 @@ real provider：已执行，结论 pass。第 7 局 phase0 真实结构化卡片
 扩完整赛事。
 把 N55 后 combat 补丁继续写成当前主线。
 用 Web 中文摘要包装无采信链的金融胜负。
+```
+## 12. N62：Phase0 金融经济裁剪提交门
+
+目标：恢复 Finance Major 原始经济口径。Agent 在 phase0 可以生成 raw 金融观点，但进入 N59 裁判和 N63 战斗火力前，必须先按经济 / 买型 / 装备预算裁剪成 submitted finance card。
+
+当前实现状态：已新增 `submittedFinanceOutputs` trace 字段与 `finance_output_gate_v1` 裁剪策略；N59 judge 新路径只读 submitted finance output，并写入 `judge_input:submitted_finance_outputs` 审计原因。Raw phase0 card 仍保留用于折叠审计，不能绕过 submitted gate 进入 judge 或 combat。
+
+交付：
+
+```text
+保留 phase0 raw stanceCard / challengeCard artifact。
+新增 SubmittedFinanceOutput：submittedOutputId、rawOutputId、agentId、cardKind、submittedStanceCard / submittedChallengeCard、buyType、economyPosture、loadoutPackage、outputBudget、clippingTier、omittedFields、cappedFields、rawFingerprint、submittedFingerprint、gateSummary。
+补充追溯字段：combatEffectCap、judgeInputRef、factBankSnapshotId、decisionQuestionId、evidenceMenuVersion、clippingPolicyVersion、rawParseStatus、submittedUsableForJudge、submittedUsableForCombat。
+N59 judge 输入从 roundStartAgentOutputs 改为 submittedFinanceOutputs。
+Web 默认展示 submitted card，raw card 折叠，并显示 raw -> submitted diff。
+```
+
+裁剪规则：
+
+```text
+full_buy / rifle_full：最多保留 2-3 个 claim，每个 claim 2-3 条 evidence，confidence cap 0.9，combatEffectCap 最高 possible_kill。
+standard：最多 2 个 claim，每个 claim 1-2 条 evidence，confidence cap 0.75，combatEffectCap 最高 possible_wound / forced_back。
+force / light / pistol armor：最多 1 个 claim + 1 条核心 evidence，只能中低仓位建议，confidence cap 0.6，combatEffectCap 最高 suppression / forced_back。
+eco：只保留 1 个观察型或风险型 claim，不能形成 possible_kill finance firepower，confidence cap 0.45，combatEffectCap 最高 weak_pressure。
+full_eco / save：只保留 auditSummary / weak stance，最多 minor_delay / low pressure。
+```
+
+硬边界：
+
+```text
+裁剪只能按 deterministic budget policy 删减、截断、降 confidence、限制 combatEffectCap。
+裁剪不能扫描 Fact Bank 后替 agent 挑更优 evidence。
+裁剪不能删除会让 agent 显得更差的 evidence，除非它超出预算且按原始顺序或 agent 显式 priority 被裁掉。
+裁剪不能新增 claim、evidence、reasoningBridge、targetClaimId 或结论。
+裁剪不能把低质量 raw card 修成高质量 submitted card；Finance clipping is budget truncation, not semantic improvement。
+Judge、combat 和 Web 主审计只消费 submitted；raw 只用于折叠审计。
+```
+
+challenge 特殊边界：
+
+```text
+如果 challengeCard 的 targetClaimId 指向的 raw claim 在对方 submitted card 中被经济裁剪掉，该 challenge 变为 orphaned_challenge。
+系统不能把 orphaned challenge 自动改指向别的 claim。
+orphaned_challenge 可进入 rejected / not_applicable audit，但不给 challenge specificity 分，也不给 combat firepower。
+Web 必须显示 target claim clipped out before judge。
+```
+
+成功标准：
+
+```text
+同一 raw card 在 full buy 与 eco 下生成不同 submitted card。
+N59 accepted / rejected / missing 只基于 submitted card。
+裁剪不允许提高 raw card 的语义质量。
+Web 能区分 agent 原始输出、系统经济裁剪和真正进入 judge 的内容。
+测试覆盖：raw evidenceRefs = [unknownEvidence, acceptedEvidence] 且预算只保留 1 条时，submitted 必须按原始顺序保留 unknownEvidence，不能自动跳到 acceptedEvidence；除非 agent raw 中显式 priority 指向 acceptedEvidence。
+```
+
+## 13. N63：Finance Firepower 接回 Combat 主链路
+
+目标：修正 N60 过度隔离。金融裁判仍不能写 kill / winner，但 N59 采信后的 submitted 金融观点必须重新成为 combat 主火力。
+
+交付：
+
+```text
+新增或显式固化 financeFirepowerScore。
+financeFirepowerScore.pressureScore：可用于 suppression / forced_back，但受 financeProjection 与 combat gate 限制。
+financeFirepowerScore.lethalScore：可用于 wound / kill 候选，但必须同时通过 contact gate、lethal gate、casualty gate。
+financeFirepowerScore.totalScore：归一化到 0-65。
+financeFirepowerScore.caps：记录 combatEffectCap、scoreCapPolicy、missing/rejected/unavailable 产生的限制。
+保留 tacticalExecutionScore：0-35。
+combat 总压力 = financeFirepowerScore.totalScore + tacticalExecutionScore，并写入 audit。
+financeProjection 继续存在，但它是解释和权限层，不是唯一金融接入口。
+```
+
+financeFirepowerScore 来源：
+
+```text
+card 结构合法：0-5。
+accepted evidence 覆盖：0-25。
+reasoningBridge 清晰度：0-12。
+challenge specificity / targetClaimId 命中：0-10。
+riskBoundary / invalidatingConditions：0-6。
+decisionQuestion / horizon / target relevance：0-7。
+missing / rejected / unavailable / score cap：负向封顶或扣分。
+```
+
+硬规则：
+
+```text
+financialResult != combat result。
+financialResult = stance_survives / challenge_breaks_stance 只表示金融层站得住或挑战击中，不自动产生击杀。
+financialResult = contested 也不等于 0 firepower；只要存在 accepted evidence 与部分 reasoning，可形成 capped pressure firepower。
+no accepted evidence：financeFirepowerScore.lethalScore = 0，只能 minor_delay / weak pressure。
+accepted evidence + eco / full_eco：pressureScore 可以存在，但 lethalScore 被 economy combatEffectCap 限制。
+rejected evidence 不给火力；missing evidence 只能降 cap，不能单独支持金融胜负。
+cover_blocks_lethal / distance_exceeds_lethal_gate：金融火力只能压制或迫退，不能穿掩体乱杀。
+kill 仍必须通过 contact gate、lethal gate、casualty gate。
+```
+
+测试矩阵：
+
+```text
+strong finance + weak CS：accepted evidence 高，但隔掩体 / 远距离，只能 suppression / forced_back，不 kill。
+strong finance + strong CS：accepted evidence 高，近距离 / open line / active duel，可 wound / kill。
+weak finance + strong CS：no accepted evidence，但贴脸 active duel，可由 CS execution 造成 kill，但 audit 不能写 finance kill。
+missing-only finance + average CS：不能 financial win，不能 finance lethal，只能低压制或无效果。
+rejected evidence + strong wording：中文话术再强也不给 finance firepower。
+eco submitted card + strong raw card：raw 强不算，submitted cap 后只能 pressure。
+```
+
+成功标准：
+
+```text
+相同 CS 站位下，accepted submitted evidence 更强的一方获得更高 firepower。
+无 accepted evidence 仍不能金融胜利或金融 lethalScore。
+近距离 / 开阔枪线 / 包点入口接触时，finance firepower 与 CS 执行能共同推动 forced_back / casualty。
+```
+
+## 14. N65-lite：最小 duel pair / fire lane pressure key
+
+目标：在 N64 压力收敛前先建立最低限度的对枪配对层。N65-lite 不做完整 NvN 模型，只负责让持续压力知道“谁和谁、在哪条枪线、因为什么持续接触”。
+
+交付：
+
+```text
+ContactCandidate：agentA、agentB、contactType、distance、lineOfSight、coverState、actionMatch、roleMatch、lethalEligible、pressureEligible。
+DuelPair：pairId、primaryAgentId、targetAgentId、laneId、objectiveId、directnessScore、lethalGateStatus、pressureKey。
+pressureKey 只能来自 duelPairId / fireLaneId / objectiveExposureId / cellContactId，不允许只用 team / side / region。
+N64 pressure accumulation 必须消费 pressureKey。
+```
+
+硬边界：
+
+```text
+N65-lite 不负责完整 1vN surrounded pressure、crossfire angle separation、escape route 或 assist attribution。
+N65-lite 只保证 N64 不再把压力累积到 side-level。
+support / IGL 在 N65-lite 中可以成为 contributor，但默认不成为 primary duelist，除非没有其他 direct candidate。
+```
+
+成功标准：
+
+```text
+同一 A long 枪线连续接触，pressure history 绑定到具体 pair / lane，而不是 attack side vs defense side。
+Web / trace 能看到 pairId、laneId 或 objectiveExposureId。
+后续 N64 无需重写 pressure history key 即可继续演进。
+```
+
+## 15. N64：Combat 压力收敛与审计首屏
+
+目标：不再靠继续调 kill 阈值解决观感，而是让持续对枪有确定性结果，并让人类能一眼读懂整条链。
+
+交付：
+
+```text
+deterministic combat pressure：同点位、包点入口、开阔枪线连续接触会按 N65-lite pressureKey 累积压力。
+pressure 只能升级为 suppression / forced_back / casualty 中符合 gate 的结果；隔掩体远距离仍不能乱杀。
+wound 第一版只作为 audit-only intermediate effect，不引入 HP / injury 状态机。
+final phase 空转、no_active_combat_action 过多、C4 非包点折返必须进入 actionQualityWarning / urgencyFailure，不自动变成 invalid_round。
+Web 首屏顺序固定为：roundQuality -> hardWinner -> submitted finance adoption -> combat firepower / CS execution -> player phase timeline -> raw 技术细节。
+N61 验收脚本增加 N63/N64/N65 检查：finance firepower 是否应用、同点位长期纯压制是否出现、duel pairs / fire lanes 是否提供、Web projection 是否提供链路字段。
+```
+
+pressure reset / decay：
+
+```text
+reset：pair 不再 contact、LoS 被 cover / smoke / wall 切断、任一方 forced_back 成功、任一方 rotate 离开 fire lane、victim 已 casualty、new round starts。
+decay：contact 断开 1 phase，pressure -X；contact 断开 2 phase，pressure 清零。
+pressure 不得跨不同 lane / objectiveExposure 迁移。
+```
+
+质量边界：
+
+```text
+provider / schema / phase0 invalid：可以导致 invalid_round。
+tactical bad choice：进入 actionQualityWarning / urgencyFailure，通常不导致 invalid_round。
+final phase T 有 C4 在包点却不 plant：这是战术失败，应让 defense 正常赢 timeout/no_plant，不让 attack 逃避失败。
+```
+
+成功标准：
+
+```text
+同点位或开阔枪线连续 2-3 phase active duel，不再无限 contested_suppression。
+远距离隔掩体、只 known enemy、只 same_region 仍不能 kill。
+A 点 pressure 不会在双方转点后污染 B 点接触。
+Web 不需要读 raw JSON 就能回答：谁的观点火力更强、谁的行动位置更好、为什么压制/退让/击杀。
+```
+
+## 16. N65-full：N 对 N / 1 对 N 对枪配对与归因
+
+目标：补齐多人接触模型。当前 combat 仍容易把多人接触压扁成“side-level winner -> losing side 选一个 target -> winning side 选一个 killer”。N65-full 不改变 N63 的金融火力和 N64 的压力收敛，而是在 contact 内建立完整的 duel pairing / fire lane pairing 与多人归因。
+
+交付：
+
+```text
+1v1：按 financeFirepower + tacticalExecution + lethal gate 判主 duel。
+1vN：生成 surrounded pressure；单人若无 cover / escape / strong firepower，应更容易 forced_back / wound_pressure / killed。
+NvN：按距离、枪线、同点位、包点入口、角色动作生成若干 duel pairs / fire lanes。
+每个 agent 每 phase 可主参与有限 pair；多余贡献转为 assist / suppression。
+每个 victim 每 phase 最多最终落账一次 casualty；保留 dedupe 后归因历史。
+```
+
+归因规则：
+
+```text
+killer 优先来自 direct duel pair 中的 active duelist：entry / star rifler / AWPer / rifler。
+support / IGL 默认进入 assist / suppression。
+support / IGL fallback killer 必须同时满足：lethal gate passed、direct contact exists、no entry/rifler/AWPer direct candidate、actionType 不是纯 gather_info / rotate / map_control，并写明 sole_direct_candidate_allowed。
+AWPer long-range kill 必须满足：open line、distance in AWP lethal band、cover not blocking lethal、actionType in watch_angle / peek / seek_duel。
+多人夹击时，主杀来自最强直接枪线，其他有效枪线进入 assisterAgentIds 或 suppression reasons。
+objective actor 暴露、C4 carrier、plant / defuse 行为提高 target vulnerability，但不能绕过 lethal gate。
+```
+
+成功标准：
+
+```text
+1vN 不再只表现为普通 side score 小幅优势，而能解释“被多人夹击”。
+NvN 不再只选一个笼统 target / killer；审计能看到 duel pairs / fire lanes / assist contributors。
+同一 victim 同 phase 只落账一次 casualty，被 dedupe 删除的 casualty 不污染 attribution history。
+连续多个 round 不应出现固定索引式 5 个 1v1 对位。
 ```

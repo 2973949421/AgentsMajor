@@ -42,9 +42,11 @@ type HexMatchLabHumanAudit = NonNullable<HexMatchLabRoundTraceDetail["humanAudit
 type HexMatchLabRoundStartOutputDigest = HexMatchLabHumanAudit["roundStartOutputDigests"][number];
 type HexMatchLabAgentOutputDigest = HexMatchLabHumanAudit["agentOutputDigests"][number];
 type HexMatchLabPhaseStory = HexMatchLabHumanAudit["phaseStories"][number];
+type HexMatchLabSubmittedFinanceOutput = HexMatchLabRoundTraceDetail["submittedFinanceOutputs"][number];
 
 function PlayerFinanceAudit(props: {
   humanAudit: HexMatchLabHumanAudit;
+  trace: HexMatchLabRoundTraceDetail;
   phaseStory: HexMatchLabPhaseStory | undefined;
 }) {
   const selectedOutputDigests = props.humanAudit.agentOutputDigests.filter((digest) =>
@@ -56,8 +58,9 @@ function PlayerFinanceAudit(props: {
     list.push(digest);
     actionDigestsByAgentId.set(digest.agentId, list);
   }
-  const stanceCount = props.humanAudit.roundStartOutputDigests.filter((output) => output.cardKind === "stance").length;
+const stanceCount = props.humanAudit.roundStartOutputDigests.filter((output) => output.cardKind === "stance").length;
   const challengeCount = props.humanAudit.roundStartOutputDigests.filter((output) => output.cardKind === "challenge").length;
+  const submittedFinanceOutputs = props.trace.submittedFinanceOutputs ?? [];
 
   return (
     <div className={styles.auditStack}>
@@ -84,7 +87,9 @@ function PlayerFinanceAudit(props: {
 
       <article className={styles.auditCard}>
         <h3>1. Phase0 金融攻防卡</h3>
-        <p className={styles.guardText}>这里只展示真实可消费卡片。系统输入卡、provider 失败和无效结构不会混进这里。</p>
+        <p className={styles.guardText}>先看 N62 submitted 卡：这是进入 N59 judge 的正式金融输出；Raw 卡只作为折叠审计材料。</p>
+        <SubmittedFinanceOutputList submittedFinanceOutputs={submittedFinanceOutputs} />
+        <p className={styles.guardText}>下面是 Raw phase0 真实可消费卡片，仅用于审计原始模型输出，不直接进入 judge。</p>
         {props.humanAudit.roundStartOutputDigests.length > 0 ? (
           <div className={styles.auditStack}>
             {props.humanAudit.roundStartOutputDigests.map((output) => (
@@ -224,6 +229,80 @@ function PlayerFinanceAudit(props: {
   );
 }
 
+function SubmittedFinanceOutputList(props: { submittedFinanceOutputs: HexMatchLabSubmittedFinanceOutput[] }) {
+  if (props.submittedFinanceOutputs.length === 0) {
+    return <p>旧 trace 未记录 N62 提交门；当前页面只能展示 raw phase0，不能确认 judge 是否吃到经济裁剪后的 submitted 输出。</p>;
+  }
+  return (
+    <div className={styles.auditStack}>
+      {props.submittedFinanceOutputs.map((output) => (
+        <details key={output.submittedOutputId} open={output.orphanedChallenge || !output.submittedUsableForCombat}>
+          <summary>
+            <strong>{output.displayName}</strong>
+            {" / "}{formatCardKindZh(output.cardKind)}
+            {" / submitted "}{output.clippingTier}
+            {" / cap "}{formatCombatEffect(output.combatEffectCap)}
+            {output.orphanedChallenge ? " / orphaned challenge" : ""}
+          </summary>
+          <p><strong>N62 提交门：</strong>{output.gateSummary}</p>
+          <p><strong>买型与预算：</strong>{output.buyType} / {output.economyPosture} / {output.loadoutPackage} / outputBudget {output.outputBudget}</p>
+          <p><strong>Judge 输入：</strong>{output.judgeInputRef}；usableForJudge={String(output.submittedUsableForJudge)}；usableForCombat={String(output.submittedUsableForCombat)}</p>
+          {output.omittedFields.length > 0 ? <p><strong>被裁字段：</strong>{output.omittedFields.join("；")}</p> : <p><strong>被裁字段：</strong>无</p>}
+          {output.cappedFields.length > 0 ? <p><strong>被封顶字段：</strong>{output.cappedFields.join("；")}</p> : null}
+          {output.orphanedChallenge ? <p><strong>孤儿挑战：</strong>targetClaimId 已在对方 submitted stance 中被裁掉，系统不会自动改靶。</p> : null}
+          <SubmittedFinanceCardSummary output={output} />
+          <details>
+            <summary>Raw / submitted 指纹与版本</summary>
+            <ul>
+              <li>rawOutputId：{output.rawOutputId}</li>
+              <li>raw 摘要：{output.rawCardSummaryZh ?? "未记录"}</li>
+              <li>rawFingerprint：{output.rawFingerprint || "未记录"}</li>
+              <li>submittedFingerprint：{output.submittedFingerprint || "未记录"}</li>
+              <li>rawParseStatus：{output.rawParseStatus}</li>
+              <li>factBankSnapshotId：{output.factBankSnapshotId}</li>
+              <li>evidenceMenuVersion：{output.evidenceMenuVersion}</li>
+              <li>clippingPolicyVersion：{output.clippingPolicyVersion}</li>
+            </ul>
+          </details>
+        </details>
+      ))}
+    </div>
+  );
+}
+
+function SubmittedFinanceCardSummary(props: { output: HexMatchLabSubmittedFinanceOutput }) {
+  const { output } = props;
+  if (output.submittedStanceCard) {
+    return (
+      <div>
+        <p><strong>Submitted 立场：</strong>{output.submittedStanceCard.direction}；置信度 {formatPercent(output.submittedStanceCard.confidence)}</p>
+        <ul>
+          {output.submittedStanceCard.coreClaims.map((claim) => (
+            <li key={claim.claimId}>
+              <strong>{claim.claimId}</strong>：{claim.claimZh}<br />证据：{claim.evidenceRefs.join("、") || "已被裁空"}
+            </li>
+          ))}
+        </ul>
+        {output.submittedStanceCard.coreClaims.length === 0 ? <p>该 submitted stance 没有保留正向 claim，只能作为审计 / 风险边界材料。</p> : null}
+      </div>
+    );
+  }
+  if (output.submittedChallengeCard) {
+    return (
+      <div>
+        <p><strong>Submitted 挑战：</strong>{output.submittedChallengeCard.targetClaimId}；{output.submittedChallengeCard.challengeType}；压降 {formatPercent(output.submittedChallengeCard.confidenceReduction)}</p>
+        <ul>
+          {output.submittedChallengeCard.challenges.map((challenge) => (
+            <li key={challenge.challengeId}>
+              <strong>{challenge.challengeId}</strong> → {challenge.targetClaimId}：{challenge.challengeReasonZh}<br />证据：{challenge.evidenceRefs.join("、") || "已被裁空"}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+  return <p>submitted 输出未保留可展示卡片。</p>;
+}
 function RoundStartCardSummary(props: { output: HexMatchLabRoundStartOutputDigest }) {
   const { output } = props;
   if (output.stanceCard) {
@@ -299,7 +378,7 @@ function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; 
   const humanAudit = props.trace?.humanAudit;
   if (humanAudit) {
     const phaseStory = humanAudit.phaseStories.find((story) => story.phaseIndex === props.phase?.phaseIndex) ?? humanAudit.phaseStories[0];
-    return <PlayerFinanceAudit humanAudit={humanAudit} phaseStory={phaseStory} />;
+    return <PlayerFinanceAudit humanAudit={humanAudit} trace={props.trace} phaseStory={phaseStory} />;
   }
   if (props.trace?.humanAudit) {
     const legacyHumanAudit = props.trace.humanAudit;

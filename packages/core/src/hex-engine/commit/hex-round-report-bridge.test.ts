@@ -274,6 +274,7 @@ function minimalTrace(agentA: Agent, attackTeamId: string, defenseTeamId: string
     }),
     economyContext: { teams: [], agents: [], warnings: [] },
     roundStartAgentOutputs: [],
+    submittedFinanceOutputs: [],
     phases: [
       {
         phaseId: "first_contact",

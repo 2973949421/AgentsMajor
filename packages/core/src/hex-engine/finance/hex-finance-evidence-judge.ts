@@ -7,6 +7,7 @@ import type {
 } from "../action/hex-round-start-agent-output.js";
 import type { HexSide } from "../state/index.js";
 import type { HexFinanceEvidenceFact, HexFinanceRequiredEvidenceItem, HexFinanceScoreCap, HexRoundFinanceDuel } from "./hex-round-finance-duel.js";
+import { isSubmittedFinanceOutputUsableForJudge, type HexSubmittedFinanceOutput } from "./hex-submitted-finance-output.js";
 
 export type HexFinanceEvidenceFinancialResult =
   | "stance_survives"
@@ -119,20 +120,27 @@ const claimTypeAliases: Record<string, string> = {
 
 export function judgeHexFinanceEvidence(input: {
   financeDuel: HexRoundFinanceDuel;
-  roundStartAgentOutputs: readonly HexRoundStartAgentOutputForAction[];
+  submittedFinanceOutputs?: readonly HexSubmittedFinanceOutput[] | undefined;
+  roundStartAgentOutputs?: readonly HexRoundStartAgentOutputForAction[] | undefined;
 }): HexFinanceEvidenceJudgeResult {
   const evidenceIndex = buildEvidenceIndex(input.financeDuel);
-  const claimCatalog = buildClaimCatalog(input.roundStartAgentOutputs);
+  const judgeInputs = input.submittedFinanceOutputs?.length
+    ? [...input.submittedFinanceOutputs]
+    : buildLegacySubmittedFinanceOutputs(input.roundStartAgentOutputs ?? []);
+  const judgeInputMode = input.submittedFinanceOutputs?.length ? "submitted_finance_outputs" : "legacy_round_start_outputs";
+  const claimCatalog = buildClaimCatalog(judgeInputs);
   const defense = buildMutableSideResult("defense");
   const attack = buildMutableSideResult("attack");
+  defense.auditReasons.add(`judge_input:${judgeInputMode}`);
+  attack.auditReasons.add(`judge_input:${judgeInputMode}`);
 
-  for (const output of input.roundStartAgentOutputs) {
-    if (!isUsableCardOutput(output)) {
+  for (const output of judgeInputs) {
+    if (!isSubmittedFinanceOutputUsableForJudge(output)) {
       continue;
     }
-    if (output.stanceCard && output.cardKind === "stance") {
+    if (output.submittedStanceCard && output.cardKind === "stance") {
       evaluateStanceCard({
-        card: output.stanceCard,
+        card: output.submittedStanceCard,
         sideResult: defense,
         evidenceIndex,
         financeDuel: input.financeDuel
@@ -140,13 +148,17 @@ export function judgeHexFinanceEvidence(input: {
     }
   }
 
-  for (const output of input.roundStartAgentOutputs) {
-    if (!isUsableCardOutput(output)) {
+  for (const output of judgeInputs) {
+    if (!isSubmittedFinanceOutputUsableForJudge(output)) {
       continue;
     }
-    if (output.challengeCard && output.cardKind === "challenge") {
+    if (output.submittedChallengeCard && output.cardKind === "challenge") {
+      if (output.orphanedChallenge) {
+        rejectOrphanedChallengeCard(output.submittedChallengeCard, attack);
+        continue;
+      }
       evaluateChallengeCard({
-        card: output.challengeCard,
+        card: output.submittedChallengeCard,
         sideResult: attack,
         evidenceIndex,
         claimCatalog,
@@ -202,6 +214,7 @@ export function judgeHexFinanceEvidence(input: {
       ...finalAttack.financeReasonZh
     ],
     auditReasons: uniqueStrings([
+      `judge_input:${judgeInputMode}`,
       `financial_result:${financialResult}`,
       `stance_score:${stanceScore}`,
       `challenge_score:${challengeScore}`,
@@ -233,17 +246,52 @@ function registerFactRef(index: Map<string, FactMetadata>, ref: string | undefin
   }
 }
 
-function buildClaimCatalog(outputs: readonly HexRoundStartAgentOutputForAction[]): Map<string, ClaimCatalogItem> {
+function buildClaimCatalog(outputs: readonly HexSubmittedFinanceOutput[]): Map<string, ClaimCatalogItem> {
   const catalog = new Map<string, ClaimCatalogItem>();
   for (const output of outputs) {
-    if (!isUsableCardOutput(output) || !output.stanceCard) {
+    if (!isSubmittedFinanceOutputUsableForJudge(output) || !output.submittedStanceCard) {
       continue;
     }
-    for (const claim of output.stanceCard.coreClaims) {
-      catalog.set(claim.claimId, { claim, card: output.stanceCard });
+    for (const claim of output.submittedStanceCard.coreClaims) {
+      catalog.set(claim.claimId, { claim, card: output.submittedStanceCard });
     }
   }
   return catalog;
+}
+
+function buildLegacySubmittedFinanceOutputs(outputs: readonly HexRoundStartAgentOutputForAction[]): HexSubmittedFinanceOutput[] {
+  return outputs
+    .filter((output) => output.usableForPhaseAction
+      && (output.source === "llm_response_artifact" || output.source === "fixture_response")
+      && Boolean(output.cardKind)
+      && (Boolean(output.stanceCard) || Boolean(output.challengeCard)))
+    .map((output) => ({
+      submittedOutputId: `legacy_sub_fin_${output.outputId}`,
+      rawOutputId: output.outputId,
+      agentId: output.agentId,
+      cardKind: output.cardKind!,
+      ...(output.stanceCard ? { submittedStanceCard: output.stanceCard } : {}),
+      ...(output.challengeCard ? { submittedChallengeCard: output.challengeCard } : {}),
+      buyType: "legacy",
+      economyPosture: "legacy",
+      loadoutPackage: "legacy",
+      outputBudget: 0,
+      clippingTier: "full" as const,
+      combatEffectCap: "possible_kill" as const,
+      judgeInputRef: `legacy_round_start:${output.outputId}`,
+      factBankSnapshotId: "legacy_trace_without_n62",
+      decisionQuestionId: "legacy_trace_without_n62",
+      evidenceMenuVersion: "legacy_trace_without_n62",
+      clippingPolicyVersion: "finance_output_gate_v1" as const,
+      omittedFields: [],
+      cappedFields: [],
+      rawFingerprint: `legacy_raw:${output.outputId}`,
+      submittedFingerprint: `legacy_submitted:${output.outputId}`,
+      rawParseStatus: "legacy_round_start_output",
+      submittedUsableForJudge: true,
+      submittedUsableForCombat: true,
+      gateSummary: "旧 trace 未记录 N62 SubmittedFinanceOutput；仅用于兼容旧测试和旧审计。"
+    }));
 }
 
 function evaluateStanceCard(input: {
@@ -355,6 +403,13 @@ function evaluateChallengeCard(input: {
   }
 }
 
+function rejectOrphanedChallengeCard(card: HexFinanceChallengeCard, sideResult: MutableSideResult): void {
+  for (const challenge of card.challenges) {
+    sideResult.rejectedChallenges.add(`${challenge.challengeId}:orphaned_challenge_target_clipped_out`);
+    sideResult.rejectionReasons.add("orphaned_challenge_target_clipped_out");
+    sideResult.auditReasons.add(`${challenge.challengeId}:target_claim_clipped_out_before_judge:${challenge.targetClaimId}`);
+  }
+}
 function evaluateEvidenceRefs(input: {
   refs: readonly string[];
   evidenceIndex: EvidenceIndex;
@@ -571,12 +626,6 @@ function buildFinancialResultZh(result: HexFinanceEvidenceFinancialResult, stanc
   return `金融裁判：双方证据链接近或互有限制，立场分 ${stanceScore}，挑战分 ${challengeScore}。`;
 }
 
-function isUsableCardOutput(output: HexRoundStartAgentOutputForAction): boolean {
-  return output.usableForPhaseAction
-    && (output.source === "llm_response_artifact" || output.source === "fixture_response")
-    && Boolean(output.cardKind)
-    && Boolean(output.allowedPhaseRefs);
-}
 
 function buildMutableSideResult(side: HexSide): MutableSideResult {
   return {

@@ -109,7 +109,9 @@ function analyzeTrace(path, mapSlug) {
   const combats = collectCombats(trace);
   const decisionQuestion = readDecisionQuestion(financeDuel);
   const claimCatalog = collectClaims(roundStartOutputs);
-  const challengeCatalog = collectChallenges(roundStartOutputs);
+const challengeCatalog = collectChallenges(roundStartOutputs);
+  const submittedFinanceOutputs = Array.isArray(trace.submittedFinanceOutputs) ? trace.submittedFinanceOutputs : [];
+  const submittedFinanceDiagnostics = collectSubmittedFinanceDiagnostics(submittedFinanceOutputs, combats);
   const financeVerdicts = combats.filter(hasFinanceVerdict);
   const phase0Diagnostics = collectPhase0Diagnostics(roundStartOutputs);
   const roundQualityStatus = trace.audit?.roundQualityStatus ?? null;
@@ -143,9 +145,11 @@ function analyzeTrace(path, mapSlug) {
     combatExplanations,
     combatFinanceCsSeparatedRatio,
     phase0Diagnostics,
-    roundQualityStatus,
+roundQualityStatus,
     roundQualityReasons,
-    roundQualitySummaryZh
+    roundQualitySummaryZh,
+    submittedFinanceOutputs,
+    submittedFinanceDiagnostics
   });
   const providerMode = trace.audit?.providerMode ?? inferProviderMode(roundStartOutputs);
   const qualityConclusion = classifyRunQuality(failures);
@@ -176,7 +180,13 @@ function analyzeTrace(path, mapSlug) {
     phase0ClaimCoverageRatio,
     validChallengeCount: challengeCatalog.filter((challenge) => claimCatalog.claimIds.has(challenge.targetClaimId)).length,
     challengeCount: challengeCatalog.length,
-    targetClaimBindRate,
+targetClaimBindRate,
+    submittedFinanceOutputCount: submittedFinanceOutputs.length,
+    submittedFinanceUsableForJudgeCount: submittedFinanceDiagnostics.usableForJudgeCount,
+    submittedFinanceUsableForCombatCount: submittedFinanceDiagnostics.usableForCombatCount,
+    ecoSubmittedPossibleKillCount: submittedFinanceDiagnostics.ecoSubmittedPossibleKillCount,
+    combatJudgeInputSubmittedCount: submittedFinanceDiagnostics.combatJudgeInputSubmittedCount,
+    combatJudgeInputLegacyCount: submittedFinanceDiagnostics.combatJudgeInputLegacyCount,
     financeVerdictCount: financeVerdicts.length,
     financeWinWithoutAcceptedEvidenceCount: financeWinWithoutAcceptedEvidence.length,
     combatExplanationCount: combatExplanations.length,
@@ -250,7 +260,10 @@ function classifyRunQuality(failures) {
     "finance_projection_mismatch",
     "combat_reason_mixed",
     "old_trace_missing_fields",
-    "web_audit_incomplete"
+    "web_audit_incomplete",
+    "missing_submitted_finance_output",
+    "finance_submitted_cap_violation",
+    "judge_input_not_submitted"
   ]);
   return failures.some((failure) => hardFailureCategories.has(failure.category))
     ? "fail"
@@ -308,6 +321,28 @@ function collectPhase0Diagnostics(outputs) {
     invalidChallengeCardCount: 0,
     skippedChallengeNoClaimCatalogCount: 0
   });
+}
+function collectSubmittedFinanceDiagnostics(outputs, combats) {
+  const ecoSubmittedPossibleKillCount = outputs.filter((output) =>
+    ["eco", "save"].includes(output.clippingTier) && output.combatEffectCap === "possible_kill"
+  ).length;
+  const combatJudgeInputSubmittedCount = combats.filter((combat) => combatHasJudgeInput(combat, "submitted_finance_outputs")).length;
+  const combatJudgeInputLegacyCount = combats.filter((combat) => combatHasJudgeInput(combat, "legacy_round_start_outputs")).length;
+  return {
+    usableForJudgeCount: outputs.filter((output) => output.submittedUsableForJudge === true).length,
+    usableForCombatCount: outputs.filter((output) => output.submittedUsableForCombat === true).length,
+    ecoSubmittedPossibleKillCount,
+    combatJudgeInputSubmittedCount,
+    combatJudgeInputLegacyCount
+  };
+}
+
+function combatHasJudgeInput(combat, mode) {
+  const reasons = [
+    ...(combat.financeEvidenceAdoption?.attack?.auditReasons ?? []),
+    ...(combat.financeEvidenceAdoption?.defense?.auditReasons ?? [])
+  ];
+  return reasons.includes(`judge_input:${mode}`);
 }
 function collectClaims(outputs) {
   const claims = [];
@@ -511,6 +546,24 @@ function buildFailures(input) {
       targetClaimBindRate: input.targetClaimBindRate
     });
   }
+  if (input.roundStartOutputs.length > 0 && input.submittedFinanceOutputs.length === 0) {
+    add("missing_submitted_finance_output", "trace 未记录 N62 submittedFinanceOutputs；无法确认 judge 是否吃到经济裁剪后的提交卡。");
+  }
+  if (input.submittedFinanceDiagnostics.ecoSubmittedPossibleKillCount > 0) {
+    add("finance_submitted_cap_violation", "eco / save submitted finance output 出现 possible_kill cap，违反 N62 经济裁剪。", {
+      count: input.submittedFinanceDiagnostics.ecoSubmittedPossibleKillCount
+    });
+  }
+  if (input.submittedFinanceOutputs.length > 0 && input.combats.length > 0 && input.submittedFinanceDiagnostics.combatJudgeInputSubmittedCount === 0) {
+    add("judge_input_not_submitted", "combat 金融裁判链未记录 judge_input:submitted_finance_outputs。", {
+      combatCount: input.combats.length
+    });
+  }
+  if (input.submittedFinanceDiagnostics.combatJudgeInputLegacyCount > 0) {
+    add("judge_input_not_submitted", "combat 金融裁判链仍出现 legacy_round_start_outputs，说明 raw phase0 仍可能绕过 N62 提交门。", {
+      count: input.submittedFinanceDiagnostics.combatJudgeInputLegacyCount
+    });
+  }
   if (input.financeWinWithoutAcceptedEvidence.length > thresholds.maxFinanceWinsWithoutAcceptedEvidence) {
     add("no_accepted_evidence", "存在无 accepted evidence 却判金融胜利的 combat。", {
       count: input.financeWinWithoutAcceptedEvidence.length
@@ -547,7 +600,13 @@ function buildSummary(runs) {
     acc.claimCount += run.claimCount;
     acc.validClaimCount += run.validClaimCount;
     acc.challengeCount += run.challengeCount;
-    acc.validChallengeCount += run.validChallengeCount;
+acc.validChallengeCount += run.validChallengeCount;
+    acc.submittedFinanceOutputCount += run.submittedFinanceOutputCount ?? 0;
+    acc.submittedFinanceUsableForJudgeCount += run.submittedFinanceUsableForJudgeCount ?? 0;
+    acc.submittedFinanceUsableForCombatCount += run.submittedFinanceUsableForCombatCount ?? 0;
+    acc.ecoSubmittedPossibleKillCount += run.ecoSubmittedPossibleKillCount ?? 0;
+    acc.combatJudgeInputSubmittedCount += run.combatJudgeInputSubmittedCount ?? 0;
+    acc.combatJudgeInputLegacyCount += run.combatJudgeInputLegacyCount ?? 0;
     acc.combatExplanationCount += run.combatExplanationCount;
     acc.combatFinanceCsSeparatedCount += run.combatFinanceCsSeparatedCount;
     acc.failureCount += run.failures.length;
@@ -577,7 +636,13 @@ function buildSummary(runs) {
     claimCount: 0,
     validClaimCount: 0,
     challengeCount: 0,
-    validChallengeCount: 0,
+validChallengeCount: 0,
+    submittedFinanceOutputCount: 0,
+    submittedFinanceUsableForJudgeCount: 0,
+    submittedFinanceUsableForCombatCount: 0,
+    ecoSubmittedPossibleKillCount: 0,
+    combatJudgeInputSubmittedCount: 0,
+    combatJudgeInputLegacyCount: 0,
     combatExplanationCount: 0,
     combatFinanceCsSeparatedCount: 0,
     failureCount: 0,
@@ -617,5 +682,3 @@ function normalizePath(path) {
 function roundTo(value) {
   return Math.round(value * 1000) / 1000;
 }
-
-

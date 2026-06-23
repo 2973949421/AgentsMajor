@@ -80,3 +80,15 @@ Phase 2.0-pre 从本修订起采用最小可观测 Output Gate：
 - 前端可以展示 RawOutput 和 SubmittedOutput 的差异，但这属于观赛/调试层，不代表参赛 agent 在 prompt 中可见。
 
 该版本先保证边界存在和可审计，不同时承诺经济已经深度影响胜负权重。
+## 2026-06-23 Finance Submitted Gate Boundary
+
+Finance Major 从 N62 起采用独立的金融提交门：
+
+- `roundStartAgentOutputs` 保存真实 phase0 raw `stanceCard / challengeCard`，只用于审计、调试和人工质量判断。
+- `submittedFinanceOutputs` 是 raw 金融卡经过 `buyType / economyPosture / loadoutPackage / outputBudget` 裁剪后的正式提交边界。
+- N59 证据绑定裁判的新主线只能读取 `submittedFinanceOutputs`；旧 trace 兼容读取必须明确写入 legacy audit reason。
+- 裁剪只能删除、截断、降 confidence、限制 `combatEffectCap`，不能替 agent 挑更优 evidence、补 `reasoningBridge`、改结论或改 `targetClaimId`。
+- `orphaned_challenge` 表示 challenge 的 `targetClaimId` 已在对方 submitted stance 中被裁掉；它可以展示在审计里，但不能自动改靶或形成有效挑战火力。
+- Web 可以展示 raw/submitted/diff/cap，但首屏应优先展示 submitted card；Raw 只能折叠展示为“未进入 judge 的审计材料”。
+
+该边界只恢复 Finance phase0 的经济裁剪提交门，不表示 N63 finance firepower 已接回 combat 主评分。

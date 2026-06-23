@@ -492,7 +492,7 @@ Web human audit 的默认解释顺序必须是：
 
 ### 8.8 N56-N61 Finance Major 证据绑定裁判
 
-当前实现状态：N56 已完成第一版，决策题、允许立场、必需证据结构和挑战规则已经进入材料、finance duel、prompt 和 Web 审计；N58 已提供结构化 `stanceCard / challengeCard`；N59 已完成第一版证据绑定裁判，能够输出 accepted / rejected / missing / scoreCaps、stanceScore / challengeScore、financialResult 和 combatEffectAllowed。N60 已完成第一版：金融结果只通过 `financeProjection` 受限投影接口影响战斗解释，不能重新读取金融作文分。
+当前实现状态：N56 已完成第一版，决策题、允许立场、必需证据结构和挑战规则已经进入材料、finance duel、prompt 和 Web 审计；N58 已提供结构化 `stanceCard / challengeCard`；N59 已完成第一版证据绑定裁判，能够输出 accepted / rejected / missing / scoreCaps、stanceScore / challengeScore、financialResult 和 combatEffectAllowed。N60 已完成第一版：金融结果只通过 `financeProjection` 受限投影接口影响战斗解释，不能重新读取金融作文分。N62 已完成 Finance submitted gate：raw phase0 卡只保留审计，N59 新主线输入为 `submittedFinanceOutputs`。
 
 N56 起，Finance Major 的金融层不再使用“守方自证 / 攻方质疑”作为当前主语。CS 层仍可使用 attack / defense，金融层必须使用：
 
@@ -563,6 +563,15 @@ challenge_breaks_stance 必须有 accepted challenge evidence；只指出 requir
 ```
 
 该补丁只调整 N59 裁判平衡，不改变 N58 卡片生成、不改变 N60 战斗投影接口、不绕过 P0 round 质量闸门。
+
+N62 追加提交门约束：
+
+```text
+judge_input:submitted_finance_outputs 必须出现在新 trace 的金融采信审计中。
+submittedFinanceOutputs 必须记录 buyType / economyPosture / loadoutPackage / outputBudget / clippingTier / combatEffectCap。
+eco / save 的 submitted card 不能提升到 possible_kill。
+orphaned_challenge 只能进入 rejected / not_applicable audit，系统不得自动改写 targetClaimId。
+```
 
 N60 已落实的边界：金融结果与 combat projection（战斗投影）必须解耦。Combat resolver 保留金融分作为审计字段，但 Finance Major 模式下 combat 总分不直接加入金融分；战斗裁定新增 `financeProjection`，记录 `financialResult`、`combatEffectAllowed`、`appliedEffect`、`blockedEffects`、中文投影原因，以及金融是否可参与击杀解释：
 
