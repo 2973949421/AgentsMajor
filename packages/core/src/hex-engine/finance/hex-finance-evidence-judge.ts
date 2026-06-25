@@ -127,12 +127,17 @@ export function judgeHexFinanceEvidence(input: {
   const judgeInputs = input.submittedFinanceOutputs?.length
     ? [...input.submittedFinanceOutputs]
     : buildLegacySubmittedFinanceOutputs(input.roundStartAgentOutputs ?? []);
-  const judgeInputMode = input.submittedFinanceOutputs?.length ? "submitted_finance_outputs" : "legacy_round_start_outputs";
+  const hasSubmittedFinanceOutputs = Boolean(input.submittedFinanceOutputs?.length);
+  const judgeInputMode = hasSubmittedFinanceOutputs ? "submitted_finance_outputs_n62b" : "legacy_round_start_outputs";
   const claimCatalog = buildClaimCatalog(judgeInputs);
   const defense = buildMutableSideResult("defense");
   const attack = buildMutableSideResult("attack");
   defense.auditReasons.add(`judge_input:${judgeInputMode}`);
   attack.auditReasons.add(`judge_input:${judgeInputMode}`);
+  if (hasSubmittedFinanceOutputs) {
+    defense.auditReasons.add("judge_input:submitted_finance_outputs");
+    attack.auditReasons.add("judge_input:submitted_finance_outputs");
+  }
 
   for (const output of judgeInputs) {
     if (!isSubmittedFinanceOutputUsableForJudge(output)) {
@@ -215,6 +220,7 @@ export function judgeHexFinanceEvidence(input: {
     ],
     auditReasons: uniqueStrings([
       `judge_input:${judgeInputMode}`,
+      ...(hasSubmittedFinanceOutputs ? ["judge_input:submitted_finance_outputs"] : []),
       `financial_result:${financialResult}`,
       `stance_score:${stanceScore}`,
       `challenge_score:${challengeScore}`,
@@ -272,6 +278,18 @@ function buildLegacySubmittedFinanceOutputs(outputs: readonly HexRoundStartAgent
       cardKind: output.cardKind!,
       ...(output.stanceCard ? { submittedStanceCard: output.stanceCard } : {}),
       ...(output.challengeCard ? { submittedChallengeCard: output.challengeCard } : {}),
+      rawFinanceOpinionZh: output.rawFinanceOpinionZh,
+      submittedOpinionZh: output.rawFinanceOpinionZh,
+      submittedTextBudgetChars: output.rawFinanceOpinionZh?.length ?? 0,
+      submittedTextSpanRefs: output.rawFinanceOpinionZh ? [{
+        start: 0,
+        end: output.rawFinanceOpinionZh.length,
+        kind: "kept" as const,
+        sourceRef: `legacy_raw:${output.outputId}`,
+        reasonZh: "旧 trace 兼容路径：raw 文本整体视为 legacy submitted。"
+      }] : [],
+      rawOpinionLinkStatus: output.rawFinanceOpinionZh ? "linked" as const : "legacy_missing" as const,
+      unlocatedSubmittedItems: [],
       buyType: "legacy",
       economyPosture: "legacy",
       loadoutPackage: "legacy",
@@ -290,7 +308,7 @@ function buildLegacySubmittedFinanceOutputs(outputs: readonly HexRoundStartAgent
       rawParseStatus: "legacy_round_start_output",
       submittedUsableForJudge: true,
       submittedUsableForCombat: true,
-      gateSummary: "旧 trace 未记录 N62 SubmittedFinanceOutput；仅用于兼容旧测试和旧审计。"
+      gateSummary: "旧 trace 未记录 N62/N62B SubmittedFinanceOutput；仅用于兼容旧测试和旧审计。"
     }));
 }
 

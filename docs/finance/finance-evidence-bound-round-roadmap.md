@@ -14,7 +14,7 @@ N59 已让裁判第一版只采信 claim 与 evidence 合法绑定的内容。
 N60 已让金融结果只能通过受限接口影响战斗投影。
 N61 已用 real provider 小样本验证链路；第 7 局 10/10 phase0 卡片可消费，N59/N60 安全链路有效，当前可以宣称 pass。
 N62 已补齐 phase0 金融卡的 raw -> economy clipped submitted card -> judge 输入门。
-N63 必须把 submitted finance output 经 N59 裁判形成的 finance firepower 接回 combat 主评分，恢复“phase0 有效观点火力 60-70% + phase1+ CS 执行 30-40%”。
+N63 已完成第一版：submitted finance output 经 N59 裁判形成 financeFirepowerScore，并接回 combat totalScore，恢复“phase0 有效观点火力 60-70% + phase1+ CS 执行 30-40%”的主链口径。
 N65-lite 必须在 N64 前先提供最小 duelPair / fireLane / pressureKey，否则持续压力会继续在 side-level 或 region-level 上污染归因。
 N64 必须基于 N65-lite 的 pressureKey 做持续对枪压力、质量闸门和 Web 首屏审计闭环，证明同点位/开阔枪线不会长期纯压制，同时 Web 能看懂 raw / clipped / judge / combat 链。
 N65-full 必须补齐 N 对 N / 1 对 N 的完整配对和归因规则，避免 side-level winner + 单 target + 单 killer 把多人混战压扁成伪 1v1。
@@ -63,7 +63,7 @@ Web 看起来有金融胜负，实际没有证据采信链。
 | N60 | N59 的金融结果和 combat effect 权限 | 已完成第一版：`financeProjection`、金融分 audit-only、combat 总分只看 CS / 非金融旧兼容分 | 若 combat 再直接读金融作文分、金融无采信仍放大战斗 margin，则 N60 回归 |
 | N61 | N56-N60 的完整链路 | Evidence-bound Round v1 验收报告 | 已完成 real provider 小样本验收；第 7 局 pass，10/10 phase0 卡片可消费，金融胜负硬门槛和金融 / CS 分离均达标。 |
 | N62 | N58 的 raw phase0 card、经济 / 买型 / 装备预算、N57 evidence pack | `submittedFinanceOutputs`、raw/submitted diff、clipping audit；N59 judge 只读 submitted（已落地） | 若 judge 仍直接读 raw phase0 card，或经济裁剪只是 prompt 文案，不能进入 N63 |
-| N63 | N62 submitted finance output、N59 accepted/rejected/missing、N60 projection gate、CS action score | `financeFirepowerScore.pressureScore / lethalScore / totalScore` + `tacticalExecutionScore` 共同进入 combat；finance 60-70%、CS 30-40%，但 kill 仍受 contact/lethal/casualty gate 限制 | 若 no accepted evidence 可产生金融 lethalScore，或 financeScore 仍 audit-only，N63 不合格 |
+| N63 | N62 submitted finance output、N59 accepted/rejected/missing、N60 projection gate、CS action score | 已完成第一版：`financeFirepowerScore.pressureScore / lethalScore / totalScore / appliedToCombatScore / blockedLethalScore` 进入 combat；finance 60-70%、CS 30-40%，但 kill 仍受 contact/lethal/casualty gate 限制 | 若 no accepted evidence 可产生金融 firepower，或 financeScore 回到 audit-only，N63 回归 |
 | N65-lite | N63 combat firepower、contact candidates、agent positions/actions、cover/LoS | 最小 `duelPair / fireLane / objectiveExposure` 与 `pressureKey`；N64 只能基于这些 key 累积压力 | 若 N64 仍按 team/side/region 累积压力，N65-lite 不合格 |
 | N64 | N65-lite pressureKey、持续接触压力、round quality、Web audit projection | 持续对枪压力、forced_back / casualty 收敛、Web 首屏链路：quality -> hard winner -> submitted finance -> combat -> raw 技术细节 | 若同点位/开阔枪线仍长期纯压制，或 Web 仍需要读 raw JSON 才能理解，N64 不合格 |
 | N65-full | N64 pressure history、combat participants、role/equipment、assist/attribution history | 完整 1vN surrounded pressure、NvN 多枪线贡献、assist attribution、per-phase casualty cap 和去重后归因 | 若 N 对 N 仍只按 side-level winner 选一个 target / killer，或支援/IGL/多人夹击归因混乱，N65-full 不合格 |
@@ -689,16 +689,16 @@ real provider：已执行，结论 pass。第 7 局 phase0 真实结构化卡片
 
 目标：恢复 Finance Major 原始经济口径。Agent 在 phase0 可以生成 raw 金融观点，但进入 N59 裁判和 N63 战斗火力前，必须先按经济 / 买型 / 装备预算裁剪成 submitted finance card。
 
-当前实现状态：已新增 `submittedFinanceOutputs` trace 字段与 `finance_output_gate_v1` 裁剪策略；N59 judge 新路径只读 submitted finance output，并写入 `judge_input:submitted_finance_outputs` 审计原因。Raw phase0 card 仍保留用于折叠审计，不能绕过 submitted gate 进入 judge 或 combat。
+当前实现状态：N62B 已把提交门语义修正为 `rawFinanceOpinionZh` 原始金融观点文本 -> 经济裁剪后的 `submittedOpinionZh` 摘录与 `submittedTextSpanRefs` 标注 -> submitted structured card -> N59 judge。N59 新路径只读 `submittedFinanceOutputs`，并写入 `judge_input:submitted_finance_outputs` / `judge_input:submitted_finance_outputs_n62b` 审计原因。Raw 原文保留给 Web 高亮审计，不能绕过 submitted gate 进入 judge 或 combat。
 
 交付：
 
 ```text
 保留 phase0 raw stanceCard / challengeCard artifact。
-新增 SubmittedFinanceOutput：submittedOutputId、rawOutputId、agentId、cardKind、submittedStanceCard / submittedChallengeCard、buyType、economyPosture、loadoutPackage、outputBudget、clippingTier、omittedFields、cappedFields、rawFingerprint、submittedFingerprint、gateSummary。
+新增 SubmittedFinanceOutput：submittedOutputId、rawOutputId、agentId、cardKind、rawFinanceOpinionZh、submittedOpinionZh、submittedTextSpanRefs、rawOpinionLinkStatus、unlocatedSubmittedItems、submittedStanceCard / submittedChallengeCard、buyType、economyPosture、loadoutPackage、outputBudget、clippingTier、omittedFields、cappedFields、rawFingerprint、submittedFingerprint、gateSummary。
 补充追溯字段：combatEffectCap、judgeInputRef、factBankSnapshotId、decisionQuestionId、evidenceMenuVersion、clippingPolicyVersion、rawParseStatus、submittedUsableForJudge、submittedUsableForCombat。
 N59 judge 输入从 roundStartAgentOutputs 改为 submittedFinanceOutputs。
-Web 默认展示 submitted card，raw card 折叠，并显示 raw -> submitted diff。
+Web 默认展示一份 rawFinanceOpinionZh 原始金融观点，并用颜色标明 submitted 保留、裁掉、封顶和禁用的原文片段；normalized card、submitted JSON、artifact id 和 enum 进入技术细节折叠。
 ```
 
 裁剪规则：
@@ -719,7 +719,7 @@ full_eco / save：只保留 auditSummary / weak stance，最多 minor_delay / lo
 裁剪不能删除会让 agent 显得更差的 evidence，除非它超出预算且按原始顺序或 agent 显式 priority 被裁掉。
 裁剪不能新增 claim、evidence、reasoningBridge、targetClaimId 或结论。
 裁剪不能把低质量 raw card 修成高质量 submitted card；Finance clipping is budget truncation, not semantic improvement。
-Judge、combat 和 Web 主审计只消费 submitted；raw 只用于折叠审计。
+Judge 和 combat 只消费 submitted 结构与 submitted 文本摘录；Web 主审计只展示一份 raw 原文并高亮 submitted 摘录，raw JSON / normalized card 只用于折叠排查。
 ```
 
 challenge 特殊边界：
@@ -776,7 +776,7 @@ missing / rejected / unavailable / score cap：负向封顶或扣分。
 financialResult != combat result。
 financialResult = stance_survives / challenge_breaks_stance 只表示金融层站得住或挑战击中，不自动产生击杀。
 financialResult = contested 也不等于 0 firepower；只要存在 accepted evidence 与部分 reasoning，可形成 capped pressure firepower。
-no accepted evidence：financeFirepowerScore.lethalScore = 0，只能 minor_delay / weak pressure。
+no accepted evidence：financeFirepowerScore.pressureScore / lethalScore 均为 0，不得产生金融火力。
 accepted evidence + eco / full_eco：pressureScore 可以存在，但 lethalScore 被 economy combatEffectCap 限制。
 rejected evidence 不给火力；missing evidence 只能降 cap，不能单独支持金融胜负。
 cover_blocks_lethal / distance_exceeds_lethal_gate：金融火力只能压制或迫退，不能穿掩体乱杀。

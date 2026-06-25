@@ -4,7 +4,7 @@ import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
 import type { HexFinanceChallengeCard, HexFinanceStanceCard, HexRoundStartAgentOutputForAction } from "../action/index.js";
 import { buildFixtureHexRoundBusinessDuel } from "../business/index.js";
 import { buildHexRoundEconomyContext } from "../economy/index.js";
-import { buildHexRoundFinanceDuel } from "../finance/index.js";
+import { buildHexRoundFinanceDuel, buildSubmittedFinanceOutputs } from "../finance/index.js";
 import { findHexPath } from "../path/index.js";
 import { buildHexCombatContacts } from "./hex-combat-contact-builder.js";
 import { applyHexCombatVariance, resolveHexCombat } from "./hex-combat-resolver.js";
@@ -64,21 +64,37 @@ describe("Hex combat resolver", () => {
       buildResolverChallengeOutput({ challengeId: "challenge_t_1_1", evidenceRefs: ["FRED002", "FRED003"] })
     ];
     const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
+    const economyContext = buildHexRoundEconomyContext({
+      memory,
+      teamEconomyPlans: {
+        t: buildPlan("t", "rifle_buy", "fullBuy", ["t_0", "t_1"]),
+        ct: buildPlan("ct", "rifle_buy", "fullBuy", ["ct_0"])
+      }
+    });
+    const submittedFinanceOutputs = buildSubmittedFinanceOutputs({ financeDuel, economyContext, roundStartAgentOutputs });
 
-    const resolution = resolveHexCombat({ asset, memory, contact, actions, financeDuel, roundStartAgentOutputs });
+    const resolution = resolveHexCombat({ asset, memory, contact, actions, economyContext, financeDuel, roundStartAgentOutputs, submittedFinanceOutputs });
 
     expect(resolution.financeVerdict).toBe("challenge_landed");
     expect(resolution.businessVerdict).toBe("challenge_succeeded");
     expect(resolution.audit.financeEvidenceApplied).toBe(true);
+    expect(resolution.duelPairs).toHaveLength(1);
+    expect(resolution.fireLanes).toHaveLength(1);
+    expect(resolution.duelPairs?.[0]?.pressureKey).toMatch(/^duelPair:/);
+    expect(resolution.pressureKeys).toContain(resolution.duelPairs?.[0]?.pressureKey);
+    expect(resolution.audit.duelPairing?.primaryPressureKey).toBe(resolution.duelPairs?.[0]?.pressureKey);
     expect(resolution.scores.attack.financeScore).toBeGreaterThan(resolution.scores.defense.financeScore ?? 0);
-    expect(resolution.scores.attack.totalScore).toBe(resolution.scores.attack.csScore);
-    expect(resolution.scores.defense.totalScore).toBe(resolution.scores.defense.csScore);
+    expect(resolution.scores.attack.financeFirepowerScore?.appliedToCombatScore).toBeGreaterThan(0);
+    expect(resolution.scores.attack.financeFirepowerScore?.participantSubmittedOutputRefs).toEqual(expect.arrayContaining(["sub_fin_round_start_challenge_t_0_1"]));
+    expect(resolution.scores.attack.totalScore).toBeCloseTo(resolution.scores.attack.csScore + (resolution.scores.attack.financeScore ?? 0));
+    expect(resolution.scores.defense.totalScore).toBeCloseTo(resolution.scores.defense.csScore + (resolution.scores.defense.financeScore ?? 0));
     expect(resolution.financeProjection).toEqual(expect.objectContaining({
       appliedEffect: "possible_kill",
       financeMayExplainKill: true
     }));
     expect(resolution.financeReasons).toEqual(expect.arrayContaining([
       "attack:n59_accepted_evidence_present",
+      expect.stringContaining("attack:n63_finance_firepower_applied"),
       "finance_verdict:challenge_landed"
     ]));
     expect(resolution.financeEvidenceAdoption?.attack.financialResult).toBe("challenge_breaks_stance");

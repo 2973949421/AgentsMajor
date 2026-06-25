@@ -20,6 +20,23 @@ export type HexFinanceCombatEffectCap =
 
 export type HexFinanceClippingTier = "full" | "standard" | "force" | "eco" | "save";
 
+export type HexSubmittedFinanceTextSpanKind = "kept" | "omitted" | "capped" | "blocked";
+export type HexSubmittedFinanceRawOpinionLinkStatus = "linked" | "partial" | "unlinked" | "legacy_missing";
+
+export interface HexSubmittedFinanceTextSpanRef {
+  start: number;
+  end: number;
+  kind: HexSubmittedFinanceTextSpanKind;
+  sourceRef: string;
+  reasonZh: string;
+}
+
+export interface HexSubmittedFinanceUnlocatedItem {
+  sourceRef: string;
+  text: string;
+  reasonZh: string;
+}
+
 export interface HexSubmittedFinanceOutput {
   submittedOutputId: string;
   rawOutputId: string;
@@ -27,6 +44,12 @@ export interface HexSubmittedFinanceOutput {
   cardKind: "stance" | "challenge";
   submittedStanceCard?: HexFinanceStanceCard | undefined;
   submittedChallengeCard?: HexFinanceChallengeCard | undefined;
+  rawFinanceOpinionZh?: string | undefined;
+  submittedOpinionZh?: string | undefined;
+  submittedTextBudgetChars: number;
+  submittedTextSpanRefs: HexSubmittedFinanceTextSpanRef[];
+  rawOpinionLinkStatus: HexSubmittedFinanceRawOpinionLinkStatus;
+  unlocatedSubmittedItems: HexSubmittedFinanceUnlocatedItem[];
   buyType: string;
   economyPosture: string;
   loadoutPackage: string;
@@ -62,6 +85,7 @@ interface ClipPolicy {
   confidenceCap: number;
   combatEffectCap: HexFinanceCombatEffectCap;
   keepPositiveClaims: boolean;
+  submittedTextBudgetChars: number;
 }
 
 interface ClipResult<TCard> {
@@ -125,8 +149,17 @@ function buildSubmittedFinanceOutput(input: {
   const base = buildBaseSubmittedOutput(input);
   if (input.rawOutput.cardKind === "stance" && input.rawOutput.stanceCard) {
     const clipped = clipStanceCard(input.rawOutput.stanceCard, input.policy);
+    const textClip = buildSubmittedOpinionClip({
+      rawOpinion: input.rawOutput.rawFinanceOpinionZh,
+      submittedTerms: clipped.card ? collectStanceTextTerms(clipped.card, "kept") : [],
+      rawTerms: collectStanceTextTerms(input.rawOutput.stanceCard, "omitted"),
+      blockedTerms: [],
+      cappedFields: clipped.cappedFields,
+      budgetChars: input.policy.submittedTextBudgetChars
+    });
     const output = {
       ...base,
+      ...textClip,
       submittedStanceCard: clipped.card,
       omittedFields: clipped.omittedFields,
       cappedFields: clipped.cappedFields,
@@ -141,8 +174,22 @@ function buildSubmittedFinanceOutput(input: {
   }
   if (input.rawOutput.cardKind === "challenge" && input.rawOutput.challengeCard) {
     const clipped = clipChallengeCard(input.rawOutput.challengeCard, input.policy, input.submittedClaimIds);
+    const textClip = buildSubmittedOpinionClip({
+      rawOpinion: input.rawOutput.rawFinanceOpinionZh,
+      submittedTerms: clipped.card ? collectChallengeTextTerms(clipped.card, "kept") : [],
+      rawTerms: collectChallengeTextTerms(input.rawOutput.challengeCard, "omitted"),
+      blockedTerms: clipped.orphanedChallenge && clipped.card ? [{
+        text: clipped.card.targetClaimId,
+        sourceRef: `challenge.targetClaimId:${clipped.card.targetClaimId}`,
+        kind: "blocked",
+        reasonZh: "targetClaimId 已在 submitted stance 中被裁掉，不能进入有效挑战。"
+      }] : [],
+      cappedFields: clipped.cappedFields,
+      budgetChars: input.policy.submittedTextBudgetChars
+    });
     const output = {
       ...base,
+      ...textClip,
       submittedChallengeCard: clipped.card,
       omittedFields: clipped.omittedFields,
       cappedFields: clipped.cappedFields,
@@ -159,6 +206,14 @@ function buildSubmittedFinanceOutput(input: {
 
   const output = {
     ...base,
+    ...buildSubmittedOpinionClip({
+      rawOpinion: input.rawOutput.rawFinanceOpinionZh,
+      submittedTerms: [],
+      rawTerms: [],
+      blockedTerms: [],
+      cappedFields: [],
+      budgetChars: input.policy.submittedTextBudgetChars
+    }),
     omittedFields: ["missing_card"],
     cappedFields: [],
     submittedUsableForJudge: false,
@@ -176,7 +231,20 @@ function buildBaseSubmittedOutput(input: {
   rawOutput: HexRoundStartAgentOutputForAction;
   economy: HexAgentEconomyContext | undefined;
   policy: ClipPolicy;
-}): Omit<HexSubmittedFinanceOutput, "submittedFingerprint" | "omittedFields" | "cappedFields" | "submittedUsableForJudge" | "submittedUsableForCombat" | "gateSummary"> {
+}): Omit<
+  HexSubmittedFinanceOutput,
+  | "submittedOpinionZh"
+  | "submittedTextBudgetChars"
+  | "submittedTextSpanRefs"
+  | "rawOpinionLinkStatus"
+  | "unlocatedSubmittedItems"
+  | "submittedFingerprint"
+  | "omittedFields"
+  | "cappedFields"
+  | "submittedUsableForJudge"
+  | "submittedUsableForCombat"
+  | "gateSummary"
+> {
   const aggregatePath = input.financeDuel.evidencePackRef.aggregateEvidencePath;
   const evidenceMenuVersion = input.financeDuel.evidencePackRef.generatedAt || stableHash(aggregatePath || input.financeDuel.topic.roundKey);
   return {
@@ -189,6 +257,7 @@ function buildBaseSubmittedOutput(input: {
     loadoutPackage: input.economy?.loadoutPackage ?? "unknown_loadout",
     outputBudget: input.economy?.outputBudget ?? 360,
     clippingTier: input.policy.tier,
+    rawFinanceOpinionZh: input.rawOutput.rawFinanceOpinionZh,
     combatEffectCap: input.policy.combatEffectCap,
     judgeInputRef: `submitted_finance:${input.rawOutput.outputId}`,
     factBankSnapshotId: aggregatePath || "unknown_snapshot",
@@ -299,15 +368,15 @@ function buildClipPolicy(economy: HexAgentEconomyContext | undefined): ClipPolic
   const tier = classifyClippingTier(economy);
   switch (tier) {
     case "full":
-      return { tier, maxClaims: 3, maxEvidenceRefsPerClaim: 3, confidenceCap: 0.9, combatEffectCap: "possible_kill", keepPositiveClaims: true };
+      return { tier, maxClaims: 3, maxEvidenceRefsPerClaim: 3, confidenceCap: 0.9, combatEffectCap: "possible_kill", keepPositiveClaims: true, submittedTextBudgetChars: 320 };
     case "standard":
-      return { tier, maxClaims: 2, maxEvidenceRefsPerClaim: 2, confidenceCap: 0.75, combatEffectCap: "possible_wound", keepPositiveClaims: true };
+      return { tier, maxClaims: 2, maxEvidenceRefsPerClaim: 2, confidenceCap: 0.75, combatEffectCap: "possible_wound", keepPositiveClaims: true, submittedTextBudgetChars: 220 };
     case "force":
-      return { tier, maxClaims: 1, maxEvidenceRefsPerClaim: 1, confidenceCap: 0.6, combatEffectCap: "forced_back", keepPositiveClaims: true };
+      return { tier, maxClaims: 1, maxEvidenceRefsPerClaim: 1, confidenceCap: 0.6, combatEffectCap: "forced_back", keepPositiveClaims: true, submittedTextBudgetChars: 120 };
     case "eco":
-      return { tier, maxClaims: 1, maxEvidenceRefsPerClaim: 1, confidenceCap: 0.45, combatEffectCap: "weak_pressure", keepPositiveClaims: true };
+      return { tier, maxClaims: 1, maxEvidenceRefsPerClaim: 1, confidenceCap: 0.45, combatEffectCap: "weak_pressure", keepPositiveClaims: true, submittedTextBudgetChars: 80 };
     case "save":
-      return { tier, maxClaims: 0, maxEvidenceRefsPerClaim: 0, confidenceCap: 0.35, combatEffectCap: "minor_delay", keepPositiveClaims: false };
+      return { tier, maxClaims: 0, maxEvidenceRefsPerClaim: 0, confidenceCap: 0.35, combatEffectCap: "minor_delay", keepPositiveClaims: false, submittedTextBudgetChars: 40 };
   }
 }
 
@@ -327,6 +396,150 @@ function classifyClippingTier(economy: HexAgentEconomyContext | undefined): HexF
     return "save";
   }
   return "eco";
+}
+
+
+interface FinanceTextTerm {
+  text: string;
+  sourceRef: string;
+  kind: HexSubmittedFinanceTextSpanKind;
+  reasonZh: string;
+}
+
+function collectStanceTextTerms(card: HexFinanceStanceCard, kind: HexSubmittedFinanceTextSpanKind): FinanceTextTerm[] {
+  const terms: FinanceTextTerm[] = [];
+  for (const claim of card.coreClaims) {
+    terms.push({ text: claim.claimId, sourceRef: `claim:${claim.claimId}`, kind, reasonZh: kind === "kept" ? "该 claim 编号进入 submitted。" : "该 claim 编号没有进入 submitted。" });
+    terms.push({ text: claim.claimZh, sourceRef: `claimZh:${claim.claimId}`, kind, reasonZh: kind === "kept" ? "该 claim 原文进入 submitted。" : "该 claim 原文被经济裁剪。" });
+    terms.push({ text: claim.reasoningBridge, sourceRef: `reasoningBridge:${claim.claimId}`, kind, reasonZh: kind === "kept" ? "该推理桥进入 submitted。" : "该推理桥被经济裁剪。" });
+    for (const evidenceRef of claim.evidenceRefs) {
+      terms.push({ text: evidenceRef, sourceRef: `evidenceRef:${claim.claimId}:${evidenceRef}`, kind, reasonZh: kind === "kept" ? "该证据编号进入 submitted。" : "该证据编号被经济裁剪。" });
+    }
+  }
+  return terms;
+}
+
+function collectChallengeTextTerms(card: HexFinanceChallengeCard, kind: HexSubmittedFinanceTextSpanKind): FinanceTextTerm[] {
+  const terms: FinanceTextTerm[] = [
+    { text: card.targetClaimId, sourceRef: `challengeTarget:${card.targetClaimId}`, kind, reasonZh: kind === "kept" ? "该挑战靶点进入 submitted。" : "该挑战靶点被经济裁剪。" },
+    { text: card.challengedAssumption, sourceRef: `challengedAssumption:${card.targetClaimId}`, kind, reasonZh: kind === "kept" ? "该挑战假设进入 submitted。" : "该挑战假设被经济裁剪。" },
+    { text: card.proxyMismatch, sourceRef: `proxyMismatch:${card.targetClaimId}`, kind, reasonZh: kind === "kept" ? "该代理错配进入 submitted。" : "该代理错配被经济裁剪。" }
+  ];
+  for (const evidenceRef of card.evidenceRefs) {
+    terms.push({ text: evidenceRef, sourceRef: `challengeEvidence:${card.targetClaimId}:${evidenceRef}`, kind, reasonZh: kind === "kept" ? "该证据编号进入 submitted。" : "该证据编号被经济裁剪。" });
+  }
+  for (const challenge of card.challenges) {
+    terms.push({ text: challenge.challengeId, sourceRef: `challenge:${challenge.challengeId}`, kind, reasonZh: kind === "kept" ? "该 challenge 编号进入 submitted。" : "该 challenge 编号被经济裁剪。" });
+    terms.push({ text: challenge.challengeReasonZh, sourceRef: `challengeReason:${challenge.challengeId}`, kind, reasonZh: kind === "kept" ? "该挑战理由进入 submitted。" : "该挑战理由被经济裁剪。" });
+    for (const evidenceRef of challenge.evidenceRefs) {
+      terms.push({ text: evidenceRef, sourceRef: `challengeEvidence:${challenge.challengeId}:${evidenceRef}`, kind, reasonZh: kind === "kept" ? "该证据编号进入 submitted。" : "该证据编号被经济裁剪。" });
+    }
+  }
+  return terms;
+}
+
+function buildSubmittedOpinionClip(input: {
+  rawOpinion: string | undefined;
+  submittedTerms: FinanceTextTerm[];
+  rawTerms: FinanceTextTerm[];
+  blockedTerms: FinanceTextTerm[];
+  cappedFields: string[];
+  budgetChars: number;
+}): Pick<HexSubmittedFinanceOutput, "submittedOpinionZh" | "submittedTextBudgetChars" | "submittedTextSpanRefs" | "rawOpinionLinkStatus" | "unlocatedSubmittedItems"> {
+  const rawOpinion = input.rawOpinion?.trim() ?? "";
+  if (!rawOpinion) {
+    return {
+      submittedOpinionZh: undefined,
+      submittedTextBudgetChars: input.budgetChars,
+      submittedTextSpanRefs: [],
+      rawOpinionLinkStatus: "legacy_missing",
+      unlocatedSubmittedItems: input.submittedTerms.map((term) => ({ sourceRef: term.sourceRef, text: term.text, reasonZh: "旧 trace 或无 rawFinanceOpinionZh，无法定位 submitted 原文片段。" }))
+    };
+  }
+
+  const submittedKeys = new Set(input.submittedTerms.map((term) => term.sourceRef));
+  const allTerms = [
+    ...input.submittedTerms,
+    ...input.rawTerms.filter((term) => !submittedKeys.has(term.sourceRef)),
+    ...input.blockedTerms,
+    ...input.cappedFields.map((field) => ({ text: field, sourceRef: `capped:${field}`, kind: "capped" as const, reasonZh: "该字段被经济系统封顶。" }))
+  ];
+  const spans: HexSubmittedFinanceTextSpanRef[] = [];
+  const unlocatedSubmittedItems: HexSubmittedFinanceUnlocatedItem[] = [];
+  const seen = new Set<string>();
+  for (const term of allTerms) {
+    const termText = term.text.trim();
+    if (termText.length < 2) continue;
+    const key = `${term.kind}:${term.sourceRef}:${termText}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const start = rawOpinion.indexOf(termText);
+    if (start < 0) {
+      if (term.kind === "kept" || term.kind === "blocked") {
+        unlocatedSubmittedItems.push({ sourceRef: term.sourceRef, text: termText, reasonZh: `无法在 rawFinanceOpinionZh 中定位：${term.reasonZh}` });
+      }
+      continue;
+    }
+    spans.push({ start, end: start + termText.length, kind: term.kind, sourceRef: term.sourceRef, reasonZh: term.reasonZh });
+  }
+
+  const keptSpans = spans.filter((span) => span.kind === "kept").sort((left, right) => left.start - right.start);
+  if (keptSpans.length === 0 && input.submittedTerms.length > 0 && input.budgetChars > 0) {
+    const end = Math.min(rawOpinion.length, input.budgetChars);
+    spans.push({
+      start: 0,
+      end,
+      kind: "kept",
+      sourceRef: "rawOpinion:budget_excerpt",
+      reasonZh: "结构化 submitted 字段未能精确回贴到原文时，按经济预算保留这段原始观点。"
+    });
+    if (end < rawOpinion.length) {
+      spans.push({
+        start: end,
+        end: rawOpinion.length,
+        kind: "omitted",
+        sourceRef: "rawOpinion:outside_budget",
+        reasonZh: "这段原始观点超出当前经济预算，未进入 submitted 文本片段。"
+      });
+    }
+  }
+  const effectiveKeptSpans = spans.filter((span) => span.kind === "kept").sort((left, right) => left.start - right.start);
+  let used = 0;
+  const submittedParts: string[] = [];
+  for (const span of effectiveKeptSpans) {
+    if (used >= input.budgetChars) break;
+    const remaining = input.budgetChars - used;
+    const part = rawOpinion.slice(span.start, span.end).slice(0, remaining);
+    if (part) {
+      submittedParts.push(part);
+      used += part.length;
+    }
+  }
+  const linkStatus: HexSubmittedFinanceRawOpinionLinkStatus = input.submittedTerms.length === 0
+    ? "linked"
+    : unlocatedSubmittedItems.length === 0 && effectiveKeptSpans.length > 0
+      ? "linked"
+      : effectiveKeptSpans.length > 0
+        ? "partial"
+        : "unlinked";
+  return {
+    submittedOpinionZh: submittedParts.join("\n").trim() || undefined,
+    submittedTextBudgetChars: input.budgetChars,
+    submittedTextSpanRefs: dedupeAndSortSpans(spans),
+    rawOpinionLinkStatus: linkStatus,
+    unlocatedSubmittedItems
+  };
+}
+
+function dedupeAndSortSpans(spans: HexSubmittedFinanceTextSpanRef[]): HexSubmittedFinanceTextSpanRef[] {
+  const priority: Record<HexSubmittedFinanceTextSpanKind, number> = { blocked: 4, capped: 3, kept: 2, omitted: 1 };
+  const accepted: HexSubmittedFinanceTextSpanRef[] = [];
+  for (const span of spans.sort((left, right) => priority[right.kind] - priority[left.kind] || (right.end - right.start) - (left.end - left.start))) {
+    if (!accepted.some((item) => item.start < span.end && span.start < item.end)) {
+      accepted.push(span);
+    }
+  }
+  return accepted.sort((left, right) => left.start - right.start);
 }
 
 function findEconomy(economyContext: HexRoundEconomyContext | undefined, agentId: string): HexAgentEconomyContext | undefined {

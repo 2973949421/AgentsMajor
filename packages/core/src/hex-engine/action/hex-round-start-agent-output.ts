@@ -126,6 +126,9 @@ export interface HexRoundStartAgentOutputRequest {
 
 export interface HexRoundStartAgentOutputDraft {
   cardKind: HexRoundStartCardKind;
+  rawFinanceOpinionZh?: string | undefined;
+  rawOpinionSource?: "llm_field" | "legacy_missing" | undefined;
+  rawOpinionValidationErrors?: string[] | undefined;
   stanceCard?: HexFinanceStanceCard | undefined;
   challengeCard?: HexFinanceChallengeCard | undefined;
   cardSummaryZh: string;
@@ -141,6 +144,9 @@ export interface HexRoundStartAgentOutputForAction {
   outputId: string;
   agentId: string;
   usableForPhaseAction: boolean;
+  rawFinanceOpinionZh?: string | undefined;
+  rawOpinionSource?: "llm_field" | "legacy_missing" | undefined;
+  rawOpinionValidationErrors?: string[] | undefined;
   openingStatementZh: string;
   evidenceRefs: string[];
   riskBoundaryZh: string;
@@ -391,16 +397,17 @@ export function buildHexRoundStartAgentOutputRequest(input: {
     },
     outputSchema: cardKind === "stance"
       ? {
-          requiredFields: ["cardKind", "stanceCard"],
+          requiredFields: ["cardKind", "rawFinanceOpinionZh", "stanceCard"],
           optionalFields: ["cardSummaryZh"]
         }
       : {
-          requiredFields: ["cardKind", "challengeCard"],
+          requiredFields: ["cardKind", "rawFinanceOpinionZh", "challengeCard"],
           optionalFields: ["cardSummaryZh"]
         },
     constraints: [
       "这是本 round 的 phase0 结构化投资卡片，不是局内行动。",
       "必须输出一个 JSON object，cardKind 必须等于请求中的 cardKind。",
+      "必须输出 rawFinanceOpinionZh：这是 agent 自己的原始金融观点文本，后续经济系统会从原文中裁剪 submitted 内容。",
       cardKind === "stance"
         ? "立场方必须输出 stanceCard，并在 allowedStance 中选择方向，不得被迫证明某个固定方向。"
         : "挑战方必须输出 challengeCard，并且 targetClaimId 必须来自 claimCatalog。",
@@ -408,6 +415,7 @@ export function buildHexRoundStartAgentOutputRequest(input: {
       "unavailable_observation 只能作为证据缺口、风险边界或 score cap，不得支持正向结论。",
       "缺失证据只能触发置信度上限、score cap 或投影限制，不能写成胜利理由。",
       "每个主张必须有 claimType、evidenceRefs 和 reasoningBridge。",
+      "rawFinanceOpinionZh 必须自然可读，并包含关键 claim / challenge、主要 evidenceRef 和推理桥；不能由系统后处理补写。",
       "后续 phase 只会引用 claimId 或 challengeId，不能重新写金融作文。",
       "不要输出行动目标、cell id、winner、kill、damage、economyDelta 或数据库事实。"
     ]
@@ -434,6 +442,7 @@ export function createFixtureHexRoundStartAgentOutputProvider(): HexRoundStartAg
         modelId: "fixture_hex_round_start_agent_output",
         rawDraft: {
           cardKind: "stance",
+          rawFinanceOpinionZh: `${request.agent.displayName} 的原始观点：当前证据 ${evidenceRefs.join("、") || "不足"} 只能支持有限有色配置判断。核心 claim 是 ${request.agent.displayName} 基于可用证据给出有限置信度的有色配置主张，推理桥是价格或市场代理不能直接证明完整中国国内供需，因此只能小仓位参与，并在关键证据继续缺失时降权。`,
           stanceCard: {
             cardId: `stance_${request.agent.agentId}`,
             agentId: request.agent.agentId,
@@ -467,6 +476,7 @@ export function createFixtureHexRoundStartAgentOutputProvider(): HexRoundStartAg
       modelId: "fixture_hex_round_start_agent_output",
       rawDraft: {
         cardKind: "challenge",
+        rawFinanceOpinionZh: `${request.agent.displayName} 的原始挑战：我挑战 ${targetClaim?.claimId ?? "missing_claim"}，理由是对方可能把代理事实过度外推。可用证据 ${evidenceRefs.join("、") || "不足"} 最多支持有限指标方向，不能直接证明完整行业胜负；缺失证据只能降低置信度和投影强度，不能直接判挑战方胜利。`,
         challengeCard: {
           cardId: `challenge_${request.agent.agentId}`,
           agentId: request.agent.agentId,
@@ -556,6 +566,7 @@ function buildRoundStartJsonExample(request: HexRoundStartAgentOutputRequest): R
   if (request.cardKind === "stance") {
     return {
       cardKind: "stance",
+      rawFinanceOpinionZh: `原始观点：围绕 ${request.decisionQuestionZh ?? request.topicTitle}，我只根据 ${firstEvidenceRef} 等白名单证据提出有限立场。可用证据支持局部价格或市场代理，但不能直接证明完整行业胜负；推理桥必须经过权益传导和风险边界，缺口未补前只能小仓位或结构性参与。`,
       stanceCard: {
         cardId: `stance_${request.agent.agentId}`,
         agentId: request.agent.agentId,
@@ -585,6 +596,7 @@ function buildRoundStartJsonExample(request: HexRoundStartAgentOutputRequest): R
   const targetClaim = request.claimCatalog?.[0];
   return {
     cardKind: "challenge",
+    rawFinanceOpinionZh: `原始挑战：我挑战 ${targetClaim?.claimId ?? "claimCatalog 中的真实 claimId"}。该 claim 如果只依赖 ${firstEvidenceRef} 等代理证据，就不能直接推出完整配置结论；挑战重点是证据缺口、代理错配或推理桥断裂，只能降低置信度和投影强度。`,
     challengeCard: {
       cardId: `challenge_${request.agent.agentId}`,
       agentId: request.agent.agentId,
@@ -616,14 +628,15 @@ export function buildRealHexRoundStartAgentOutputMessages(request: HexRoundStart
       content: [
         "你是 Finance Major 的选手 agent，正在输出 phase0 结构化投资卡片。",
         "这不是局内行动，不要输出地图 cell、击杀、胜负、伤害或经济变化。",
+        "必须同时输出 rawFinanceOpinionZh 和结构化 card。rawFinanceOpinionZh 是你自己的自然中文原始投资观点，经济系统会从这段原文中裁剪 submitted 内容。",
         request.cardKind === "stance"
-          ? "你是立场方：必须输出 stanceCard，direction 必须从 allowedStance 里复制一个值；coreClaims 只写 1-2 条。"
-          : "你是挑战方：必须输出 challengeCard，只写 1 条 challenge；targetClaimId 必须从 claimCatalog 里原样复制。",
+          ? "你是立场方：rawFinanceOpinionZh 写 250-450 字；stanceCard 的 direction 必须从 allowedStance 里复制一个值；coreClaims 只写 1-2 条。"
+          : "你是挑战方：rawFinanceOpinionZh 写 180-350 字；challengeCard 只写 1 条 challenge；targetClaimId 必须从 claimCatalog 里原样复制。",
         "输出只能是一个 JSON object，不要 Markdown，不要解释段落，不要包裹代码块。",
         "字段名必须严格使用示例里的英文键名；字段内容使用中文。",
         "所有 evidenceRefs 只能从 systemInputCard.evidenceRefs 中原样选择；不能新增证据编号。",
         "缺失证据只能降权或限制置信度，不是直接胜利。",
-        "不要输出超过 2 个 claim，不要写长文；每个中文字段尽量 1 句。",
+        "不要输出超过 2 个 claim；结构化 card 的每个中文字段尽量 1 句。",
         "phase1+ 只会引用 claimId 或 challengeId，因此必须提供稳定编号。",
         "严格 JSON 示例如下，真实输出必须替换为本请求里的 agent、claimCatalog 和 evidenceRefs：",
         JSON.stringify(example)
@@ -686,13 +699,13 @@ export function normalizeHexRoundStartAgentOutputDraft(
     errors.push(`round_start:invalid_cardKind:${cardKind}`);
   }
   for (const key of Object.keys(draftObject)) {
-    if (!["cardKind", "stanceCard", "challengeCard", "cardSummaryZh"].includes(key)) {
+    if (!["cardKind", "rawFinanceOpinionZh", "rawOpinionZh", "financeOpinionZh", "stanceCard", "challengeCard", "cardSummaryZh"].includes(key)) {
       ignoredFields.push(key);
     }
   }
 
   const context = {
-    allowedEvidenceRefs: new Set(options.allowedEvidenceRefs ?? []),
+    allowedEvidenceRefs: buildAllowedRoundStartEvidenceRefSet(options),
     allowedStance: new Set(options.allowedStance ?? []),
     claimCatalog: new Map((options.claimCatalog ?? []).map((claim) => [claim.claimId, claim])),
     agentId: options.agentId,
@@ -700,6 +713,15 @@ export function normalizeHexRoundStartAgentOutputDraft(
     decisionQuestionZh: options.decisionQuestionZh ?? ""
   };
   const cardSummaryZh = readString(draftObject.cardSummaryZh);
+  const rawFinanceOpinionZh = readStringField(draftObject, ["rawFinanceOpinionZh", "rawOpinionZh", "financeOpinionZh"], repairedFields, "repaired_rawFinanceOpinionZh");
+  const rawOpinionValidationErrors: string[] = [];
+  if (!rawFinanceOpinionZh) {
+    errors.push("round_start:missing_rawFinanceOpinionZh");
+    rawOpinionValidationErrors.push("missing_rawFinanceOpinionZh");
+  } else if (containsGarbledText(rawFinanceOpinionZh)) {
+    errors.push("round_start:garbled_rawFinanceOpinionZh");
+    rawOpinionValidationErrors.push("garbled_rawFinanceOpinionZh");
+  }
 
   if (cardKind === "stance") {
     const stance = normalizeStanceCard(draftObject.stanceCard, context, errors, repairedFields, cardSummaryZh);
@@ -713,6 +735,9 @@ export function normalizeHexRoundStartAgentOutputDraft(
     return {
       draft: {
         cardKind,
+        rawFinanceOpinionZh,
+        rawOpinionSource: "llm_field",
+        rawOpinionValidationErrors,
         stanceCard: stance,
         cardSummaryZh: cardSummaryZh || stance.auditSummaryZh,
         evidenceRefs,
@@ -745,6 +770,9 @@ export function normalizeHexRoundStartAgentOutputDraft(
   return {
     draft: {
       cardKind,
+      rawFinanceOpinionZh,
+      rawOpinionSource: "llm_field",
+      rawOpinionValidationErrors,
       challengeCard: challenge,
       cardSummaryZh: cardSummaryZh || challenge.auditSummaryZh,
       evidenceRefs,
@@ -1033,6 +1061,16 @@ function validateEvidenceRefs(refs: string[], context: NormalizeCardContext, err
   return uniqueRefs;
 }
 
+function buildAllowedRoundStartEvidenceRefSet(options: {
+  allowedEvidenceRefs?: readonly string[];
+  claimCatalog?: readonly HexRoundStartClaimCatalogItem[];
+}): ReadonlySet<string> {
+  return new Set([
+    ...(options.allowedEvidenceRefs ?? []),
+    ...(options.claimCatalog ?? []).flatMap((claim) => claim.evidenceRefs ?? [])
+  ]);
+}
+
 interface NormalizeCardContext {
   allowedEvidenceRefs: ReadonlySet<string>;
   allowedStance: ReadonlySet<string>;
@@ -1070,6 +1108,9 @@ function buildRoundStartOutput(input: {
     resourceTier: input.request.economy?.resourceTier,
     source,
     usableForPhaseAction: isUsableRoundStartAgentOutputSource(source, input.responseArtifactId, input.normalized.errors, draft),
+    rawFinanceOpinionZh: draft?.rawFinanceOpinionZh,
+    rawOpinionSource: draft?.rawOpinionSource,
+    rawOpinionValidationErrors: draft?.rawOpinionValidationErrors,
     requestArtifactId: input.requestArtifactId,
     responseArtifactId: input.responseArtifactId,
     rawOutputSummaryZh: draft
@@ -1214,6 +1255,8 @@ function isUsableRoundStartAgentOutputSource(
 function buildFallbackDraft(request: HexRoundStartAgentOutputRequest, errors: readonly string[]): HexRoundStartAgentOutputDraft {
   return {
     cardKind: request.cardKind,
+    rawOpinionSource: "legacy_missing",
+    rawOpinionValidationErrors: errors.length > 0 ? [...errors] : ["legacy_missing_rawFinanceOpinionZh"],
     cardSummaryZh: `本局没有可采信的真实 phase0 结构化卡片，原因：${errors.join("；") || "unknown"}。后续行动不能把系统输入卡当作 agent 发言。`,
     evidenceRefs: [],
     riskBoundaryZh: "真实 phase0 卡片缺失，裁判只能按后续行动和系统证据边界审计。",

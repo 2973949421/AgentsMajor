@@ -421,11 +421,9 @@ export function HexMatchLabClient() {
           <p>accepted {selectedPhase?.acceptedActionCount ?? 0} / rejected {selectedPhase?.rejectedDraftCount ?? 0} / fallback {selectedPhase?.fallbackActionCount ?? 0}</p>
           <p>calls {selectedPhase?.callsAttempted ?? liveRun?.callsAttempted ?? 0} / expected {selectedPhase?.llmAudit.expectedCalls ?? liveRun?.expectedCalls ?? 0}</p>
         </div>
-        {(["business", "llm", "combat", "economy", "winner"] as const).map((tab) => (
-          <button key={tab} type="button" onClick={() => { setDrawerTab(tab); setDrawerOpen(true); }}>
-            {auditLabel(tab)}
-          </button>
-        ))}
+        <button type="button" onClick={() => { setDrawerTab("business"); setDrawerOpen(true); }}>
+          打开本 round 审计
+        </button>
       </section>
 
       {consoleHidden ? (
@@ -516,14 +514,6 @@ export function HexMatchLabClient() {
   );
 }
 
-function auditLabel(tab: AuditTab): string {
-  if (tab === "business") return "金融决策";
-  if (tab === "llm") return "LLM 调用";
-  if (tab === "combat") return "战斗裁定";
-  if (tab === "economy") return "经济证据";
-  if (tab === "winner") return "硬胜负";
-  return "原始 JSON";
-}
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));

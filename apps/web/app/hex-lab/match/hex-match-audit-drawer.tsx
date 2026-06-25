@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import type {
   HexMatchLabPhaseSummary,
   HexMatchLabRoundTraceDetail
@@ -42,7 +44,7 @@ type HexMatchLabHumanAudit = NonNullable<HexMatchLabRoundTraceDetail["humanAudit
 type HexMatchLabRoundStartOutputDigest = HexMatchLabHumanAudit["roundStartOutputDigests"][number];
 type HexMatchLabAgentOutputDigest = HexMatchLabHumanAudit["agentOutputDigests"][number];
 type HexMatchLabPhaseStory = HexMatchLabHumanAudit["phaseStories"][number];
-type HexMatchLabSubmittedFinanceOutput = HexMatchLabRoundTraceDetail["submittedFinanceOutputs"][number];
+type HexMatchLabFinanceOutputAuditView = HexMatchLabRoundTraceDetail["financeOutputAuditViews"][number];
 
 function PlayerFinanceAudit(props: {
   humanAudit: HexMatchLabHumanAudit;
@@ -60,7 +62,7 @@ function PlayerFinanceAudit(props: {
   }
 const stanceCount = props.humanAudit.roundStartOutputDigests.filter((output) => output.cardKind === "stance").length;
   const challengeCount = props.humanAudit.roundStartOutputDigests.filter((output) => output.cardKind === "challenge").length;
-  const submittedFinanceOutputs = props.trace.submittedFinanceOutputs ?? [];
+  const financeOutputAuditViews = props.trace.financeOutputAuditViews ?? [];
 
   return (
     <div className={styles.auditStack}>
@@ -87,42 +89,9 @@ const stanceCount = props.humanAudit.roundStartOutputDigests.filter((output) => 
 
       <article className={styles.auditCard}>
         <h3>1. Phase0 金融攻防卡</h3>
-        <p className={styles.guardText}>先看 N62 submitted 卡：这是进入 N59 judge 的正式金融输出；Raw 卡只作为折叠审计材料。</p>
-        <SubmittedFinanceOutputList submittedFinanceOutputs={submittedFinanceOutputs} />
-        <p className={styles.guardText}>下面是 Raw phase0 真实可消费卡片，仅用于审计原始模型输出，不直接进入 judge。</p>
-        {props.humanAudit.roundStartOutputDigests.length > 0 ? (
-          <div className={styles.auditStack}>
-            {props.humanAudit.roundStartOutputDigests.map((output) => (
-              <details key={output.outputId}>
-                <summary>
-                  <strong>{output.displayName}</strong>
-                  {" / "}{formatCardKindZh(output.cardKind)}
-                  {" / "}{output.financeRoleCn ?? output.financeRole ?? "金融角色未记录"}
-                  {" / "}{formatBuyType(output)}
-                  {"："}{buildRoundStartHeadline(output)}
-                </summary>
-                <RoundStartCardSummary output={output} />
-                <p><strong>买型裁剪：</strong>{output.buyConstraintAppliedZh || "未记录买型裁剪。"}</p>
-                <p><strong>后续局内引用：</strong>{formatAllowedPhaseRefs(output)}</p>
-                <details>
-                  <summary>卡片技术细节</summary>
-                  <ul>
-                    <li>source：{output.source}</li>
-                    <li>outputId：{output.outputId}</li>
-                    <li>request artifact：{output.requestArtifactId ?? "未记录"}</li>
-                    <li>response artifact：{output.responseArtifactId ?? "未记录"}</li>
-                    <li>normalization：{output.normalizationSummaryZh}</li>
-                    <li>validation：{output.validationSummaryZh}</li>
-                    <li>errors：{output.technicalRefs.errors.join("；") || "无"}</li>
-                    <li>repaired fields：{output.technicalRefs.repairedFields.join("；") || "无"}</li>
-                  </ul>
-                </details>
-              </details>
-            ))}
-          </div>
-        ) : <p>本局没有可消费的真实 phase0 结构化卡片；系统不会用输入卡或自然语言补成功。</p>}
+        <p className={styles.guardText}>只看一份原始 LLM 输出：绿色是进入 submitted / judge 的内容，灰色是被裁剪内容，黄色是被经济系统封顶，红色是不能进入 judge 的内容。</p>
+        <FinanceOutputAuditViewList views={financeOutputAuditViews} />
       </article>
-
       {props.humanAudit.roundStartOutputFailures.length > 0 ? (
         <details className={styles.auditCard}>
           <summary>Phase0 失败卡片</summary>
@@ -229,40 +198,56 @@ const stanceCount = props.humanAudit.roundStartOutputDigests.filter((output) => 
   );
 }
 
-function SubmittedFinanceOutputList(props: { submittedFinanceOutputs: HexMatchLabSubmittedFinanceOutput[] }) {
-  if (props.submittedFinanceOutputs.length === 0) {
-    return <p>旧 trace 未记录 N62 提交门；当前页面只能展示 raw phase0，不能确认 judge 是否吃到经济裁剪后的 submitted 输出。</p>;
+function FinanceOutputAuditViewList(props: { views: HexMatchLabFinanceOutputAuditView[] }) {
+  if (props.views.length === 0) {
+    return <p>旧 trace 未记录 N62 单文档审计视图；无法确认 raw 与 submitted 的对应关系。</p>;
   }
   return (
     <div className={styles.auditStack}>
-      {props.submittedFinanceOutputs.map((output) => (
-        <details key={output.submittedOutputId} open={output.orphanedChallenge || !output.submittedUsableForCombat}>
+      {props.views.map((view, index) => (
+        <details key={view.outputId} open={index === 0}>
           <summary>
-            <strong>{output.displayName}</strong>
-            {" / "}{formatCardKindZh(output.cardKind)}
-            {" / submitted "}{output.clippingTier}
-            {" / cap "}{formatCombatEffect(output.combatEffectCap)}
-            {output.orphanedChallenge ? " / orphaned challenge" : ""}
+            <strong>{view.displayName}</strong>
+            {" / "}{formatCardKindZh(view.cardKind)}
+            {" / "}{view.financeRoleCn ?? "金融角色未记录"}
+            {" / "}{view.buyType ?? "买型未记录"}
+            {"："}{view.summaryZh}
           </summary>
-          <p><strong>N62 提交门：</strong>{output.gateSummary}</p>
-          <p><strong>买型与预算：</strong>{output.buyType} / {output.economyPosture} / {output.loadoutPackage} / outputBudget {output.outputBudget}</p>
-          <p><strong>Judge 输入：</strong>{output.judgeInputRef}；usableForJudge={String(output.submittedUsableForJudge)}；usableForCombat={String(output.submittedUsableForCombat)}</p>
-          {output.omittedFields.length > 0 ? <p><strong>被裁字段：</strong>{output.omittedFields.join("；")}</p> : <p><strong>被裁字段：</strong>无</p>}
-          {output.cappedFields.length > 0 ? <p><strong>被封顶字段：</strong>{output.cappedFields.join("；")}</p> : null}
-          {output.orphanedChallenge ? <p><strong>孤儿挑战：</strong>targetClaimId 已在对方 submitted stance 中被裁掉，系统不会自动改靶。</p> : null}
-          <SubmittedFinanceCardSummary output={output} />
+          <div className={styles.financeAuditMeta}>
+            <span>{view.judgeStatusZh}</span>
+            <span>{view.clippingSummaryZh}</span>
+          </div>
+          {view.rawFallbackLabel ? <p className={styles.guardText}>{view.rawFallbackLabel}</p> : null}
+          <h4>原始 LLM 输出</h4>
+          <AnnotatedFinanceRawText view={view} />
+          {view.annotationSpans.length === 0 ? <p className={styles.guardText}>当前 trace 没有可直接高亮的 submitted 原文片段；结构化裁剪详情已放入技术细节。</p> : null}
           <details>
-            <summary>Raw / submitted 指纹与版本</summary>
+            <summary>技术细节：response artifact / submitted JSON / enum</summary>
             <ul>
-              <li>rawOutputId：{output.rawOutputId}</li>
-              <li>raw 摘要：{output.rawCardSummaryZh ?? "未记录"}</li>
-              <li>rawFingerprint：{output.rawFingerprint || "未记录"}</li>
-              <li>submittedFingerprint：{output.submittedFingerprint || "未记录"}</li>
-              <li>rawParseStatus：{output.rawParseStatus}</li>
-              <li>factBankSnapshotId：{output.factBankSnapshotId}</li>
-              <li>evidenceMenuVersion：{output.evidenceMenuVersion}</li>
-              <li>clippingPolicyVersion：{output.clippingPolicyVersion}</li>
+              <li>request artifact：{view.technicalRefs.requestArtifactId ?? "未记录"}</li>
+              <li>response artifact：{view.technicalRefs.responseArtifactId ?? "未记录"}</li>
+              <li>submitted output：{view.technicalRefs.submittedOutputId ?? "未记录"}</li>
+              <li>judgeInputRef：{view.technicalRefs.judgeInputRef ?? "未记录"}</li>
+              <li>clippingTier：{view.technicalRefs.clippingTier ?? "未记录"}</li>
+              <li>combatEffectCap：{view.technicalRefs.combatEffectCap ?? "未记录"}</li>
+              <li>rawFingerprint：{view.technicalRefs.rawFingerprint ?? "未记录"}</li>
+              <li>submittedFingerprint：{view.technicalRefs.submittedFingerprint ?? "未记录"}</li>
+              <li>raw draft：{view.technicalRefs.rawDraftPreview ?? "未记录"}</li>
+              <li>normalized draft：{view.technicalRefs.normalizedDraftPreview ?? "未记录"}</li>
+              <li>submitted JSON：{view.technicalRefs.submittedJsonPreview ?? "未记录"}</li>
             </ul>
+            {view.unlocatedSubmittedItems.length > 0 ? (
+              <details>
+                <summary>结构字段定位诊断（{view.unlocatedSubmittedItems.length}）</summary>
+                <ul>
+                  {view.unlocatedSubmittedItems.map((item, itemIndex) => (
+                    <li key={`${item.kind}-${item.sourceField}-${itemIndex}`}>
+                      <strong>{item.labelZh}</strong>：{item.text}<br />{item.reasonZh}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
           </details>
         </details>
       ))}
@@ -270,39 +255,33 @@ function SubmittedFinanceOutputList(props: { submittedFinanceOutputs: HexMatchLa
   );
 }
 
-function SubmittedFinanceCardSummary(props: { output: HexMatchLabSubmittedFinanceOutput }) {
-  const { output } = props;
-  if (output.submittedStanceCard) {
-    return (
-      <div>
-        <p><strong>Submitted 立场：</strong>{output.submittedStanceCard.direction}；置信度 {formatPercent(output.submittedStanceCard.confidence)}</p>
-        <ul>
-          {output.submittedStanceCard.coreClaims.map((claim) => (
-            <li key={claim.claimId}>
-              <strong>{claim.claimId}</strong>：{claim.claimZh}<br />证据：{claim.evidenceRefs.join("、") || "已被裁空"}
-            </li>
-          ))}
-        </ul>
-        {output.submittedStanceCard.coreClaims.length === 0 ? <p>该 submitted stance 没有保留正向 claim，只能作为审计 / 风险边界材料。</p> : null}
-      </div>
+function AnnotatedFinanceRawText(props: { view: HexMatchLabFinanceOutputAuditView }) {
+  const chunks: ReactNode[] = [];
+  let cursor = 0;
+  for (const span of props.view.annotationSpans) {
+    if (span.start > cursor) {
+      chunks.push(<span key={`plain-${cursor}`}>{props.view.rawText.slice(cursor, span.start)}</span>);
+    }
+    chunks.push(
+      <mark key={`${span.kind}-${span.start}-${span.end}`} className={annotationClassName(span.kind)} title={`${span.labelZh}：${span.reasonZh}`}>
+        {props.view.rawText.slice(span.start, span.end)}
+      </mark>
     );
+    cursor = span.end;
   }
-  if (output.submittedChallengeCard) {
-    return (
-      <div>
-        <p><strong>Submitted 挑战：</strong>{output.submittedChallengeCard.targetClaimId}；{output.submittedChallengeCard.challengeType}；压降 {formatPercent(output.submittedChallengeCard.confidenceReduction)}</p>
-        <ul>
-          {output.submittedChallengeCard.challenges.map((challenge) => (
-            <li key={challenge.challengeId}>
-              <strong>{challenge.challengeId}</strong> → {challenge.targetClaimId}：{challenge.challengeReasonZh}<br />证据：{challenge.evidenceRefs.join("、") || "已被裁空"}
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
+  if (cursor < props.view.rawText.length) {
+    chunks.push(<span key={`plain-${cursor}`}>{props.view.rawText.slice(cursor)}</span>);
   }
-  return <p>submitted 输出未保留可展示卡片。</p>;
+  return <pre className={styles.financeRawText}>{chunks}</pre>;
 }
+
+function annotationClassName(kind: HexMatchLabFinanceOutputAuditView["annotationSpans"][number]["kind"]): string {
+  if (kind === "kept") return styles.financeAnnotationKept ?? "";
+  if (kind === "omitted") return styles.financeAnnotationOmitted ?? "";
+  if (kind === "capped") return styles.financeAnnotationCapped ?? "";
+  return styles.financeAnnotationBlocked ?? "";
+}
+
 function RoundStartCardSummary(props: { output: HexMatchLabRoundStartOutputDigest }) {
   const { output } = props;
   if (output.stanceCard) {
@@ -375,10 +354,11 @@ function formatBuyType(output: HexMatchLabRoundStartOutputDigest): string {
 }
 
 function BusinessAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; phase: HexMatchLabPhaseSummary | undefined }) {
-  const humanAudit = props.trace?.humanAudit;
-  if (humanAudit) {
+  const trace = props.trace;
+  const humanAudit = trace?.humanAudit;
+  if (trace && humanAudit) {
     const phaseStory = humanAudit.phaseStories.find((story) => story.phaseIndex === props.phase?.phaseIndex) ?? humanAudit.phaseStories[0];
-    return <PlayerFinanceAudit humanAudit={humanAudit} trace={props.trace} phaseStory={phaseStory} />;
+    return <PlayerFinanceAudit humanAudit={humanAudit} trace={trace} phaseStory={phaseStory} />;
   }
   if (props.trace?.humanAudit) {
     const legacyHumanAudit = props.trace.humanAudit;
@@ -887,6 +867,7 @@ function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
           <p>金融裁定: {formatFinanceVerdict(combat.financeVerdict)}</p>
           <p>{formatN59JudgeSummary(combat.financeEvidenceAdoption)}</p>
           <p>{formatCombatEffects(combat.financeEvidenceAdoption)}</p>
+          <p>{formatN63Firepower(combat)}</p>
           <p>{formatFinanceProjection(combat.financeProjection)}</p>
           <p>接触强度: {formatContactThreat(combat)}</p>
           <p>战斗结论: {combat.killAttributions.length > 0 ? "形成击杀" : combat.suppressions.length > 0 ? "形成压制" : "未形成击杀或压制"}</p>
@@ -931,7 +912,7 @@ function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
               plant denied: {combat.plantDenied ? "yes" : "no"};
               trade: {combat.tradeOpportunity ? "yes" : "no"}
             </p>
-            <p>finance A/D {combat.financeScoreAttack ?? combat.businessScoreAttack ?? 0}/{combat.financeScoreDefense ?? combat.businessScoreDefense ?? 0}; CS A/D {combat.csScoreAttack ?? 0}/{combat.csScoreDefense ?? 0}</p>
+            <p>finance A/D {combat.financeScoreAttack ?? combat.businessScoreAttack ?? 0}/{combat.financeScoreDefense ?? combat.businessScoreDefense ?? 0}; CS A/D {combat.csScoreAttack ?? 0}/{combat.csScoreDefense ?? 0}; total A/D {combat.totalScoreAttack ?? "?"}/{combat.totalScoreDefense ?? "?"}</p>
             <p>finance projection reasons: {combat.financeProjection?.projectionReasons.join("; ") || "未记录"}</p>
             <p>finance reasons: {combat.financeReasons.join("; ") || "无"}</p>
             <p>compat business reasons: {combat.businessReasons.join("; ") || "无"}</p>
@@ -964,6 +945,22 @@ function formatCombatEffects(adoption: HexMatchLabPhaseSummary["combats"][number
   return `金融投影权限：${effects.map(formatCombatEffect).join("、")}。`;
 }
 
+function formatN63Firepower(combat: HexMatchLabPhaseSummary["combats"][number]): string {
+  const attack = combat.financeFirepowerAttack;
+  const defense = combat.financeFirepowerDefense;
+  if (!attack && !defense) return "N63 金融火力：旧 trace 未记录。";
+  const attackText = formatFirepowerSide("挑战方", attack);
+  const defenseText = formatFirepowerSide("立场方", defense);
+  const totalText = `总分 A/D ${combat.totalScoreAttack ?? "?"}/${combat.totalScoreDefense ?? "?"}，CS A/D ${combat.csScoreAttack ?? 0}/${combat.csScoreDefense ?? 0}`;
+  return `N63 金融火力：${attackText}；${defenseText}；${totalText}。`;
+}
+
+function formatFirepowerSide(label: string, firepower: HexMatchLabPhaseSummary["combats"][number]["financeFirepowerAttack"]): string {
+  if (!firepower) return `${label}未记录`;
+  const blocked = firepower.blockedLethalScore > 0 ? `，致命分 ${firepower.blockedLethalScore} 被接触门槛阻断` : "";
+  const caps = firepower.caps.length > 0 ? `，cap ${firepower.caps.join("/")}` : "";
+  return `${label}应用 ${firepower.appliedToCombatScore}（压制 ${firepower.pressureScore}，致命 ${firepower.lethalScore}${blocked}${caps}）`;
+}
 function formatFinanceProjection(projection: HexMatchLabPhaseSummary["combats"][number]["financeProjection"]): string {
   if (!projection) return "N60 金融投影：旧 trace 未记录。";
   const applied = formatCombatEffect(projection.appliedEffect);

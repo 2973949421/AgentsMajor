@@ -53,7 +53,7 @@ describe("Hex Match Lab", () => {
     expect(client).toContain("real 小地图验收（6回合）");
     expect(client).toContain("一直跑");
     expect(client).toContain("停止");
-    expect(client).toContain("金融决策");
+    expect(client).toContain("打开本 round 审计");
     expect(client).toContain("/api/hex-lab/match/live-run");
     expect(client).toContain("/api/hex-lab/match/map-asset");
     expect(client).toContain("当前地图已完成，不能继续提交回合。");
@@ -84,7 +84,10 @@ describe("Hex Match Lab", () => {
     expect(drawer).toContain("1. Phase0 金融攻防卡");
     expect(drawer).toContain("2. 当前 Phase 局内行动");
     expect(drawer).toContain("3. 金融采信与 CS 结果");
-    expect(drawer).toContain("真实可消费卡片");
+    expect(drawer).toContain("只看一份原始 LLM 输出");
+    expect(drawer).toContain("FinanceOutputAuditViewList");
+    expect(drawer).toContain("原始 LLM 输出");
+    expect(drawer).toContain("被裁剪");
     expect(drawer).toContain("系统输入材料（非 agent 输出）");
     expect(drawer).toContain("RoundStartCardSummary");
     expect(drawer).toContain("目标 claim");
@@ -163,6 +166,9 @@ describe("Hex Match Lab", () => {
     expect(server).toContain("agentOutputDigests");
     expect(server).toContain("roundStartAgentOutputs");
     expect(server).toContain("roundStartOutputDigests");
+    expect(server).toContain("rawFinanceOpinionZh");
+    expect(server).toContain("submittedTextSpanRefs");
+    expect(server).toContain("rawOpinionLinkStatus");
     expect(server).toContain("readHexLlmResponseArtifactSummaries");
     expect(server).toContain("buildAgentOutputDigests");
     expect(server).toContain("本阶段没有真实模型 response artifact");
@@ -171,6 +177,8 @@ describe("Hex Match Lab", () => {
     expect(server).toContain("buildHumanPhaseValidationSummary");
     expect(server).toContain("financeEvidenceAdoption");
     expect(server).toContain("financeProjection");
+    expect(server).toContain("financeFirepowerAttack");
+    expect(server).toContain("financeFirepowerDefense");
     expect(server).toContain("projectionReasonsZh");
     expect(server).toContain("tacticalAudit");
     expect(server).toContain("summarizeTacticalAudit");

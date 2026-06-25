@@ -69,7 +69,8 @@ const report = {
 if (outPath) {
   const resolvedOut = resolve(process.cwd(), outPath);
   mkdirSync(dirname(resolvedOut), { recursive: true });
-  writeFileSync(resolvedOut, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+  writeFileSync(resolvedOut, `${JSON.stringify(report, null, 2)}
+`, "utf8");
 }
 
 console.log(JSON.stringify({
@@ -109,7 +110,7 @@ function analyzeTrace(path, mapSlug) {
   const combats = collectCombats(trace);
   const decisionQuestion = readDecisionQuestion(financeDuel);
   const claimCatalog = collectClaims(roundStartOutputs);
-const challengeCatalog = collectChallenges(roundStartOutputs);
+  const challengeCatalog = collectChallenges(roundStartOutputs);
   const submittedFinanceOutputs = Array.isArray(trace.submittedFinanceOutputs) ? trace.submittedFinanceOutputs : [];
   const submittedFinanceDiagnostics = collectSubmittedFinanceDiagnostics(submittedFinanceOutputs, combats);
   const financeVerdicts = combats.filter(hasFinanceVerdict);
@@ -118,8 +119,15 @@ const challengeCatalog = collectChallenges(roundStartOutputs);
   const roundQualityReasons = Array.isArray(trace.audit?.roundQualityReasons) ? trace.audit.roundQualityReasons : [];
   const roundQualitySummaryZh = trace.audit?.roundQualitySummaryZh ?? null;
   const financeWinWithoutAcceptedEvidence = financeVerdicts.filter(hasFinancialWinWithoutAcceptedEvidence);
+  const combatFinanceFirepowerPositive = combats.filter(hasPositiveFinanceFirepower);
+  const combatFinanceFirepowerWithoutAcceptedEvidence = combatFinanceFirepowerPositive.filter((combat) => countAcceptedEvidence(combat.financeEvidenceAdoption) === 0);
   const combatExplanations = combats.filter((combat) => combat.financeProjection || combat.financeEvidenceAdoption || combat.csReasonZh?.length || combat.csReasons?.length);
   const combatFinanceCsSeparated = combatExplanations.filter(hasSeparatedFinanceAndCsReasons);
+  const directCombats = combats.filter(hasOpposingCombatParticipants);
+  const combatWithN65PressureKey = directCombats.filter(hasN65LitePressureKey);
+  const combatMissingN65PressureKey = directCombats.filter((combat) => !hasN65LitePressureKey(combat));
+  const combatRegionOnlyPressureKey = directCombats.filter(hasRegionOnlyPressureKey);
+  const combatLegacyMissingN65Fields = directCombats.filter((combat) => !hasN65LiteFields(combat));
   const targetClaimBindRate = challengeCatalog.length > 0
     ? roundTo(challengeCatalog.filter((challenge) => claimCatalog.claimIds.has(challenge.targetClaimId)).length / challengeCatalog.length)
     : 0;
@@ -142,10 +150,17 @@ const challengeCatalog = collectChallenges(roundStartOutputs);
     combats,
     financeVerdicts,
     financeWinWithoutAcceptedEvidence,
+    combatFinanceFirepowerPositive,
+    combatFinanceFirepowerWithoutAcceptedEvidence,
+    directCombats,
+    combatWithN65PressureKey,
+    combatMissingN65PressureKey,
+    combatRegionOnlyPressureKey,
+    combatLegacyMissingN65Fields,
     combatExplanations,
     combatFinanceCsSeparatedRatio,
     phase0Diagnostics,
-roundQualityStatus,
+    roundQualityStatus,
     roundQualityReasons,
     roundQualitySummaryZh,
     submittedFinanceOutputs,
@@ -189,6 +204,13 @@ targetClaimBindRate,
     combatJudgeInputLegacyCount: submittedFinanceDiagnostics.combatJudgeInputLegacyCount,
     financeVerdictCount: financeVerdicts.length,
     financeWinWithoutAcceptedEvidenceCount: financeWinWithoutAcceptedEvidence.length,
+    combatFinanceFirepowerPositiveCount: combatFinanceFirepowerPositive.length,
+    combatFinanceFirepowerWithoutAcceptedEvidenceCount: combatFinanceFirepowerWithoutAcceptedEvidence.length,
+    directCombatCount: directCombats.length,
+    combatWithN65PressureKeyCount: combatWithN65PressureKey.length,
+    combatMissingN65PressureKeyCount: combatMissingN65PressureKey.length,
+    combatRegionOnlyPressureKeyCount: combatRegionOnlyPressureKey.length,
+    combatLegacyMissingN65FieldsCount: combatLegacyMissingN65Fields.length,
     combatExplanationCount: combatExplanations.length,
     combatFinanceCsSeparatedCount: combatFinanceCsSeparated.length,
     combatFinanceCsSeparatedRatio,
@@ -230,6 +252,13 @@ function buildBlockedRealProviderRun(reason) {
     targetClaimBindRate: 0,
     financeVerdictCount: 0,
     financeWinWithoutAcceptedEvidenceCount: 0,
+    combatFinanceFirepowerPositiveCount: 0,
+    combatFinanceFirepowerWithoutAcceptedEvidenceCount: 0,
+    directCombatCount: 0,
+    combatWithN65PressureKeyCount: 0,
+    combatMissingN65PressureKeyCount: 0,
+    combatRegionOnlyPressureKeyCount: 0,
+    combatLegacyMissingN65FieldsCount: 0,
     combatExplanationCount: 0,
     combatFinanceCsSeparatedCount: 0,
     combatFinanceCsSeparatedRatio: 0,
@@ -263,7 +292,9 @@ function classifyRunQuality(failures) {
     "web_audit_incomplete",
     "missing_submitted_finance_output",
     "finance_submitted_cap_violation",
-    "judge_input_not_submitted"
+    "judge_input_not_submitted",
+    "missing_n65_pressure_key",
+    "invalid_n65_pressure_key"
   ]);
   return failures.some((failure) => hardFailureCategories.has(failure.category))
     ? "fail"
@@ -426,6 +457,10 @@ function hasFinanceVerdict(combat) {
   return Boolean(combat.financeProjection || combat.financeEvidenceAdoption || combat.financeVerdict);
 }
 
+function hasPositiveFinanceFirepower(combat) {
+  const scores = [combat.scores?.attack?.financeFirepowerScore, combat.scores?.defense?.financeFirepowerScore, combat.financeFirepowerAttack, combat.financeFirepowerDefense].filter(Boolean);
+  return scores.some((score) => Number(score.appliedToCombatScore ?? 0) > 0 || Number(score.totalScore ?? 0) > 0);
+}
 function hasFinancialWinWithoutAcceptedEvidence(combat) {
   const financialResult = combat.financeProjection?.financialResult
     ?? combat.financeEvidenceAdoption?.attack?.financialResult
@@ -487,6 +522,36 @@ function inferProviderMode(outputs) {
   return "unknown";
 }
 
+function hasOpposingCombatParticipants(combat) {
+  const participants = Array.isArray(combat.participants) ? combat.participants : [];
+  const sides = new Set(participants.map((participant) => participant?.side).filter(Boolean));
+  return sides.has("attack") && sides.has("defense");
+}
+
+function hasN65LiteFields(combat) {
+  return Array.isArray(combat.duelPairs) || Array.isArray(combat.fireLanes) || Array.isArray(combat.pressureKeys) || Boolean(combat.audit?.duelPairing);
+}
+
+function collectN65PressureKeys(combat) {
+  const keys = [];
+  if (Array.isArray(combat.pressureKeys)) keys.push(...combat.pressureKeys);
+  if (Array.isArray(combat.duelPairs)) keys.push(...combat.duelPairs.map((pair) => pair?.pressureKey).filter(Boolean));
+  if (Array.isArray(combat.audit?.duelPairing?.pressureKeys)) keys.push(...combat.audit.duelPairing.pressureKeys);
+  return [...new Set(keys.filter((key) => typeof key === "string" && key.length > 0))];
+}
+
+function hasN65LitePressureKey(combat) {
+  return collectN65PressureKeys(combat).some(isAllowedN65PressureKey);
+}
+
+function hasRegionOnlyPressureKey(combat) {
+  const keys = collectN65PressureKeys(combat);
+  return keys.length > 0 && keys.some((key) => !isAllowedN65PressureKey(key));
+}
+
+function isAllowedN65PressureKey(key) {
+  return key.startsWith("duelPair:") || key.startsWith("fireLane:") || key.startsWith("objective_exposure:") || key.startsWith("cell_contact:");
+}
 function buildFailures(input) {
   const failures = [];
   const add = (category, message, extra = {}) => {
@@ -569,6 +634,11 @@ function buildFailures(input) {
       count: input.financeWinWithoutAcceptedEvidence.length
     });
   }
+  if (input.combatFinanceFirepowerWithoutAcceptedEvidence.length > 0) {
+    add("finance_firepower_without_accepted_evidence", "存在无 accepted evidence 却产生 N63 正金融火力的 combat。", {
+      count: input.combatFinanceFirepowerWithoutAcceptedEvidence.length
+    });
+  }
   if (input.combats.length > 0 && input.combats.some((combat) => !combat.financeProjection)) {
     add("old_trace_missing_fields", "部分 combat 未记录 N60 financeProjection。");
   }
@@ -590,6 +660,13 @@ function buildSummary(runs) {
   const totals = runs.reduce((acc, run) => {
     acc.financeVerdictCount += run.financeVerdictCount;
     acc.financeWinWithoutAcceptedEvidenceCount += run.financeWinWithoutAcceptedEvidenceCount;
+    acc.combatFinanceFirepowerPositiveCount += run.combatFinanceFirepowerPositiveCount ?? 0;
+    acc.combatFinanceFirepowerWithoutAcceptedEvidenceCount += run.combatFinanceFirepowerWithoutAcceptedEvidenceCount ?? 0;
+    acc.directCombatCount += run.directCombatCount ?? 0;
+    acc.combatWithN65PressureKeyCount += run.combatWithN65PressureKeyCount ?? 0;
+    acc.combatMissingN65PressureKeyCount += run.combatMissingN65PressureKeyCount ?? 0;
+    acc.combatRegionOnlyPressureKeyCount += run.combatRegionOnlyPressureKeyCount ?? 0;
+    acc.combatLegacyMissingN65FieldsCount += run.combatLegacyMissingN65FieldsCount ?? 0;
     acc.phase0OutputCount += run.phase0OutputCount;
     acc.usablePhase0OutputCount += run.usablePhase0OutputCount;
     acc.invalidPhase0OutputCount += run.invalidPhase0OutputCount;
@@ -600,7 +677,7 @@ function buildSummary(runs) {
     acc.claimCount += run.claimCount;
     acc.validClaimCount += run.validClaimCount;
     acc.challengeCount += run.challengeCount;
-acc.validChallengeCount += run.validChallengeCount;
+    acc.validChallengeCount += run.validChallengeCount;
     acc.submittedFinanceOutputCount += run.submittedFinanceOutputCount ?? 0;
     acc.submittedFinanceUsableForJudgeCount += run.submittedFinanceUsableForJudgeCount ?? 0;
     acc.submittedFinanceUsableForCombatCount += run.submittedFinanceUsableForCombatCount ?? 0;
@@ -626,6 +703,13 @@ acc.validChallengeCount += run.validChallengeCount;
   }, {
     financeVerdictCount: 0,
     financeWinWithoutAcceptedEvidenceCount: 0,
+    combatFinanceFirepowerPositiveCount: 0,
+    combatFinanceFirepowerWithoutAcceptedEvidenceCount: 0,
+    directCombatCount: 0,
+    combatWithN65PressureKeyCount: 0,
+    combatMissingN65PressureKeyCount: 0,
+    combatRegionOnlyPressureKeyCount: 0,
+    combatLegacyMissingN65FieldsCount: 0,
     phase0OutputCount: 0,
     usablePhase0OutputCount: 0,
     invalidPhase0OutputCount: 0,
@@ -636,7 +720,7 @@ acc.validChallengeCount += run.validChallengeCount;
     claimCount: 0,
     validClaimCount: 0,
     challengeCount: 0,
-validChallengeCount: 0,
+    validChallengeCount: 0,
     submittedFinanceOutputCount: 0,
     submittedFinanceUsableForJudgeCount: 0,
     submittedFinanceUsableForCombatCount: 0,

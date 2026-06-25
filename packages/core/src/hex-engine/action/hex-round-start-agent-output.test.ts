@@ -15,6 +15,7 @@ describe("Hex round-start agent output", () => {
   it("normalizes a valid stanceCard with whitelisted evidence refs", () => {
     const normalized = normalizeHexRoundStartAgentOutputDraft({
       cardKind: "stance",
+      rawFinanceOpinionZh: "????????????????FRED_COPPER ????????????????????????????????????",
       stanceCard: {
         cardId: "stance_ct_0",
         agentId: "ct_0",
@@ -103,6 +104,7 @@ describe("Hex round-start agent output", () => {
     }];
     const valid = normalizeHexRoundStartAgentOutputDraft({
       cardKind: "challenge",
+      rawFinanceOpinionZh: "?????????? claim_ct_0_1?FRED_COPPER ????????????????????????????????",
       challengeCard: {
         cardId: "challenge_t_0",
         agentId: "t_0",
@@ -168,6 +170,50 @@ describe("Hex round-start agent output", () => {
     expect(invalid.errors.some((error) => error.startsWith("round_start:invalid_targetClaimId"))).toBe(true);
   });
 
+  it("allows challenge cards to cite evidence from the visible target claim catalog", () => {
+    const claimCatalog = [{
+      claimId: "claim_ct_0_1",
+      claimType: "commodity_price_signal",
+      claimZh: "铝和镍价格动量偏强，支持有限多头。",
+      stanceAgentId: "ct_0",
+      evidenceRefs: ["FRED_ALUMINUM", "FRED_NICKEL"],
+      reasoningBridge: "价格动量只能支持商品层面的有限判断。"
+    }];
+    const normalized = normalizeHexRoundStartAgentOutputDraft({
+      cardKind: "challenge",
+      rawFinanceOpinionZh: "我挑战 claim_ct_0_1：对方引用 FRED_ALUMINUM 和 FRED_NICKEL 只能证明商品价格动量，不能直接推出 A 股有色超配。",
+      challengeCard: {
+        cardId: "challenge_t_catalog_ref",
+        agentId: "t_catalog_ref",
+        teamSide: "attack",
+        targetClaimId: "claim_ct_0_1",
+        challengeType: "proxy_mismatch",
+        challengedAssumption: "商品价格动量可以直接推出 A 股有色超配。",
+        evidenceRefs: ["FRED_ALUMINUM", "FRED_NICKEL"],
+        proxyMismatch: "目标 claim 自己的 FRED 证据只能支持商品价格动量，不能直接支持权益配置。",
+        confidenceReduction: 0.2,
+        challenges: [{
+          challengeId: "challenge_t_catalog_ref_1",
+          targetClaimId: "claim_ct_0_1",
+          challengeType: "proxy_mismatch",
+          evidenceRefs: ["FRED_ALUMINUM", "FRED_NICKEL"],
+          challengeReasonZh: "引用目标 claim 已公开证据指出代理错配。",
+          expectedEffect: "降低置信度并限制金融投影强度。"
+        }],
+        auditSummaryZh: "挑战目标 claim 的代理错配。"
+      }
+    }, {
+      allowedEvidenceRefs: ["BAOSTOCK_EQUITY"],
+      expectedCardKind: "challenge",
+      agentId: "t_catalog_ref",
+      teamSide: "attack",
+      decisionQuestionZh,
+      claimCatalog
+    });
+
+    expect(normalized.errors).toEqual([]);
+    expect(normalized.draft?.challengeCard?.evidenceRefs).toEqual(["FRED_ALUMINUM", "FRED_NICKEL"]);
+  });
   it("marks only successful structured fixture or llm response outputs as usable for phase action", () => {
     const baseOutput: HexRoundStartAgentOutputForAction = {
       outputId: "round_start_ct_0",
@@ -238,6 +284,7 @@ describe("Hex round-start agent output", () => {
   it("repairs safe real-provider stance aliases without inventing evidence", () => {
     const normalized = normalizeHexRoundStartAgentOutputDraft({
       cardKind: "stance",
+      rawOpinionZh: "??????????????????????????????????????????????????",
       stanceCard: {
         cardId: "stance_ct_alias",
         agentId: "ct_alias",
@@ -323,6 +370,7 @@ describe("Hex round-start agent output", () => {
     }];
     const normalized = normalizeHexRoundStartAgentOutputDraft({
       cardKind: "challenge",
+      financeOpinionZh: "?????????????????????? FRED_COPPER ???????????????????????",
       challengeCard: {
         cardId: "challenge_t_alias",
         agentId: "t_alias",
@@ -397,6 +445,7 @@ describe("Hex round-start agent output", () => {
           modelId: "test_model",
           rawDraft: {
             cardKind: "stance",
+            rawFinanceOpinionZh: "??????????? BAD_FACT?????????",
             stanceCard: {
               cardId: "stance_ct_invalid",
               agentId: "ct_invalid",

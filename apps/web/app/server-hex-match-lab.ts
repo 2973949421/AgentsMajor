@@ -202,8 +202,9 @@ export interface HexMatchLabRoundSummary {
 
 export interface HexMatchLabRoundTraceDetail extends HexMatchLabRoundSummary {
   source: "hex_round_engine_committed";
-roundStartAgentOutputs: HexMatchLabRoundStartAgentOutput[];
+  roundStartAgentOutputs: HexMatchLabRoundStartAgentOutput[];
   submittedFinanceOutputs: HexMatchLabSubmittedFinanceOutput[];
+  financeOutputAuditViews: HexMatchLabFinanceOutputAuditView[];
   phaseSummaries: HexMatchLabPhaseSummary[];
   audit: HexMatchLabLlmAuditSummary;
   economySummary: HexMatchLabEconomySummary[];
@@ -247,6 +248,9 @@ export interface HexMatchLabRoundStartAgentOutput {
   financeRoleCn?: string | undefined;
   buyType?: string | undefined;
   resourceTier?: string | undefined;
+  rawFinanceOpinionZh?: string | undefined;
+  rawOpinionSource?: string | undefined;
+  rawOpinionValidationErrors: string[];
   source: string;
   usableForPhaseAction: boolean;
   requestArtifactId?: string | undefined;
@@ -304,9 +308,61 @@ export interface HexMatchLabSubmittedFinanceOutput {
   submittedUsableForJudge: boolean;
   submittedUsableForCombat: boolean;
   gateSummary: string;
+  rawFinanceOpinionZh?: string | undefined;
+  submittedOpinionZh?: string | undefined;
+  submittedTextBudgetChars: number;
+  submittedTextSpanRefs: HexMatchLabFinanceOutputAnnotationSpan[];
+  rawOpinionLinkStatus: string;
+  unlocatedSubmittedItems: HexMatchLabFinanceOutputUnlocatedItem[];
   rawCardSummaryZh?: string | undefined;
   submittedStanceCard?: HexMatchLabFinanceStanceCard | undefined;
   submittedChallengeCard?: HexMatchLabFinanceChallengeCard | undefined;
+}
+
+export interface HexMatchLabFinanceOutputAuditView {
+  outputId: string;
+  agentId: string;
+  displayName: string;
+  cardKind?: "stance" | "challenge" | undefined;
+  financeRoleCn?: string | undefined;
+  buyType?: string | undefined;
+  rawText: string;
+  rawFallbackLabel?: string | undefined;
+  summaryZh: string;
+  judgeStatusZh: string;
+  clippingSummaryZh: string;
+  annotationSpans: HexMatchLabFinanceOutputAnnotationSpan[];
+  unlocatedSubmittedItems: HexMatchLabFinanceOutputUnlocatedItem[];
+  technicalRefs: {
+    requestArtifactId?: string | undefined;
+    responseArtifactId?: string | undefined;
+    rawDraftPreview?: string | undefined;
+    normalizedDraftPreview?: string | undefined;
+    submittedJsonPreview?: string | undefined;
+    submittedOutputId?: string | undefined;
+    judgeInputRef?: string | undefined;
+    clippingTier?: string | undefined;
+    combatEffectCap?: string | undefined;
+    rawFingerprint?: string | undefined;
+    submittedFingerprint?: string | undefined;
+  };
+}
+
+export interface HexMatchLabFinanceOutputAnnotationSpan {
+  start: number;
+  end: number;
+  kind: "kept" | "omitted" | "capped" | "blocked";
+  labelZh: string;
+  reasonZh: string;
+  sourceField: string;
+}
+
+export interface HexMatchLabFinanceOutputUnlocatedItem {
+  kind: "kept" | "omitted" | "capped" | "blocked";
+  labelZh: string;
+  reasonZh: string;
+  sourceField: string;
+  text: string;
 }
 export interface HexMatchLabFinanceCoreClaim {
   claimId: string;
@@ -779,6 +835,8 @@ export interface HexMatchLabCombatSummary {
   csReasons: string[];
   financeEvidenceAdoption?: HexMatchLabFinanceEvidenceAdoptionSummary | undefined;
   financeProjection?: HexMatchLabFinanceProjectionSummary | undefined;
+  financeFirepowerAttack?: HexMatchLabFinanceFirepowerSummary | undefined;
+  financeFirepowerDefense?: HexMatchLabFinanceFirepowerSummary | undefined;
   financeReasonZh: string[];
   csReasonZh: string[];
   casualties: string[];
@@ -796,6 +854,8 @@ export interface HexMatchLabCombatSummary {
   businessScoreDefense?: number | undefined;
   financeScoreAttack?: number | undefined;
   financeScoreDefense?: number | undefined;
+  totalScoreAttack?: number | undefined;
+  totalScoreDefense?: number | undefined;
   csScoreAttack?: number | undefined;
   csScoreDefense?: number | undefined;
   economyEvidenceApplied?: boolean | undefined;
@@ -814,6 +874,21 @@ export interface HexMatchLabCombatSummary {
   }>;
 }
 
+
+export interface HexMatchLabFinanceFirepowerSummary {
+  side: string;
+  pressureScore: number;
+  lethalScore: number;
+  totalScore: number;
+  appliedToCombatScore: number;
+  blockedLethalScore: number;
+  participantAcceptedEvidenceRefs: string[];
+  participantAcceptedClaimRefs: string[];
+  participantSubmittedOutputRefs: string[];
+  capApplied: string;
+  caps: string[];
+  auditReasons: string[];
+}
 export interface HexMatchLabFinanceProjectionSummary {
   financialResult: string;
   combatEffectAllowed: string[];
@@ -952,6 +1027,7 @@ interface HexLlmResponseArtifactSummary {
   artifactId: string;
   callId?: string | undefined;
   source: "llm_response_artifact" | "fixture_response" | "old_trace_missing";
+  rawText?: string | undefined;
   rawTextPreview?: string | undefined;
   rawDraft?: Record<string, unknown> | undefined;
   normalizedDraft?: Record<string, unknown> | undefined;
@@ -1449,9 +1525,12 @@ async function readHexLlmResponseArtifactSummaries(
   projectRoot: string,
   trace: HexRoundTrace
 ): Promise<Map<string, HexLlmResponseArtifactSummary>> {
-  const responseArtifactIds = uniqueStrings(trace.phases.flatMap((phase) =>
+  const phaseActionResponseArtifactIds = trace.phases.flatMap((phase) =>
     phase.commandResult.audits.map((audit) => audit.responseArtifactId)
-  ));
+  );
+  const roundStartResponseArtifactIds = (trace.roundStartAgentOutputs ?? [])
+    .map((output) => output.responseArtifactId);
+  const responseArtifactIds = uniqueStrings([...roundStartResponseArtifactIds, ...phaseActionResponseArtifactIds]);
   const summaries = new Map<string, HexLlmResponseArtifactSummary>();
   for (const artifactId of responseArtifactIds) {
     try {
@@ -1673,7 +1752,7 @@ function summarizeTrace(
     roundQualityStatus: trace.audit.roundQualityStatus,
     roundQualityReasons: trace.audit.roundQualityReasons,
     roundQualitySummaryZh: trace.audit.roundQualitySummaryZh,
-    roundQualityCounts: trace.audit.roundQualityCounts
+    roundQualityCounts: { ...trace.audit.roundQualityCounts }
   };
   const economySummary = summarizeEconomy(trace.economyContext);
   const firstPhase = trace.phases[0];
@@ -1691,9 +1770,10 @@ function summarizeTrace(
   const businessDuel = summarizeBusinessDuel(trace);
   const financeDuel = summarizeFinanceDuel(trace);
   const finalHardCondition = summarizeHardCondition(trace.finalWinCondition);
-const audit = summarizeTraceAudit(trace);
-  const roundStartAgentOutputs = summarizeRoundStartAgentOutputs(trace, agentIdentities);
+  const audit = summarizeTraceAudit(trace);
+  const roundStartAgentOutputs = summarizeRoundStartAgentOutputs(trace, agentIdentities, llmResponseArtifacts);
   const submittedFinanceOutputs = summarizeSubmittedFinanceOutputs(trace, agentIdentities, roundStartAgentOutputs);
+  const financeOutputAuditViews = buildFinanceOutputAuditViews(roundStartAgentOutputs, submittedFinanceOutputs, llmResponseArtifacts);
   return {
     ...roundSummary,
     fallbackCount: trace.audit.fallbackCount,
@@ -1705,8 +1785,9 @@ const audit = summarizeTraceAudit(trace);
     roundQualitySummaryZh: audit.roundQualitySummaryZh,
     roundQualityCounts: audit.roundQualityCounts,
     source: "hex_round_engine_committed",
-roundStartAgentOutputs,
+    roundStartAgentOutputs,
     submittedFinanceOutputs,
+    financeOutputAuditViews,
     phaseSummaries,
     audit,
     economySummary,
@@ -1834,7 +1915,8 @@ function summarizeFinanceDuel(trace: HexRoundTrace): HexMatchLabFinanceDuelSumma
 
 function summarizeRoundStartAgentOutputs(
   trace: HexRoundTrace,
-  agentIdentities: Map<string, AgentIdentity>
+  agentIdentities: Map<string, AgentIdentity>,
+  responseArtifacts: Map<string, HexLlmResponseArtifactSummary>
 ): HexMatchLabRoundStartAgentOutput[] {
   const outputs = Array.isArray(trace.roundStartAgentOutputs) ? trace.roundStartAgentOutputs : [];
   return outputs.map((rawOutput) => {
@@ -1845,6 +1927,7 @@ function summarizeRoundStartAgentOutputs(
       stanceCard?: HexMatchLabFinanceStanceCard | undefined;
       challengeCard?: HexMatchLabFinanceChallengeCard | undefined;
     };
+    const response = output.responseArtifactId ? responseArtifacts.get(output.responseArtifactId) : undefined;
     return {
       outputId: output.outputId,
       agentId: output.agentId,
@@ -1854,6 +1937,9 @@ function summarizeRoundStartAgentOutputs(
       financeRoleCn: output.financeRoleCn,
       buyType: output.buyType,
       resourceTier: output.resourceTier,
+      rawFinanceOpinionZh: output.rawFinanceOpinionZh,
+      rawOpinionSource: output.rawOpinionSource,
+      rawOpinionValidationErrors: Array.isArray(output.rawOpinionValidationErrors) ? [...output.rawOpinionValidationErrors] : [],
       source: output.source,
       usableForPhaseAction: isUsableHexMatchLabRoundStartOutputSource(output),
       requestArtifactId: output.requestArtifactId,
@@ -1877,12 +1963,12 @@ function summarizeRoundStartAgentOutputs(
       normalizationSummaryZh: output.normalizationSummaryZh,
       validationSummaryZh: output.validationSummaryZh,
       technicalRefs: {
-        rawTextPreview: output.technicalRefs.rawTextPreview,
-        rawDraftPreview: output.technicalRefs.rawDraftPreview,
-        normalizedDraftPreview: output.technicalRefs.normalizedDraftPreview,
-        errors: [...output.technicalRefs.errors],
-        repairedFields: [...output.technicalRefs.repairedFields],
-        providerMode: output.technicalRefs.providerMode,
+        rawTextPreview: output.technicalRefs.rawTextPreview ?? response?.rawTextPreview,
+        rawDraftPreview: output.technicalRefs.rawDraftPreview ?? previewRecord(response?.rawDraft),
+        normalizedDraftPreview: output.technicalRefs.normalizedDraftPreview ?? previewRecord(response?.normalizedDraft),
+        errors: [...output.technicalRefs.errors, ...(response?.normalizedErrors ?? [])],
+        repairedFields: uniqueStrings([...output.technicalRefs.repairedFields, ...(response?.normalizedRepairedFields ?? [])]),
+        providerMode: output.technicalRefs.providerMode ?? response?.source,
         modelId: output.technicalRefs.modelId
       }
     };
@@ -1898,7 +1984,7 @@ function summarizeSubmittedFinanceOutputs(
   const outputs = Array.isArray(traceWithSubmitted.submittedFinanceOutputs) ? traceWithSubmitted.submittedFinanceOutputs : [];
   const rawById = new Map(roundStartAgentOutputs.map((output) => [output.outputId, output]));
   return outputs.map((rawSubmitted) => {
-    const submitted = rawSubmitted as Record<string, unknown>;
+    const submitted = rawSubmitted as unknown as Record<string, unknown>;
     const rawOutputId = String(submitted.rawOutputId ?? "");
     const rawOutput = rawById.get(rawOutputId);
     const agentId = String(submitted.agentId ?? rawOutput?.agentId ?? "unknown_agent");
@@ -1928,11 +2014,284 @@ function summarizeSubmittedFinanceOutputs(
       submittedUsableForJudge: submitted.submittedUsableForJudge === true,
       submittedUsableForCombat: submitted.submittedUsableForCombat === true,
       gateSummary: String(submitted.gateSummary ?? "N62 提交门未记录摘要。"),
+      rawFinanceOpinionZh: typeof submitted.rawFinanceOpinionZh === "string" ? submitted.rawFinanceOpinionZh : rawOutput?.rawFinanceOpinionZh,
+      submittedOpinionZh: typeof submitted.submittedOpinionZh === "string" ? submitted.submittedOpinionZh : undefined,
+      submittedTextBudgetChars: typeof submitted.submittedTextBudgetChars === "number" ? submitted.submittedTextBudgetChars : 0,
+      submittedTextSpanRefs: toFinanceOutputAnnotationSpans(submitted.submittedTextSpanRefs),
+      rawOpinionLinkStatus: String(submitted.rawOpinionLinkStatus ?? "unknown"),
+      unlocatedSubmittedItems: toFinanceOutputUnlocatedItems(submitted.unlocatedSubmittedItems),
       rawCardSummaryZh: rawOutput?.cardSummaryZh ?? rawOutput?.rawOutputSummaryZh,
       submittedStanceCard: submitted.submittedStanceCard as HexMatchLabFinanceStanceCard | undefined,
       submittedChallengeCard: submitted.submittedChallengeCard as HexMatchLabFinanceChallengeCard | undefined
     };
   });
+}
+type FinanceAuditTerm = {
+  text: string;
+  kind: HexMatchLabFinanceOutputAnnotationSpan["kind"];
+  labelZh: string;
+  reasonZh: string;
+  sourceField: string;
+};
+
+function toFinanceOutputAnnotationSpans(value: unknown): HexMatchLabFinanceOutputAnnotationSpan[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    const record = parseRecord(item);
+    if (!record) return [];
+    const start = typeof record.start === "number" ? record.start : Number.NaN;
+    const end = typeof record.end === "number" ? record.end : Number.NaN;
+    const kind = readFinanceAnnotationKind(record.kind);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start || !kind) return [];
+    return [{
+      start,
+      end,
+      kind,
+      labelZh: labelFinanceAnnotationKind(kind),
+      reasonZh: String(record.reasonZh ?? "N62B 裁剪标注"),
+      sourceField: String(record.sourceRef ?? record.sourceField ?? "submittedTextSpanRefs")
+    }];
+  });
+}
+
+function toFinanceOutputUnlocatedItems(value: unknown): HexMatchLabFinanceOutputUnlocatedItem[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    const record = parseRecord(item);
+    if (!record) return [];
+    const text = String(record.text ?? "").trim();
+    if (!text) return [];
+    const kind = readFinanceAnnotationKind(record.kind) ?? "kept";
+    return [{
+      kind,
+      labelZh: labelFinanceAnnotationKind(kind),
+      reasonZh: String(record.reasonZh ?? "submitted 内容未能定位到原文"),
+      sourceField: String(record.sourceRef ?? record.sourceField ?? "unlocatedSubmittedItems"),
+      text
+    }];
+  });
+}
+
+function readFinanceAnnotationKind(value: unknown): HexMatchLabFinanceOutputAnnotationSpan["kind"] | undefined {
+  return value === "kept" || value === "omitted" || value === "capped" || value === "blocked" ? value : undefined;
+}
+
+function labelFinanceAnnotationKind(kind: HexMatchLabFinanceOutputAnnotationSpan["kind"]): string {
+  if (kind === "kept") return "保留进入 submitted";
+  if (kind === "omitted") return "经济裁掉";
+  if (kind === "capped") return "经济封顶";
+  return "不能进入 judge";
+}
+
+function buildFinanceOutputAuditViews(
+  roundStartOutputs: HexMatchLabRoundStartAgentOutput[],
+  submittedOutputs: HexMatchLabSubmittedFinanceOutput[],
+  responseArtifacts: Map<string, HexLlmResponseArtifactSummary>
+): HexMatchLabFinanceOutputAuditView[] {
+  const submittedByRawId = new Map(submittedOutputs.map((output) => [output.rawOutputId, output]));
+  return roundStartOutputs.map((output) => {
+    const submitted = submittedByRawId.get(output.outputId);
+    const response = output.responseArtifactId ? responseArtifacts.get(output.responseArtifactId) : undefined;
+    const rawOpinion = (submitted?.rawFinanceOpinionZh ?? output.rawFinanceOpinionZh)?.trim();
+    const rawText = rawOpinion || response?.rawText || buildNormalizedFinanceRawFallback(output);
+    const rawFallbackLabel = rawOpinion
+      ? undefined
+      : response?.rawText
+        ? "当前 trace 未记录 rawFinanceOpinionZh，以下显示 response artifact 原文；submitted 标注可能不完整。"
+        : "当前 trace 未记录原始 LLM 文本，以下显示 parser / normalizer 后的结构化卡片。";
+    return {
+      outputId: output.outputId,
+      agentId: output.agentId,
+      displayName: output.displayName,
+      cardKind: output.cardKind,
+      financeRoleCn: output.financeRoleCn,
+      buyType: output.buyType,
+      rawText,
+      rawFallbackLabel,
+      summaryZh: buildFinanceAuditSummary(output),
+      judgeStatusZh: submitted ? (submitted.submittedUsableForJudge ? "进入 N59 judge" : "不进入 N59 judge") : "旧 trace 未记录 N62 提交门",
+      clippingSummaryZh: buildFinanceClippingSummary(submitted),
+      annotationSpans: submitted?.submittedTextSpanRefs ?? [],
+      unlocatedSubmittedItems: submitted?.unlocatedSubmittedItems ?? [],
+      technicalRefs: {
+        requestArtifactId: output.requestArtifactId,
+        responseArtifactId: output.responseArtifactId,
+        rawDraftPreview: output.technicalRefs.rawDraftPreview ?? previewRecord(response?.rawDraft),
+        normalizedDraftPreview: output.technicalRefs.normalizedDraftPreview ?? previewRecord(response?.normalizedDraft),
+        submittedJsonPreview: submitted ? previewRecord(submitted as unknown as Record<string, unknown>) : undefined,
+        submittedOutputId: submitted?.submittedOutputId,
+        judgeInputRef: submitted?.judgeInputRef,
+        clippingTier: submitted?.clippingTier,
+        combatEffectCap: submitted?.combatEffectCap,
+        rawFingerprint: submitted?.rawFingerprint,
+        submittedFingerprint: submitted?.submittedFingerprint
+      }
+    };
+  });
+}
+
+function buildNormalizedFinanceRawFallback(output: HexMatchLabRoundStartAgentOutput): string {
+  return JSON.stringify({
+    cardKind: output.cardKind,
+    cardSummaryZh: output.cardSummaryZh,
+    stanceCard: output.stanceCard,
+    challengeCard: output.challengeCard
+  }, null, 2);
+}
+
+function buildFinanceAuditSummary(output: HexMatchLabRoundStartAgentOutput): string {
+  if (output.stanceCard) {
+    const firstClaim = output.stanceCard.coreClaims[0]?.claimZh;
+    return output.stanceCard.auditSummaryZh || firstClaim || output.cardSummaryZh || "立场卡未记录摘要。";
+  }
+  if (output.challengeCard) {
+    const firstChallenge = output.challengeCard.challenges[0]?.challengeReasonZh;
+    return output.challengeCard.auditSummaryZh || firstChallenge || output.cardSummaryZh || "挑战卡未记录摘要。";
+  }
+  return output.cardSummaryZh || output.rawOutputSummaryZh || "未记录摘要。";
+}
+
+function buildFinanceClippingSummary(submitted: HexMatchLabSubmittedFinanceOutput | undefined): string {
+  if (!submitted) {
+    return "旧 trace 未记录经济裁剪结果。";
+  }
+  const omitted = submitted.omittedFields.length > 0 ? `被裁剪 ${submitted.omittedFields.length} 项` : "无被裁剪字段";
+  const capped = submitted.cappedFields.length > 0 ? `封顶 ${submitted.cappedFields.length} 项` : "无额外封顶字段";
+  return `经济裁剪：${formatFinanceClippingTierZh(submitted.clippingTier)}；金融火力上限：${formatFinanceCapLevelZh(submitted.combatEffectCap)}；${omitted}；${capped}。`;
+}
+
+function collectFinanceAuditTerms(
+  output: HexMatchLabRoundStartAgentOutput,
+  submitted: HexMatchLabSubmittedFinanceOutput | undefined
+): FinanceAuditTerm[] {
+  const terms: FinanceAuditTerm[] = [];
+  if (!submitted) return terms;
+  const submittedTexts = new Set<string>();
+  const addTerm = (term: FinanceAuditTerm) => {
+    const text = term.text.trim();
+    if (text.length < 2) return;
+    terms.push({ ...term, text });
+    if (term.kind === "kept") submittedTexts.add(text);
+  };
+
+  if (submitted.submittedStanceCard) {
+    for (const claim of submitted.submittedStanceCard.coreClaims) {
+      addTerm({ text: claim.claimId, kind: "kept", labelZh: "保留 claim", reasonZh: "进入 submitted / judge 的 claim 编号。", sourceField: "submittedStanceCard.coreClaims.claimId" });
+      addTerm({ text: claim.claimZh, kind: "kept", labelZh: "保留 claim", reasonZh: "进入 submitted / judge 的 claim 正文。", sourceField: "submittedStanceCard.coreClaims.claimZh" });
+      addTerm({ text: claim.reasoningBridge, kind: "kept", labelZh: "保留推理桥", reasonZh: "进入 submitted / judge 的推理桥。", sourceField: "submittedStanceCard.coreClaims.reasoningBridge" });
+      for (const evidenceRef of claim.evidenceRefs) {
+        addTerm({ text: evidenceRef, kind: "kept", labelZh: "保留 evidence", reasonZh: "进入 submitted / judge 的证据编号。", sourceField: "submittedStanceCard.coreClaims.evidenceRefs" });
+      }
+    }
+  }
+
+  if (submitted.submittedChallengeCard) {
+    addTerm({ text: submitted.submittedChallengeCard.targetClaimId, kind: submitted.orphanedChallenge ? "blocked" : "kept", labelZh: submitted.orphanedChallenge ? "靶点失效" : "保留 targetClaimId", reasonZh: submitted.orphanedChallenge ? "targetClaimId 已在对方 submitted stance 中被裁掉。" : "进入 submitted / judge 的挑战靶点。", sourceField: "submittedChallengeCard.targetClaimId" });
+    addTerm({ text: submitted.submittedChallengeCard.challengedAssumption, kind: "kept", labelZh: "保留挑战假设", reasonZh: "进入 submitted / judge 的挑战假设。", sourceField: "submittedChallengeCard.challengedAssumption" });
+    addTerm({ text: submitted.submittedChallengeCard.proxyMismatch, kind: "kept", labelZh: "保留代理错配", reasonZh: "进入 submitted / judge 的代理错配描述。", sourceField: "submittedChallengeCard.proxyMismatch" });
+    for (const challenge of submitted.submittedChallengeCard.challenges) {
+      addTerm({ text: challenge.challengeId, kind: "kept", labelZh: "保留 challenge", reasonZh: "进入 submitted / judge 的 challenge 编号。", sourceField: "submittedChallengeCard.challenges.challengeId" });
+      addTerm({ text: challenge.challengeReasonZh, kind: "kept", labelZh: "保留挑战理由", reasonZh: "进入 submitted / judge 的挑战理由。", sourceField: "submittedChallengeCard.challenges.challengeReasonZh" });
+      for (const evidenceRef of challenge.evidenceRefs) {
+        addTerm({ text: evidenceRef, kind: "kept", labelZh: "保留 evidence", reasonZh: "进入 submitted / judge 的证据编号。", sourceField: "submittedChallengeCard.challenges.evidenceRefs" });
+      }
+    }
+  }
+
+  const rawTexts = collectRawFinanceCardTexts(output);
+  for (const rawText of rawTexts) {
+    if (!submittedTexts.has(rawText)) {
+      addTerm({ text: rawText, kind: "omitted", labelZh: "被裁剪", reasonZh: "raw 中存在，但没有进入 submitted。", sourceField: "rawCard" });
+    }
+  }
+  for (const cappedField of submitted.cappedFields) {
+    addTerm({ text: cappedField, kind: "capped", labelZh: "被封顶", reasonZh: "经济系统对该字段施加上限。", sourceField: "submitted.cappedFields" });
+  }
+  for (const omittedField of submitted.omittedFields) {
+    addTerm({ text: omittedField, kind: "omitted", labelZh: "被裁剪字段", reasonZh: "经济系统记录该字段被裁剪。", sourceField: "submitted.omittedFields" });
+  }
+  return terms;
+}
+
+function collectRawFinanceCardTexts(output: HexMatchLabRoundStartAgentOutput): string[] {
+  const values: string[] = [];
+  if (output.stanceCard) {
+    for (const claim of output.stanceCard.coreClaims) {
+      values.push(claim.claimId, claim.claimZh, claim.reasoningBridge, ...claim.evidenceRefs);
+    }
+  }
+  if (output.challengeCard) {
+    values.push(output.challengeCard.targetClaimId, output.challengeCard.challengedAssumption, output.challengeCard.proxyMismatch);
+    for (const challenge of output.challengeCard.challenges) {
+      values.push(challenge.challengeId, challenge.challengeReasonZh, ...challenge.evidenceRefs);
+    }
+  }
+  return uniqueStrings(values.map((value) => value.trim()).filter((value) => value.length >= 2));
+}
+
+function buildFinanceAnnotationSpans(rawText: string, terms: FinanceAuditTerm[]): {
+  spans: HexMatchLabFinanceOutputAnnotationSpan[];
+  unlocated: HexMatchLabFinanceOutputUnlocatedItem[];
+} {
+  const matches: Array<HexMatchLabFinanceOutputAnnotationSpan & { priority: number }> = [];
+  const unlocated: HexMatchLabFinanceOutputUnlocatedItem[] = [];
+  const seen = new Set<string>();
+  for (const term of terms) {
+    const key = `${term.kind}:${term.sourceField}:${term.text}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const start = rawText.indexOf(term.text);
+    if (start < 0) {
+      unlocated.push({ kind: term.kind, labelZh: term.labelZh, reasonZh: term.reasonZh, sourceField: term.sourceField, text: term.text });
+      continue;
+    }
+    matches.push({
+      start,
+      end: start + term.text.length,
+      kind: term.kind,
+      labelZh: term.labelZh,
+      reasonZh: term.reasonZh,
+      sourceField: term.sourceField,
+      priority: financeAnnotationPriority(term.kind)
+    });
+  }
+  const accepted: Array<HexMatchLabFinanceOutputAnnotationSpan & { priority: number }> = [];
+  for (const match of matches.sort((a, b) => b.priority - a.priority || (b.end - b.start) - (a.end - a.start))) {
+    if (!accepted.some((item) => rangesOverlap(item.start, item.end, match.start, match.end))) {
+      accepted.push(match);
+    }
+  }
+  return {
+    spans: accepted.sort((a, b) => a.start - b.start).map(({ priority: _priority, ...span }) => span),
+    unlocated
+  };
+}
+
+function financeAnnotationPriority(kind: HexMatchLabFinanceOutputAnnotationSpan["kind"]): number {
+  if (kind === "blocked") return 4;
+  if (kind === "capped") return 3;
+  if (kind === "kept") return 2;
+  return 1;
+}
+
+function rangesOverlap(startA: number, endA: number, startB: number, endB: number): boolean {
+  return startA < endB && startB < endA;
+}
+
+function formatFinanceClippingTierZh(tier: string): string {
+  if (tier === "full") return "完整";
+  if (tier === "standard") return "标准";
+  if (tier === "force") return "强起";
+  if (tier === "eco") return "eco 弱提交";
+  if (tier === "save") return "保枪 / 全 eco";
+  return "未知";
+}
+
+function formatFinanceCapLevelZh(cap: string): string {
+  if (cap === "possible_kill") return "高";
+  if (cap === "possible_wound" || cap === "forced_back" || cap === "suppression") return "中";
+  if (cap === "weak_pressure" || cap === "minor_delay" || cap === "none") return "低";
+  return "未知";
 }
 function toStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map((item) => String(item)).filter(Boolean) : [];
@@ -1961,7 +2320,7 @@ function buildHumanAudit(input: {
   agentIdentities: Map<string, AgentIdentity>;
   audit: HexMatchLabLlmAuditSummary;
   llmResponseArtifacts: Map<string, HexLlmResponseArtifactSummary>;
-  roundStartAgentOutputs: HexMatchLabRoundStartAgentOutput[];
+    roundStartAgentOutputs: HexMatchLabRoundStartAgentOutput[];
 }): HexMatchLabHumanAudit {
   const openingBriefs = buildHumanAgentOpeningBriefs(input.financeDuel, input.economySummary, input.agentIdentities);
   const openingBriefsByAgentId = new Map(openingBriefs.map((brief) => [brief.agentId, brief]));
@@ -2053,7 +2412,7 @@ function buildHumanSampleQualityWarnings(input: {
   phaseSummaries: HexMatchLabPhaseSummary[];
   audit: HexMatchLabLlmAuditSummary;
   openingBriefs: HexMatchLabHumanAgentOpeningBrief[];
-  roundStartAgentOutputs: HexMatchLabRoundStartAgentOutput[];
+    roundStartAgentOutputs: HexMatchLabRoundStartAgentOutput[];
   failedRoundStartOutputCount: number;
   finalHardCondition?: HexMatchLabHardConditionSummary | undefined;
   roundQualityStatus?: string | undefined;
@@ -2115,6 +2474,7 @@ function summarizeHexLlmResponseArtifact(artifactId: string, value: unknown): He
     artifactId,
     callId: readString(record?.callId),
     source: readString(providerDiagnostics?.providerMode) === "fixture" ? "fixture_response" : "llm_response_artifact",
+    rawText: readString(record?.rawText),
     rawTextPreview: truncateText(readString(record?.rawText), 260),
     rawDraft: readDraftRecord(record?.rawDraft),
     normalizedDraft: readDraftRecord(normalized?.draft),
@@ -2651,6 +3011,16 @@ function buildHumanCombatStory(
   };
 }
 
+function humanizeDuelPairing(combat: HexMatchLabCombatSummary, agentIdentities: Map<string, AgentIdentity>): string {
+  const pair = [...combat.duelPairs].sort((left, right) => right.directnessScore - left.directnessScore || left.duelPairId.localeCompare(right.duelPairId))[0];
+  if (!pair) {
+    return "? trace ??? N65-lite ??? pair / pressureKey?";
+  }
+  const primary = formatAgentName(pair.primaryAgentId, agentIdentities);
+  const target = formatAgentName(pair.targetAgentId, agentIdentities);
+  const support = pair.contributorAgentIds.length > 0 ? "????" + pair.contributorAgentIds.map((agentId) => formatAgentName(agentId, agentIdentities)).join("?") : "";
+  return "????" + primary + " vs " + target + "??? " + pair.laneId + "?pressureKey " + pair.pressureKey + "???? " + pair.directnessScore + "????? " + pair.lethalGateStatus + support + "?";
+}
 function humanizeContactThreat(combat: HexMatchLabCombatSummary): string {
   const threat = combat.contactThreatLevel === "lethal"
     ? "致命接触"
@@ -3195,6 +3565,8 @@ function summarizePhase(
         defense: cloneFinanceEvidenceAdoptionSide(resolution.financeEvidenceAdoption.defense)
       } : undefined,
       financeProjection: resolution.financeProjection ? cloneFinanceProjection(resolution.financeProjection) : undefined,
+      financeFirepowerAttack: readFinanceFirepower(resolution.scores.attack),
+      financeFirepowerDefense: readFinanceFirepower(resolution.scores.defense),
       financeReasonZh: resolution.financeReasonZh ?? [],
       csReasonZh: resolution.csReasonZh ?? [],
       casualties: resolution.casualties.map((casualty) => `${casualty.targetAgentId ?? casualty.agentId}:${casualty.result}`),
@@ -3212,6 +3584,8 @@ function summarizePhase(
       businessScoreDefense: resolution.scores.defense.businessScore,
       financeScoreAttack: resolution.scores.attack.financeScore,
       financeScoreDefense: resolution.scores.defense.financeScore,
+      totalScoreAttack: resolution.scores.attack.totalScore,
+      totalScoreDefense: resolution.scores.defense.totalScore,
       csScoreAttack: resolution.scores.attack.csScore,
       csScoreDefense: resolution.scores.defense.csScore,
       economyEvidenceApplied: resolution.audit.economy.economyEvidenceApplied,
@@ -3272,7 +3646,7 @@ function summarizeTraceAudit(trace: HexRoundTrace): HexMatchLabLlmAuditSummary {
     roundQualityStatus: trace.audit.roundQualityStatus,
     roundQualityReasons: trace.audit.roundQualityReasons ?? [],
     roundQualitySummaryZh: trace.audit.roundQualitySummaryZh,
-    roundQualityCounts: trace.audit.roundQualityCounts,
+    roundQualityCounts: { ...trace.audit.roundQualityCounts },
     tacticalAudit
   };
 }
@@ -3449,6 +3823,63 @@ function materializeLiveRunStatus(record: LiveRunRecord): HexMatchLabLiveRunStat
   };
 }
 
+function readDuelPairs(value: unknown): HexMatchLabDuelPairSummary[] {
+  return Array.isArray(value) ? value.map((item) => {
+    const record = parseRecord(item) ?? {};
+    return {
+      duelPairId: readString(record.duelPairId) ?? "unknown_duel_pair",
+      primaryAgentId: readString(record.primaryAgentId) ?? "unknown_primary",
+      targetAgentId: readString(record.targetAgentId) ?? "unknown_target",
+      side: readString(record.side) ?? "unknown",
+      laneId: readString(record.laneId) ?? "unknown_lane",
+      pressureKey: readString(record.pressureKey) ?? "unknown_pressure_key",
+      directnessScore: Number(record.directnessScore ?? 0),
+      lethalGateStatus: readString(record.lethalGateStatus) ?? "unknown",
+      reasons: readStringArray(record.reasons),
+      contributorAgentIds: readStringArray(record.contributorAgentIds)
+    };
+  }) : [];
+}
+
+function readFireLanes(value: unknown): HexMatchLabFireLaneSummary[] {
+  return Array.isArray(value) ? value.map((item) => {
+    const record = parseRecord(item) ?? {};
+    const cellContactId = readString(record.cellContactId);
+    const objectiveExposureId = readString(record.objectiveExposureId);
+    return {
+      laneId: readString(record.laneId) ?? "unknown_lane",
+      contactId: readString(record.contactId) ?? "unknown_contact",
+      attackAgentId: readString(record.attackAgentId) ?? "unknown_attack",
+      defenseAgentId: readString(record.defenseAgentId) ?? "unknown_defense",
+      regionIds: readStringArray(record.regionIds),
+      pointIds: readStringArray(record.pointIds),
+      ...(cellContactId ? { cellContactId } : {}),
+      ...(objectiveExposureId ? { objectiveExposureId } : {}),
+      exposureFlags: readStringArray(record.exposureFlags)
+    };
+  }) : [];
+}
+function readFinanceFirepower(score: unknown): HexMatchLabFinanceFirepowerSummary | undefined {
+  const record = parseRecord(score);
+  const firepower = parseRecord(record?.financeFirepowerScore);
+  return firepower ? cloneFinanceFirepower(firepower as Partial<HexMatchLabFinanceFirepowerSummary> & { side?: string | undefined }) : undefined;
+}
+function cloneFinanceFirepower(value: Partial<HexMatchLabFinanceFirepowerSummary> & { side?: string | undefined }): HexMatchLabFinanceFirepowerSummary {
+  return {
+    side: value.side ?? "unknown",
+    pressureScore: Number(value.pressureScore ?? 0),
+    lethalScore: Number(value.lethalScore ?? 0),
+    totalScore: Number(value.totalScore ?? 0),
+    appliedToCombatScore: Number(value.appliedToCombatScore ?? 0),
+    blockedLethalScore: Number(value.blockedLethalScore ?? 0),
+    participantAcceptedEvidenceRefs: [...(value.participantAcceptedEvidenceRefs ?? [])],
+    participantAcceptedClaimRefs: [...(value.participantAcceptedClaimRefs ?? [])],
+    participantSubmittedOutputRefs: [...(value.participantSubmittedOutputRefs ?? [])],
+    capApplied: value.capApplied ?? "none",
+    caps: [...(value.caps ?? [])],
+    auditReasons: [...(value.auditReasons ?? [])]
+  };
+}
 function cloneFinanceProjection(value: Partial<HexMatchLabFinanceProjectionSummary>): HexMatchLabFinanceProjectionSummary {
   return {
     financialResult: value.financialResult ?? "contested",

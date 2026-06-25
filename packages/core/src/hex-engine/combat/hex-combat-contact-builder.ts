@@ -6,6 +6,9 @@ import type { HexAgentPhaseMemory, HexRoundMemory } from "../state/index.js";
 import type {
   HexCombatContact,
   HexCombatContactThreatLevel,
+  HexCombatDuelPair,
+  HexCombatFireLane,
+  HexCombatLethalGateStatus,
   HexCombatParticipant,
   HexCombatTriggerReason
 } from "./hex-combat-types.js";
@@ -174,6 +177,9 @@ function buildPairContact(input: {
     triggerReasons: retention.triggerReasons,
     regionIds: uniqueStrings(regionIds.length > 0 ? regionIds : [...collectRegions(input.attackParticipant), ...collectRegions(input.defenseParticipant)]),
     pointIds: uniqueStrings(pointIds),
+    duelPairs: [],
+    fireLanes: [],
+    pressureKeys: [],
     contactThreatLevel: threat.contactThreatLevel,
     lethalEligible: threat.lethalEligible,
     lethalGateReasons: threat.lethalGateReasons,
@@ -190,6 +196,11 @@ function buildPairContact(input: {
   if (distance !== undefined) {
     contact.minCellDistance = distance;
   }
+  const fireLane = buildFireLane({ contact, attackParticipant: input.attackParticipant, defenseParticipant: input.defenseParticipant });
+  const duelPair = buildDuelPair({ contact, fireLane, attackParticipant: input.attackParticipant, defenseParticipant: input.defenseParticipant });
+  contact.fireLanes = [fireLane];
+  contact.duelPairs = [duelPair];
+  contact.pressureKeys = [duelPair.pressureKey];
   return contact;
 }
 
@@ -355,12 +366,20 @@ function enrichContactWithSupport(input: {
     ...(attackSupport.length > 0 ? ["attack_support_participant"] : []),
     ...(defenseSupport.length > 0 ? ["defense_support_participant"] : [])
   ]);
+  const contributorAgentIds = uniqueStrings([...attackSupport, ...defenseSupport].map((participant) => participant.agentId));
+  const duelPairs = input.contact.duelPairs.map((pair) => ({
+    ...pair,
+    contributorAgentIds: uniqueStrings([...pair.contributorAgentIds, ...contributorAgentIds]),
+    reasons: uniqueStrings([...pair.reasons, ...(contributorAgentIds.length > 0 ? ["support_contributors"] : [])])
+  }));
   return {
     ...input.contact,
     participants,
     triggerReasons,
     attackAgentIds: participants.filter((participant) => participant.side === "attack").map((participant) => participant.agentId),
     defenseAgentIds: participants.filter((participant) => participant.side === "defense").map((participant) => participant.agentId),
+    duelPairs,
+    pressureKeys: uniqueStrings([...input.contact.pressureKeys, ...duelPairs.map((pair) => pair.pressureKey)]),
     retentionReasons,
     relevanceScore: (input.contact.relevanceScore ?? 0) + attackSupport.length * 4 + defenseSupport.length * 4
   };
@@ -456,6 +475,107 @@ function buildRetentionAudit(input: {
     relevanceScore,
     retentionReasons: uniqueStrings(retentionReasons)
   };
+}
+
+function buildFireLane(input: {
+  contact: HexCombatContact;
+  attackParticipant: HexCombatParticipant;
+  defenseParticipant: HexCombatParticipant;
+}): HexCombatFireLane {
+  const exposureFlags = uniqueStrings([
+    input.contact.lineOfFireExposure ? "line_of_fire_exposure" : undefined,
+    input.contact.openSightNoCover ? "open_sight_no_cover" : undefined,
+    input.contact.samePointExposure ? "same_point_exposure" : undefined,
+    input.contact.objectiveExposure ? "objective_exposure" : undefined,
+    input.contact.implicitDuelFromMovement ? "implicit_duel_from_movement" : undefined,
+    input.contact.coverBlockedLethal ? "cover_blocks_lethal" : undefined
+  ].filter((flag): flag is string => Boolean(flag)));
+  const cellContactId = input.contact.minCellDistance !== undefined
+    ? `cell_contact:${input.attackParticipant.targetCellId}:${input.defenseParticipant.targetCellId}`
+    : undefined;
+  const objectiveExposureId = input.contact.objectiveExposure ? `objective_exposure:${input.contact.contactId}` : undefined;
+  return {
+    laneId: `fire_lane_${input.contact.contactId}`,
+    contactId: input.contact.contactId,
+    attackAgentId: input.attackParticipant.agentId,
+    defenseAgentId: input.defenseParticipant.agentId,
+    regionIds: [...input.contact.regionIds],
+    pointIds: [...input.contact.pointIds],
+    ...(cellContactId ? { cellContactId } : {}),
+    ...(objectiveExposureId ? { objectiveExposureId } : {}),
+    exposureFlags
+  };
+}
+
+function buildDuelPair(input: {
+  contact: HexCombatContact;
+  fireLane: HexCombatFireLane;
+  attackParticipant: HexCombatParticipant;
+  defenseParticipant: HexCombatParticipant;
+}): HexCombatDuelPair {
+  const primary = choosePrimaryDuelist(input.attackParticipant, input.defenseParticipant);
+  const target = primary.agentId === input.attackParticipant.agentId ? input.defenseParticipant : input.attackParticipant;
+  const directness = scoreDuelDirectness(input.contact);
+  const duelPairId = `duel_pair_${input.contact.phaseIndex}_${input.attackParticipant.agentId}_${input.defenseParticipant.agentId}`;
+  return {
+    duelPairId,
+    primaryAgentId: primary.agentId,
+    targetAgentId: target.agentId,
+    side: primary.side,
+    laneId: input.fireLane.laneId,
+    pressureKey: `duelPair:${duelPairId}`,
+    directnessScore: directness.score,
+    lethalGateStatus: getLethalGateStatus(input.contact),
+    reasons: directness.reasons,
+    contributorAgentIds: []
+  };
+}
+
+function choosePrimaryDuelist(attackParticipant: HexCombatParticipant, defenseParticipant: HexCombatParticipant): HexCombatParticipant {
+  const attackScore = scorePrimaryDuelist(attackParticipant);
+  const defenseScore = scorePrimaryDuelist(defenseParticipant);
+  if (defenseScore > attackScore) {
+    return defenseParticipant;
+  }
+  return attackParticipant;
+}
+
+function scorePrimaryDuelist(participant: HexCombatParticipant): number {
+  let score = 0;
+  if (isActiveCombatAction(participant.action)) score += 20;
+  if (["peek", "seek_duel", "execute_site", "retake", "watch_angle"].includes(participant.action.actionType)) score += 15;
+  if (participant.roleLabel === "awper") score += 12;
+  if (participant.roleLabel === "star_rifler") score += 11;
+  if (participant.roleLabel === "entry") score += 10;
+  if (participant.roleLabel === "rifler") score += 6;
+  if (participant.roleLabel === "igl") score -= 12;
+  if (participant.roleLabel === "support") score -= 16;
+  if (participant.supportParticipant) score -= 30;
+  return score;
+}
+
+function scoreDuelDirectness(contact: HexCombatContact): { score: number; reasons: string[] } {
+  let score = 0;
+  const reasons: string[] = [];
+  if (contact.minCellDistance !== undefined) {
+    if (contact.minCellDistance <= 1) { score += 25; reasons.push("adjacent_or_same_cell"); }
+    else if (contact.minCellDistance <= closeCellDistance) { score += 18; reasons.push("close_cell_distance"); }
+    else if (contact.minCellDistance <= openLineOfFireDistance) { score += 8; reasons.push("open_line_distance_band"); }
+  }
+  if (contact.pointIds.length > 0) { score += 20; reasons.push("shared_point_lane"); }
+  if (contact.openSightNoCover) { score += 18; reasons.push("open_sight_no_cover"); }
+  if (contact.samePointExposure) { score += 16; reasons.push("same_point_exposure"); }
+  if (contact.objectiveExposure) { score += 16; reasons.push("objective_exposure"); }
+  if (contact.triggerReasons.includes("active_pressure")) { score += 10; reasons.push("active_pressure"); }
+  if (contact.lethalEligible) { score += 20; reasons.push("lethal_gate_passed"); }
+  if (reasons.length === 0) { reasons.push("abstract_contact_pair"); }
+  return { score: Math.min(100, Math.max(0, score)), reasons: uniqueStrings(reasons) };
+}
+
+function getLethalGateStatus(contact: HexCombatContact): HexCombatLethalGateStatus {
+  if (contact.lethalEligible) return "passed";
+  if (contact.contactThreatLevel === "suppression") return "suppression_only";
+  return "blocked";
 }
 
 function isActiveCombatAction(action: HexValidatedAgentAction): boolean {

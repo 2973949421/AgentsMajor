@@ -492,7 +492,7 @@ Web human audit 的默认解释顺序必须是：
 
 ### 8.8 N56-N61 Finance Major 证据绑定裁判
 
-当前实现状态：N56 已完成第一版，决策题、允许立场、必需证据结构和挑战规则已经进入材料、finance duel、prompt 和 Web 审计；N58 已提供结构化 `stanceCard / challengeCard`；N59 已完成第一版证据绑定裁判，能够输出 accepted / rejected / missing / scoreCaps、stanceScore / challengeScore、financialResult 和 combatEffectAllowed。N60 已完成第一版：金融结果只通过 `financeProjection` 受限投影接口影响战斗解释，不能重新读取金融作文分。N62 已完成 Finance submitted gate：raw phase0 卡只保留审计，N59 新主线输入为 `submittedFinanceOutputs`。
+当前实现状态：N56 已完成第一版，决策题、允许立场、必需证据结构和挑战规则已经进入材料、finance duel、prompt 和 Web 审计；N58 已提供结构化 `stanceCard / challengeCard`；N59 已完成第一版证据绑定裁判，能够输出 accepted / rejected / missing / scoreCaps、stanceScore / challengeScore、financialResult 和 combatEffectAllowed。N60 已完成第一版金融结果与战斗投影隔离。N62B 已完成 Finance submitted gate 修正：`rawFinanceOpinionZh` 原始金融观点只保留审计，经济系统生成 `submittedOpinionZh` 摘录与 `submittedFinanceOutputs`，N59 新主线输入为 submitted。N63 已完成第一版：submitted/N59 采信链通过 `financeFirepowerScore` 接回 combat `totalScore`，但仍受 N59 projection、N62 cap 和 CS contact/lethal/casualty gate 限制。
 
 N56 起，Finance Major 的金融层不再使用“守方自证 / 攻方质疑”作为当前主语。CS 层仍可使用 attack / defense，金融层必须使用：
 
@@ -568,12 +568,21 @@ N62 追加提交门约束：
 
 ```text
 judge_input:submitted_finance_outputs 必须出现在新 trace 的金融采信审计中。
-submittedFinanceOutputs 必须记录 buyType / economyPosture / loadoutPackage / outputBudget / clippingTier / combatEffectCap。
+submittedFinanceOutputs 必须记录 rawFinanceOpinionZh / submittedOpinionZh / submittedTextSpanRefs / rawOpinionLinkStatus / buyType / economyPosture / loadoutPackage / outputBudget / clippingTier / combatEffectCap。
 eco / save 的 submitted card 不能提升到 possible_kill。
 orphaned_challenge 只能进入 rejected / not_applicable audit，系统不得自动改写 targetClaimId。
 ```
+N63 追加金融火力约束：
 
-N60 已落实的边界：金融结果与 combat projection（战斗投影）必须解耦。Combat resolver 保留金融分作为审计字段，但 Finance Major 模式下 combat 总分不直接加入金融分；战斗裁定新增 `financeProjection`，记录 `financialResult`、`combatEffectAllowed`、`appliedEffect`、`blockedEffects`、中文投影原因，以及金融是否可参与击杀解释：
+```text
+financeFirepowerScore 只能来自当前 combat contact 参与者自己的 submittedFinanceOutputs。
+accepted submitted evidence 为空时，pressureScore / lethalScore 均为 0，不得产生金融火力。
+contested 不是自动 0 火力；只要有 accepted submitted evidence 和有效 submitted card，可以形成受限 pressure firepower。
+eco / save / full_eco 必须受 combatEffectCap 限制，raw 强观点不能绕过 submitted gate。
+远距离、隔掩体、非致命接触不能被金融火力打成击杀；lethalScore 未通过 contact gate 时只能进入 blockedLethalScore。
+```
+
+N60 已落实的边界：金融结果与 combat projection（战斗投影）必须解耦。N63 后，Combat resolver 可以把 submitted/N59 采信形成的 `financeFirepowerScore.appliedToCombatScore` 加入 Finance Major 的 combat `totalScore`；但 `financeProjection` 仍必须记录 `financialResult`、`combatEffectAllowed`、`appliedEffect`、`blockedEffects`、中文投影原因，以及金融是否可参与击杀解释：
 
 - 金融无采信时，金融层不能放大 combat margin。
 - 金融无采信时，金融层不能解释击杀、全歼或战斗胜负。

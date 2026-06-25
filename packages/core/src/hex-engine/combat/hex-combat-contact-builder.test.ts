@@ -45,6 +45,14 @@ describe("Hex combat contact builder", () => {
     expect(contacts[0]?.triggerReasons).toEqual(expect.arrayContaining(["same_region", "active_pressure"]));
     expect(contacts[0]?.attackAgentIds).toEqual(["t_0"]);
     expect(contacts[0]?.defenseAgentIds).toEqual(["ct_0"]);
+    expect(contacts[0]?.duelPairs).toHaveLength(1);
+    expect(contacts[0]?.fireLanes).toHaveLength(1);
+    const pair = contacts[0]?.duelPairs[0];
+    expect(pair).toMatchObject({ primaryAgentId: "t_0", targetAgentId: "ct_0", lethalGateStatus: "passed" });
+    expect(pair?.laneId).toBe(contacts[0]?.fireLanes[0]?.laneId);
+    expect(pair?.pressureKey).toBe(`duelPair:${pair?.duelPairId}`);
+    expect(contacts[0]?.pressureKeys).toContain(pair?.pressureKey);
+    expect(pair?.pressureKey).not.toMatch(/^(attack|defense|a_site|same_region)$/);
   });
 
   it("creates contact for shared point overlap", () => {
@@ -160,5 +168,7 @@ describe("Hex combat contact builder", () => {
     expect(contact).toBeDefined();
     expect(contact?.triggerReasons).toEqual(expect.arrayContaining(["support_contact", "trade_setup"]));
     expect(contact?.participants.find((participant) => participant.agentId === "t_support")?.supportParticipant).toBe(true);
+    expect(contact?.duelPairs[0]?.primaryAgentId).not.toBe("t_support");
+    expect(contact?.duelPairs[0]?.contributorAgentIds).toContain("t_support");
   });
 });

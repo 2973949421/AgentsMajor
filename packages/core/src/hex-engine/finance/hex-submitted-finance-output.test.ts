@@ -21,6 +21,9 @@ describe("Hex submitted finance output gate", () => {
     expect(submitted[0]?.submittedStanceCard?.coreClaims[0]?.evidenceRefs).toEqual(["FRED_BAD", "FRED002", "FRED003"]);
     expect(submitted[0]?.submittedStanceCard?.confidence).toBe(0.9);
     expect(submitted[0]?.cappedFields).toContain("stanceCard.confidence");
+    expect(submitted[0]?.rawOpinionLinkStatus).toBe("linked");
+    expect(submitted[0]?.submittedOpinionZh).toContain("price momentum claim 1");
+    expect(submitted[0]?.submittedTextSpanRefs.some((span) => span.kind === "kept")).toBe(true);
   });
 
   it("does not skip a bad first evidence ref to keep a later accepted ref under force budget", () => {
@@ -53,8 +56,30 @@ describe("Hex submitted finance output gate", () => {
     expect(submitted[0]?.submittedUsableForJudge).toBe(true);
     expect(submitted[0]?.submittedUsableForCombat).toBe(false);
     expect(submitted[0]?.omittedFields).toContain("coreClaims:3");
+    expect(submitted[0]?.submittedOpinionZh).toBeUndefined();
+    expect(submitted[0]?.submittedTextSpanRefs.some((span) => span.kind === "omitted")).toBe(true);
   });
 
+  it("falls back to an economy-budget raw excerpt when structured terms are paraphrased", () => {
+    const financeDuel = buildTestFinanceDuel();
+    const rawOutput = buildStanceOutput("ct_0", ["FRED002", "FRED003"], 0.8);
+    rawOutput.rawFinanceOpinionZh = "原始观点：全球铝镍价格动量偏强，但国内库存和现货升贴水证据不足，因此只能形成有限结构性看多，等待更多确认后再扩大仓位。";
+
+    const submitted = buildSubmittedFinanceOutputs({
+      financeDuel,
+      economyContext: buildEconomyContext("ct_0", "half_buy", "halfBuy", 650),
+      roundStartAgentOutputs: [rawOutput]
+    });
+
+    expect(submitted[0]?.clippingTier).toBe("standard");
+    expect(submitted[0]?.submittedOpinionZh).toContain("原始观点");
+    expect(submitted[0]?.submittedTextSpanRefs[0]).toMatchObject({
+      start: 0,
+      kind: "kept",
+      sourceRef: "rawOpinion:budget_excerpt"
+    });
+    expect(submitted[0]?.rawOpinionLinkStatus).toBe("partial");
+  });
   it("marks a challenge orphaned when the target claim was clipped out of submitted stance", () => {
     const financeDuel = buildTestFinanceDuel();
     const submitted = buildSubmittedFinanceOutputs({
@@ -79,6 +104,7 @@ describe("Hex submitted finance output gate", () => {
     expect(challenge?.submittedUsableForCombat).toBe(false);
     expect(challenge?.submittedChallengeCard?.targetClaimId).toBe("claim_ct_0_1");
     expect(challenge?.gateSummary).toContain("orphaned_challenge");
+    expect(challenge?.submittedTextSpanRefs.some((span) => span.kind === "blocked")).toBe(true);
   });
 });
 
@@ -139,16 +165,20 @@ function buildStanceOutput(agentId: string, evidenceRefs: string[], confidence: 
   const coreClaims = [0, 1, 2].map((index) => ({
     claimId: `claim_${agentId}_${index + 1}`,
     claimType: "commodity_price_momentum",
-    claimZh: `第 ${index + 1} 条商品价格动量 claim。`,
+    claimZh: `price momentum claim ${index + 1}`,
     evidenceRefs: index === 0 ? evidenceRefs : [`FRED00${index + 4}`],
-    reasoningBridge: "商品价格动量只能作为配置线索，仍需权益传导约束。",
+    reasoningBridge: "commodity price momentum is only a portfolio clue and still needs equity transmission boundaries.",
     confidence,
     unsupportedIfEvidenceRejected: true
   }));
+  const rawFinanceOpinionZh = coreClaims
+    .map((claim) => `${claim.claimId}: ${claim.claimZh}; evidence ${claim.evidenceRefs.join(", ")}; bridge ${claim.reasoningBridge}`)
+    .join("\n");
   return {
     outputId: `round_start_${agentId}`,
     agentId,
     usableForPhaseAction: true,
+    rawFinanceOpinionZh,
     openingStatementZh: "raw stance",
     evidenceRefs,
     riskBoundaryZh: "risk",
@@ -160,15 +190,15 @@ function buildStanceOutput(agentId: string, evidenceRefs: string[], confidence: 
       cardId: `stance_${agentId}`,
       agentId,
       teamSide: "defense",
-      decisionQuestionZh: "未来 1-3 个月 A 股有色是否应相对超配？",
+      decisionQuestionZh: "Should A-share nonferrous metals be overweight over 1-3 months?",
       direction: "structural",
-      target: "A 股有色",
+      target: "A-share nonferrous",
       horizon: "1-3 months",
       confidence,
       positionSuggestion: "moderate_overweight",
       coreClaims,
-      riskBoundaries: ["缺失库存证据则降权。"],
-      invalidatingConditions: ["商品价格动量回落。"],
+      riskBoundaries: ["inventory evidence missing caps confidence."],
+      invalidatingConditions: ["commodity price momentum fades."],
       auditSummaryZh: "raw stance card"
     },
     cardSummaryZh: "raw stance card",
@@ -180,10 +210,12 @@ function buildStanceOutput(agentId: string, evidenceRefs: string[], confidence: 
 }
 
 function buildChallengeOutput(agentId: string, targetClaimId: string, evidenceRefs: string[]): HexRoundStartAgentOutputForAction {
+  const rawFinanceOpinionZh = `challenge ${targetClaimId}: the assumption that commodity price momentum directly proves equity overweight has a proxy mismatch; evidence ${evidenceRefs.join(", ")}; challenge reason proxy mismatch.`;
   return {
     outputId: `round_start_${agentId}`,
     agentId,
     usableForPhaseAction: true,
+    rawFinanceOpinionZh,
     openingStatementZh: "raw challenge",
     evidenceRefs,
     riskBoundaryZh: "risk",
@@ -197,17 +229,17 @@ function buildChallengeOutput(agentId: string, targetClaimId: string, evidenceRe
       teamSide: "attack",
       targetClaimId,
       challengeType: "proxy_mismatch",
-      challengedAssumption: "商品价格动量可以直接推出权益超配。",
+      challengedAssumption: "commodity price momentum can directly prove equity overweight.",
       evidenceRefs,
-      proxyMismatch: "商品价格代理不能直接证明权益盈利传导。",
+      proxyMismatch: "commodity price proxy cannot directly prove equity earnings transmission.",
       confidenceReduction: 0.4,
       challenges: [{
         challengeId: `challenge_${agentId}_1`,
         targetClaimId,
         challengeType: "proxy_mismatch",
         evidenceRefs,
-        challengeReasonZh: "代理错配。",
-        expectedEffect: "降低置信度。"
+        challengeReasonZh: "proxy mismatch",
+        expectedEffect: "reduce confidence"
       }],
       auditSummaryZh: "raw challenge card"
     },

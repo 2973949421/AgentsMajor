@@ -82,6 +82,33 @@ export interface HexCombatParticipant {
   supportParticipant?: boolean;
 }
 
+export type HexCombatLethalGateStatus = "passed" | "blocked" | "suppression_only";
+
+export interface HexCombatFireLane {
+  laneId: string;
+  contactId: string;
+  attackAgentId: string;
+  defenseAgentId: string;
+  regionIds: string[];
+  pointIds: string[];
+  cellContactId?: string;
+  objectiveExposureId?: string;
+  exposureFlags: string[];
+}
+
+export interface HexCombatDuelPair {
+  duelPairId: string;
+  primaryAgentId: string;
+  targetAgentId: string;
+  side: HexSide;
+  laneId: string;
+  pressureKey: string;
+  directnessScore: number;
+  lethalGateStatus: HexCombatLethalGateStatus;
+  reasons: string[];
+  contributorAgentIds: string[];
+}
+
 export interface HexCombatContact {
   contactId: string;
   phaseId: HexPhaseId;
@@ -92,6 +119,9 @@ export interface HexCombatContact {
   triggerReasons: HexCombatTriggerReason[];
   regionIds: string[];
   pointIds: string[];
+  duelPairs: HexCombatDuelPair[];
+  fireLanes: HexCombatFireLane[];
+  pressureKeys: string[];
   minCellDistance?: number;
   contactThreatLevel?: HexCombatContactThreatLevel;
   lethalEligible?: boolean;
@@ -111,10 +141,26 @@ export interface HexCombatContact {
 export interface HexCombatSideEvidence {
   businessScore: number;
   financeScore?: number;
+  financeFirepowerScore?: HexCombatFinanceFirepowerScore;
   csScore: number;
   totalScore: number;
   reasons: string[];
   financeEvidenceAdoption?: HexCombatFinanceEvidenceAdoption;
+}
+
+export interface HexCombatFinanceFirepowerScore {
+  side: HexSide;
+  pressureScore: number;
+  lethalScore: number;
+  totalScore: number;
+  appliedToCombatScore: number;
+  blockedLethalScore: number;
+  participantAcceptedEvidenceRefs: string[];
+  participantAcceptedClaimRefs: string[];
+  participantSubmittedOutputRefs: string[];
+  capApplied: string;
+  caps: string[];
+  auditReasons: string[];
 }
 
 export interface HexCombatScoreboard {
@@ -190,6 +236,14 @@ export interface HexCombatAudit {
     retentionReasons: string[];
     prunedCandidateCount?: number;
   };
+  duelPairing?: {
+    primaryDuelPairId?: string;
+    primaryPressureKey?: string;
+    duelPairCount: number;
+    fireLaneCount: number;
+    pressureKeys: string[];
+    reasons: string[];
+  };
   roleContributions?: Array<{
     agentId: string;
     side: HexSide;
@@ -234,6 +288,9 @@ export interface HexCombatResolutionCore {
   phaseId: HexPhaseId;
   phaseIndex: number;
   participants: HexCombatParticipant[];
+  duelPairs?: HexCombatDuelPair[];
+  fireLanes?: HexCombatFireLane[];
+  pressureKeys?: string[];
   scores: HexCombatScoreboard;
   advantage: HexCombatAdvantage;
   businessVerdict: HexCombatBusinessVerdict;

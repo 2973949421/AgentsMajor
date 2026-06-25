@@ -385,3 +385,56 @@ C4 中后期朝包点或包点路径收敛。
 不让 LLM 或前端写 kill / damage / winner。
 不借行动急迫感修改金融裁判、经济、KDA 或 hard winner。
 ```
+## 13. N62-N65 Post-review Combat Scope
+
+GPT Pro 静态审查后的 combat 口径修正如下：N60 的安全隔离不能理解为“金融永远只做解释层”。正确目标是：Finance Judge 不直接写 kill / winner，但 N62 经济裁剪后的 submitted finance card 经 N59 采信后，必须在 N63 形成 `financeFirepowerScore` 并进入 combat 主评分。
+
+修订后的解冻顺序固定为：
+
+```text
+N62：补 phase0 金融经济裁剪提交门，combat 不直接读 raw。
+N63：financeFirepowerScore 进入 combat（已完成第一版）；内部拆为 pressureScore / lethalScore / totalScore / appliedToCombatScore / blockedLethalScore / caps；phase0 有效观点火力 60-70%，phase1+ CS 执行 30-40%。
+N65-lite：在 N64 前先生成最小 duelPair / fireLane / objectiveExposure 与 pressureKey，防止压力继续累积在 side-level。
+N64：基于 pressureKey 做持续对枪压力收敛；同点位、包点入口、开阔枪线连续接触不能无限纯压制。
+N65-full：完整 N 对 N / 1 对 N 对枪配对；用 duel pairs / fire lanes 表达多人混战，不再只做 side-level winner + 单 target + 单 killer。
+```
+
+N63 的硬边界：
+
+```text
+financialResult != combat result。
+no accepted evidence：financeFirepowerScore.pressureScore / lethalScore 均为 0，不得产生金融火力。
+eco / full_eco submitted card 即使 raw 很强，也必须按 combatEffectCap 限制 lethalScore。
+cover_blocks_lethal / distance_exceeds_lethal_gate 仍阻断 kill，金融火力不能穿掩体杀人。
+kill 仍必须通过 contact gate、lethal gate、casualty gate。
+```
+
+N65-lite 的最低结构：
+
+```text
+ContactCandidate：agentA、agentB、contactType、distance、lineOfSight、coverState、actionMatch、roleMatch、lethalEligible、pressureEligible。
+DuelPair：pairId、primaryAgentId、targetAgentId、laneId、objectiveId、directnessScore、lethalGateStatus、pressureKey。
+pressureKey 只能来自 duelPairId / fireLaneId / objectiveExposureId / cellContactId，不能只用 team / side / region。
+```
+
+N64 的压力规则：
+
+```text
+pressure accumulation 必须基于 N65-lite pressureKey。
+reset：pair 不再 contact、LoS 被 cover / smoke / wall 切断、任一方 forced_back 成功、任一方 rotate 离开 fire lane、victim 已 casualty、new round starts。
+decay：contact 断开 1 phase，pressure -X；contact 断开 2 phase，pressure 清零。
+wound 第一版只作为 audit-only intermediate effect，不引入 HP / injury 状态机。
+tactical bad choice 进入 actionQualityWarning / urgencyFailure，通常不导致 invalid_round；例如 final phase T 有 C4 在包点却不 plant，应正常输 timeout/no_plant，而不是让回合无效。
+```
+
+N65-full 的硬边界：
+
+```text
+1v1：按 financeFirepower + tacticalExecution + lethal gate 判主 duel。
+1vN：单人若无 cover / escape / strong firepower，应触发 surrounded pressure，更容易 forced_back / wound_pressure / killed。
+NvN：按距离、枪线、同点位、包点入口和角色动作生成 duel pairs / fire lanes；多余贡献转为 assist / suppression。
+support / IGL fallback killer 必须同时满足：lethal gate passed、direct contact exists、no entry/rifler/AWPer direct candidate、actionType 不是纯 gather_info / rotate / map_control，并写明 sole_direct_candidate_allowed。
+AWPer long-range kill 必须满足：open line、distance in AWP lethal band、cover not blocking lethal、actionType in watch_angle / peek / seek_duel。
+每个 victim 每 phase 最多最终落账一次 casualty；attribution history 只记录 dedupe 后结果。
+不允许随机制造战损，不允许 LLM 或前端写 casualty。
+```
