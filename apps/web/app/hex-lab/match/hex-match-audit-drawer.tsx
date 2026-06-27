@@ -89,7 +89,7 @@ const stanceCount = props.humanAudit.roundStartOutputDigests.filter((output) => 
 
       <article className={styles.auditCard}>
         <h3>1. Phase0 金融攻防卡</h3>
-        <p className={styles.guardText}>只看一份原始 LLM 输出：绿色是进入 submitted / judge 的内容，灰色是被裁剪内容，黄色是被经济系统封顶，红色是不能进入 judge 的内容。</p>
+        <p className={styles.guardText}>本区只看一份模型输出的可提交原文：绿色是进入 submitted / judge 的内容，灰色是被裁剪内容，黄色是被经济系统封顶，红色是不能进入 judge 的内容；完整 response artifact 放在技术细节里；每张卡会显示经济剪裁的花费、汇率、提交预算和裁剪模式。</p>
         <FinanceOutputAuditViewList views={financeOutputAuditViews} />
       </article>
       {props.humanAudit.roundStartOutputFailures.length > 0 ? (
@@ -216,9 +216,10 @@ function FinanceOutputAuditViewList(props: { views: HexMatchLabFinanceOutputAudi
           <div className={styles.financeAuditMeta}>
             <span>{view.judgeStatusZh}</span>
             <span>{view.clippingSummaryZh}</span>
+            <span title="原文长度 / 提交长度 / 预算使用率">{view.lengthSummaryZh}</span>
           </div>
           {view.rawFallbackLabel ? <p className={styles.guardText}>{view.rawFallbackLabel}</p> : null}
-          <h4>原始 LLM 输出</h4>
+          <h4>模型输出的可提交原文</h4>
           <AnnotatedFinanceRawText view={view} />
           {view.annotationSpans.length === 0 ? <p className={styles.guardText}>当前 trace 没有可直接高亮的 submitted 原文片段；结构化裁剪详情已放入技术细节。</p> : null}
           <details>
@@ -229,6 +230,15 @@ function FinanceOutputAuditViewList(props: { views: HexMatchLabFinanceOutputAudi
               <li>submitted output：{view.technicalRefs.submittedOutputId ?? "未记录"}</li>
               <li>judgeInputRef：{view.technicalRefs.judgeInputRef ?? "未记录"}</li>
               <li>clippingTier：{view.technicalRefs.clippingTier ?? "未记录"}</li>
+              <li>economyClipTier：{view.technicalRefs.economyClipTier ?? "未记录"}</li>
+              <li>spend：{view.technicalRefs.spend ?? "未记录"}</li>
+              <li>spendUnit：{view.technicalRefs.spendUnit ?? "未记录"}</li>
+              <li>charsPerSpendUnit：{view.technicalRefs.charsPerSpendUnit ?? "未记录"}</li>
+              <li>rawBudgetChars：{view.technicalRefs.rawBudgetChars ?? "未记录"}</li>
+              <li>cutMode：{view.technicalRefs.cutMode ?? "未记录"}</li>
+              <li>cutModeSeed：{view.technicalRefs.cutModeSeed ?? "未记录"}</li>
+              <li>budgetClampReason：{view.technicalRefs.budgetClampReason ?? "未记录"}</li>
+              <li>budgetSource：{view.technicalRefs.budgetSource ?? "未记录"}</li>
               <li>combatEffectCap：{view.technicalRefs.combatEffectCap ?? "未记录"}</li>
               <li>rawFingerprint：{view.technicalRefs.rawFingerprint ?? "未记录"}</li>
               <li>submittedFingerprint：{view.technicalRefs.submittedFingerprint ?? "未记录"}</li>
@@ -260,19 +270,28 @@ function AnnotatedFinanceRawText(props: { view: HexMatchLabFinanceOutputAuditVie
   let cursor = 0;
   for (const span of props.view.annotationSpans) {
     if (span.start > cursor) {
-      chunks.push(<span key={`plain-${cursor}`}>{props.view.rawText.slice(cursor, span.start)}</span>);
+      chunks.push(<span key={`plain-${cursor}`}>{formatFinanceRawDisplayText(props.view.rawText.slice(cursor, span.start))}</span>);
     }
     chunks.push(
       <mark key={`${span.kind}-${span.start}-${span.end}`} className={annotationClassName(span.kind)} title={`${span.labelZh}：${span.reasonZh}`}>
-        {props.view.rawText.slice(span.start, span.end)}
+        {formatFinanceRawDisplayText(props.view.rawText.slice(span.start, span.end))}
       </mark>
     );
     cursor = span.end;
   }
   if (cursor < props.view.rawText.length) {
-    chunks.push(<span key={`plain-${cursor}`}>{props.view.rawText.slice(cursor)}</span>);
+    chunks.push(<span key={`plain-${cursor}`}>{formatFinanceRawDisplayText(props.view.rawText.slice(cursor))}</span>);
   }
   return <pre className={styles.financeRawText}>{chunks}</pre>;
+}
+
+function formatFinanceRawDisplayText(text: string): string {
+  return text.replace(/EVID:[A-Za-z0-9:_./-]+/g, (match) => {
+    const tail = match.slice(-8);
+    if (match.includes(":FRED:")) return `EVID:FRED...${tail}`;
+    if (match.includes(":BAOSTOCK:")) return `EVID:BAO...${tail}`;
+    return `EVID...${tail}`;
+  });
 }
 
 function annotationClassName(kind: HexMatchLabFinanceOutputAuditView["annotationSpans"][number]["kind"]): string {
@@ -800,6 +819,7 @@ function LlmAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; phase
       ) : null}
       <MetricLine label="预期 / 实际调用" value={`${audit.expectedCalls} / ${audit.totalLlmCallsAttempted}`} />
       <MetricLine label="接受 / 拒绝 / 降级" value={`${audit.acceptedDrafts} / ${audit.rejectedDrafts} / ${audit.fallbackCount}`} />
+      <MetricLine label={"provider \u91cd\u8bd5"} value={`\u6062\u590d ${audit.providerRetryRecoveredCount} / \u6700\u7ec8\u5931\u8d25 ${audit.providerRetryFinalFailureCount}`} />
       <MetricLine label="紧凑请求数量" value={`${audit.compactRequestCount}`} />
       <MetricLine label="平均请求压缩" value={formatPercent(audit.averageRequestReductionRatio)} />
       <MetricLine label="提示词 token" value={audit.promptTokenTotal !== undefined ? String(audit.promptTokenTotal) : "provider 未返回"} />

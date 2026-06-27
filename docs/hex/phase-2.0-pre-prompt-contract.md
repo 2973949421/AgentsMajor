@@ -485,3 +485,39 @@ judge_narrative x1
 默认每回合约 14 次真实 LLM 调用。`judge_verdict` 是权威结构，`judge_narrative` 只能解释它。战斗事实默认由 deterministic resolver 生成并校验，避免 `combat_resolution` 每回合失败拖垮真实 run。
 
 `combat_resolution` 仍保留为显式 opt-in 增强层，不是最终事实源；代码必须校验胜法、生死、重复死亡、存活列表、爆弹事件、区域、`clutchTag` 和 MVP 击杀上限。草案不合法时直接回退 deterministic resolver，round 不应因此失败。
+
+
+## P0.5 Provider Retry Contract
+
+- phase1+ action provider 允许同一 request 单次重试，仅处理 provider exception。
+- invalid JSON、schema invalid、行动校验失败、乱码输出不重试，仍按原 validation / fallback 路径审计。
+- retry 成功的 action 是真实 provider 输出；系统 fallback 不得冒充真实 action。
+- retry 次数、恢复错误和最终失败必须进入 trace / Web / N61 审计。
+
+### N62C Phase0 rawFinanceOpinionZh 长度约束
+
+N62C 起，phase0 real prompt 的长度目标只作用于 `rawFinanceOpinionZh`，不作用于结构化卡片复杂度：
+
+```text
+stance rawFinanceOpinionZh：420-650 中文字。
+challenge rawFinanceOpinionZh：320-520 中文字。
+stanceCard：仍为 1-2 个 coreClaims。
+challengeCard：仍为 1 个 challenge。
+```
+
+模型不得通过增加 claim / challenge 数量来满足长度；结构化中文字段仍应保持短句。`rawFinanceOpinionZh` 太短时，系统只记录审计字段，不替模型补写原文、证据或推理。
+
+### N62D 经济数字裁剪输入边界
+
+N62D 起，phase0 real prompt 仍只要求 agent 生成 `rawFinanceOpinionZh` 和结构化 `stanceCard / challengeCard`。模型不得输出或决定以下字段：
+
+```text
+submittedBudgetChars
+submittedTextBudgetChars
+cutMode
+combatEffectCap
+economyClipTier
+charsPerSpendUnit
+```
+
+这些字段由系统根据真实经济 `spend`、`economyPosture` 和 `buyType` 计算。手枪局以 `economyPosture=pistol_round` 为最高优先级，不被 `buyType=halfBuy` 覆盖。完整 raw 只用于审计；Judge 和 Combat 只能消费 N62D 后的 submitted 输出。

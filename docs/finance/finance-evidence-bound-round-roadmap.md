@@ -904,3 +904,54 @@ NvN 不再只选一个笼统 target / killer；审计能看到 duel pairs / fire
 同一 victim 同 phase 只落账一次 casualty，被 dedupe 删除的 casualty 不污染 attribution history。
 连续多个 round 不应出现固定索引式 5 个 1v1 对位。
 ```
+
+## N63a 状态补充（2026-06-26）
+
+- N59 裁判结果现在记录 `acceptedEvidenceRefsByItemId`，把被采信的 claim / challenge 映射到实际 accepted evidence refs。
+- N63 金融火力现在只从当前 contact participant 的 submitted card + N59 item-evidence 映射取证据；缺映射时不会退回 side-level 平均分配。
+- Web 审计已把 `rawFinanceOpinionZh` 改称“模型输出的可提交原文”，完整 LLM response 只在 artifact 可读时作为技术细节核对。
+- N61 验收脚本已支持 `{ source, trace }` wrapper，并增加 N63a 映射缺失 / 火力未应用检查。
+
+## N62C：Phase0 RAW 原文增量与预算使用率审计
+
+目标：解决 `rawFinanceOpinionZh` 偏短导致 fullBuy 等高预算买型在 Web 审计里优势不明显的问题。
+
+交付口径：
+
+```text
+stance rawFinanceOpinionZh 目标 420-650 中文字。
+challenge rawFinanceOpinionZh 目标 320-520 中文字。
+phase0 maxOutputTokens 提高到 2200。
+submitted 裁剪预算表不变：full 320、standard 220、force 120、eco 80、save 40。
+submittedFinanceOutputs 增加 raw/submitted 长度、目标区间、预算和使用率审计。
+```
+
+边界：N62C 只增加 raw 原文长度目标与审计可见性，不增加结构化 claim / challenge 数量，不改 N59 / N63 / combat。新 map 跑完后先统计 raw 长度和预算使用率，再决定是否进入裁剪汇率表校准或 N64。
+
+## N62D：经济数字汇率裁剪与买型菜单隔离
+
+目标：把 N62 submitted 裁剪从固定字数表改成经济数字汇率。新链路是：`spend -> economyClipTier -> charsPerSpendUnit -> submittedBudgetChars -> cutMode -> submittedOpinionZh / submitted finance card`。
+
+规则：
+
+```text
+baseUnit = $50
+枪械局：$50 = 4 中文字
+手枪局：$50 = 6 中文字
+submittedBudgetChars = clamp(floor(spend / 50) * charsPerSpendUnit, tierMinChars, tierMaxChars)
+```
+
+第一版档位：
+
+```text
+save / full_eco：40-60 字，front_cut，minor_delay
+eco：40-90 字，random_window，weak_pressure
+pistol_round：80-110 字，pistol_core_window，suppression
+light_buy / pistol_armor_force：110-180 字，core_window，suppression / forced_back
+force_buy / broken_buy：200-280 字，multi_slice_lite / random_core_window，forced_back
+half_buy / bonus_round：150-320 字，core_window，possible_wound
+rifle_buy：380-450 字，multi_slice，possible_kill
+awp_buy / double_awp：500-580 字，multi_slice_plus，possible_kill
+```
+
+边界：LLM 不接触 submitted 字数预算、cutMode 或 combatEffectCap；submitted 文本只能摘自 rawFinanceOpinionZh，不能补写、不能替 agent 换证据、不能改 targetClaimId。N62D 不修改 N59 采信规则、N63 火力公式、combat gate、经济结算或 hard winner。

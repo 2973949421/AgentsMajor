@@ -4,7 +4,7 @@
 
 这份文档冻结 `Phase 2.0-pre / Dust2` 主校准线的裁判契约。
 
-judge 不是比分播报器，不是文风评审，也不是自由叙事者。  
+judge 不是比分播报器，不是文风评审，也不是自由叙事者。
 judge 的职责固定为：
 
 - 判定本局 `CS 胜负方式`
@@ -112,7 +112,7 @@ judge 的职责固定为：
 - 进攻方：`全歼` / `下包并引爆`
 - 防守方：`全歼` / `时间耗尽未下包` / `拆包成功`
 
-`attackWinConditionMet` 与 `defenseWinConditionMet` 必须是布尔值，并且只能有一方为 `true`。  
+`attackWinConditionMet` 与 `defenseWinConditionMet` 必须是布尔值，并且只能有一方为 `true`。
 它们必须与 `roundWinType`、`winnerTeamId`、本局攻守关系一致。
 
 ## 4. diagnostic 六字段
@@ -146,7 +146,7 @@ judge 的职责固定为：
 
 ### 4.2 区域说明
 
-`mainAttackZoneId` 和 `mainDefenseZoneId` 可以相同，也可以不同。  
+`mainAttackZoneId` 和 `mainDefenseZoneId` 可以相同，也可以不同。
 若不同，`reason` 必须明确解释：
 
 - 为什么本局主攻落点在这个区
@@ -598,8 +598,8 @@ N61 后真实 map 样本暴露出新的 P0 风险：当 provider 断线、phase0
 
 质量闸门固定为 trace 事实，而不是 Web 文案：
 
-- `roundQualityStatus` 只能是 `valid`、`provider_degraded` 或 `invalid_round`。
-- `roundQualityReasons` 必须记录触发原因，例如 `phase0_stance_insufficient`、`phase0_challenge_insufficient`、`no_usable_phase0`、`phase_action_provider_failed`、`phase_action_degraded`、`provider_error_threshold_exceeded`、`action_fallback_threshold_exceeded`。
+- `roundQualityStatus` 只能是 `valid`、`action_degraded`、`provider_degraded` 或 `invalid_round`。
+- `roundQualityReasons` 必须记录触发原因，例如 `phase0_stance_insufficient`、`phase0_challenge_insufficient`、`no_usable_phase0`、`phase_action_provider_failed`、`phase_action_degraded`、`phase_action_fallback_present`、`provider_error_threshold_exceeded`、`action_fallback_threshold_exceeded`。其中 `action_degraded` 表示少量行动校验 / fallback 降级，不能再误写为 provider 断线。
 - `roundQualityCounts` 必须记录 phase0 可消费数、provider error 数、invalid 数、fallback 数、最大 phase fallback 和连续降级 phase 数。
 - `invalid_round` 必须保留 trace、artifact、已完成 phase 和错误原因，但不得作为正常 hard winner 或正式 map 计分样本展示。
 - Web 和 N61 验收必须优先读取 `roundQualityStatus`；如果质量状态不是 `valid`，hard winner 只能进入技术细节，不能作为人类审计主结论。
@@ -614,3 +614,47 @@ P0/P1 合并修复后，提交层也必须遵守同一质量事实：
 - Web / map progress / N61 验收必须能读取没有 `RoundReport` 的 trace-only invalid round，并把它展示为“未通过质量闸门”，不能再显示成正常 timeout/no plant 或 elimination 胜负。
 - map summary 中 `roundsCommitted` 只统计正常 committed round；invalid attempt 只能进入 invalid round 统计和 trace artifact 列表。
 - 如果旧 trace 没有质量字段，只能标注旧 trace 缺字段，不能反推为 valid。
+
+## N63a 状态补充（2026-06-26）
+
+- N59 裁判结果现在记录 `acceptedEvidenceRefsByItemId`，把被采信的 claim / challenge 映射到实际 accepted evidence refs。
+- N63 金融火力现在只从当前 contact participant 的 submitted card + N59 item-evidence 映射取证据；缺映射时不会退回 side-level 平均分配。
+- Web 审计已把 `rawFinanceOpinionZh` 改称“模型输出的可提交原文”，完整 LLM response 只在 artifact 可读时作为技术细节核对。
+- N61 验收脚本已支持 `{ source, trace }` wrapper，并增加 N63a 映射缺失 / 火力未应用检查。
+
+### N62C raw / submitted 长度审计
+
+N62C 不改变 N59 采信规则，只为 submitted finance gate 增加长度和预算使用率审计：
+
+```text
+rawOpinionCharCount
+rawOpinionTargetMinChars
+rawOpinionTargetMaxChars
+rawOpinionUnderTarget
+submittedOpinionCharCount
+submittedBudgetChars
+submittedBudgetUtilization
+```
+
+这些字段只说明 agent 自己写了多少 raw 原文、系统提交了多少文本、是否吃满经济预算。raw 太短不能被系统补写，也不能作为提高 score、cap 或 combat firepower 的依据。
+
+### N62D 经济汇率提交门审计字段
+
+N62D 后，新 trace 的 `submittedFinanceOutputs` 应记录以下经济裁剪字段：
+
+```text
+economyClipVersion = finance_economy_clip_v1
+economyClipTier
+spend
+spendUnit = 50
+charsPerSpendUnit
+rawBudgetChars
+submittedBudgetChars
+cutMode
+cutModeSeed
+budgetClampReason
+budgetSource = economy_spend
+rawOpinionUnderfilled
+```
+
+Judge 仍只消费 submitted finance output。`rawFinanceOpinionZh` 不能绕过 submitted gate；raw 不足只能记录 `rawOpinionUnderfilled`，系统不得补写内容、增加证据、改写 claim/challenge 或提高 combatEffectCap。

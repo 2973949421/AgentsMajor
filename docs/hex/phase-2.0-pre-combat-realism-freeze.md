@@ -438,3 +438,10 @@ AWPer long-range kill 必须满足：open line、distance in AWP lethal band、c
 每个 victim 每 phase 最多最终落账一次 casualty；attribution history 只记录 dedupe 后结果。
 不允许随机制造战损，不允许 LLM 或前端写 casualty。
 ```
+
+## N63a 状态补充（2026-06-26）
+
+- N59 裁判结果现在记录 `acceptedEvidenceRefsByItemId`，把被采信的 claim / challenge 映射到实际 accepted evidence refs。
+- N63 金融火力现在只从当前 contact participant 的 submitted card + N59 item-evidence 映射取证据；缺映射时不会退回 side-level 平均分配。
+- Web 审计已把 `rawFinanceOpinionZh` 改称“模型输出的可提交原文”，完整 LLM response 只在 artifact 可读时作为技术细节核对。
+- N61 验收脚本已支持 `{ source, trace }` wrapper，并增加 N63a 映射缺失 / 火力未应用检查。

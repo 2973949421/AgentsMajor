@@ -50,6 +50,8 @@ export type HexAgentCommandProgressStatus =
   | "queued"
   | "skipped"
   | "running"
+  | "provider_retry"
+  | "provider_retry_recovered"
   | "request_artifact_written"
   | "response_artifact_written"
   | "accepted"
@@ -104,6 +106,9 @@ export interface RunHexAgentPhaseCommandHarnessInput {
   financeDuel?: HexRoundFinanceDuel;
   roundStartAgentOutputs?: readonly HexRoundStartAgentOutputForAction[];
   roundRouteMemory?: HexRoundRouteMemory | undefined;
+  providerRetryPolicy?: {
+    maxRetries: number;
+  };
 }
 
 export interface HexAgentCommandAudit {
@@ -126,6 +131,11 @@ export interface HexAgentCommandAudit {
   semanticLanguage?: HexAgentSemanticLanguageAudit["semanticLanguage"];
   languageMismatch?: boolean;
   inspectedSemanticFields?: string[];
+  providerAttemptCount?: number;
+  providerRetryCount?: number;
+  providerRecovered?: boolean;
+  providerAttemptErrors?: string[];
+  recoveredProviderErrors?: string[];
 }
 
 export interface HexAgentPhaseCommandHarnessResult {
@@ -147,6 +157,7 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
   const audits: HexAgentCommandAudit[] = [];
   const rejectedDrafts: HexAgentPhaseCommandHarnessResult["rejectedDrafts"] = [];
   const maxLlmCalls = input.maxLlmCalls ?? Number.POSITIVE_INFINITY;
+  let callSlotsAttempted = 0;
   let callsAttempted = 0;
   const expectedCalls = input.memory.agents.filter((agent) => agent.lifeStatus !== "dead" && agent.apRemaining > 0).length;
   const occupiedCellOwners = new Map<string, HexCellOccupant>();
@@ -194,7 +205,7 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
       continue;
     }
 
-    if (callsAttempted >= maxLlmCalls) {
+    if (callSlotsAttempted >= maxLlmCalls) {
       const fallback = buildHexAgentFallbackAction({
         memory: input.memory,
         agent,
@@ -294,9 +305,111 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
       });
     }
 
-    callsAttempted += 1;
-    try {
-      const providerResult = normalizeProviderResult(await input.provider(request));
+    callSlotsAttempted += 1;
+    const maxProviderRetries = resolveProviderMaxRetries(input);
+    const providerAttemptErrors: string[] = [];
+    let providerAttemptCount = 0;
+    let resolvedProviderResult: HexAgentCommandProviderResult | undefined;
+    for (let attemptIndex = 0; attemptIndex <= maxProviderRetries; attemptIndex += 1) {
+      providerAttemptCount += 1;
+      callsAttempted += 1;
+      if (attemptIndex > 0) {
+        await emitProgress(input, {
+          agentId: agent.agentId,
+          callId,
+          callIndex,
+          expectedCalls,
+          status: "provider_retry",
+          requestArtifactId,
+          errors: [...providerAttemptErrors],
+          providerMode: input.providerMode ?? "fixture",
+          ...(input.modelId ? { modelId: input.modelId } : {})
+        });
+      }
+      try {
+        resolvedProviderResult = normalizeProviderResult(await input.provider(request));
+        if (attemptIndex > 0) {
+          await emitProgress(input, {
+            agentId: agent.agentId,
+            callId,
+            callIndex,
+            expectedCalls,
+            status: "provider_retry_recovered",
+            requestArtifactId,
+            errors: [...providerAttemptErrors],
+            providerMode: resolvedProviderResult.providerMode ?? input.providerMode ?? "fixture",
+            ...(resolvedProviderResult.modelId ?? input.modelId ? { modelId: resolvedProviderResult.modelId ?? input.modelId } : {})
+          });
+        }
+        break;
+      } catch (error) {
+        providerAttemptErrors.push(formatProviderError(error));
+      }
+    }
+    const providerRetryCount = Math.max(0, providerAttemptCount - 1);
+    const providerRecovered = providerRetryCount > 0 && resolvedProviderResult !== undefined;
+    const recoveredProviderErrors = providerRecovered ? [...providerAttemptErrors] : [];
+    if (!resolvedProviderResult) {
+      const errors = providerAttemptErrors.length > 0 ? providerAttemptErrors : ["provider_error:unknown_provider_error"];
+      const fallback = buildHexAgentFallbackAction({
+        memory: input.memory,
+        agent,
+        reason: errors[errors.length - 1] ?? "provider_error:unknown_provider_error"
+      });
+      actions.push(fallback);
+      rejectedDrafts.push({
+        agentId: agent.agentId,
+        errors,
+        ignoredFields: []
+      });
+      const audit: HexAgentCommandAudit = {
+        agentId: agent.agentId,
+        callId,
+        called: true,
+        accepted: false,
+        fallback: true,
+        ignoredFields: [],
+        repairedFields: [],
+        errors,
+        ...(requestArtifactId ? { requestArtifactId } : {}),
+        providerMode: input.providerMode ?? "fixture",
+        ...(input.modelId ? { modelId: input.modelId } : {}),
+        providerAttemptCount,
+        providerRetryCount,
+        providerRecovered: false,
+        providerAttemptErrors: errors
+      };
+      if (fallback.fallbackReason) {
+        audit.fallbackReason = fallback.fallbackReason;
+      }
+      audits.push(audit);
+      await emitProgress(input, {
+        agentId: agent.agentId,
+        callId,
+        callIndex,
+        expectedCalls,
+        status: "provider_error",
+        requestArtifactId,
+        errors,
+        fallbackReason: fallback.fallbackReason,
+        providerMode: input.providerMode ?? "fixture",
+        ...(input.modelId ? { modelId: input.modelId } : {})
+      });
+      await emitProgress(input, {
+        agentId: agent.agentId,
+        callId,
+        callIndex,
+        expectedCalls,
+        status: "fallback",
+        requestArtifactId,
+        errors,
+        fallbackReason: fallback.fallbackReason,
+        providerMode: input.providerMode ?? "fixture",
+        ...(input.modelId ? { modelId: input.modelId } : {})
+      });
+      continue;
+    }
+    const providerResult = resolvedProviderResult;
       const normalized = normalizeHexAgentActionDraft({
         rawDraft: providerResult.rawDraft,
         request
@@ -363,7 +476,12 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
           providerResult,
           requestSizeMetrics: responseRequestSizeMetrics,
           semanticLanguageAudit,
-          input
+          input,
+          providerAttemptCount,
+          providerRetryCount,
+          providerRecovered,
+          providerAttemptErrors,
+          recoveredProviderErrors
         }));
         await emitProgress(input, {
           agentId: agent.agentId,
@@ -435,7 +553,12 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
         providerResult,
         requestSizeMetrics: responseRequestSizeMetrics,
         semanticLanguageAudit,
-        input
+        input,
+        providerAttemptCount,
+        providerRetryCount,
+        providerRecovered,
+        providerAttemptErrors,
+        recoveredProviderErrors
       }));
       if (normalized.repairedFields.length > 0) {
         await emitProgress(input, {
@@ -487,61 +610,6 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
           side: validated.side
         });
       }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      const fallback = buildHexAgentFallbackAction({
-        memory: input.memory,
-        agent,
-        reason: `provider_error:${message}`
-      });
-      actions.push(fallback);
-      rejectedDrafts.push({
-        agentId: agent.agentId,
-        errors: [`provider_error:${message}`],
-        ignoredFields: []
-      });
-      const audit: HexAgentCommandAudit = {
-        agentId: agent.agentId,
-        callId,
-        called: true,
-        accepted: false,
-        fallback: true,
-        ignoredFields: [],
-        repairedFields: [],
-        errors: [`provider_error:${message}`],
-        ...(requestArtifactId ? { requestArtifactId } : {}),
-        providerMode: input.providerMode ?? "fixture",
-        ...(input.modelId ? { modelId: input.modelId } : {})
-      };
-      if (fallback.fallbackReason) {
-        audit.fallbackReason = fallback.fallbackReason;
-      }
-      audits.push(audit);
-      await emitProgress(input, {
-        agentId: agent.agentId,
-        callId,
-        callIndex,
-        expectedCalls,
-        status: "provider_error",
-        requestArtifactId,
-        errors: [`provider_error:${message}`],
-        fallbackReason: fallback.fallbackReason,
-        providerMode: input.providerMode ?? "fixture",
-        ...(input.modelId ? { modelId: input.modelId } : {})
-      });
-      await emitProgress(input, {
-        agentId: agent.agentId,
-        callId,
-        callIndex,
-        expectedCalls,
-        status: "fallback",
-        requestArtifactId,
-        errors: [`provider_error:${message}`],
-        fallbackReason: fallback.fallbackReason,
-        providerMode: input.providerMode ?? "fixture",
-        ...(input.modelId ? { modelId: input.modelId } : {})
-      });
-    }
   }
 
   const acceptedActions = actions.filter((action) => action.valid);
@@ -779,6 +847,19 @@ function isProviderResult(value: unknown): value is HexAgentCommandProviderResul
   return typeof value === "object" && value !== null && "rawDraft" in value;
 }
 
+function resolveProviderMaxRetries(input: RunHexAgentPhaseCommandHarnessInput): number {
+  const configured = input.providerRetryPolicy?.maxRetries;
+  if (configured !== undefined) {
+    return Math.max(0, Math.floor(configured));
+  }
+  return input.providerMode === "real" ? 1 : 0;
+}
+
+function formatProviderError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return `provider_error:${message}`;
+}
+
 async function writeHarnessArtifact(
   input: RunHexAgentPhaseCommandHarnessInput,
   artifact: {
@@ -821,6 +902,11 @@ function buildAudit(input: {
   requestSizeMetrics: HexAgentCommandRequestSizeMetrics;
   semanticLanguageAudit: HexAgentSemanticLanguageAudit;
   input: RunHexAgentPhaseCommandHarnessInput;
+  providerAttemptCount?: number;
+  providerRetryCount?: number;
+  providerRecovered?: boolean;
+  providerAttemptErrors?: readonly string[];
+  recoveredProviderErrors?: readonly string[];
 }): HexAgentCommandAudit {
   const audit: HexAgentCommandAudit = {
     agentId: input.agentId,
@@ -845,6 +931,21 @@ function buildAudit(input: {
   }
   if (input.responseArtifactId) {
     audit.responseArtifactId = input.responseArtifactId;
+  }
+  if (input.providerAttemptCount !== undefined) {
+    audit.providerAttemptCount = input.providerAttemptCount;
+  }
+  if (input.providerRetryCount !== undefined) {
+    audit.providerRetryCount = input.providerRetryCount;
+  }
+  if (input.providerRecovered !== undefined) {
+    audit.providerRecovered = input.providerRecovered;
+  }
+  if (input.providerAttemptErrors && input.providerAttemptErrors.length > 0) {
+    audit.providerAttemptErrors = [...input.providerAttemptErrors];
+  }
+  if (input.recoveredProviderErrors && input.recoveredProviderErrors.length > 0) {
+    audit.recoveredProviderErrors = [...input.recoveredProviderErrors];
   }
   const modelId = input.providerResult.modelId ?? input.input.modelId;
   if (modelId) {

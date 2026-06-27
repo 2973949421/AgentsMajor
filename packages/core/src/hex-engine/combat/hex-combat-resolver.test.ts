@@ -85,6 +85,7 @@ describe("Hex combat resolver", () => {
     expect(resolution.audit.duelPairing?.primaryPressureKey).toBe(resolution.duelPairs?.[0]?.pressureKey);
     expect(resolution.scores.attack.financeScore).toBeGreaterThan(resolution.scores.defense.financeScore ?? 0);
     expect(resolution.scores.attack.financeFirepowerScore?.appliedToCombatScore).toBeGreaterThan(0);
+    expect(resolution.scores.attack.financeFirepowerScore?.participantAcceptedEvidenceRefs).toEqual(expect.arrayContaining(["FRED002", "FRED003"]));
     expect(resolution.scores.attack.financeFirepowerScore?.participantSubmittedOutputRefs).toEqual(expect.arrayContaining(["sub_fin_round_start_challenge_t_0_1"]));
     expect(resolution.scores.attack.totalScore).toBeCloseTo(resolution.scores.attack.csScore + (resolution.scores.attack.financeScore ?? 0));
     expect(resolution.scores.defense.totalScore).toBeCloseTo(resolution.scores.defense.csScore + (resolution.scores.defense.financeScore ?? 0));
@@ -160,6 +161,8 @@ describe("Hex combat resolver", () => {
     expect(resolution.financeEvidenceAdoption?.defense.acceptedEvidenceRefs).toContain("FRED002");
     expect(resolution.financeEvidenceAdoption?.defense.acceptedClaims).toContain("claim_ct_0_1");
     expect(resolution.scores.attack.totalScore).toBe(resolution.scores.attack.csScore);
+    expect(resolution.scores.defense.financeFirepowerScore?.participantAcceptedEvidenceRefs).toEqual([]);
+    expect(resolution.scores.defense.financeFirepowerScore?.appliedToCombatScore).toBe(0);
     expect(resolution.scores.defense.totalScore).toBe(resolution.scores.defense.csScore);
     expect(resolution.financeProjection).toEqual(expect.objectContaining({
       appliedEffect: "possible_kill",

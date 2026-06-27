@@ -17,6 +17,11 @@ export type HexRoundStartAgentOutputSource =
 
 export type HexRoundStartCardKind = "stance" | "challenge";
 
+export const HEX_ROUND_START_RAW_OPINION_TARGETS: Record<HexRoundStartCardKind, { minChars: number; maxChars: number }> = {
+  stance: { minChars: 420, maxChars: 650 },
+  challenge: { minChars: 320, maxChars: 520 }
+};
+
 export interface HexRoundStartClaimCatalogItem {
   claimId: string;
   claimType: string;
@@ -543,7 +548,7 @@ export function createEnvHexRoundStartAgentOutputProvider(
         responseFormat: "json_object",
         modelTier: "standard",
         temperature: 0.3,
-        maxOutputTokens: 1600,
+        maxOutputTokens: 2200,
         extraParams: { thinking: { type: "disabled" } },
         messages: buildRealHexRoundStartAgentOutputMessages(request)
       });
@@ -566,7 +571,7 @@ function buildRoundStartJsonExample(request: HexRoundStartAgentOutputRequest): R
   if (request.cardKind === "stance") {
     return {
       cardKind: "stance",
-      rawFinanceOpinionZh: `原始观点：围绕 ${request.decisionQuestionZh ?? request.topicTitle}，我只根据 ${firstEvidenceRef} 等白名单证据提出有限立场。可用证据支持局部价格或市场代理，但不能直接证明完整行业胜负；推理桥必须经过权益传导和风险边界，缺口未补前只能小仓位或结构性参与。`,
+      rawFinanceOpinionZh: `原始观点：围绕 ${request.decisionQuestionZh ?? request.topicTitle}，我先说明结论：只根据 ${firstEvidenceRef} 和 ${secondEvidenceRef} 等白名单证据，我只能提出有限且可被证据约束的投资立场，不能把单一价格或市场代理直接包装成完整行业胜负。第一层依据是这些证据可以描述近期价格动量、市场相对表现或局部代理方向；第二层推理桥是它们仍必须经过库存、现货升贴水、公司盈利传导和风险收益边界，才能变成可执行配置建议。因此我的仓位建议必须保持条件化：如果后续国内供需、交易拥挤度或公司盈利数据继续确认，才允许扩大；如果关键证据缺口持续存在或价格动量反转，就应降权、减仓或转为观望。这个观点是给经济系统裁剪的原文，不额外增加 claim 数量。`,
       stanceCard: {
         cardId: `stance_${request.agent.agentId}`,
         agentId: request.agent.agentId,
@@ -596,7 +601,7 @@ function buildRoundStartJsonExample(request: HexRoundStartAgentOutputRequest): R
   const targetClaim = request.claimCatalog?.[0];
   return {
     cardKind: "challenge",
-    rawFinanceOpinionZh: `原始挑战：我挑战 ${targetClaim?.claimId ?? "claimCatalog 中的真实 claimId"}。该 claim 如果只依赖 ${firstEvidenceRef} 等代理证据，就不能直接推出完整配置结论；挑战重点是证据缺口、代理错配或推理桥断裂，只能降低置信度和投影强度。`,
+    rawFinanceOpinionZh: `原始挑战：我挑战 ${targetClaim?.claimId ?? "claimCatalog 中的真实 claimId"}。我的挑战不是简单说“数据不足”，而是指出该 claim 如果主要依赖 ${firstEvidenceRef} 等代理证据，就需要证明代理指标如何传导到目标资产、配置周期和风险收益，否则只能支持较弱判断。这里的核心问题可能包括：价格动量不能直接证明国内供需改善，市场相对表现不能直接说明公司盈利兑现，单一时间窗口也可能与 1-3 个月配置周期错配。因此我会把挑战集中在证据缺口、代理错配、时间窗口错配和推理桥断裂上，预期效果是降低对方置信度和金融投影强度，而不是凭缺失证据自动获胜。这个原文只服务于经济裁剪，不额外增加 challenge 数量。`,
     challengeCard: {
       cardId: `challenge_${request.agent.agentId}`,
       agentId: request.agent.agentId,
@@ -622,6 +627,7 @@ function buildRoundStartJsonExample(request: HexRoundStartAgentOutputRequest): R
 }
 export function buildRealHexRoundStartAgentOutputMessages(request: HexRoundStartAgentOutputRequest) {
   const example = buildRoundStartJsonExample(request);
+  const target = HEX_ROUND_START_RAW_OPINION_TARGETS[request.cardKind];
   return [
     {
       role: "system" as const,
@@ -630,13 +636,13 @@ export function buildRealHexRoundStartAgentOutputMessages(request: HexRoundStart
         "这不是局内行动，不要输出地图 cell、击杀、胜负、伤害或经济变化。",
         "必须同时输出 rawFinanceOpinionZh 和结构化 card。rawFinanceOpinionZh 是你自己的自然中文原始投资观点，经济系统会从这段原文中裁剪 submitted 内容。",
         request.cardKind === "stance"
-          ? "你是立场方：rawFinanceOpinionZh 写 250-450 字；stanceCard 的 direction 必须从 allowedStance 里复制一个值；coreClaims 只写 1-2 条。"
-          : "你是挑战方：rawFinanceOpinionZh 写 180-350 字；challengeCard 只写 1 条 challenge；targetClaimId 必须从 claimCatalog 里原样复制。",
+          ? `你是立场方：rawFinanceOpinionZh 写 ${target.minChars}-${target.maxChars} 中文字；只扩展这段原文观点，不增加结构化复杂度；stanceCard 的 direction 必须从 allowedStance 里复制一个值；coreClaims 只写 1-2 条。`
+          : `你是挑战方：rawFinanceOpinionZh 写 ${target.minChars}-${target.maxChars} 中文字；只扩展这段原文观点，不增加结构化复杂度；challengeCard 只写 1 条 challenge；targetClaimId 必须从 claimCatalog 里原样复制。`,
         "输出只能是一个 JSON object，不要 Markdown，不要解释段落，不要包裹代码块。",
         "字段名必须严格使用示例里的英文键名；字段内容使用中文。",
         "所有 evidenceRefs 只能从 systemInputCard.evidenceRefs 中原样选择；不能新增证据编号。",
         "缺失证据只能降权或限制置信度，不是直接胜利。",
-        "不要输出超过 2 个 claim；结构化 card 的每个中文字段尽量 1 句。",
+        "不要输出超过 2 个 claim；不要增加 challenge 数量；结构化 card 的每个中文字段尽量 1 句。",
         "phase1+ 只会引用 claimId 或 challengeId，因此必须提供稳定编号。",
         "严格 JSON 示例如下，真实输出必须替换为本请求里的 agent、claimCatalog 和 evidenceRefs：",
         JSON.stringify(example)

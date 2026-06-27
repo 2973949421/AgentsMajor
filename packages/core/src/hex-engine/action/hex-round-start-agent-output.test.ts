@@ -2,16 +2,30 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildClaimCatalogFromStanceCard,
+  buildRealHexRoundStartAgentOutputMessages,
   collectRoundStartAllowedPhaseRefIds,
   isUsableRoundStartAgentOutput,
   normalizeHexRoundStartAgentOutputDraft,
   runHexRoundStartAgentOutputHarness,
-  type HexRoundStartAgentOutputForAction
+  type HexRoundStartAgentOutputForAction,
+  type HexRoundStartAgentOutputRequest
 } from "./hex-round-start-agent-output.js";
 
 const decisionQuestionZh = "未来 1-3 个月 A 股有色相对沪深300是否应超配？";
 
 describe("Hex round-start agent output", () => {
+  it("asks the real provider for longer raw finance opinion text without expanding card complexity", () => {
+    const stanceSystem = buildRealHexRoundStartAgentOutputMessages(buildRoundStartRequest("stance"))[0]?.content ?? "";
+    const challengeSystem = buildRealHexRoundStartAgentOutputMessages(buildRoundStartRequest("challenge"))[0]?.content ?? "";
+
+    expect(stanceSystem).toContain("rawFinanceOpinionZh 写 420-650 中文字");
+    expect(stanceSystem).toContain("只扩展这段原文观点，不增加结构化复杂度");
+    expect(stanceSystem).toContain("coreClaims 只写 1-2 条");
+    expect(stanceSystem).toContain("不要增加 challenge 数量");
+    expect(challengeSystem).toContain("rawFinanceOpinionZh 写 320-520 中文字");
+    expect(challengeSystem).toContain("challengeCard 只写 1 条 challenge");
+  });
+
   it("normalizes a valid stanceCard with whitelisted evidence refs", () => {
     const normalized = normalizeHexRoundStartAgentOutputDraft({
       cardKind: "stance",
@@ -481,3 +495,67 @@ describe("Hex round-start agent output", () => {
     expect(outputs[1]?.technicalRefs.errors).toContain("round_start:no_valid_claim_catalog");
   });
 });
+
+function buildRoundStartRequest(cardKind: "stance" | "challenge"): HexRoundStartAgentOutputRequest {
+  return {
+    schemaVersion: 1,
+    requestMode: "round_start_agent_output",
+    outputLanguage: "zh-CN",
+    roundNumber: 1,
+    topicTitle: "测试 round",
+    cardKind,
+    decisionQuestionZh,
+    allowedStance: ["structural", "neutral"],
+    requiredEvidenceSchema: [],
+    challengePolicyZh: "挑战必须绑定 claim。",
+    claimCatalog: cardKind === "challenge" ? [{
+      claimId: "claim_ct_0_1",
+      claimType: "commodity_price_signal",
+      claimZh: "铜价动量支持有限配置。",
+      stanceAgentId: "ct_0",
+      evidenceRefs: ["FRED_COPPER"],
+      reasoningBridge: "价格动量需要传导到权益资产。"
+    }] : [],
+    defenseSummaryZh: "立场方",
+    attackSummaryZh: "挑战方",
+    evidenceBoundaryZh: "只能使用白名单证据。",
+    systemInputCard: {
+      briefId: "opening_1_agent",
+      agentId: cardKind === "stance" ? "ct_0" : "t_0",
+      displayName: cardKind === "stance" ? "CT" : "T",
+      teamId: cardKind === "stance" ? "ct" : "t",
+      teamSide: cardKind === "stance" ? "defense" : "attack",
+      role: "测试角色",
+      financeRole: "test",
+      financeRoleCn: "测试",
+      evidenceRefs: ["FRED_COPPER", "FRED_ALUMINUM"],
+      roundTaskZh: "测试任务",
+      proofOrChallengeZh: "测试证明或挑战",
+      evidenceBoundaryZh: "只能使用白名单证据。",
+      buyConstraintZh: "小仓位。",
+      actionHintZh: "局内只引用 claim。"
+    },
+    agent: {
+      agentId: cardKind === "stance" ? "ct_0" : "t_0",
+      displayName: cardKind === "stance" ? "CT" : "T",
+      teamId: cardKind === "stance" ? "ct" : "t",
+      teamSide: cardKind === "stance" ? "defense" : "attack",
+      role: "测试角色",
+      financeRole: "test",
+      financeRoleCn: "测试"
+    },
+    economy: {
+      buyType: "halfBuy",
+      resourceTier: "medium",
+      utilityTier: "medium",
+      spend: 1800,
+      outputBudget: 650,
+      constraints: []
+    },
+    outputSchema: {
+      requiredFields: ["cardKind", "rawFinanceOpinionZh"],
+      optionalFields: []
+    },
+    constraints: []
+  };
+}

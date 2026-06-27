@@ -40,6 +40,7 @@ export interface HexFinanceEvidenceJudgeSideResult {
   rejectedClaims: string[];
   acceptedChallenges: string[];
   rejectedChallenges: string[];
+  acceptedEvidenceRefsByItemId: Record<string, string[]>;
   sideScore: number;
   stanceScore: number;
   challengeScore: number;
@@ -95,6 +96,7 @@ interface MutableSideResult {
   rejectedClaims: Set<string>;
   acceptedChallenges: Set<string>;
   rejectedChallenges: Set<string>;
+  acceptedEvidenceRefsByItemId: Map<string, Set<string>>;
   score: number;
   adoptionReasons: Set<string>;
   rejectionReasons: Set<string>;
@@ -280,6 +282,14 @@ function buildLegacySubmittedFinanceOutputs(outputs: readonly HexRoundStartAgent
       ...(output.challengeCard ? { submittedChallengeCard: output.challengeCard } : {}),
       rawFinanceOpinionZh: output.rawFinanceOpinionZh,
       submittedOpinionZh: output.rawFinanceOpinionZh,
+      rawOpinionCharCount: output.rawFinanceOpinionZh?.length ?? 0,
+      rawOpinionTargetMinChars: 0,
+      rawOpinionTargetMaxChars: 0,
+      rawOpinionUnderTarget: false,
+      submittedOpinionCharCount: output.rawFinanceOpinionZh?.length ?? 0,
+      submittedBudgetChars: output.rawFinanceOpinionZh?.length ?? 0,
+      submittedBudgetUtilization: output.rawFinanceOpinionZh ? 1 : 0,
+      rawOpinionUnderfilled: false,
       submittedTextBudgetChars: output.rawFinanceOpinionZh?.length ?? 0,
       submittedTextSpanRefs: output.rawFinanceOpinionZh ? [{
         start: 0,
@@ -294,7 +304,17 @@ function buildLegacySubmittedFinanceOutputs(outputs: readonly HexRoundStartAgent
       economyPosture: "legacy",
       loadoutPackage: "legacy",
       outputBudget: 0,
-      clippingTier: "full" as const,
+      clippingTier: "rifle_full" as const,
+      economyClipVersion: "finance_economy_clip_v1" as const,
+      economyClipTier: "rifle_full" as const,
+      spend: 5200,
+      spendUnit: 50 as const,
+      charsPerSpendUnit: 4,
+      rawBudgetChars: 416,
+      cutMode: "multi_slice" as const,
+      cutModeSeed: `legacy:${output.outputId}`,
+      budgetClampReason: "within_tier" as const,
+      budgetSource: "economy_spend" as const,
       combatEffectCap: "possible_kill" as const,
       judgeInputRef: `legacy_round_start:${output.outputId}`,
       factBankSnapshotId: "legacy_trace_without_n62",
@@ -339,6 +359,7 @@ function evaluateStanceCard(input: {
       continue;
     }
     input.sideResult.acceptedClaims.add(claim.claimId);
+    addAcceptedEvidenceForItem(input.sideResult, claim.claimId, evaluation.acceptedRefs);
     input.sideResult.score += 20 + Math.min(18, evaluation.acceptedRefs.length * 6);
     input.sideResult.adoptionReasons.add(`${claim.claimId}:claim_supported_by_accepted_evidence`);
     if (input.card.riskBoundaries.length > 0 || input.card.invalidatingConditions.length > 0) {
@@ -402,6 +423,7 @@ function evaluateChallengeCard(input: {
     }
 
     input.sideResult.acceptedChallenges.add(challenge.challengeId);
+    addAcceptedEvidenceForItem(input.sideResult, challenge.challengeId, evaluation.acceptedRefs);
     const missingOnlyChallenge = evaluation.acceptedRefs.length === 0 && missingKeys.length > 0;
     if (missingOnlyChallenge) {
       input.sideResult.score += 4;
@@ -612,6 +634,7 @@ function finalizeSideResult(input: {
     rejectedClaims: [...input.input.rejectedClaims],
     acceptedChallenges: [...input.input.acceptedChallenges],
     rejectedChallenges: [...input.input.rejectedChallenges],
+    acceptedEvidenceRefsByItemId: mapAcceptedEvidenceRefsByItemId(input.input.acceptedEvidenceRefsByItemId),
     sideScore: input.sideScore,
     stanceScore: input.stanceScore,
     challengeScore: input.challengeScore,
@@ -657,11 +680,34 @@ function buildMutableSideResult(side: HexSide): MutableSideResult {
     rejectedClaims: new Set(),
     acceptedChallenges: new Set(),
     rejectedChallenges: new Set(),
+    acceptedEvidenceRefsByItemId: new Map(),
     score: 0,
     adoptionReasons: new Set(),
     rejectionReasons: new Set(),
     auditReasons: new Set()
   };
+}
+
+function addAcceptedEvidenceForItem(sideResult: MutableSideResult, itemId: string, acceptedRefs: readonly string[]): void {
+  const normalizedItemId = itemId.trim();
+  if (!normalizedItemId || acceptedRefs.length === 0) {
+    return;
+  }
+  const existing = sideResult.acceptedEvidenceRefsByItemId.get(normalizedItemId) ?? new Set<string>();
+  for (const ref of acceptedRefs) {
+    if (ref.trim()) {
+      existing.add(ref);
+    }
+  }
+  sideResult.acceptedEvidenceRefsByItemId.set(normalizedItemId, existing);
+}
+
+function mapAcceptedEvidenceRefsByItemId(input: Map<string, Set<string>>): Record<string, string[]> {
+  const mapped: Record<string, string[]> = {};
+  for (const [itemId, refs] of input) {
+    mapped[itemId] = [...refs];
+  }
+  return mapped;
 }
 
 function collectMentionedRequiredEvidenceKeys(text: string, requiredEvidenceSchema: readonly HexFinanceRequiredEvidenceItem[]): string[] {

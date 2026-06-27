@@ -113,6 +113,7 @@ function analyzeTrace(path, mapSlug) {
   const challengeCatalog = collectChallenges(roundStartOutputs);
   const submittedFinanceOutputs = Array.isArray(trace.submittedFinanceOutputs) ? trace.submittedFinanceOutputs : [];
   const submittedFinanceDiagnostics = collectSubmittedFinanceDiagnostics(submittedFinanceOutputs, combats);
+  const providerRetryDiagnostics = collectProviderRetryDiagnostics(trace);
   const financeVerdicts = combats.filter(hasFinanceVerdict);
   const phase0Diagnostics = collectPhase0Diagnostics(roundStartOutputs);
   const roundQualityStatus = trace.audit?.roundQualityStatus ?? null;
@@ -121,6 +122,9 @@ function analyzeTrace(path, mapSlug) {
   const financeWinWithoutAcceptedEvidence = financeVerdicts.filter(hasFinancialWinWithoutAcceptedEvidence);
   const combatFinanceFirepowerPositive = combats.filter(hasPositiveFinanceFirepower);
   const combatFinanceFirepowerWithoutAcceptedEvidence = combatFinanceFirepowerPositive.filter((combat) => countAcceptedEvidence(combat.financeEvidenceAdoption) === 0);
+  const combatWithParticipantAcceptedFinanceEvidence = combats.filter(hasParticipantAcceptedFinanceEvidence);
+  const combatAcceptedItemMissingEvidenceMapping = combats.filter(hasAcceptedItemMissingEvidenceMapping);
+  const combatParticipantEvidenceWithoutFirepower = combatWithParticipantAcceptedFinanceEvidence.filter((combat) => !hasPositiveFinanceFirepower(combat));
   const combatExplanations = combats.filter((combat) => combat.financeProjection || combat.financeEvidenceAdoption || combat.csReasonZh?.length || combat.csReasons?.length);
   const combatFinanceCsSeparated = combatExplanations.filter(hasSeparatedFinanceAndCsReasons);
   const directCombats = combats.filter(hasOpposingCombatParticipants);
@@ -152,6 +156,9 @@ function analyzeTrace(path, mapSlug) {
     financeWinWithoutAcceptedEvidence,
     combatFinanceFirepowerPositive,
     combatFinanceFirepowerWithoutAcceptedEvidence,
+    combatWithParticipantAcceptedFinanceEvidence,
+    combatAcceptedItemMissingEvidenceMapping,
+    combatParticipantEvidenceWithoutFirepower,
     directCombats,
     combatWithN65PressureKey,
     combatMissingN65PressureKey,
@@ -187,6 +194,8 @@ function analyzeTrace(path, mapSlug) {
     usablePhase0OutputCount: phase0Diagnostics.usablePhase0OutputCount,
     invalidPhase0OutputCount: phase0Diagnostics.invalidPhase0OutputCount,
     providerErrorPhase0Count: phase0Diagnostics.providerErrorPhase0Count,
+    providerRetryRecoveredCount: providerRetryDiagnostics.recoveredCount,
+    providerRetryFinalFailureCount: providerRetryDiagnostics.finalFailureCount,
     invalidStanceCardCount: phase0Diagnostics.invalidStanceCardCount,
     invalidChallengeCardCount: phase0Diagnostics.invalidChallengeCardCount,
     skippedChallengeNoClaimCatalogCount: phase0Diagnostics.skippedChallengeNoClaimCatalogCount,
@@ -206,6 +215,9 @@ targetClaimBindRate,
     financeWinWithoutAcceptedEvidenceCount: financeWinWithoutAcceptedEvidence.length,
     combatFinanceFirepowerPositiveCount: combatFinanceFirepowerPositive.length,
     combatFinanceFirepowerWithoutAcceptedEvidenceCount: combatFinanceFirepowerWithoutAcceptedEvidence.length,
+    combatWithParticipantAcceptedFinanceEvidenceCount: combatWithParticipantAcceptedFinanceEvidence.length,
+    combatAcceptedItemMissingEvidenceMappingCount: combatAcceptedItemMissingEvidenceMapping.length,
+    combatParticipantEvidenceWithoutFirepowerCount: combatParticipantEvidenceWithoutFirepower.length,
     directCombatCount: directCombats.length,
     combatWithN65PressureKeyCount: combatWithN65PressureKey.length,
     combatMissingN65PressureKeyCount: combatMissingN65PressureKey.length,
@@ -241,6 +253,8 @@ function buildBlockedRealProviderRun(reason) {
     usablePhase0OutputCount: 0,
     invalidPhase0OutputCount: 0,
     providerErrorPhase0Count: 0,
+    providerRetryRecoveredCount: 0,
+    providerRetryFinalFailureCount: 0,
     invalidStanceCardCount: 0,
     invalidChallengeCardCount: 0,
     skippedChallengeNoClaimCatalogCount: 0,
@@ -254,6 +268,9 @@ function buildBlockedRealProviderRun(reason) {
     financeWinWithoutAcceptedEvidenceCount: 0,
     combatFinanceFirepowerPositiveCount: 0,
     combatFinanceFirepowerWithoutAcceptedEvidenceCount: 0,
+    combatWithParticipantAcceptedFinanceEvidenceCount: 0,
+    combatAcceptedItemMissingEvidenceMappingCount: 0,
+    combatParticipantEvidenceWithoutFirepowerCount: 0,
     directCombatCount: 0,
     combatWithN65PressureKeyCount: 0,
     combatMissingN65PressureKeyCount: 0,
@@ -318,6 +335,16 @@ function getFinanceScenarioSlug(trace) {
     ?? null;
 }
 
+function collectProviderRetryDiagnostics(trace) {
+  const audits = Array.isArray(trace?.phases)
+    ? trace.phases.flatMap((phase) => Array.isArray(phase?.commandResult?.audits) ? phase.commandResult.audits : [])
+    : [];
+  return {
+    recoveredCount: audits.filter((audit) => audit?.providerRecovered === true).length,
+    finalFailureCount: audits.filter((audit) => (audit?.providerRetryCount ?? 0) > 0 && audit?.providerRecovered !== true && Array.isArray(audit?.errors) && audit.errors.some((error) => String(error).startsWith("provider_error"))).length
+  };
+}
+
 function collectPhase0Diagnostics(outputs) {
   const hasError = (output, pattern) => Array.isArray(output.technicalRefs?.errors)
     && output.technicalRefs.errors.some((error) => pattern.test(error));
@@ -348,6 +375,8 @@ function collectPhase0Diagnostics(outputs) {
     usablePhase0OutputCount: 0,
     invalidPhase0OutputCount: 0,
     providerErrorPhase0Count: 0,
+    providerRetryRecoveredCount: 0,
+    providerRetryFinalFailureCount: 0,
     invalidStanceCardCount: 0,
     invalidChallengeCardCount: 0,
     skippedChallengeNoClaimCatalogCount: 0
@@ -457,9 +486,24 @@ function hasFinanceVerdict(combat) {
   return Boolean(combat.financeProjection || combat.financeEvidenceAdoption || combat.financeVerdict);
 }
 
+function collectFinanceFirepowerScores(combat) {
+  return [combat.scores?.attack?.financeFirepowerScore, combat.scores?.defense?.financeFirepowerScore, combat.financeFirepowerAttack, combat.financeFirepowerDefense].filter(Boolean);
+}
+
 function hasPositiveFinanceFirepower(combat) {
-  const scores = [combat.scores?.attack?.financeFirepowerScore, combat.scores?.defense?.financeFirepowerScore, combat.financeFirepowerAttack, combat.financeFirepowerDefense].filter(Boolean);
-  return scores.some((score) => Number(score.appliedToCombatScore ?? 0) > 0 || Number(score.totalScore ?? 0) > 0);
+  return collectFinanceFirepowerScores(combat).some((score) => Number(score.appliedToCombatScore ?? 0) > 0 || Number(score.totalScore ?? 0) > 0);
+}
+
+function hasParticipantAcceptedFinanceEvidence(combat) {
+  return collectFinanceFirepowerScores(combat).some((score) => Array.isArray(score.participantAcceptedEvidenceRefs) && score.participantAcceptedEvidenceRefs.length > 0);
+}
+
+function hasAcceptedItemMissingEvidenceMapping(combat) {
+  return collectFinanceFirepowerScores(combat).some((score) => Array.isArray(score.participantAcceptedClaimRefs)
+    && score.participantAcceptedClaimRefs.length > 0
+    && (!Array.isArray(score.participantAcceptedEvidenceRefs) || score.participantAcceptedEvidenceRefs.length === 0)
+    && Array.isArray(score.auditReasons)
+    && score.auditReasons.includes("accepted_item_missing_evidence_mapping"));
 }
 function hasFinancialWinWithoutAcceptedEvidence(combat) {
   const financialResult = combat.financeProjection?.financialResult
@@ -566,7 +610,12 @@ function buildFailures(input) {
     add("old_trace_missing_fields", "trace 未记录 P0 roundQualityStatus 质量闸门。");
   }
   if (input.roundQualityStatus && input.roundQualityStatus !== "valid") {
-    add(input.roundQualityStatus === "provider_degraded" ? "provider_degraded" : "invalid_round", input.roundQualitySummaryZh ?? `round quality gate 未通过：${input.roundQualityStatus}`, {
+    const qualityCategory = input.roundQualityStatus === "provider_degraded"
+      ? "provider_degraded"
+      : input.roundQualityStatus === "action_degraded"
+        ? "action_degraded"
+        : "invalid_round";
+    add(qualityCategory, input.roundQualitySummaryZh ?? `round quality gate failed: ${input.roundQualityStatus}`, {
       roundQualityStatus: input.roundQualityStatus,
       roundQualityReasons: input.roundQualityReasons
     });
@@ -639,6 +688,16 @@ function buildFailures(input) {
       count: input.combatFinanceFirepowerWithoutAcceptedEvidence.length
     });
   }
+  if (input.combatAcceptedItemMissingEvidenceMapping.length > 0) {
+    add("n63_participant_evidence_mapping_missing", "存在 participant accepted claim/challenge 但缺 item -> evidence 映射的 combat。", {
+      count: input.combatAcceptedItemMissingEvidenceMapping.length
+    });
+  }
+  if (input.combatParticipantEvidenceWithoutFirepower.length > 0) {
+    add("n63_firepower_not_applied", "存在 participant accepted evidence 但 N63 金融火力未应用的 combat。", {
+      count: input.combatParticipantEvidenceWithoutFirepower.length
+    });
+  }
   if (input.combats.length > 0 && input.combats.some((combat) => !combat.financeProjection)) {
     add("old_trace_missing_fields", "部分 combat 未记录 N60 financeProjection。");
   }
@@ -662,6 +721,9 @@ function buildSummary(runs) {
     acc.financeWinWithoutAcceptedEvidenceCount += run.financeWinWithoutAcceptedEvidenceCount;
     acc.combatFinanceFirepowerPositiveCount += run.combatFinanceFirepowerPositiveCount ?? 0;
     acc.combatFinanceFirepowerWithoutAcceptedEvidenceCount += run.combatFinanceFirepowerWithoutAcceptedEvidenceCount ?? 0;
+    acc.combatWithParticipantAcceptedFinanceEvidenceCount += run.combatWithParticipantAcceptedFinanceEvidenceCount ?? 0;
+    acc.combatAcceptedItemMissingEvidenceMappingCount += run.combatAcceptedItemMissingEvidenceMappingCount ?? 0;
+    acc.combatParticipantEvidenceWithoutFirepowerCount += run.combatParticipantEvidenceWithoutFirepowerCount ?? 0;
     acc.directCombatCount += run.directCombatCount ?? 0;
     acc.combatWithN65PressureKeyCount += run.combatWithN65PressureKeyCount ?? 0;
     acc.combatMissingN65PressureKeyCount += run.combatMissingN65PressureKeyCount ?? 0;
@@ -671,6 +733,8 @@ function buildSummary(runs) {
     acc.usablePhase0OutputCount += run.usablePhase0OutputCount;
     acc.invalidPhase0OutputCount += run.invalidPhase0OutputCount;
     acc.providerErrorPhase0Count += run.providerErrorPhase0Count;
+    acc.providerRetryRecoveredCount += run.providerRetryRecoveredCount ?? 0;
+    acc.providerRetryFinalFailureCount += run.providerRetryFinalFailureCount ?? 0;
     acc.invalidStanceCardCount += run.invalidStanceCardCount;
     acc.invalidChallengeCardCount += run.invalidChallengeCardCount;
     acc.skippedChallengeNoClaimCatalogCount += run.skippedChallengeNoClaimCatalogCount;
@@ -693,6 +757,9 @@ function buildSummary(runs) {
     if (run.roundQualityStatus === "provider_degraded") {
       acc.providerDegradedRoundCount += 1;
     }
+    if (run.roundQualityStatus === "action_degraded") {
+      acc.actionDegradedRoundCount += 1;
+    }
     if (!run.roundQualityStatus) {
       acc.legacyNoQualityGateCount += 1;
     }
@@ -705,6 +772,9 @@ function buildSummary(runs) {
     financeWinWithoutAcceptedEvidenceCount: 0,
     combatFinanceFirepowerPositiveCount: 0,
     combatFinanceFirepowerWithoutAcceptedEvidenceCount: 0,
+    combatWithParticipantAcceptedFinanceEvidenceCount: 0,
+    combatAcceptedItemMissingEvidenceMappingCount: 0,
+    combatParticipantEvidenceWithoutFirepowerCount: 0,
     directCombatCount: 0,
     combatWithN65PressureKeyCount: 0,
     combatMissingN65PressureKeyCount: 0,
@@ -714,6 +784,8 @@ function buildSummary(runs) {
     usablePhase0OutputCount: 0,
     invalidPhase0OutputCount: 0,
     providerErrorPhase0Count: 0,
+    providerRetryRecoveredCount: 0,
+    providerRetryFinalFailureCount: 0,
     invalidStanceCardCount: 0,
     invalidChallengeCardCount: 0,
     skippedChallengeNoClaimCatalogCount: 0,
@@ -732,6 +804,7 @@ function buildSummary(runs) {
     failureCount: 0,
     invalidRoundCount: 0,
     providerDegradedRoundCount: 0,
+    actionDegradedRoundCount: 0,
     normalScoredRoundCount: 0,
     legacyNoQualityGateCount: 0
   });

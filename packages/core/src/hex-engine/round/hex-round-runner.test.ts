@@ -6,6 +6,8 @@ import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
 import type { HexCombatResolution } from "../combat/index.js";
 import { validateHexMoveBudget } from "../path/index.js";
 import type { HexRoundMemory } from "../state/index.js";
+import { createFixtureHexAgentCommandProvider } from "../action/hex-agent-command-harness.js";
+import { createFixtureHexRoundStartAgentOutputProvider } from "../action/hex-round-start-agent-output.js";
 import { describe, expect, it } from "vitest";
 
 import { buildRoundTacticalPlan, dedupeHexPhaseCombatResolutions, runDust2HexRound } from "./hex-round-runner.js";
@@ -111,6 +113,36 @@ describe("Hex round runner", () => {
     expect(trace.audit.roundQualityReasons).toEqual(expect.arrayContaining(["phase_action_provider_failed"]));
     expect(trace.phases).toHaveLength(1);
     expect(JSON.stringify(trace.finalWinCondition)).not.toContain("winnerFromDraft");
+  });
+
+  it("does not mark a round degraded when a transient action provider error recovers on retry", async () => {
+    let calls = 0;
+    const fixtureActionProvider = createFixtureHexAgentCommandProvider();
+    const trace = await runDust2HexRound({
+      roundId: "round_hex_provider_retry_recovered",
+      roundNumber: 1,
+      attackTeamId: "team_t",
+      defenseTeamId: "team_ct",
+      activeAgents: createAgents(),
+      teamEconomyPlans: buildEconomyPlans(),
+      roundStartProvider: createFixtureHexRoundStartAgentOutputProvider(),
+      maxLlmCallsPerPhase: 10,
+      providerMode: "real",
+      provider: (request) => {
+        calls += 1;
+        if (calls === 1) {
+          throw new Error("transient_action_provider_down");
+        }
+        return fixtureActionProvider(request);
+      }
+    });
+
+    expect(trace.audit.providerRetryRecoveredCount).toBe(1);
+    expect(trace.audit.providerRetryFinalFailureCount).toBe(0);
+    expect(trace.audit.fallbackCount).toBe(0);
+    expect(trace.audit.roundQualityStatus).toBe("valid");
+    expect(trace.audit.roundQualityReasons).not.toContain("phase_action_fallback_present");
+    expect(trace.audit.roundQualityCounts.phaseActionProviderErrorCount).toBe(0);
   });
 
   it("invalidates the round before phase actions when phase0 has no usable cards", async () => {

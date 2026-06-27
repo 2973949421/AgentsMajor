@@ -299,6 +299,16 @@ export interface HexMatchLabSubmittedFinanceOutput {
   decisionQuestionId: string;
   evidenceMenuVersion: string;
   clippingPolicyVersion: string;
+  economyClipVersion?: string | undefined;
+  economyClipTier?: string | undefined;
+  spend?: number | undefined;
+  spendUnit?: number | undefined;
+  charsPerSpendUnit?: number | undefined;
+  rawBudgetChars?: number | undefined;
+  cutMode?: string | undefined;
+  cutModeSeed?: string | undefined;
+  budgetClampReason?: string | undefined;
+  budgetSource?: string | undefined;
   omittedFields: string[];
   cappedFields: string[];
   orphanedChallenge: boolean;
@@ -310,6 +320,14 @@ export interface HexMatchLabSubmittedFinanceOutput {
   gateSummary: string;
   rawFinanceOpinionZh?: string | undefined;
   submittedOpinionZh?: string | undefined;
+  rawOpinionCharCount: number;
+  rawOpinionTargetMinChars: number;
+  rawOpinionTargetMaxChars: number;
+  rawOpinionUnderTarget: boolean;
+  rawOpinionUnderfilled: boolean;
+  submittedOpinionCharCount: number;
+  submittedBudgetChars: number;
+  submittedBudgetUtilization: number;
   submittedTextBudgetChars: number;
   submittedTextSpanRefs: HexMatchLabFinanceOutputAnnotationSpan[];
   rawOpinionLinkStatus: string;
@@ -331,6 +349,7 @@ export interface HexMatchLabFinanceOutputAuditView {
   summaryZh: string;
   judgeStatusZh: string;
   clippingSummaryZh: string;
+  lengthSummaryZh: string;
   annotationSpans: HexMatchLabFinanceOutputAnnotationSpan[];
   unlocatedSubmittedItems: HexMatchLabFinanceOutputUnlocatedItem[];
   technicalRefs: {
@@ -342,6 +361,15 @@ export interface HexMatchLabFinanceOutputAuditView {
     submittedOutputId?: string | undefined;
     judgeInputRef?: string | undefined;
     clippingTier?: string | undefined;
+    economyClipTier?: string | undefined;
+    spend?: number | undefined;
+    spendUnit?: number | undefined;
+    charsPerSpendUnit?: number | undefined;
+    rawBudgetChars?: number | undefined;
+    cutMode?: string | undefined;
+    cutModeSeed?: string | undefined;
+    budgetClampReason?: string | undefined;
+    budgetSource?: string | undefined;
     combatEffectCap?: string | undefined;
     rawFingerprint?: string | undefined;
     submittedFingerprint?: string | undefined;
@@ -995,6 +1023,8 @@ export interface HexMatchLabLlmAuditSummary {
   repairedFields: string[];
   fallbackReasons: string[];
   providerErrors: string[];
+  providerRetryRecoveredCount: number;
+  providerRetryFinalFailureCount: number;
   roundStrategySeed?: string | undefined;
   strategyVariant?: string | undefined;
   roundQualityStatus?: string | undefined;
@@ -1988,6 +2018,24 @@ function summarizeSubmittedFinanceOutputs(
     const rawOutputId = String(submitted.rawOutputId ?? "");
     const rawOutput = rawById.get(rawOutputId);
     const agentId = String(submitted.agentId ?? rawOutput?.agentId ?? "unknown_agent");
+    const rawFinanceOpinionZh = typeof submitted.rawFinanceOpinionZh === "string" ? submitted.rawFinanceOpinionZh : rawOutput?.rawFinanceOpinionZh;
+    const submittedOpinionZh = typeof submitted.submittedOpinionZh === "string" ? submitted.submittedOpinionZh : undefined;
+    const submittedTextBudgetChars = readFiniteNumber(submitted.submittedTextBudgetChars);
+    const submittedBudgetChars = readFiniteNumber(submitted.submittedBudgetChars, submittedTextBudgetChars);
+    const rawOpinionCharCount = readFiniteNumber(submitted.rawOpinionCharCount, (rawFinanceOpinionZh ?? "").trim().length);
+    const submittedOpinionCharCount = readFiniteNumber(submitted.submittedOpinionCharCount, (submittedOpinionZh ?? "").trim().length);
+    const rawOpinionTargetMinChars = readFiniteNumber(submitted.rawOpinionTargetMinChars);
+    const rawOpinionTargetMaxChars = readFiniteNumber(submitted.rawOpinionTargetMaxChars);
+    const submittedBudgetUtilization = readFiniteNumber(
+      submitted.submittedBudgetUtilization,
+      submittedBudgetChars > 0 ? submittedOpinionCharCount / submittedBudgetChars : 0
+    );
+    const rawOpinionUnderTarget = submitted.rawOpinionUnderTarget === true || (rawOpinionTargetMinChars > 0 && rawOpinionCharCount > 0 && rawOpinionCharCount < rawOpinionTargetMinChars);
+    const rawOpinionUnderfilled = submitted.rawOpinionUnderfilled === true || (submittedBudgetChars > 0 && rawOpinionCharCount > 0 && rawOpinionCharCount < submittedBudgetChars);
+    const spend = readOptionalFiniteNumber(submitted.spend);
+    const spendUnit = readOptionalFiniteNumber(submitted.spendUnit);
+    const charsPerSpendUnit = readOptionalFiniteNumber(submitted.charsPerSpendUnit);
+    const rawBudgetChars = readOptionalFiniteNumber(submitted.rawBudgetChars);
     return {
       submittedOutputId: String(submitted.submittedOutputId ?? `submitted_${rawOutputId || agentId}`),
       rawOutputId,
@@ -2005,6 +2053,16 @@ function summarizeSubmittedFinanceOutputs(
       decisionQuestionId: String(submitted.decisionQuestionId ?? "unknown_decision"),
       evidenceMenuVersion: String(submitted.evidenceMenuVersion ?? "unknown_evidence_menu"),
       clippingPolicyVersion: String(submitted.clippingPolicyVersion ?? "unknown_policy"),
+      economyClipVersion: typeof submitted.economyClipVersion === "string" ? submitted.economyClipVersion : undefined,
+      economyClipTier: typeof submitted.economyClipTier === "string" ? submitted.economyClipTier : undefined,
+      spend,
+      spendUnit,
+      charsPerSpendUnit,
+      rawBudgetChars,
+      cutMode: typeof submitted.cutMode === "string" ? submitted.cutMode : undefined,
+      cutModeSeed: typeof submitted.cutModeSeed === "string" ? submitted.cutModeSeed : undefined,
+      budgetClampReason: typeof submitted.budgetClampReason === "string" ? submitted.budgetClampReason : undefined,
+      budgetSource: typeof submitted.budgetSource === "string" ? submitted.budgetSource : undefined,
       omittedFields: toStringArray(submitted.omittedFields),
       cappedFields: toStringArray(submitted.cappedFields),
       orphanedChallenge: submitted.orphanedChallenge === true,
@@ -2014,9 +2072,17 @@ function summarizeSubmittedFinanceOutputs(
       submittedUsableForJudge: submitted.submittedUsableForJudge === true,
       submittedUsableForCombat: submitted.submittedUsableForCombat === true,
       gateSummary: String(submitted.gateSummary ?? "N62 提交门未记录摘要。"),
-      rawFinanceOpinionZh: typeof submitted.rawFinanceOpinionZh === "string" ? submitted.rawFinanceOpinionZh : rawOutput?.rawFinanceOpinionZh,
-      submittedOpinionZh: typeof submitted.submittedOpinionZh === "string" ? submitted.submittedOpinionZh : undefined,
-      submittedTextBudgetChars: typeof submitted.submittedTextBudgetChars === "number" ? submitted.submittedTextBudgetChars : 0,
+      rawFinanceOpinionZh,
+      submittedOpinionZh,
+      rawOpinionCharCount,
+      rawOpinionTargetMinChars,
+      rawOpinionTargetMaxChars,
+      rawOpinionUnderTarget,
+      rawOpinionUnderfilled,
+      submittedOpinionCharCount,
+      submittedBudgetChars,
+      submittedBudgetUtilization,
+      submittedTextBudgetChars,
       submittedTextSpanRefs: toFinanceOutputAnnotationSpans(submitted.submittedTextSpanRefs),
       rawOpinionLinkStatus: String(submitted.rawOpinionLinkStatus ?? "unknown"),
       unlocatedSubmittedItems: toFinanceOutputUnlocatedItems(submitted.unlocatedSubmittedItems),
@@ -2095,10 +2161,12 @@ function buildFinanceOutputAuditViews(
     const rawOpinion = (submitted?.rawFinanceOpinionZh ?? output.rawFinanceOpinionZh)?.trim();
     const rawText = rawOpinion || response?.rawText || buildNormalizedFinanceRawFallback(output);
     const rawFallbackLabel = rawOpinion
-      ? undefined
+      ? response?.rawText
+        ? "当前主视图显示 rawFinanceOpinionZh：这是模型输出的可提交原文观点字段，不是完整原始 LLM response；完整 response artifact 可在技术细节中核对。"
+        : "当前主视图显示 rawFinanceOpinionZh：这是模型输出的可提交原文观点字段，不是完整原始 LLM response；当前 trace 未能读取完整 response artifact。"
       : response?.rawText
-        ? "当前 trace 未记录 rawFinanceOpinionZh，以下显示 response artifact 原文；submitted 标注可能不完整。"
-        : "当前 trace 未记录原始 LLM 文本，以下显示 parser / normalizer 后的结构化卡片。";
+        ? "当前 trace 未记录 rawFinanceOpinionZh，主视图回退显示 response artifact 原文；submitted 只作为裁剪标注。"
+        : "当前 trace 未记录 rawFinanceOpinionZh 和 LLM response，主视图回退显示 parser / normalizer 结构。";
     return {
       outputId: output.outputId,
       agentId: output.agentId,
@@ -2111,6 +2179,7 @@ function buildFinanceOutputAuditViews(
       summaryZh: buildFinanceAuditSummary(output),
       judgeStatusZh: submitted ? (submitted.submittedUsableForJudge ? "进入 N59 judge" : "不进入 N59 judge") : "旧 trace 未记录 N62 提交门",
       clippingSummaryZh: buildFinanceClippingSummary(submitted),
+      lengthSummaryZh: buildFinanceLengthSummary(submitted),
       annotationSpans: submitted?.submittedTextSpanRefs ?? [],
       unlocatedSubmittedItems: submitted?.unlocatedSubmittedItems ?? [],
       technicalRefs: {
@@ -2122,6 +2191,15 @@ function buildFinanceOutputAuditViews(
         submittedOutputId: submitted?.submittedOutputId,
         judgeInputRef: submitted?.judgeInputRef,
         clippingTier: submitted?.clippingTier,
+        economyClipTier: submitted?.economyClipTier,
+        spend: submitted?.spend,
+        spendUnit: submitted?.spendUnit,
+        charsPerSpendUnit: submitted?.charsPerSpendUnit,
+        rawBudgetChars: submitted?.rawBudgetChars,
+        cutMode: submitted?.cutMode,
+        cutModeSeed: submitted?.cutModeSeed,
+        budgetClampReason: submitted?.budgetClampReason,
+        budgetSource: submitted?.budgetSource,
         combatEffectCap: submitted?.combatEffectCap,
         rawFingerprint: submitted?.rawFingerprint,
         submittedFingerprint: submitted?.submittedFingerprint
@@ -2155,9 +2233,29 @@ function buildFinanceClippingSummary(submitted: HexMatchLabSubmittedFinanceOutpu
   if (!submitted) {
     return "旧 trace 未记录经济裁剪结果。";
   }
+  const tier = formatFinanceClippingTierZh(submitted.economyClipTier ?? submitted.clippingTier);
+  const spend = typeof submitted.spend === "number" ? `花费 ${submitted.spend}` : "花费未记录";
+  const exchange = typeof submitted.spendUnit === "number" && typeof submitted.charsPerSpendUnit === "number"
+    ? `汇率 ${submitted.spendUnit}=${submitted.charsPerSpendUnit}字`
+    : "汇率未记录";
+  const budget = submitted.submittedBudgetChars > 0 ? `提交预算 ${submitted.submittedBudgetChars} 字` : "提交预算未记录";
+  const cutMode = submitted.cutMode ? `模式 ${formatFinanceCutModeZh(submitted.cutMode)}` : "裁剪模式未记录";
   const omitted = submitted.omittedFields.length > 0 ? `被裁剪 ${submitted.omittedFields.length} 项` : "无被裁剪字段";
   const capped = submitted.cappedFields.length > 0 ? `封顶 ${submitted.cappedFields.length} 项` : "无额外封顶字段";
-  return `经济裁剪：${formatFinanceClippingTierZh(submitted.clippingTier)}；金融火力上限：${formatFinanceCapLevelZh(submitted.combatEffectCap)}；${omitted}；${capped}。`;
+  const clamp = submitted.budgetClampReason && submitted.budgetClampReason !== "within_tier" ? `预算被档位限制：${formatBudgetClampReasonZh(submitted.budgetClampReason)}` : "预算未被档位额外限制";
+  return `经济剪裁：${tier}；${spend}；${exchange}；${budget}；${cutMode}；金融火力上限：${formatFinanceCapLevelZh(submitted.combatEffectCap)}；${clamp}；${omitted}；${capped}。`;
+}
+function buildFinanceLengthSummary(submitted: HexMatchLabSubmittedFinanceOutput | undefined): string {
+  if (!submitted) {
+    return "旧 trace 未记录 N62C 长度审计。";
+  }
+  if (submitted.rawOpinionTargetMinChars <= 0 || submitted.rawOpinionTargetMaxChars <= 0 || submitted.submittedBudgetChars <= 0) {
+    return "旧 trace 未记录 N62C 原文目标或提交预算。";
+  }
+  const utilizationPct = Math.round(submitted.submittedBudgetUtilization * 100);
+  const underTarget = submitted.rawOpinionUnderTarget ? "；原文短于目标" : "";
+  const underfilled = submitted.rawOpinionUnderfilled ? "；原文短于提交预算，系统未补写内容" : "";
+  return `原文长度：${submitted.rawOpinionCharCount} / 目标 ${submitted.rawOpinionTargetMinChars}-${submitted.rawOpinionTargetMaxChars}；提交长度：${submitted.submittedOpinionCharCount} / 预算 ${submitted.submittedBudgetChars}；预算使用率 ${utilizationPct}%${underTarget}${underfilled}。`;
 }
 
 function collectFinanceAuditTerms(
@@ -2279,20 +2377,53 @@ function rangesOverlap(startA: number, endA: number, startB: number, endB: numbe
 }
 
 function formatFinanceClippingTierZh(tier: string): string {
+  if (tier === "high_full") return "高配 / AWP";
+  if (tier === "rifle_full") return "完整长枪";
+  if (tier === "half") return "半起 / 奖励局";
+  if (tier === "light") return "轻买 / 手枪甲";
+  if (tier === "force") return "强起 / 破产混起";
+  if (tier === "pistol") return "手枪局";
+  if (tier === "eco") return "eco 经济局";
+  if (tier === "save") return "保枪 / 全 eco";
   if (tier === "full") return "完整";
   if (tier === "standard") return "标准";
-  if (tier === "force") return "强起";
-  if (tier === "eco") return "eco 弱提交";
-  if (tier === "save") return "保枪 / 全 eco";
-  return "未知";
+  return tier ? `未知(${tier})` : "未知";
 }
 
+function formatFinanceCutModeZh(mode: string): string {
+  if (mode === "front_cut") return "开头短截";
+  if (mode === "tiny_random_window") return "极短随机窗口";
+  if (mode === "random_window") return "随机窗口";
+  if (mode === "pistol_core_window") return "手枪局核心窗口";
+  if (mode === "core_window") return "核心窗口";
+  if (mode === "random_core_window") return "核心附近随机窗口";
+  if (mode === "multi_slice_lite") return "轻量多片段";
+  if (mode === "multi_slice") return "多片段";
+  if (mode === "multi_slice_plus") return "增强多片段";
+  return mode;
+}
+
+function formatBudgetClampReasonZh(reason: string): string {
+  if (reason === "raised_to_tier_min") return "按买型下限抬高";
+  if (reason === "capped_to_tier_max") return "按买型上限封顶";
+  if (reason === "fallback_no_economy") return "缺经济数字，使用保守 fallback";
+  if (reason === "within_tier") return "未限制";
+  return reason;
+}
 function formatFinanceCapLevelZh(cap: string): string {
   if (cap === "possible_kill") return "高";
   if (cap === "possible_wound" || cap === "forced_back" || cap === "suppression") return "中";
   if (cap === "weak_pressure" || cap === "minor_delay" || cap === "none") return "低";
   return "未知";
 }
+function readFiniteNumber(value: unknown, fallback = 0): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function readOptionalFiniteNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
 function toStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.map((item) => String(item)).filter(Boolean) : [];
 }
@@ -2439,6 +2570,9 @@ function buildHumanSampleQualityWarnings(input: {
   }
   if (input.audit.providerErrors.length > 0) {
     warnings.push(`provider 失败：${input.audit.providerErrors.map(humanizeReason).join("；")}`);
+  }
+  if (input.audit.providerRetryRecoveredCount > 0) {
+    warnings.push(`provider \u77ed\u6682\u5931\u8d25\u540e\u91cd\u8bd5\u6062\u590d ${input.audit.providerRetryRecoveredCount} \u6b21\uff1b\u8fd9\u4e9b\u6062\u590d\u4e0d\u8ba1\u5165\u6700\u7ec8\u964d\u7ea7\u3002`);
   }
   if (input.audit.fallbackCount > 0) {
     warnings.push(`本 round 有 ${input.audit.fallbackCount} 个行动降级，需展开阶段行动查看原因。`);
@@ -3014,12 +3148,12 @@ function buildHumanCombatStory(
 function humanizeDuelPairing(combat: HexMatchLabCombatSummary, agentIdentities: Map<string, AgentIdentity>): string {
   const pair = [...combat.duelPairs].sort((left, right) => right.directnessScore - left.directnessScore || left.duelPairId.localeCompare(right.duelPairId))[0];
   if (!pair) {
-    return "? trace ??? N65-lite ??? pair / pressureKey?";
+    return "旧 trace 未记录 N65-lite 主对枪 pair / pressureKey。";
   }
   const primary = formatAgentName(pair.primaryAgentId, agentIdentities);
   const target = formatAgentName(pair.targetAgentId, agentIdentities);
-  const support = pair.contributorAgentIds.length > 0 ? "????" + pair.contributorAgentIds.map((agentId) => formatAgentName(agentId, agentIdentities)).join("?") : "";
-  return "????" + primary + " vs " + target + "??? " + pair.laneId + "?pressureKey " + pair.pressureKey + "???? " + pair.directnessScore + "????? " + pair.lethalGateStatus + support + "?";
+  const support = pair.contributorAgentIds.length > 0 ? "；支援：" + pair.contributorAgentIds.map((agentId) => formatAgentName(agentId, agentIdentities)).join("、") : "";
+  return "主对枪：" + primary + " vs " + target + "；枪线 " + pair.laneId + "；pressureKey " + pair.pressureKey + "；直接度 " + pair.directnessScore + "；致命门 " + pair.lethalGateStatus + support + "。";
 }
 function humanizeContactThreat(combat: HexMatchLabCombatSummary): string {
   const threat = combat.contactThreatLevel === "lethal"
@@ -3473,7 +3607,9 @@ function summarizeSetupPhase(
       semanticLanguages: [],
       repairedFields: [],
       fallbackReasons: [],
-      providerErrors: []
+      providerErrors: [],
+      providerRetryRecoveredCount: 0,
+      providerRetryFinalFailureCount: 0
     },
     memoryBeforeSummary: summarizeMemory(phase.memoryBefore),
     memoryAfterSummary: summarizeMemory(phase.memoryBefore)
@@ -3641,6 +3777,8 @@ function summarizeTraceAudit(trace: HexRoundTrace): HexMatchLabLlmAuditSummary {
     repairedFields: uniqueStrings(phaseAudits.flatMap((audit) => audit.repairedFields ?? [])),
     fallbackReasons: uniqueStrings(phaseAudits.map((audit) => audit.fallbackReason)),
     providerErrors: uniqueStrings(phaseAudits.flatMap((audit) => audit.errors).filter((error) => error.startsWith("provider_error"))),
+    providerRetryRecoveredCount: phaseAudits.filter((audit) => audit.providerRecovered).length,
+    providerRetryFinalFailureCount: phaseAudits.filter((audit) => (audit.providerRetryCount ?? 0) > 0 && !audit.providerRecovered && audit.errors.some((error) => error.startsWith("provider_error"))).length,
     roundStrategySeed: trace.audit.roundStrategySeed,
     strategyVariant: trace.audit.strategyVariant,
     roundQualityStatus: trace.audit.roundQualityStatus,
@@ -3798,7 +3936,7 @@ function appendLiveProgressEvent(runId: string, event: HexAgentCommandProgressEv
     : [...record.slots, nextSlot];
   record.expectedCalls = Math.max(record.expectedCalls, event.expectedCalls);
   record.callsAttempted = record.slots.filter((slot) =>
-    ["running", "request_artifact_written", "response_artifact_written", "accepted", "repaired", "rejected", "fallback", "provider_error"].includes(slot.status)
+    ["running", "provider_retry", "provider_retry_recovered", "request_artifact_written", "response_artifact_written", "accepted", "repaired", "rejected", "fallback", "provider_error"].includes(slot.status)
   ).length;
   record.currentStep = `${event.phaseId} / ${event.agentId} / ${event.status}`;
   record.latestEvent = event.message ?? `${event.agentId}: ${event.status}`;
@@ -3940,6 +4078,9 @@ function summarizePhaseAudit(phase: HexRoundTrace["phases"][number]): HexMatchLa
     repairedFields: uniqueStrings(audits.flatMap((audit) => audit.repairedFields ?? [])),
     fallbackReasons: uniqueStrings(audits.map((audit) => audit.fallbackReason)),
     providerErrors: uniqueStrings(audits.flatMap((audit) => audit.errors).filter((error) => error.startsWith("provider_error")))
+,
+    providerRetryRecoveredCount: audits.filter((audit) => audit.providerRecovered).length,
+    providerRetryFinalFailureCount: audits.filter((audit) => (audit.providerRetryCount ?? 0) > 0 && !audit.providerRecovered && audit.errors.some((error) => error.startsWith("provider_error"))).length
   };
 }
 

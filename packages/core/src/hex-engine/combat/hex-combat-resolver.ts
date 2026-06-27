@@ -494,21 +494,29 @@ function buildFinanceFirepowerScore(input: {
     && output.cardKind === (input.side === "defense" ? "stance" : "challenge")
   );
   const combatUsableOutputs = participantOutputs.filter((output) => output.submittedUsableForCombat && !output.orphanedChallenge);
-  const acceptedEvidenceSet = new Set(input.adoption?.acceptedEvidenceRefs ?? []);
   const acceptedRefSet = new Set(input.side === "defense" ? input.adoption?.acceptedClaims ?? [] : input.adoption?.acceptedChallenges ?? []);
+  const acceptedEvidenceRefsByItemId = input.adoption?.acceptedEvidenceRefsByItemId ?? {};
   const participantAcceptedEvidenceRefs = new Set<string>();
   const participantAcceptedClaimRefs = new Set<string>();
+  const acceptedItemsMissingEvidenceMapping = new Set<string>();
+
+  const addAcceptedItemEvidence = (itemId: string): void => {
+    const refs = acceptedEvidenceRefsByItemId[itemId] ?? [];
+    if (refs.length === 0) {
+      acceptedItemsMissingEvidenceMapping.add(itemId);
+      return;
+    }
+    for (const ref of refs) {
+      participantAcceptedEvidenceRefs.add(ref);
+    }
+  };
 
   for (const output of combatUsableOutputs) {
     if (input.side === "defense" && output.submittedStanceCard) {
       for (const claim of output.submittedStanceCard.coreClaims) {
         if (acceptedRefSet.has(claim.claimId)) {
           participantAcceptedClaimRefs.add(claim.claimId);
-        }
-        for (const evidenceRef of claim.evidenceRefs) {
-          if (acceptedEvidenceSet.has(evidenceRef)) {
-            participantAcceptedEvidenceRefs.add(evidenceRef);
-          }
+          addAcceptedItemEvidence(claim.claimId);
         }
       }
     }
@@ -516,16 +524,7 @@ function buildFinanceFirepowerScore(input: {
       for (const challenge of output.submittedChallengeCard.challenges) {
         if (acceptedRefSet.has(challenge.challengeId)) {
           participantAcceptedClaimRefs.add(challenge.challengeId);
-        }
-        for (const evidenceRef of challenge.evidenceRefs) {
-          if (acceptedEvidenceSet.has(evidenceRef)) {
-            participantAcceptedEvidenceRefs.add(evidenceRef);
-          }
-        }
-      }
-      for (const evidenceRef of output.submittedChallengeCard.evidenceRefs) {
-        if (acceptedEvidenceSet.has(evidenceRef)) {
-          participantAcceptedEvidenceRefs.add(evidenceRef);
+          addAcceptedItemEvidence(challenge.challengeId);
         }
       }
     }
@@ -537,6 +536,9 @@ function buildFinanceFirepowerScore(input: {
   }
   if (combatUsableOutputs.length < participantOutputs.length) {
     auditReasons.push("participant_submitted_output_not_combat_usable_filtered");
+  }
+  if (acceptedItemsMissingEvidenceMapping.size > 0) {
+    auditReasons.push("accepted_item_missing_evidence_mapping");
   }
   if (participantAcceptedEvidenceRefs.size === 0) {
     auditReasons.push("no_participant_accepted_evidence");
@@ -841,6 +843,7 @@ function buildFinanceEvidenceAdoption(input: {
     rejectedClaims: [],
     acceptedChallenges: [],
     rejectedChallenges: [],
+    acceptedEvidenceRefsByItemId: {},
     sideScore: acceptedEvidenceRefs.size > 0 ? Math.min(100, 20 + acceptedEvidenceRefs.size * 10) : 0,
     stanceScore: input.side === "defense" && acceptedEvidenceRefs.size > 0 ? Math.min(100, 20 + acceptedEvidenceRefs.size * 10) : 0,
     challengeScore: input.side === "attack" && acceptedEvidenceRefs.size > 0 ? Math.min(100, 20 + acceptedEvidenceRefs.size * 10) : 0,
@@ -871,6 +874,7 @@ function mapFinanceJudgeSideToCombatAdoption(side: HexFinanceEvidenceJudgeSideRe
     rejectedClaims: [...side.rejectedClaims],
     acceptedChallenges: [...side.acceptedChallenges],
     rejectedChallenges: [...side.rejectedChallenges],
+    acceptedEvidenceRefsByItemId: cloneAcceptedEvidenceRefsByItemId(side.acceptedEvidenceRefsByItemId),
     sideScore: side.sideScore,
     stanceScore: side.stanceScore,
     challengeScore: side.challengeScore,
@@ -881,6 +885,14 @@ function mapFinanceJudgeSideToCombatAdoption(side: HexFinanceEvidenceJudgeSideRe
     financeReasonZh: [...side.financeReasonZh],
     auditReasons: [...side.auditReasons]
   };
+}
+
+function cloneAcceptedEvidenceRefsByItemId(input: Record<string, string[]> | undefined): Record<string, string[]> {
+  const output: Record<string, string[]> = {};
+  for (const [itemId, refs] of Object.entries(input ?? {})) {
+    output[itemId] = [...refs];
+  }
+  return output;
 }
 
 function buildEmptyFinanceEvidenceAdoption(side: HexSide): HexCombatFinanceEvidenceAdoption {
@@ -895,6 +907,7 @@ function buildEmptyFinanceEvidenceAdoption(side: HexSide): HexCombatFinanceEvide
     rejectedClaims: [],
     acceptedChallenges: [],
     rejectedChallenges: [],
+    acceptedEvidenceRefsByItemId: {},
     sideScore: 0,
     stanceScore: 0,
     challengeScore: 0,

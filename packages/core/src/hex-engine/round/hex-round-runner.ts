@@ -177,6 +177,8 @@ export interface HexRoundTrace {
     modelId?: string;
     totalLlmCallsAttempted: number;
     fallbackCount: number;
+    providerRetryRecoveredCount?: number;
+    providerRetryFinalFailureCount?: number;
     roundStartLlmCallsAttempted: number;
     combatResolutionCount: number;
     rejectedEventCount: number;
@@ -192,7 +194,7 @@ export interface HexRoundTrace {
 
 const maxPhaseIndex = hexPhaseIds.length - 1;
 
-export type HexRoundQualityStatus = "valid" | "provider_degraded" | "invalid_round";
+export type HexRoundQualityStatus = "valid" | "provider_degraded" | "action_degraded" | "invalid_round";
 
 export type HexRoundQualityReason =
   | "phase0_stance_insufficient"
@@ -475,6 +477,8 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
       ...(providerSetup.modelId ? { modelId: providerSetup.modelId } : {}),
       totalLlmCallsAttempted: roundStartAgentOutputs.length + phases.reduce((sum, phase) => sum + phase.commandResult.totalCallsAttempted, 0),
       fallbackCount: phases.reduce((sum, phase) => sum + phase.commandResult.fallbackCount, 0),
+      providerRetryRecoveredCount: phases.reduce((sum, phase) => sum + countRecoveredProviderRetries(phase.commandResult), 0),
+      providerRetryFinalFailureCount: phases.reduce((sum, phase) => sum + countFinalProviderRetryFailures(phase.commandResult), 0),
       roundStartLlmCallsAttempted: roundStartAgentOutputs.length,
       combatResolutionCount: phases.reduce((sum, phase) => sum + phase.combatResolutions.length, 0),
       rejectedEventCount: phases.reduce((sum, phase) => sum + phase.memoryAfter.rejectedEvents.length, 0),
@@ -546,11 +550,19 @@ function buildHexRoundQualityAudit(
     "action_fallback_threshold_exceeded"
   ];
   const roundQualityReasons = [...reasons];
+  const hasProviderDegradation = roundQualityReasons.some((reason) =>
+    reason === "round_start_partial_failure"
+    || reason === "phase0_challenge_partial"
+    || reason === "provider_error_threshold_exceeded"
+  ) || counts.phaseActionProviderErrorCount > 0 || (counts.roundStartProviderErrorCount > 0 && counts.roundStartProviderErrorCount < 5);
+  const hasActionDegradation = roundQualityReasons.some((reason) => reason === "phase_action_fallback_present");
   const roundQualityStatus: HexRoundQualityStatus = roundQualityReasons.some((reason) => invalidReasons.includes(reason))
     ? "invalid_round"
-    : roundQualityReasons.length > 0
+    : hasProviderDegradation
       ? "provider_degraded"
-      : "valid";
+      : hasActionDegradation
+        ? "action_degraded"
+        : "valid";
 
   return {
     roundQualityStatus,
@@ -565,7 +577,15 @@ function countQualityFallbackActions(commandResult: HexAgentPhaseCommandHarnessR
 }
 
 function countProviderErrorAudits(commandResult: HexAgentPhaseCommandHarnessResult): number {
-  return commandResult.audits.filter((audit) => audit.errors.some((error) => error.startsWith("provider_error"))).length;
+  return commandResult.audits.filter((audit) => !audit.providerRecovered && audit.errors.some((error) => error.startsWith("provider_error"))).length;
+}
+
+function countRecoveredProviderRetries(commandResult: HexAgentPhaseCommandHarnessResult): number {
+  return commandResult.audits.filter((audit) => audit.providerRecovered).length;
+}
+
+function countFinalProviderRetryFailures(commandResult: HexAgentPhaseCommandHarnessResult): number {
+  return commandResult.audits.filter((audit) => (audit.providerRetryCount ?? 0) > 0 && !audit.providerRecovered && audit.errors.some((error) => error.startsWith("provider_error"))).length;
 }
 
 function countConsecutiveDegradedPhases(phases: readonly HexRoundPhaseTrace[]): number {
@@ -619,7 +639,11 @@ function buildRoundQualitySummaryZh(
     return "本 round 通过质量闸门，可作为正式比赛样本审计。";
   }
   const reasonZh = reasons.map(formatRoundQualityReasonZh).join("；") || "未知质量问题";
-  const prefix = status === "invalid_round" ? "本 round 未通过质量闸门" : "本 round 存在 provider 降级";
+  const prefix = status === "invalid_round"
+    ? "本 round 未通过质量闸门"
+    : status === "provider_degraded"
+      ? "本 round 存在 provider 降级"
+      : "本 round 存在行动校验降级";
   return `${prefix}：${reasonZh}。phase0 可消费 ${counts.usableRoundStartCount}/10，stance ${counts.usableStanceCount}/5，challenge ${counts.usableChallengeCount}/5，行动降级 ${counts.totalActionFallbackCount}。`;
 }
 
@@ -633,7 +657,7 @@ function formatRoundQualityReasonZh(reason: HexRoundQualityReason): string {
     phase_action_degraded: "连续 phase 行动层大面积降级",
     provider_error_threshold_exceeded: "模型供应器错误达到阈值",
     action_fallback_threshold_exceeded: "行动降级总数超过阈值",
-    phase_action_fallback_present: "存在行动降级",
+    phase_action_fallback_present: "存在行动校验降级",
     round_start_partial_failure: "round-start 输出存在失败"
   };
   return labels[reason];

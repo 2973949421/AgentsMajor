@@ -334,3 +334,31 @@ docs/backlog/README.md
 不为真实感让前端、LLM 或经济系统写最终 winner。
 不通过重装依赖解决文档或测试问题。
 ```
+
+## N63a 状态补充（2026-06-26）
+
+- N59 裁判结果现在记录 `acceptedEvidenceRefsByItemId`，把被采信的 claim / challenge 映射到实际 accepted evidence refs。
+- N63 金融火力现在只从当前 contact participant 的 submitted card + N59 item-evidence 映射取证据；缺映射时不会退回 side-level 平均分配。
+- Web 审计已把 `rawFinanceOpinionZh` 改称“模型输出的可提交原文”，完整 LLM response 只在 artifact 可读时作为技术细节核对。
+- N61 验收脚本已支持 `{ source, trace }` wrapper，并增加 N63a 映射缺失 / 火力未应用检查。
+
+
+## P0.5 已纳入：Action Provider 单次重试
+
+- 进入 N64 前，先消除 action provider 偶发异常对 round quality 的噪声污染。
+- recovered retry 只作为审计信息，不算 `provider_degraded`；少量 validator / fallback 降级归入 `action_degraded`，不再误标为 provider 断线；final retry failure 仍按 P0 质量闸门处理。
+- 下一步仍是 N64：Combat 压力收敛与审计首屏。
+
+## N62C 已纳入：Phase0 RAW 原文增量与预算使用率审计
+
+- 当前先不急于继续 N64；N62C 用来验证经济裁剪优势是否被 raw 原文过短掩盖。
+- 新 prompt 要求 stance raw 420-650 字、challenge raw 320-520 字，但不增加 claim / challenge 数量。
+- `submittedFinanceOutputs` 记录 `rawOpinionCharCount`、目标区间、`submittedOpinionCharCount`、`submittedBudgetChars` 和 `submittedBudgetUtilization`。
+- 若新 map 统计显示 raw 长度达标，再继续校准 submitted 裁剪汇率表或进入 N64；若 raw 仍偏短，先修 prompt/provider 稳定性。
+
+## N62D 已纳入：经济数字汇率裁剪与买型菜单隔离
+
+- N62D 取代固定字数表，submitted 预算由真实经济 `spend` 按 `$50` 最小单位换算；枪械局 `$50=4` 字，手枪局 `$50=6` 字。
+- 买型 / 经济姿态只决定档位上下限、裁剪模式和 `combatEffectCap`；LLM 只能生成 rawFinanceOpinionZh 和结构卡，不能直接决定 submitted 预算。
+- 手枪局使用独立 `pistol_round` policy；force / half / rifle / AWP 的 submitted 长度必须能用 spend、档位 clamp 和 cutMode 解释。
+- 下一步先跑新 map 统计 N62D 的 spend / budget / submitted / cutMode；若经济优势可解释，再进入 N64。

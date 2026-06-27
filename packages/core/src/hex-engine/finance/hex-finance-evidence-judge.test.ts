@@ -22,6 +22,7 @@ describe("Hex finance evidence judge", () => {
     expect(result.financialResult).toBe("stance_survives");
     expect(result.defense.acceptedEvidenceRefs).toContain("FRED002");
     expect(result.defense.acceptedClaims).toContain("claim_ct_0_1");
+    expect(result.defense.acceptedEvidenceRefsByItemId.claim_ct_0_1).toEqual(["FRED002"]);
     expect(result.stanceScore).toBeGreaterThan(result.challengeScore);
   });
 
@@ -122,6 +123,7 @@ describe("Hex finance evidence judge", () => {
     expect(result.attack.auditReasons).toContain("challenge_t_0_missing_0:missing_only_challenge_capped");
     expect(result.attack.scoreCapRefs).toContain("challenge_t_0_missing_0:missing_only_challenge");
     expect(result.attack.acceptedEvidenceRefs).toEqual([]);
+    expect(result.attack.acceptedEvidenceRefsByItemId.challenge_t_0_missing_0).toBeUndefined();
   });
   it("lets a specific evidence-bound challenge break a weak stance", () => {
     const financeDuel = buildTestFinanceDuel();
@@ -152,6 +154,7 @@ describe("Hex finance evidence judge", () => {
     expect(result.financialResult).toBe("challenge_breaks_stance");
     expect(result.attack.acceptedChallenges).toEqual(expect.arrayContaining(["challenge_t_0_1", "challenge_t_0_2"]));
     expect(result.attack.acceptedEvidenceRefs).toEqual(expect.arrayContaining(["FRED002", "FRED003"]));
+    expect(result.attack.acceptedEvidenceRefsByItemId.challenge_t_0_1).toEqual(expect.arrayContaining(["FRED002", "FRED003"]));
     expect(result.challengeScore).toBeGreaterThan(result.stanceScore);
     expect(result.challengeScore).toBeLessThanOrEqual(70);
     expect(result.attack.auditReasons).toContain("score_cap_applied:70");

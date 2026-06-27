@@ -194,6 +194,107 @@ describe("Hex agent command harness", () => {
     expect(artifactStore.writes).toHaveLength(1);
   });
 
+  it("retries one provider exception and records recovered provider errors without fallback", async () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeMemory(asset);
+    const artifactStore = new MemoryArtifactStore();
+    const events: string[] = [];
+    let attempts = 0;
+
+    const result = await runHexAgentPhaseCommandHarness({
+      asset,
+      memory,
+      provider: (request) => {
+        attempts += 1;
+        if (attempts === 1) {
+          throw new Error("transient_provider_down");
+        }
+        return {
+          providerMode: "real",
+          modelId: "retry_fixture",
+          rawDraft: {
+            agentId: request.agent.agentId,
+            phaseId: request.phaseId,
+            currentCellId: request.agent.currentCellId,
+            targetCellId: request.targetCandidates[0]?.targetCellId ?? request.agent.currentCellId,
+            actionType: request.targetCandidates[0] ? "move" : "hold_position",
+            businessIntent: "\u91cd\u8bd5\u6062\u590d\u540e\u6267\u884c\u771f\u5b9e\u884c\u52a8\uff0c\u4e0d\u4f7f\u7528\u7cfb\u7edf\u964d\u7ea7\u52a8\u4f5c\u3002"
+          }
+        };
+      },
+      providerMode: "real",
+      providerRetryPolicy: { maxRetries: 1 },
+      maxLlmCalls: 10,
+      artifactStore,
+      artifactOwner: {
+        ownerType: "hex_test",
+        ownerId: "hex_test_owner"
+      },
+      progressSink: (event) => {
+        events.push(`${event.agentId}:${event.status}`);
+      }
+    });
+
+    expect(result.totalCallsAttempted).toBe(11);
+    expect(result.acceptedActions).toHaveLength(10);
+    expect(result.fallbackCount).toBe(0);
+    expect(result.audits[0]?.providerAttemptCount).toBe(2);
+    expect(result.audits[0]?.providerRetryCount).toBe(1);
+    expect(result.audits[0]?.providerRecovered).toBe(true);
+    expect(result.audits[0]?.errors).toEqual([]);
+    expect(result.audits[0]?.recoveredProviderErrors).toEqual(["provider_error:transient_provider_down"]);
+    expect(events).toEqual(expect.arrayContaining(["t_0:provider_retry", "t_0:provider_retry_recovered", "t_0:accepted"]));
+    expect(artifactStore.writes).toHaveLength(20);
+  });
+
+  it("falls back only after provider retry also fails and keeps both provider errors", async () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeMemory(asset);
+    const artifactStore = new MemoryArtifactStore();
+    let attempts = 0;
+
+    const result = await runHexAgentPhaseCommandHarness({
+      asset,
+      memory,
+      provider: (request) => {
+        attempts += 1;
+        if (attempts <= 2) {
+          throw new Error(`provider_down_${attempts}`);
+        }
+        return {
+          providerMode: "real",
+          modelId: "retry_after_failure_fixture",
+          rawDraft: {
+            agentId: request.agent.agentId,
+            phaseId: request.phaseId,
+            currentCellId: request.agent.currentCellId,
+            targetCellId: request.targetCandidates[0]?.targetCellId ?? request.agent.currentCellId,
+            actionType: request.targetCandidates[0] ? "move" : "hold_position",
+            businessIntent: "\u6700\u7ec8\u5931\u8d25\u7684\u9996\u4e2a\u8c03\u7528\u4e4b\u540e\uff0c\u5176\u4ed6\u9009\u624b\u7ee7\u7eed\u8f93\u51fa\u771f\u5b9e\u884c\u52a8\u3002"
+          }
+        };
+      },
+      providerMode: "real",
+      providerRetryPolicy: { maxRetries: 1 },
+      maxLlmCalls: 10,
+      artifactStore,
+      artifactOwner: {
+        ownerType: "hex_test",
+        ownerId: "hex_test_owner"
+      }
+    });
+
+    expect(result.totalCallsAttempted).toBe(11);
+    expect(result.acceptedActions).toHaveLength(9);
+    expect(result.fallbackCount).toBe(1);
+    expect(result.audits[0]?.providerAttemptCount).toBe(2);
+    expect(result.audits[0]?.providerRetryCount).toBe(1);
+    expect(result.audits[0]?.providerRecovered).toBe(false);
+    expect(result.audits[0]?.errors).toEqual(["provider_error:provider_down_1", "provider_error:provider_down_2"]);
+    expect(result.audits[0]?.providerAttemptErrors).toEqual(["provider_error:provider_down_1", "provider_error:provider_down_2"]);
+    expect(artifactStore.writes).toHaveLength(19);
+  });
+
   it("repairs drafts that target another alive agent's occupied cell when a nearby candidate is safe", async () => {
     const asset = loadOfficialDust2HexMap();
     const memory = initializeMemory(asset);

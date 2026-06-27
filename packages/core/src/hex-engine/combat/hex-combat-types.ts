@@ -265,6 +265,7 @@ export interface HexCombatFinanceEvidenceAdoption {
   rejectedClaims: string[];
   acceptedChallenges: string[];
   rejectedChallenges: string[];
+  acceptedEvidenceRefsByItemId: Record<string, string[]>;
   sideScore: number;
   stanceScore: number;
   challengeScore: number;
