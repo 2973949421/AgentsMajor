@@ -365,6 +365,40 @@ describe("Hex agent command harness", () => {
     expect(action?.validationErrors).not.toContain("target_cell_occupied");
   });
 
+
+  it("repairs invalid C4 objective drafts to a legal route candidate", async () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeMemory(asset);
+    const farBombsite = findCellWithFlag(asset, "bombsite_a");
+    memory.phaseId = "post_plant_or_clutch";
+    memory.phaseIndex = 4;
+    const provider: HexAgentCommandProvider = (request) => ({
+      providerMode: "fixture",
+      modelId: "c4_repair_fixture",
+      rawDraft: {
+        agentId: request.agent.agentId,
+        phaseId: request.phaseId,
+        currentCellId: request.agent.currentCellId,
+        targetCellId: farBombsite.cellId,
+        actionType: "plant_bomb",
+        businessIntent: "携带 C4 直接尝试下包；如果目标过远，系统应改成合法的包点推进路线而不是原地 fallback。"
+      }
+    });
+
+    const result = await runHexAgentPhaseCommandHarness({
+      asset,
+      memory,
+      provider,
+      providerMode: "fixture",
+      maxLlmCalls: 1
+    });
+
+    const action = result.actions.find((candidate) => candidate.agentId === "t_0");
+    expect(action?.valid).toBe(true);
+    expect(action?.fallbackReason).toBeUndefined();
+    expect(action?.validationErrors).toEqual([]);
+    expect(action?.repairReasons).toContain("repaired_c4_objective_invalid_action_to_legal_candidate");
+  });
   it("returns disabled real provider when env is missing", async () => {
     const factory = createEnvHexAgentCommandProvider({});
     const asset = loadOfficialDust2HexMap();
@@ -452,6 +486,10 @@ function createAgents(asset: HexMapAsset) {
       startCellId: ctCells[index % ctCells.length]!.cellId
     }))
   ];
+}
+
+function findCellWithFlag(asset: HexMapAsset, flag: HexCell["flags"][number]): HexCell {
+  return findCellsWithFlag(asset, flag)[0]!;
 }
 
 function findCellsWithFlag(asset: HexMapAsset, flag: HexCell["flags"][number]): HexCell[] {

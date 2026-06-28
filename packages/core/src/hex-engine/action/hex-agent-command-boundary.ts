@@ -494,10 +494,13 @@ export function buildHexAgentCommandRequest(input: {
       antiRepeatRegions: input.tacticalPlan?.antiRepeatRegions,
       antiRepeatPoints: input.tacticalPlan?.antiRepeatPoints,
       economyResourceTier: economy?.resourceTier,
+      side: context.agent.side,
       carryingC4: context.agent.carryingC4,
+      droppedC4CellId: context.bombState.droppedCellId,
       phaseClock,
       routeHistory,
-      c4SitePreference: input.tacticalPlan?.c4SitePreference
+      c4SitePreference: input.tacticalPlan?.c4SitePreference,
+      currentCellId: context.agent.currentCellId
     }
   );
   const businessAssignment = input.businessDuel
@@ -995,10 +998,13 @@ interface BuildRouteCandidateOptions {
   antiRepeatRegions?: readonly string[] | undefined;
   antiRepeatPoints?: readonly string[] | undefined;
   economyResourceTier?: string | undefined;
+  side?: HexSide | undefined;
   carryingC4?: boolean | undefined;
+  droppedC4CellId?: string | undefined;
   phaseClock?: HexAgentPhaseClock | undefined;
   routeHistory?: HexAgentRouteHistory | undefined;
   c4SitePreference?: "a" | "b" | undefined;
+  currentCellId?: string | undefined;
 }
 
 function buildPhaseClock(
@@ -1179,6 +1185,12 @@ function scoreRouteCandidate(
     score += preferredActionTypes.includes("plant_bomb") || preferredActionTypes.includes("execute_site") ? 8 : 4;
     if (options.carryingC4) {
       score += 6;
+      if (
+        cell.cellId === options.currentCellId
+        && (preferredActionTypes.includes("plant_bomb") || options.phaseClock?.urgencyLevel === "final")
+      ) {
+        score += 120;
+      }
     }
   }
   if (cell.flags.includes("choke")) {
@@ -1194,6 +1206,7 @@ function scoreRouteCandidate(
     score += 2;
   }
   score += scoreRoundRouteMemoryCandidate(cell, options);
+  score += scoreDroppedC4RecoveryCandidate(cell, options);
   score += scoreC4PhasePressureCandidate(cell, preferredActionTypes, options);
   return score;
 }
@@ -1212,6 +1225,16 @@ function scoreRoundRouteMemoryCandidate(cell: HexReachableCellSummary, options: 
   }
   score -= cell.pointIds.filter((pointId) => history.visitedPointIds.includes(pointId)).length * 8;
   return score;
+}
+
+function scoreDroppedC4RecoveryCandidate(cell: HexReachableCellSummary, options: BuildRouteCandidateOptions): number {
+  if (options.side !== "attack" || !options.droppedC4CellId || options.carryingC4) {
+    return 0;
+  }
+  if (cell.cellId === options.droppedC4CellId) {
+    return options.phaseClock?.urgencyLevel === "final" ? 90 : 72;
+  }
+  return 0;
 }
 
 function scoreC4PhasePressureCandidate(
@@ -1236,6 +1259,9 @@ function scoreC4PhasePressureCandidate(
   }
   if (isDangerRouteCandidate(cell)) {
     score += options.phaseClock.urgencyLevel === "final" ? 10 : 6;
+  }
+  if (isAnyBombsiteCandidate(cell) && cell.cellId === options.currentCellId) {
+    score += options.phaseClock.urgencyLevel === "final" ? 120 : 90;
   }
   return score;
 }
@@ -1275,6 +1301,13 @@ function buildObjectiveHints(
   const hints: string[] = [];
   const currentCell = asset.cells.find((cell) => cell.cellId === context.agent.currentCellId);
   const currentCellIsBombsite = Boolean(currentCell?.flags.includes("bombsite_a") || currentCell?.flags.includes("bombsite_b"));
+  if (context.agent.side === "attack" && context.bombState.droppedCellId && !context.agent.carryingC4) {
+    if (context.agent.currentCellId === context.bombState.droppedCellId) {
+      hints.push("C4 is dropped on your current cell; the objective state will recover the pack here, then continue toward a bombsite or plant if legal.");
+    } else {
+      hints.push(`C4 is dropped at ${context.bombState.droppedCellId}; nearby attackers should recover it or protect the recovery route before drifting into unrelated fights.`);
+    }
+  }
   if (context.agent.carryingC4) {
     const preferredSite = tacticalPlan?.c4SitePreference ?? "a";
     hints.push(`You are carrying C4; prioritize a credible route toward ${preferredSite.toUpperCase()} site unless the phase facts make another site clearly better.`);

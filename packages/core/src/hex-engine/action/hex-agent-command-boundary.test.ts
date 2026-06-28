@@ -747,6 +747,75 @@ describe("Hex agent command boundary", () => {
     expect(request.targetCandidates[0]?.targetCellId).not.toBe(occupiedCellId);
   });
 
+  it("prioritizes a reachable dropped C4 cell for attack recovery", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset),
+      bombCarrierAgentId: "t_0"
+    });
+    const baseRequest = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_1"
+    });
+    const droppedCellId = baseRequest.reachableCells.find((cell) => cell.cellId !== baseRequest.agent.currentCellId && cell.apCost > 0)?.cellId;
+    if (!droppedCellId) {
+      throw new Error("Missing reachable dropped C4 cell");
+    }
+    const droppedMemory = {
+      ...memory,
+      bombState: {
+        planted: false,
+        defused: false,
+        droppedCellId,
+        lastCarrierAgentId: "t_0"
+      },
+      agents: memory.agents.map((agent) => ({ ...agent, carryingC4: false }))
+    };
+
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory: droppedMemory,
+      agentId: "t_1"
+    });
+
+    expect(request.objectiveHints.some((hint) => hint.includes("C4 is dropped"))).toBe(true);
+    expect(request.targetCandidates[0]?.targetCellId).toBe(droppedCellId);
+  });
+
+  it("prioritizes the current bombsite cell for a final-phase C4 plant", () => {
+    const asset = loadOfficialDust2HexMap();
+    const bombsite = findCellWithFlag(asset, "bombsite_a");
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset),
+      bombCarrierAgentId: "t_0"
+    });
+    memory.phaseId = "post_plant_or_clutch";
+    memory.phaseIndex = 4;
+    memory.agents = memory.agents.map((agent) => {
+      if (agent.agentId !== "t_0") {
+        return agent;
+      }
+      return {
+        ...agent,
+        currentCellId: bombsite.cellId,
+        currentPointIds: [...bombsite.pointIds],
+        ...(bombsite.regionId ? { currentRegionId: bombsite.regionId } : {})
+      };
+    });
+
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_0"
+    });
+
+    expect(request.targetCandidates[0]?.targetCellId).toBe(bombsite.cellId);
+    expect(request.targetCandidates[0]?.apCost).toBe(0);
+    expect(request.objectiveHints.some((hint) => hint.includes("currently on a legal bombsite cell"))).toBe(true);
+  });
   it("still rejects malformed action facts before validation", () => {
     const asset = loadOfficialDust2HexMap();
     const memory = initializeHexRoundMemory({
@@ -1059,6 +1128,10 @@ function createAgents(asset: HexMapAsset) {
       startCellId: ctCells[index % ctCells.length]!.cellId
     }))
   ];
+}
+
+function findCellWithFlag(asset: HexMapAsset, flag: HexCell["flags"][number]): HexCell {
+  return findCellsWithFlag(asset, flag)[0]!;
 }
 
 function findCellsWithFlag(asset: HexMapAsset, flag: HexCell["flags"][number]): HexCell[] {

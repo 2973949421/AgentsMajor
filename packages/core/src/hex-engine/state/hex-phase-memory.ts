@@ -1,4 +1,4 @@
-﻿import type { HexCell, HexMapAsset } from "@agent-major/shared";
+import type { HexCell, HexMapAsset } from "@agent-major/shared";
 import { validateHexMoveBudget } from "../path/index.js";
 import { hexPhaseIds } from "./hex-memory-types.js";
 import type {
@@ -143,7 +143,7 @@ function cloneRoundMemory(memory: HexRoundMemory): HexRoundMemory {
 
 export function prepareHexPhaseStartMemory(input: PrepareHexPhaseStartMemoryInput): HexRoundMemory {
   const nextPhaseIndex = input.nextPhaseIndex ?? input.previousMemory.phaseIndex + 1;
-  return {
+  const nextMemory: HexRoundMemory = {
     phaseIndex: nextPhaseIndex,
     phaseId: input.nextPhaseId,
     agents: input.previousMemory.agents.map((agent) => resetAgentForNextPhase(agent, nextPhaseIndex)),
@@ -151,6 +151,15 @@ export function prepareHexPhaseStartMemory(input: PrepareHexPhaseStartMemoryInpu
     phaseEvents: [],
     rejectedEvents: [...input.previousMemory.rejectedEvents]
   };
+  const pickupAgent = nextMemory.agents.find((agent) =>
+    agent.side === "attack"
+    && agent.lifeStatus !== "dead"
+    && agent.currentCellId === nextMemory.bombState.droppedCellId
+  );
+  if (pickupAgent) {
+    maybeAutoPickupDroppedBomb(nextMemory, pickupAgent);
+  }
+  return nextMemory;
 }
 
 export function buildHexAgentMemoryContext(input: BuildHexAgentMemoryContextInput): HexAgentMemoryPromptContext {
@@ -363,6 +372,15 @@ function applyLifeStatusChangedEvent(memory: HexRoundMemory, event: HexLifeStatu
         agentId: agent.agentId,
         cellId: agent.currentCellId
       });
+      const pickupAgent = memory.agents.find((candidate) =>
+        candidate.agentId !== agent.agentId
+        && candidate.side === "attack"
+        && candidate.lifeStatus !== "dead"
+        && candidate.currentCellId === agent.currentCellId
+      );
+      if (pickupAgent) {
+        maybeAutoPickupDroppedBomb(memory, pickupAgent);
+      }
     }
   }
   memory.phaseEvents.push(event);

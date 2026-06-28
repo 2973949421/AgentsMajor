@@ -33,6 +33,7 @@ import {
   hexPhaseIds,
   initializeHexRoundMemory,
   prepareHexPhaseStartMemory,
+  type HexLifeStatus,
   type HexPhaseId,
   type HexPhaseMemoryEvent,
   type HexRoundMemory,
@@ -72,6 +73,7 @@ export interface HexRoundRunnerAgentInput {
   role?: string;
   startCellId?: string;
   carryingC4?: boolean;
+  lifeStatus?: HexLifeStatus;
 }
 
 export interface RunDust2HexRoundInput {
@@ -188,6 +190,7 @@ export interface HexRoundTrace {
     roundQualityReasons: HexRoundQualityReason[];
     roundQualitySummaryZh: string;
     roundQualityCounts: HexRoundQualityCounts;
+    c4ContinuityAudit: HexC4ContinuityAudit;
     tacticalAudit: HexRoundTacticalAudit;
   };
 }
@@ -214,10 +217,23 @@ export interface HexRoundQualityCounts {
   usableChallengeCount: number;
   roundStartProviderErrorCount: number;
   roundStartInvalidCount: number;
+  rawActionFallbackCount: number;
   totalActionFallbackCount: number;
+  benignSkippedFallbackCount: number;
   maxPhaseFallbackCount: number;
   consecutiveDegradedPhaseCount: number;
   phaseActionProviderErrorCount: number;
+}
+
+export interface HexC4ContinuityAudit {
+  c4CarrierKilledCount: number;
+  c4DroppedCount: number;
+  c4PickupCount: number;
+  c4PlantInterruptedCount: number;
+  c4CurrentCarrier?: string | undefined;
+  c4DroppedCellId?: string | undefined;
+  c4DroppedUnrecoveredAtFinal: boolean;
+  c4ContinuityReasons: string[];
 }
 
 interface HexRoundQualityAudit {
@@ -488,6 +504,7 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
       roundQualityReasons: [...roundQualityAudit.roundQualityReasons],
       roundQualitySummaryZh: roundQualityAudit.roundQualitySummaryZh,
       roundQualityCounts: { ...roundQualityAudit.counts },
+      c4ContinuityAudit: buildC4ContinuityAudit(phases, finalWinCondition),
       tacticalAudit: tacticalSelection.audit
     }
   };
@@ -504,7 +521,9 @@ function buildHexRoundQualityAudit(
     usableChallengeCount: usableRoundStartOutputs.filter((output) => output.cardKind === "challenge").length,
     roundStartProviderErrorCount: roundStartAgentOutputs.filter((output) => output.source === "provider_error").length,
     roundStartInvalidCount: roundStartAgentOutputs.filter((output) => output.source === "invalid_response").length,
+    rawActionFallbackCount: phases.reduce((sum, phase) => sum + phase.commandResult.fallbackActions.length, 0),
     totalActionFallbackCount: phases.reduce((sum, phase) => sum + countQualityFallbackActions(phase.commandResult), 0),
+    benignSkippedFallbackCount: phases.reduce((sum, phase) => sum + countBenignSkippedFallbackActions(phase.commandResult), 0),
     maxPhaseFallbackCount: phases.reduce((max, phase) => Math.max(max, countQualityFallbackActions(phase.commandResult)), 0),
     consecutiveDegradedPhaseCount: countConsecutiveDegradedPhases(phases),
     phaseActionProviderErrorCount: phases.reduce((sum, phase) => sum + countProviderErrorAudits(phase.commandResult), 0)
@@ -576,6 +595,10 @@ function countQualityFallbackActions(commandResult: HexAgentPhaseCommandHarnessR
   return commandResult.fallbackActions.filter((action) => !isBenignSkippedFallback(action.fallbackReason)).length;
 }
 
+function countBenignSkippedFallbackActions(commandResult: HexAgentPhaseCommandHarnessResult): number {
+  return commandResult.fallbackActions.filter((action) => isBenignSkippedFallback(action.fallbackReason)).length;
+}
+
 function countProviderErrorAudits(commandResult: HexAgentPhaseCommandHarnessResult): number {
   return commandResult.audits.filter((audit) => !audit.providerRecovered && audit.errors.some((error) => error.startsWith("provider_error"))).length;
 }
@@ -623,6 +646,8 @@ function buildInvalidRoundWinCondition(memory: HexRoundMemory, quality: HexRound
       `usableStanceCount=${quality.counts.usableStanceCount}`,
       `usableChallengeCount=${quality.counts.usableChallengeCount}`,
       `totalActionFallbackCount=${quality.counts.totalActionFallbackCount}`,
+      `rawActionFallbackCount=${quality.counts.rawActionFallbackCount}`,
+      `benignSkippedFallbackCount=${quality.counts.benignSkippedFallbackCount}`,
       `maxPhaseFallbackCount=${quality.counts.maxPhaseFallbackCount}`
     ],
     phaseId: memory.phaseId,
@@ -644,7 +669,8 @@ function buildRoundQualitySummaryZh(
     : status === "provider_degraded"
       ? "本 round 存在 provider 降级"
       : "本 round 存在行动校验降级";
-  return `${prefix}：${reasonZh}。phase0 可消费 ${counts.usableRoundStartCount}/10，stance ${counts.usableStanceCount}/5，challenge ${counts.usableChallengeCount}/5，行动降级 ${counts.totalActionFallbackCount}。`;
+  const benignSkipText = counts.benignSkippedFallbackCount > 0 ? `，死亡/AP 跳过 ${counts.benignSkippedFallbackCount}` : "";
+  return `${prefix}：${reasonZh}。phase0 可消费 ${counts.usableRoundStartCount}/10，stance ${counts.usableStanceCount}/5，challenge ${counts.usableChallengeCount}/5，行动降级 ${counts.totalActionFallbackCount}${benignSkipText}。`;
 }
 
 function formatRoundQualityReasonZh(reason: HexRoundQualityReason): string {
@@ -661,6 +687,97 @@ function formatRoundQualityReasonZh(reason: HexRoundQualityReason): string {
     round_start_partial_failure: "round-start 输出存在失败"
   };
   return labels[reason];
+}
+
+function buildC4ContinuityAudit(
+  phases: readonly HexRoundPhaseTrace[],
+  finalWinCondition: HexWinConditionResult | undefined
+): HexC4ContinuityAudit {
+  const events = collectC4ContinuityEvents(phases);
+  const c4DroppedCount = events.filter((event) => event.type === "bomb_dropped").length;
+  const c4PickupCount = events.filter((event) => event.type === "bomb_picked_up").length;
+  const c4CarrierKilledCount = phases.reduce((count, phase) => {
+    const killedIds = new Set(
+      phase.memoryEvents
+        .filter((event): event is Extract<HexPhaseMemoryEvent, { type: "life_status_changed" }> => event.type === "life_status_changed" && event.lifeStatus === "dead")
+        .map((event) => event.agentId)
+    );
+    return count + phase.memoryEvents.filter((event) => event.type === "bomb_dropped" && killedIds.has(event.agentId)).length;
+  }, 0);
+  const c4PlantInterruptedCount = phases.reduce((count, phase) => {
+    const phaseEvents = collectC4ContinuityEvents([phase]);
+    const killedIds = new Set(
+      phaseEvents
+        .filter((event): event is Extract<HexPhaseMemoryEvent, { type: "life_status_changed" }> => event.type === "life_status_changed" && event.lifeStatus === "dead")
+        .map((event) => event.agentId)
+    );
+    const droppedIds = new Set(
+      phaseEvents
+        .filter((event) => event.type === "bomb_dropped")
+        .map((event) => event.agentId)
+    );
+    const plantedKeys = new Set(
+      phaseEvents
+        .filter((event) => event.type === "bomb_planted")
+        .map((event) => `${event.agentId}:${event.cellId}`)
+    );
+    return count + phase.commandResult.actions.filter((action) =>
+      action.actionType === "plant_bomb"
+      && killedIds.has(action.agentId)
+      && droppedIds.has(action.agentId)
+      && !plantedKeys.has(`${action.agentId}:${action.targetCellId}`)
+    ).length;
+  }, 0);
+  const finalMemory = phases.at(-1)?.memoryAfter;
+  const c4DroppedCellId = finalMemory?.bombState.droppedCellId;
+  const c4CurrentCarrier = finalMemory?.bombState.carrierAgentId;
+  const c4DroppedUnrecoveredAtFinal = Boolean(c4DroppedCellId && !finalMemory?.bombState.planted);
+  const c4ContinuityReasons: string[] = [];
+  if (c4CarrierKilledCount > 0) {
+    c4ContinuityReasons.push(`c4_carrier_killed:${c4CarrierKilledCount}`);
+  }
+  if (c4DroppedCount > 0) {
+    c4ContinuityReasons.push(`c4_dropped:${c4DroppedCount}`);
+  }
+  if (c4PickupCount > 0) {
+    c4ContinuityReasons.push("c4_picked_up:" + c4PickupCount);
+  }
+  if (c4PlantInterruptedCount > 0) {
+    c4ContinuityReasons.push("c4_plant_interrupted:" + c4PlantInterruptedCount);
+  }
+  if (c4DroppedUnrecoveredAtFinal) {
+    c4ContinuityReasons.push(`c4_unrecovered_at_final:${c4DroppedCellId}`);
+  }
+  if (finalMemory?.bombState.planted) {
+    c4ContinuityReasons.push(`c4_planted:${finalMemory.bombState.plantedCellId ?? "unknown"}`);
+  } else if (finalWinCondition?.roundWinType === "timeout_no_plant" && !c4DroppedCellId) {
+    c4ContinuityReasons.push("no_plant_without_dropped_c4");
+  }
+  return {
+    c4CarrierKilledCount,
+    c4DroppedCount,
+    c4PickupCount,
+    c4PlantInterruptedCount,
+    ...(c4CurrentCarrier ? { c4CurrentCarrier } : {}),
+    ...(c4DroppedCellId ? { c4DroppedCellId } : {}),
+    c4DroppedUnrecoveredAtFinal,
+    c4ContinuityReasons
+  };
+}
+function collectC4ContinuityEvents(phases: readonly HexRoundPhaseTrace[]): HexPhaseMemoryEvent[] {
+  const seen = new Set<string>();
+  const events: HexPhaseMemoryEvent[] = [];
+  for (const phase of phases) {
+    for (const event of [...phase.memoryEvents, ...(phase.memoryAfter.phaseEvents ?? [])]) {
+      const key = JSON.stringify(event);
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      events.push(event);
+    }
+  }
+  return events;
 }
 export function loadOfficialDust2HexMap(): HexMapAsset {
   const raw = readFileSync(join(findWorkspaceRoot(process.cwd()), "data/materials/processed/maps/dust2/hex/dust2-hex-map.json"), "utf8");
@@ -792,7 +909,8 @@ function materializeInitialAgents(input: {
       teamId: agent.teamId,
       side: agent.side,
       startCellId: startCell.cellId,
-      carryingC4: agent.carryingC4 ?? (agent.side === "attack" && attackAssignedCount === 1)
+      carryingC4: agent.carryingC4 ?? (agent.side === "attack" && attackAssignedCount === 1),
+      ...(agent.lifeStatus ? { lifeStatus: agent.lifeStatus } : {})
     };
   });
 }

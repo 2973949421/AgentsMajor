@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+﻿import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 
@@ -19,6 +19,9 @@ import { createSqliteRepositories, defaultSqlitePath, type SqliteRepositoryBundl
 import { ServerLocalArtifactStore } from "./server-artifact-store";
 import { loadRootLocalEnv } from "./server-local-env";
 import { findProjectRoot } from "./server-project-root";
+import { buildFinanceClippingSummary, buildFinanceLengthSummary } from "./hex-lab/match/server-hex-finance-audit-projector";
+import { buildRoundQualityWarning } from "./hex-lab/match/server-hex-round-summary-projector";
+import { humanizeDuelPairingSummary } from "./hex-lab/match/server-hex-combat-audit-projector";
 
 type ScorePair = { teamA: number; teamB: number };
 type RoundReport = Awaited<ReturnType<SqliteRepositoryBundle["roundReports"]["listByMapGame"]>>[number];
@@ -1003,6 +1006,16 @@ export interface HexMatchLabTacticalAuditSummary {
   }>;
 }
 
+export interface HexMatchLabC4ContinuitySummary {
+  c4CarrierKilledCount: number;
+  c4DroppedCount: number;
+  c4PickupCount: number;
+  c4CurrentCarrier?: string | undefined;
+  c4DroppedCellId?: string | undefined;
+  c4DroppedUnrecoveredAtFinal: boolean;
+  c4ContinuityReasons: string[];
+}
+
 export interface HexMatchLabLlmAuditSummary {
   providerMode?: string | undefined;
   modelId?: string | undefined;
@@ -1031,6 +1044,7 @@ export interface HexMatchLabLlmAuditSummary {
   roundQualityReasons?: string[] | undefined;
   roundQualitySummaryZh?: string | undefined;
   roundQualityCounts?: Record<string, number> | undefined;
+  c4ContinuityAudit?: HexMatchLabC4ContinuitySummary | undefined;
   tacticalAudit?: HexMatchLabTacticalAuditSummary | undefined;
 }
 
@@ -2229,35 +2243,6 @@ function buildFinanceAuditSummary(output: HexMatchLabRoundStartAgentOutput): str
   return output.cardSummaryZh || output.rawOutputSummaryZh || "未记录摘要。";
 }
 
-function buildFinanceClippingSummary(submitted: HexMatchLabSubmittedFinanceOutput | undefined): string {
-  if (!submitted) {
-    return "旧 trace 未记录经济裁剪结果。";
-  }
-  const tier = formatFinanceClippingTierZh(submitted.economyClipTier ?? submitted.clippingTier);
-  const spend = typeof submitted.spend === "number" ? `花费 ${submitted.spend}` : "花费未记录";
-  const exchange = typeof submitted.spendUnit === "number" && typeof submitted.charsPerSpendUnit === "number"
-    ? `汇率 ${submitted.spendUnit}=${submitted.charsPerSpendUnit}字`
-    : "汇率未记录";
-  const budget = submitted.submittedBudgetChars > 0 ? `提交预算 ${submitted.submittedBudgetChars} 字` : "提交预算未记录";
-  const cutMode = submitted.cutMode ? `模式 ${formatFinanceCutModeZh(submitted.cutMode)}` : "裁剪模式未记录";
-  const omitted = submitted.omittedFields.length > 0 ? `被裁剪 ${submitted.omittedFields.length} 项` : "无被裁剪字段";
-  const capped = submitted.cappedFields.length > 0 ? `封顶 ${submitted.cappedFields.length} 项` : "无额外封顶字段";
-  const clamp = submitted.budgetClampReason && submitted.budgetClampReason !== "within_tier" ? `预算被档位限制：${formatBudgetClampReasonZh(submitted.budgetClampReason)}` : "预算未被档位额外限制";
-  return `经济剪裁：${tier}；${spend}；${exchange}；${budget}；${cutMode}；金融火力上限：${formatFinanceCapLevelZh(submitted.combatEffectCap)}；${clamp}；${omitted}；${capped}。`;
-}
-function buildFinanceLengthSummary(submitted: HexMatchLabSubmittedFinanceOutput | undefined): string {
-  if (!submitted) {
-    return "旧 trace 未记录 N62C 长度审计。";
-  }
-  if (submitted.rawOpinionTargetMinChars <= 0 || submitted.rawOpinionTargetMaxChars <= 0 || submitted.submittedBudgetChars <= 0) {
-    return "旧 trace 未记录 N62C 原文目标或提交预算。";
-  }
-  const utilizationPct = Math.round(submitted.submittedBudgetUtilization * 100);
-  const underTarget = submitted.rawOpinionUnderTarget ? "；原文短于目标" : "";
-  const underfilled = submitted.rawOpinionUnderfilled ? "；原文短于提交预算，系统未补写内容" : "";
-  return `原文长度：${submitted.rawOpinionCharCount} / 目标 ${submitted.rawOpinionTargetMinChars}-${submitted.rawOpinionTargetMaxChars}；提交长度：${submitted.submittedOpinionCharCount} / 预算 ${submitted.submittedBudgetChars}；预算使用率 ${utilizationPct}%${underTarget}${underfilled}。`;
-}
-
 function collectFinanceAuditTerms(
   output: HexMatchLabRoundStartAgentOutput,
   submitted: HexMatchLabSubmittedFinanceOutput | undefined
@@ -2376,46 +2361,6 @@ function rangesOverlap(startA: number, endA: number, startB: number, endB: numbe
   return startA < endB && startB < endA;
 }
 
-function formatFinanceClippingTierZh(tier: string): string {
-  if (tier === "high_full") return "高配 / AWP";
-  if (tier === "rifle_full") return "完整长枪";
-  if (tier === "half") return "半起 / 奖励局";
-  if (tier === "light") return "轻买 / 手枪甲";
-  if (tier === "force") return "强起 / 破产混起";
-  if (tier === "pistol") return "手枪局";
-  if (tier === "eco") return "eco 经济局";
-  if (tier === "save") return "保枪 / 全 eco";
-  if (tier === "full") return "完整";
-  if (tier === "standard") return "标准";
-  return tier ? `未知(${tier})` : "未知";
-}
-
-function formatFinanceCutModeZh(mode: string): string {
-  if (mode === "front_cut") return "开头短截";
-  if (mode === "tiny_random_window") return "极短随机窗口";
-  if (mode === "random_window") return "随机窗口";
-  if (mode === "pistol_core_window") return "手枪局核心窗口";
-  if (mode === "core_window") return "核心窗口";
-  if (mode === "random_core_window") return "核心附近随机窗口";
-  if (mode === "multi_slice_lite") return "轻量多片段";
-  if (mode === "multi_slice") return "多片段";
-  if (mode === "multi_slice_plus") return "增强多片段";
-  return mode;
-}
-
-function formatBudgetClampReasonZh(reason: string): string {
-  if (reason === "raised_to_tier_min") return "按买型下限抬高";
-  if (reason === "capped_to_tier_max") return "按买型上限封顶";
-  if (reason === "fallback_no_economy") return "缺经济数字，使用保守 fallback";
-  if (reason === "within_tier") return "未限制";
-  return reason;
-}
-function formatFinanceCapLevelZh(cap: string): string {
-  if (cap === "possible_kill") return "高";
-  if (cap === "possible_wound" || cap === "forced_back" || cap === "suppression") return "中";
-  if (cap === "weak_pressure" || cap === "minor_delay" || cap === "none") return "低";
-  return "未知";
-}
 function readFiniteNumber(value: unknown, fallback = 0): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
@@ -3785,10 +3730,25 @@ function summarizeTraceAudit(trace: HexRoundTrace): HexMatchLabLlmAuditSummary {
     roundQualityReasons: trace.audit.roundQualityReasons ?? [],
     roundQualitySummaryZh: trace.audit.roundQualitySummaryZh,
     roundQualityCounts: { ...trace.audit.roundQualityCounts },
+    c4ContinuityAudit: cloneC4ContinuityAudit(trace.audit.c4ContinuityAudit),
     tacticalAudit
   };
 }
 
+function cloneC4ContinuityAudit(audit: HexRoundTrace["audit"]["c4ContinuityAudit"] | undefined): HexMatchLabC4ContinuitySummary | undefined {
+  if (!audit) {
+    return undefined;
+  }
+  return {
+    c4CarrierKilledCount: audit.c4CarrierKilledCount,
+    c4DroppedCount: audit.c4DroppedCount,
+    c4PickupCount: audit.c4PickupCount,
+    c4CurrentCarrier: audit.c4CurrentCarrier,
+    c4DroppedCellId: audit.c4DroppedCellId,
+    c4DroppedUnrecoveredAtFinal: audit.c4DroppedUnrecoveredAtFinal,
+    c4ContinuityReasons: [...audit.c4ContinuityReasons]
+  };
+}
 function summarizeTacticalAudit(audit: HexRoundTrace["audit"]): HexMatchLabTacticalAuditSummary | undefined {
   const tacticalAudit = (audit as HexRoundTrace["audit"] & { tacticalAudit?: HexRoundTrace["audit"]["tacticalAudit"] }).tacticalAudit;
   if (!tacticalAudit) {

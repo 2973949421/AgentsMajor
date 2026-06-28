@@ -19,7 +19,9 @@ import {
   type HexAgentCommandRequestSizeMetrics,
   type HexAgentCompactCommandRequest,
   type HexAgentActionDraft,
+  type HexAgentActionType,
   type HexAgentCommandRequest,
+  type HexAgentRouteCandidate,
   type HexAgentSemanticLanguageAudit,
   type HexRoundRouteMemory,
   type HexRoundTacticalPlan
@@ -520,6 +522,16 @@ export async function runHexAgentPhaseCommandHarness(input: RunHexAgentPhaseComm
         draft: normalized.draft,
         ...(input.economyContext ? { economyContext: input.economyContext } : {})
       });
+      if (!validated.valid) {
+        validated = tryRepairC4ObjectiveAction({
+          asset: input.asset,
+          memory: input.memory,
+          original: validated,
+          draft: normalized.draft,
+          request,
+          ...(input.economyContext ? { economyContext: input.economyContext } : {})
+        }) ?? validated;
+      }
       if (validated.valid && isTargetCellOccupiedByFriendly(validated, occupiedCellOwners, reservedCellOwners)) {
         validated = tryRepairOccupiedTarget({
           asset: input.asset,
@@ -697,6 +709,93 @@ function tryRepairOccupiedTarget(input: {
   return undefined;
 }
 
+function tryRepairC4ObjectiveAction(input: {
+  asset: HexMapAsset;
+  memory: HexRoundMemory;
+  original: HexValidatedAgentAction;
+  draft: HexAgentActionDraft;
+  request: HexAgentCommandRequest;
+  economyContext?: HexRoundEconomyContext;
+}): HexValidatedAgentAction | undefined {
+  const agent = input.memory.agents.find((candidate) => candidate.agentId === input.original.agentId);
+  if (!agent || agent.side !== "attack" || !isRepairableC4Validation(input.original.validationErrors)) {
+    return undefined;
+  }
+  const isCarrier = agent.carryingC4;
+  const isRecoveringDroppedC4 = Boolean(input.request.bombState.droppedCellId && !isCarrier);
+  if (!isCarrier && !isRecoveringDroppedC4) {
+    return undefined;
+  }
+  const candidates = input.request.targetCandidates.length > 0 ? input.request.targetCandidates : input.request.routeCandidates;
+  for (const candidate of candidates) {
+    const actionTypes = buildC4RepairActionTypes(candidate, input.request, isCarrier);
+    for (const actionType of actionTypes) {
+      if (actionType === "move" && candidate.targetCellId === agent.currentCellId) {
+        continue;
+      }
+      const repaired = validateHexAgentActionDraft({
+        asset: input.asset,
+        memory: input.memory,
+        draft: {
+          ...input.draft,
+          targetCellId: candidate.targetCellId,
+          actionType
+        },
+        ...(input.economyContext ? { economyContext: input.economyContext } : {})
+      });
+      if (repaired.valid) {
+        return {
+          ...repaired,
+          repairReasons: [...(repaired.repairReasons ?? []), "repaired_c4_objective_invalid_action_to_legal_candidate"],
+          riskNotes: [...repaired.riskNotes, "repaired_c4_objective_invalid_action_to_legal_candidate"]
+        };
+      }
+    }
+  }
+  return undefined;
+}
+
+function isRepairableC4Validation(errors: readonly HexAgentActionValidationError[]): boolean {
+  return errors.some((error) =>
+    error === "move_over_budget"
+    || error === "move_unreachable"
+    || error === "economy_disallows_action"
+    || error === "resource_tier_too_low"
+    || error === "plant_requires_bombsite"
+  );
+}
+
+function buildC4RepairActionTypes(
+  candidate: HexAgentRouteCandidate,
+  request: HexAgentCommandRequest,
+  isCarrier: boolean
+): HexAgentActionType[] {
+  const droppedCellId = request.bombState.droppedCellId;
+  if (!isCarrier && droppedCellId && candidate.targetCellId === droppedCellId) {
+    return ["move"];
+  }
+  if (!isCarrier) {
+    return [];
+  }
+  if (isBombsiteRouteCandidate(candidate)) {
+    return candidate.targetCellId === request.agent.currentCellId
+      ? ["plant_bomb"]
+      : ["plant_bomb", "move", "seek_duel"];
+  }
+  if (isSitePressureRouteCandidate(candidate) || request.phaseClock.urgencyLevel === "late" || request.phaseClock.urgencyLevel === "final") {
+    return ["move", "seek_duel"];
+  }
+  return [];
+}
+
+function isBombsiteRouteCandidate(candidate: HexAgentRouteCandidate): boolean {
+  return candidate.flags.includes("bombsite_a") || candidate.flags.includes("bombsite_b");
+}
+
+function isSitePressureRouteCandidate(candidate: HexAgentRouteCandidate): boolean {
+  const text = `${candidate.regionId ?? ""} ${candidate.pointIds.join(" ")} ${candidate.flags.join(" ")}`;
+  return /site|bomb|long|short|cat|tunnel|doors|mid/i.test(text);
+}
 function isFriendlyCellBlocked(
   cellId: string,
   agentId: string,

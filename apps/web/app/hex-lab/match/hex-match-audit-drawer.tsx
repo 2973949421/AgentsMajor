@@ -815,8 +815,10 @@ function LlmAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; phase
           <p>{audit.roundQualityStatus === "valid" ? "通过质量闸门，可作为正式 round 审计。" : audit.roundQualitySummaryZh ?? "本 round 未通过质量闸门。"}</p>
           {audit.roundQualityStatus !== "valid" ? <p className={styles.guardText}>本 round 不应作为正式比赛审计或计分样本；hard winner 只保留在技术细节中。</p> : null}
           {audit.roundQualityReasons?.length ? <p>原因：{audit.roundQualityReasons.join("；")}</p> : null}
+          {audit.roundQualityCounts ? <p>行动降级 {audit.roundQualityCounts.totalActionFallbackCount ?? 0}；死亡/AP 跳过 {audit.roundQualityCounts.benignSkippedFallbackCount ?? 0}；原始 fallback {audit.roundQualityCounts.rawActionFallbackCount ?? audit.fallbackCount}。</p> : null}
         </article>
       ) : null}
+      {audit.c4ContinuityAudit ? <C4ContinuityAuditCard audit={audit.c4ContinuityAudit} /> : null}
       <MetricLine label="预期 / 实际调用" value={`${audit.expectedCalls} / ${audit.totalLlmCallsAttempted}`} />
       <MetricLine label="接受 / 拒绝 / 降级" value={`${audit.acceptedDrafts} / ${audit.rejectedDrafts} / ${audit.fallbackCount}`} />
       <MetricLine label={"provider \u91cd\u8bd5"} value={`\u6062\u590d ${audit.providerRetryRecoveredCount} / \u6700\u7ec8\u5931\u8d25 ${audit.providerRetryFinalFailureCount}`} />
@@ -840,6 +842,18 @@ function LlmAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; phase
   );
 }
 
+function C4ContinuityAuditCard(props: { audit: NonNullable<HexMatchLabRoundTraceDetail["audit"]["c4ContinuityAudit"]> }) {
+  const audit = props.audit;
+  return (
+    <article className={styles.auditCard}>
+      <h3>C4 目标连续性</h3>
+      <p>当前 carrier：{audit.c4CurrentCarrier ?? "无"}；掉包格：{audit.c4DroppedCellId ?? "无"}。</p>
+      <p>carrier 死亡 {audit.c4CarrierKilledCount} 次；掉包 {audit.c4DroppedCount} 次；接包 {audit.c4PickupCount} 次。</p>
+      {audit.c4DroppedUnrecoveredAtFinal ? <p className={styles.guardText}>本 round 结束时 C4 仍未恢复，timeout/no plant 应优先按 C4 目标断点审计。</p> : null}
+      {audit.c4ContinuityReasons.length ? <p>原因：{audit.c4ContinuityReasons.join("；")}</p> : null}
+    </article>
+  );
+}
 function TacticalAuditCard(props: { audit: NonNullable<HexMatchLabRoundTraceDetail["audit"]["tacticalAudit"]> }) {
   const audit = props.audit;
   const routeAssignments = audit.roleRouteAssignments.slice(0, 10);

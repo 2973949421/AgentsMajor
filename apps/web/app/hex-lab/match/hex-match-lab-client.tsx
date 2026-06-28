@@ -55,7 +55,12 @@ export function HexMatchLabClient() {
   const selectedTrace = progress?.selectedTrace;
   const rounds = progress?.roundSummaries ?? [];
   const phases = selectedTrace?.phaseSummaries ?? [];
-  const selectedPhase = phases.find((phase) => phase.phaseIndex === selectedPhaseIndex) ?? phases[0];
+  const selectedPhaseCandidate = phases.find((phase) => phase.phaseIndex === selectedPhaseIndex);
+  const fallbackPhaseWithPlayers = phases.find((phase) => phase.players.length > 0);
+  const selectedPhase = (selectedPhaseCandidate?.players.length ? selectedPhaseCandidate : undefined)
+    ?? fallbackPhaseWithPlayers
+    ?? selectedPhaseCandidate
+    ?? phases[0];
   const selectedRound = useMemo(
     () => rounds.find((round) => round.hexTraceArtifactId === selectedRoundArtifactId) ?? rounds.at(-1),
     [rounds, selectedRoundArtifactId]

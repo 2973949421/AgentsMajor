@@ -357,10 +357,20 @@ function minimalTrace(agentA: Agent, attackTeamId: string, defenseTeamId: string
         usableChallengeCount: 5,
         roundStartProviderErrorCount: 0,
         roundStartInvalidCount: 0,
+        rawActionFallbackCount: 0,
         totalActionFallbackCount: 0,
+        benignSkippedFallbackCount: 0,
         maxPhaseFallbackCount: 0,
         consecutiveDegradedPhaseCount: 0,
         phaseActionProviderErrorCount: 0
+      },
+      c4ContinuityAudit: {
+        c4CarrierKilledCount: 0,
+        c4DroppedCount: 0,
+        c4PickupCount: 0,
+        c4PlantInterruptedCount: 0,
+        c4DroppedUnrecoveredAtFinal: false,
+        c4ContinuityReasons: []
       },
       tacticalAudit: {
         selectedVariant: "a_short_split / site_anchor",

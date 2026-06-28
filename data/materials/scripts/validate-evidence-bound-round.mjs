@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -118,6 +118,7 @@ function analyzeTrace(path, mapSlug) {
   const phase0Diagnostics = collectPhase0Diagnostics(roundStartOutputs);
   const roundQualityStatus = trace.audit?.roundQualityStatus ?? null;
   const roundQualityReasons = Array.isArray(trace.audit?.roundQualityReasons) ? trace.audit.roundQualityReasons : [];
+  const roundQualityCounts = trace.audit?.roundQualityCounts && typeof trace.audit.roundQualityCounts === "object" ? trace.audit.roundQualityCounts : {};
   const roundQualitySummaryZh = trace.audit?.roundQualitySummaryZh ?? null;
   const financeWinWithoutAcceptedEvidence = financeVerdicts.filter(hasFinancialWinWithoutAcceptedEvidence);
   const combatFinanceFirepowerPositive = combats.filter(hasPositiveFinanceFirepower);
@@ -170,10 +171,20 @@ function analyzeTrace(path, mapSlug) {
     roundQualityStatus,
     roundQualityReasons,
     roundQualitySummaryZh,
+    roundQualityCounts,
     submittedFinanceOutputs,
     submittedFinanceDiagnostics
   });
   const providerMode = trace.audit?.providerMode ?? inferProviderMode(roundStartOutputs);
+  const rawActionFallbackCount = roundQualityCounts.rawActionFallbackCount === undefined
+    ? readNumber(trace.audit?.fallbackCount)
+    : readNumber(roundQualityCounts.rawActionFallbackCount);
+  const qualityActionFallbackCount = roundQualityCounts.totalActionFallbackCount === undefined
+    ? rawActionFallbackCount
+    : readNumber(roundQualityCounts.totalActionFallbackCount);
+  const benignSkippedFallbackCount = roundQualityCounts.benignSkippedFallbackCount === undefined
+    ? Math.max(0, rawActionFallbackCount - qualityActionFallbackCount)
+    : readNumber(roundQualityCounts.benignSkippedFallbackCount);
   const qualityConclusion = classifyRunQuality(failures);
 
   return {
@@ -185,6 +196,10 @@ function analyzeTrace(path, mapSlug) {
     roundQualityStatus,
     roundQualityReasons,
     roundQualitySummaryZh,
+    roundQualityCounts,
+    rawActionFallbackCount,
+    qualityActionFallbackCount,
+    benignSkippedFallbackCount,
     financeScenarioSlug: getFinanceScenarioSlug(trace),
     decisionQuestionPresent: Boolean(decisionQuestion),
     decisionQuestion: decisionQuestion ?? null,
@@ -232,6 +247,10 @@ targetClaimBindRate,
   };
 }
 
+function readNumber(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
 function buildBlockedRealProviderRun(reason) {
   const failure = {
     category: "provider_error",
@@ -255,6 +274,9 @@ function buildBlockedRealProviderRun(reason) {
     providerErrorPhase0Count: 0,
     providerRetryRecoveredCount: 0,
     providerRetryFinalFailureCount: 0,
+    rawActionFallbackCount: 0,
+    qualityActionFallbackCount: 0,
+    benignSkippedFallbackCount: 0,
     invalidStanceCardCount: 0,
     invalidChallengeCardCount: 0,
     skippedChallengeNoClaimCatalogCount: 0,
@@ -377,6 +399,9 @@ function collectPhase0Diagnostics(outputs) {
     providerErrorPhase0Count: 0,
     providerRetryRecoveredCount: 0,
     providerRetryFinalFailureCount: 0,
+    rawActionFallbackCount: 0,
+    qualityActionFallbackCount: 0,
+    benignSkippedFallbackCount: 0,
     invalidStanceCardCount: 0,
     invalidChallengeCardCount: 0,
     skippedChallengeNoClaimCatalogCount: 0
@@ -596,6 +621,12 @@ function hasRegionOnlyPressureKey(combat) {
 function isAllowedN65PressureKey(key) {
   return key.startsWith("duelPair:") || key.startsWith("fireLane:") || key.startsWith("objective_exposure:") || key.startsWith("cell_contact:");
 }
+function isBenignOnlyActionDegraded(input) {
+  return input.roundQualityStatus === "action_degraded"
+    && readNumber(input.roundQualityCounts?.totalActionFallbackCount) === 0
+    && readNumber(input.roundQualityCounts?.benignSkippedFallbackCount) > 0;
+}
+
 function buildFailures(input) {
   const failures = [];
   const add = (category, message, extra = {}) => {
@@ -609,7 +640,7 @@ function buildFailures(input) {
   if (!input.trace?.audit || input.roundQualityStatus === null) {
     add("old_trace_missing_fields", "trace 未记录 P0 roundQualityStatus 质量闸门。");
   }
-  if (input.roundQualityStatus && input.roundQualityStatus !== "valid") {
+  if (input.roundQualityStatus && input.roundQualityStatus !== "valid" && !isBenignOnlyActionDegraded(input)) {
     const qualityCategory = input.roundQualityStatus === "provider_degraded"
       ? "provider_degraded"
       : input.roundQualityStatus === "action_degraded"
@@ -735,6 +766,9 @@ function buildSummary(runs) {
     acc.providerErrorPhase0Count += run.providerErrorPhase0Count;
     acc.providerRetryRecoveredCount += run.providerRetryRecoveredCount ?? 0;
     acc.providerRetryFinalFailureCount += run.providerRetryFinalFailureCount ?? 0;
+    acc.rawActionFallbackCount += run.rawActionFallbackCount ?? 0;
+    acc.qualityActionFallbackCount += run.qualityActionFallbackCount ?? 0;
+    acc.benignSkippedFallbackCount += run.benignSkippedFallbackCount ?? 0;
     acc.invalidStanceCardCount += run.invalidStanceCardCount;
     acc.invalidChallengeCardCount += run.invalidChallengeCardCount;
     acc.skippedChallengeNoClaimCatalogCount += run.skippedChallengeNoClaimCatalogCount;
@@ -786,6 +820,9 @@ function buildSummary(runs) {
     providerErrorPhase0Count: 0,
     providerRetryRecoveredCount: 0,
     providerRetryFinalFailureCount: 0,
+    rawActionFallbackCount: 0,
+    qualityActionFallbackCount: 0,
+    benignSkippedFallbackCount: 0,
     invalidStanceCardCount: 0,
     invalidChallengeCardCount: 0,
     skippedChallengeNoClaimCatalogCount: 0,

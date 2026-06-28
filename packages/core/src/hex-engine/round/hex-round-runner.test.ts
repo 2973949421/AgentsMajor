@@ -145,6 +145,23 @@ describe("Hex round runner", () => {
     expect(trace.audit.roundQualityCounts.phaseActionProviderErrorCount).toBe(0);
   });
 
+  it("does not degrade action quality for dead-agent skipped fallbacks", async () => {
+    const trace = await runDust2HexRound({
+      roundId: "round_hex_dead_agent_skipped_quality",
+      roundNumber: 1,
+      attackTeamId: "team_t",
+      defenseTeamId: "team_ct",
+      activeAgents: createAgents().map((agent) => agent.agentId === "ct_4" ? { ...agent, lifeStatus: "dead" as const } : agent),
+      teamEconomyPlans: buildEconomyPlans()
+    });
+
+    expect(trace.audit.fallbackCount).toBeGreaterThan(0);
+    expect(trace.audit.roundQualityCounts.rawActionFallbackCount).toBeGreaterThan(0);
+    expect(trace.audit.roundQualityCounts.benignSkippedFallbackCount).toBeGreaterThan(0);
+    expect(trace.audit.roundQualityCounts.totalActionFallbackCount).toBe(0);
+    expect(trace.audit.roundQualityStatus).toBe("valid");
+    expect(trace.audit.roundQualityReasons).not.toContain("phase_action_fallback_present");
+  });
   it("invalidates the round before phase actions when phase0 has no usable cards", async () => {
     const trace = await runDust2HexRound({
       roundId: "round_hex_phase0_provider_down",

@@ -179,7 +179,8 @@ describe("Hex Match Lab", () => {
     expect(server).toContain("rawBudgetChars");
     expect(server).toContain("cutMode");
     expect(server).toContain("budgetClampReason");
-    expect(server).toContain("formatFinanceCutModeZh");
+    const financeProjector = readAppFile("hex-lab/match/server-hex-finance-audit-projector.ts");
+    expect(financeProjector).toContain("formatFinanceCutModeZh");
     expect(server).toContain("submittedTextSpanRefs");
     expect(server).toContain("rawOpinionLinkStatus");
     expect(server).toContain("readHexLlmResponseArtifactSummaries");

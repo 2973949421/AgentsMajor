@@ -3,10 +3,13 @@ import type { HexRoundStartAgentOutputForAction, HexValidatedAgentAction } from 
 import type { HexRoundBusinessDuel } from "../business/index.js";
 import { summarizeHexEconomyEvidence, type HexEconomyCombatEvidence, type HexRoundEconomyContext } from "../economy/index.js";
 import { judgeHexFinanceEvidence, type HexFinanceEvidenceJudgeSideResult } from "../finance/index.js";
-import type { HexFinanceCombatEffectCap, HexRoundFinanceDuel, HexSubmittedFinanceOutput } from "../finance/index.js";
+import type { HexRoundFinanceDuel, HexSubmittedFinanceOutput } from "../finance/index.js";
 import type { HexRoundMemory, HexSide } from "../state/index.js";
 import { buildHexCombatCasualties, buildHexCombatSuppressions } from "./hex-combat-casualties.js";
 import type { HexCombatAttributionScore } from "./hex-combat-casualties.js";
+import { buildFinanceFirepowerScore } from "./hex-combat-finance-firepower.js";
+import { buildCsReasons, scoreCsEvidence } from "./hex-combat-score-builder.js";
+import { buildDuelPairingAudit } from "./hex-combat-verdict-audit.js";
 import { materializeHexCombatMemoryEvents } from "./hex-combat-events.js";
 import type {
   HexCombatAudit,
@@ -319,25 +322,6 @@ function isCsReason(reason: string): boolean {
     && !reason.includes(":n60");
 }
 
-function buildDuelPairingAudit(contact: HexCombatContact): HexCombatAudit["duelPairing"] | undefined {
-  if ((contact.duelPairs?.length ?? 0) === 0 && (contact.fireLanes?.length ?? 0) === 0 && (contact.pressureKeys?.length ?? 0) === 0) {
-    return undefined;
-  }
-  const primary = [...(contact.duelPairs ?? [])].sort((left, right) => right.directnessScore - left.directnessScore || left.duelPairId.localeCompare(right.duelPairId))[0];
-  const reasons = uniqueStrings([
-    "n65_lite_duel_pairing",
-    ...(primary?.reasons ?? []),
-    ...(contact.fireLanes ?? []).flatMap((lane) => lane.exposureFlags)
-  ]);
-  return {
-    ...(primary ? { primaryDuelPairId: primary.duelPairId, primaryPressureKey: primary.pressureKey } : {}),
-    duelPairCount: contact.duelPairs?.length ?? 0,
-    fireLaneCount: contact.fireLanes?.length ?? 0,
-    pressureKeys: [...(contact.pressureKeys ?? [])],
-    reasons
-  };
-}
-
 function scoreSide(input: {
   side: HexSide;
   contact: HexCombatContact;
@@ -474,143 +458,6 @@ function scoreFinanceEvidence(adoption: HexCombatFinanceEvidenceAdoption | undef
     return 0;
   }
   return Math.min(financeWeight, Math.round((adoption.sideScore / 100) * financeWeight));
-}
-interface FinanceFirepowerCap {
-  pressure: number;
-  lethal: number;
-  label: string;
-}
-
-function buildFinanceFirepowerScore(input: {
-  side: HexSide;
-  participants: HexCombatParticipant[];
-  contact: HexCombatContact;
-  adoption: HexCombatFinanceEvidenceAdoption | undefined;
-  submittedFinanceOutputs: readonly HexSubmittedFinanceOutput[];
-}): HexCombatFinanceFirepowerScore {
-  const participantIds = new Set(input.participants.map((participant) => participant.agentId));
-  const participantOutputs = input.submittedFinanceOutputs.filter((output) =>
-    participantIds.has(output.agentId)
-    && output.cardKind === (input.side === "defense" ? "stance" : "challenge")
-  );
-  const combatUsableOutputs = participantOutputs.filter((output) => output.submittedUsableForCombat && !output.orphanedChallenge);
-  const acceptedRefSet = new Set(input.side === "defense" ? input.adoption?.acceptedClaims ?? [] : input.adoption?.acceptedChallenges ?? []);
-  const acceptedEvidenceRefsByItemId = input.adoption?.acceptedEvidenceRefsByItemId ?? {};
-  const participantAcceptedEvidenceRefs = new Set<string>();
-  const participantAcceptedClaimRefs = new Set<string>();
-  const acceptedItemsMissingEvidenceMapping = new Set<string>();
-
-  const addAcceptedItemEvidence = (itemId: string): void => {
-    const refs = acceptedEvidenceRefsByItemId[itemId] ?? [];
-    if (refs.length === 0) {
-      acceptedItemsMissingEvidenceMapping.add(itemId);
-      return;
-    }
-    for (const ref of refs) {
-      participantAcceptedEvidenceRefs.add(ref);
-    }
-  };
-
-  for (const output of combatUsableOutputs) {
-    if (input.side === "defense" && output.submittedStanceCard) {
-      for (const claim of output.submittedStanceCard.coreClaims) {
-        if (acceptedRefSet.has(claim.claimId)) {
-          participantAcceptedClaimRefs.add(claim.claimId);
-          addAcceptedItemEvidence(claim.claimId);
-        }
-      }
-    }
-    if (input.side === "attack" && output.submittedChallengeCard) {
-      for (const challenge of output.submittedChallengeCard.challenges) {
-        if (acceptedRefSet.has(challenge.challengeId)) {
-          participantAcceptedClaimRefs.add(challenge.challengeId);
-          addAcceptedItemEvidence(challenge.challengeId);
-        }
-      }
-    }
-  }
-
-  const auditReasons: string[] = [];
-  if (participantOutputs.length === 0) {
-    auditReasons.push("no_participant_submitted_finance_output");
-  }
-  if (combatUsableOutputs.length < participantOutputs.length) {
-    auditReasons.push("participant_submitted_output_not_combat_usable_filtered");
-  }
-  if (acceptedItemsMissingEvidenceMapping.size > 0) {
-    auditReasons.push("accepted_item_missing_evidence_mapping");
-  }
-  if (participantAcceptedEvidenceRefs.size === 0) {
-    auditReasons.push("no_participant_accepted_evidence");
-  }
-
-  const n59Cap = capFromN59Effects(input.adoption?.combatEffectAllowed ?? []);
-  const n62Cap = capFromSubmittedOutputs(combatUsableOutputs);
-  const baseScore = participantAcceptedEvidenceRefs.size === 0
-    ? 0
-    : Math.min(
-      input.adoption?.sideScore ?? 0,
-      15 + participantAcceptedEvidenceRefs.size * 12 + participantAcceptedClaimRefs.size * 8
-    );
-  const rawPressureScore = Math.round((baseScore / 100) * 45);
-  const rawLethalScore = Math.round((baseScore / 100) * 20);
-  const pressureScore = Math.min(rawPressureScore, n59Cap.pressure, n62Cap.pressure);
-  const lethalScore = Math.min(rawLethalScore, n59Cap.lethal, n62Cap.lethal);
-  const blockedLethalScore = input.contact.lethalEligible ? 0 : lethalScore;
-  const appliedToCombatScore = pressureScore + (input.contact.lethalEligible ? lethalScore : 0);
-  const caps = [`n59:${n59Cap.label}`, `n62:${n62Cap.label}`];
-  if (pressureScore < rawPressureScore || lethalScore < rawLethalScore) {
-    auditReasons.push("finance_firepower_cap_applied");
-  }
-  if (!input.contact.lethalEligible && lethalScore > 0) {
-    auditReasons.push("finance_lethal_score_blocked_by_contact_gate");
-  }
-  if (appliedToCombatScore > 0) {
-    auditReasons.push("finance_firepower_applied_to_combat_score");
-  }
-
-  return {
-    side: input.side,
-    pressureScore: roundScore(pressureScore),
-    lethalScore: roundScore(lethalScore),
-    totalScore: roundScore(pressureScore + lethalScore),
-    appliedToCombatScore: roundScore(appliedToCombatScore),
-    blockedLethalScore: roundScore(blockedLethalScore),
-    participantAcceptedEvidenceRefs: [...participantAcceptedEvidenceRefs],
-    participantAcceptedClaimRefs: [...participantAcceptedClaimRefs],
-    participantSubmittedOutputRefs: combatUsableOutputs.map((output) => output.submittedOutputId),
-    capApplied: caps.join("|"),
-    caps,
-    auditReasons: uniqueStrings(auditReasons)
-  };
-}
-
-function capFromN59Effects(effects: readonly HexCombatEffectAllowed[]): FinanceFirepowerCap {
-  if (effects.includes("possible_kill")) return { pressure: 45, lethal: 20, label: "possible_kill" };
-  if (effects.includes("force_reposition") || effects.includes("map_control")) return { pressure: 30, lethal: 0, label: "force_reposition_or_map_control" };
-  if (effects.includes("pressure")) return { pressure: 18, lethal: 0, label: "pressure" };
-  if (effects.includes("minor_delay")) return { pressure: 5, lethal: 0, label: "minor_delay" };
-  return { pressure: 0, lethal: 0, label: "no_effect" };
-}
-
-function capFromSubmittedOutputs(outputs: readonly HexSubmittedFinanceOutput[]): FinanceFirepowerCap {
-  if (outputs.length === 0) {
-    return { pressure: 0, lethal: 0, label: "none" };
-  }
-  return outputs.map((output) => capFromN62Effect(output.combatEffectCap))
-    .sort((left, right) => (right.pressure + right.lethal) - (left.pressure + left.lethal))[0]!;
-}
-
-function capFromN62Effect(effect: HexFinanceCombatEffectCap): FinanceFirepowerCap {
-  switch (effect) {
-    case "possible_kill": return { pressure: 45, lethal: 20, label: "possible_kill" };
-    case "possible_wound": return { pressure: 38, lethal: 8, label: "possible_wound" };
-    case "forced_back": return { pressure: 30, lethal: 0, label: "forced_back" };
-    case "suppression": return { pressure: 18, lethal: 0, label: "suppression" };
-    case "weak_pressure": return { pressure: 10, lethal: 0, label: "weak_pressure" };
-    case "minor_delay": return { pressure: 5, lethal: 0, label: "minor_delay" };
-    case "none": return { pressure: 0, lethal: 0, label: "none" };
-  }
 }
 function buildFinanceReasons(
   side: HexSide,
@@ -1146,85 +993,6 @@ function buildCsReasonZh(csReasons: string[]): string[] {
     };
     return labels[core] ?? `未翻译 CS 技术原因：${reason}`;
   }));
-}
-
-function scoreCsEvidence(
-  side: HexSide,
-  participants: HexCombatParticipant[],
-  contact: HexCombatContact,
-  sideActionsNearContact: HexValidatedAgentAction[],
-  economyEvidence: HexEconomyCombatEvidence
-): number {
-  let score = 0;
-  const directParticipants = participants.filter((participant) => !participant.supportParticipant);
-  const directOpponentCount = contact.participants.filter((participant) => participant.side !== side && !participant.supportParticipant).length;
-  score += directParticipants.length >= directOpponentCount ? 10 : 5;
-  if (participants.length > directParticipants.length) {
-    score += 2;
-  }
-  score += contact.minCellDistance === undefined ? 2 : contact.minCellDistance <= 1 ? 7 : contact.minCellDistance <= 3 ? 4 : 2;
-  if (participants.some((participant) => participant.action.valid)) {
-    score += 5;
-  }
-  score += scoreMapFlags(participants);
-  score += participants.every((participant) => participant.lifeStatus === "alive") ? 5 : 2;
-  if (participants.some((participant) => isPressureAction(participant.action))) {
-    score += 3;
-  }
-  score += economyScoreAdjustment(sideActionsNearContact, economyEvidence);
-  return Math.min(csWeight, Math.max(0, score));
-}
-
-function buildCsReasons(
-  side: HexSide,
-  participants: HexCombatParticipant[],
-  contact: HexCombatContact,
-  sideActionsNearContact: HexValidatedAgentAction[],
-  economyEvidence: HexEconomyCombatEvidence
-): string[] {
-  const reasons: string[] = [];
-  const directParticipants = participants.filter((participant) => !participant.supportParticipant);
-  const directOpponentCount = contact.participants.filter((participant) => participant.side !== side && !participant.supportParticipant).length;
-  if (directParticipants.length >= directOpponentCount) {
-    reasons.push(`${side}:numbers_or_trade_support`);
-  }
-  if (participants.length > directParticipants.length) {
-    reasons.push(`${side}:support_assist_present`);
-  }
-  if (contact.minCellDistance !== undefined && contact.minCellDistance <= 3) {
-    reasons.push(`${side}:close_cell_distance`);
-  }
-  if (participants.some((participant) => participant.action.valid)) {
-    reasons.push(`${side}:validated_ap_path`);
-  }
-  if (scoreMapFlags(participants) > 0) {
-    reasons.push(`${side}:map_flag_context`);
-  }
-  if (participants.some((participant) => isPressureAction(participant.action))) {
-    reasons.push(`${side}:active_action_pressure`);
-  }
-  if (economyEvidence.reasons.length > 0) {
-    reasons.push(...economyEvidence.reasons.map((reason) => `${side}:${reason}`));
-  }
-  if (lowResourceFullExecuteAttempt(sideActionsNearContact, economyEvidence)) {
-    reasons.push(`${side}:economy:low_resource_full_execute_penalty`);
-  }
-  return reasons;
-}
-
-function economyScoreAdjustment(sideActionsNearContact: HexValidatedAgentAction[], economyEvidence: HexEconomyCombatEvidence): number {
-  let adjustment = economyEvidence.scoreDelta;
-  if (lowResourceFullExecuteAttempt(sideActionsNearContact, economyEvidence)) {
-    adjustment -= 5;
-  }
-  return Math.max(-5, Math.min(5, adjustment));
-}
-
-function lowResourceFullExecuteAttempt(
-  sideActionsNearContact: HexValidatedAgentAction[],
-  economyEvidence: HexEconomyCombatEvidence
-): boolean {
-  return economyEvidence.resourceTiers.includes("low") && sideActionsNearContact.some((action) => action.actionType === "execute_site");
 }
 
 function buildScoreboard(
