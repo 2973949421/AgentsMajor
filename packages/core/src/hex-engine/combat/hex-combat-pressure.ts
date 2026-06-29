@@ -4,8 +4,9 @@ import type {
   HexCombatPressureAudit,
   HexCombatResolution,
   HexCombatScoreboard,
-  HexCombatVerdict
+  HexCombatVerdict,
 } from "./hex-combat-types.js";
+import type { HexSide } from "../state/index.js";
 
 export interface HexCombatPressureState {
   pressureKey: string;
@@ -24,20 +25,27 @@ export type HexCombatPressureHistory = Record<string, HexCombatPressureState>;
 const absentPhaseDecay = 4;
 const maxAccumulatedPressure = 12;
 const lethalPressureDeltaCap = 6;
-const nonLethalPressureDeltaCap = 4;
+const nonLethalPressureDeltaCap = 3;
 
 export function createHexCombatPressureHistory(): HexCombatPressureHistory {
   return {};
 }
 
 export function getPrimaryPressureKey(contact: HexCombatContact): string | undefined {
+  if (isGranularPressureKey(contact.primaryPressureKey)) {
+    return contact.primaryPressureKey;
+  }
+  if (isGranularPressureKey(contact.pressureScope?.pressureKey)) {
+    return contact.pressureScope.pressureKey;
+  }
+  const scopeKey = (contact.pressureKeys ?? []).find((key) => isScopedPressureKey(key));
+  if (scopeKey) {
+    return scopeKey;
+  }
   const primaryPair = [...(contact.duelPairs ?? [])]
     .filter((pair) => isGranularPressureKey(pair.pressureKey))
     .sort((left, right) => right.directnessScore - left.directnessScore || left.duelPairId.localeCompare(right.duelPairId))[0];
-  if (primaryPair) {
-    return primaryPair.pressureKey;
-  }
-  return (contact.pressureKeys ?? []).find(isGranularPressureKey);
+  return primaryPair?.pressureKey ?? (contact.pressureKeys ?? []).find(isGranularPressureKey);
 }
 
 export function advanceHexCombatPressureHistoryForPhase(
@@ -70,6 +78,8 @@ export function buildHexCombatPressureAudit(input: {
   contact: HexCombatContact;
   state?: HexCombatPressureState;
   advantage: HexCombatAdvantage;
+  verdict?: HexCombatVerdict;
+  scoreboard?: HexCombatScoreboard;
 }): HexCombatPressureAudit | undefined {
   const pressureKey = getPrimaryPressureKey(input.contact);
   if (!pressureKey) {
@@ -80,21 +90,46 @@ export function buildHexCombatPressureAudit(input: {
   const currentPressure = Math.min(maxAccumulatedPressure, previousPressure + pressureDelta);
   const streak = input.state ? input.state.streak + 1 : 1;
   const lethalAllowed = Boolean(input.contact.lethalEligible) && !input.contact.coverBlockedLethal;
+  const pressureEffectCap: HexCombatPressureAudit["pressureEffectCap"] = lethalAllowed ? "lethal_allowed" : "nonlethal_pressure_only";
   const cap = lethalAllowed ? lethalPressureDeltaCap : nonLethalPressureDeltaCap;
+  const pressureSide = determinePressureSide(input.scoreboard) ?? (input.advantage === "contested" ? undefined : input.advantage);
+  const notAppliedReasons: string[] = [];
   const escalationReasons = [
     "n64_pressure_key_audit",
     ...scoreContactPressureReasons(input.contact),
-    ...(lethalAllowed ? ["n64_lethal_pressure_allowed_by_gate"] : ["n64_lethal_pressure_blocked_by_gate"]),
-    ...(streak <= 1 ? ["n64_pressure_observed_first_contact_no_score_delta"] : [])
+    ...(lethalAllowed ? ["n64_lethal_pressure_allowed_by_gate"] : ["n64_lethal_pressure_blocked_by_gate"])
   ];
-  const appliedScoreDelta = input.advantage === "contested" || streak <= 1
-    ? 0
-    : Math.min(cap, Math.max(0, currentPressure - 2));
-  if (input.advantage === "contested") {
-    escalationReasons.push("n64_pressure_not_applied_without_score_advantage");
+  if (streak <= 1) {
+    notAppliedReasons.push("n64_pressure_observed_first_contact_no_score_delta");
   }
+  if (!pressureSide) {
+    notAppliedReasons.push("n64_pressure_not_applied_without_deterministic_side");
+  }
+  if (input.advantage === "contested" && !isContestedPressureEligible(input.contact)) {
+    notAppliedReasons.push("n64_contested_pressure_not_eligible");
+  }
+  const canApply = streak > 1
+    && Boolean(pressureSide)
+    && (input.advantage !== "contested" || isContestedPressureEligible(input.contact));
+  const appliedScoreDelta = canApply
+    ? Math.min(cap, Math.max(0, currentPressure - 2))
+    : 0;
+  if (input.advantage === "contested" && appliedScoreDelta > 0) {
+    escalationReasons.push("n64_contested_pressure_tiebreak_applied");
+  }
+  if (appliedScoreDelta <= 0 && input.advantage === "contested") {
+    escalationReasons.push("n64_pressure_not_applied_to_contested_contact");
+  }
+  const blockedLethalReasons = lethalAllowed ? [] : buildBlockedLethalPressureReasons(input.contact);
   return {
     pressureKey,
+    ...(input.contact.primaryPressureKey ? { primaryPressureKey: input.contact.primaryPressureKey } : {}),
+    ...(input.contact.pressureScope?.scopeKind ? { pressureScopeKind: input.contact.pressureScope.scopeKind } : {}),
+    ...(input.contact.pressureScope?.attributionDuelPairKey ? { attributionDuelPairKey: input.contact.pressureScope.attributionDuelPairKey } : {}),
+    ...(pressureSide && appliedScoreDelta > 0 ? { pressureAppliedToSide: pressureSide } : {}),
+    prePressureAdvantage: input.advantage,
+    ...(input.verdict ? { prePressureVerdict: input.verdict } : {}),
+    pressureEffectCap,
     previousPressure,
     pressureDelta,
     currentPressure,
@@ -102,20 +137,21 @@ export function buildHexCombatPressureAudit(input: {
     appliedScoreDelta,
     decayApplied: 0,
     resetReasons: [...(input.state?.resetReasons ?? [])],
+    notAppliedReasons: uniqueStrings(notAppliedReasons),
+    blockedLethalReasons,
     escalationReasons: uniqueStrings(escalationReasons)
   };
 }
 
 export function applyHexCombatPressureToScoreboard(
   scoreboard: HexCombatScoreboard,
-  audit: HexCombatPressureAudit | undefined,
-  advantage: HexCombatAdvantage
+  audit: HexCombatPressureAudit | undefined
 ): HexCombatScoreboard {
-  if (!audit || audit.appliedScoreDelta <= 0 || advantage === "contested") {
+  if (!audit || audit.appliedScoreDelta <= 0 || !audit.pressureAppliedToSide) {
     return cloneScoreboard(scoreboard);
   }
   const reason = `n64:pressure_delta:${audit.pressureKey}:${audit.appliedScoreDelta}`;
-  if (advantage === "attack") {
+  if (audit.pressureAppliedToSide === "attack") {
     return {
       ...cloneScoreboard(scoreboard),
       attack: {
@@ -175,6 +211,29 @@ export function updateHexCombatPressureHistoryFromResolutions(
   return next;
 }
 
+function determinePressureSide(scoreboard: HexCombatScoreboard | undefined): HexSide | undefined {
+  if (!scoreboard) return undefined;
+  if (scoreboard.attack.totalScore > scoreboard.defense.totalScore) return "attack";
+  if (scoreboard.defense.totalScore > scoreboard.attack.totalScore) return "defense";
+  return undefined;
+}
+
+function isContestedPressureEligible(contact: HexCombatContact): boolean {
+  return contact.triggerReasons.includes("active_pressure")
+    || contact.triggerReasons.includes("site_contest")
+    || contact.triggerReasons.includes("plant_pressure")
+    || Boolean(contact.samePointExposure)
+    || Boolean(contact.objectiveExposure)
+    || Boolean(contact.openSightNoCover);
+}
+
+function buildBlockedLethalPressureReasons(contact: HexCombatContact): string[] {
+  return uniqueStrings([
+    ...((contact.lethalGateBlockedReasons ?? []).map((reason) => `contact:${reason}`)),
+    ...(contact.coverBlockedLethal ? ["contact:cover_blocks_lethal"] : []),
+    ...(!contact.lethalEligible ? ["contact:lethal_gate_blocked"] : [])
+  ]);
+}
 function scoreContactPressureDelta(contact: HexCombatContact): number {
   let score = 0;
   if (contact.triggerReasons.includes("active_pressure") || contact.triggerReasons.includes("plant_pressure") || contact.triggerReasons.includes("site_contest")) score += 2;
@@ -199,13 +258,16 @@ function scoreContactPressureReasons(contact: HexCombatContact): string[] {
   ]);
 }
 
-function isGranularPressureKey(value: string | undefined): value is string {
+function isScopedPressureKey(value: string | undefined): boolean {
   return Boolean(value) && (
-    value!.startsWith("duelPair:") ||
-    value!.startsWith("fireLane:") ||
     value!.startsWith("objective_exposure:") ||
-    value!.startsWith("cell_contact:")
+    value!.startsWith("cell_contact:") ||
+    value!.startsWith("fireLane:")
   );
+}
+
+function isGranularPressureKey(value: string | undefined): value is string {
+  return typeof value === "string" && (isScopedPressureKey(value) || value.startsWith("duelPair:"));
 }
 
 function clonePressureState(state: HexCombatPressureState): HexCombatPressureState {

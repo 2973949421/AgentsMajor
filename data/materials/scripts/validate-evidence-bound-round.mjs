@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -134,7 +134,16 @@ function analyzeTrace(path, mapSlug) {
   const combatRegionOnlyPressureKey = directCombats.filter(hasRegionOnlyPressureKey);
   const combatLegacyMissingN65Fields = directCombats.filter((combat) => !hasN65LiteFields(combat));
   const combatWithN64PressureAudit = combatWithN65PressureKey.filter(hasN64PressureAudit);
+  const combatWithN64PressureScope = combatWithN64PressureAudit.filter(hasN64PressureScope);
+  const combatPressureScopeKindDistribution = buildPressureScopeKindDistribution(combatWithN64PressureAudit);
+  const combatPressureStreakGt1 = combatWithN64PressureAudit.filter(hasPressureStreakGt1);
+  const combatPressureAppliedPositive = combatWithN64PressureAudit.filter(hasPressureAppliedPositive);
+  const combatContestedPressureStreakGt1 = combatWithN64PressureAudit.filter(hasContestedPressureStreakGt1);
+  const combatContestedPressureApplied = combatWithN64PressureAudit.filter(hasContestedPressureApplied);
+  const combatNonLethalPressureKillViolation = combatWithN64PressureAudit.filter(hasNonLethalPressureKillViolation);
+  const combatDuelPairOnlyPrimaryPressure = combatWithN64PressureAudit.filter(hasDuelPairOnlyPrimaryPressure);
   const traceHasN64AuditFields = hasN64TraceAuditFields(trace, combats);
+  const traceRequiresN64bPressureScope = trace.audit?.n64bPressureScopeVersion === "pressure_scope_v1";
   const combatN65WithoutN64PressureAudit = traceHasN64AuditFields
     ? combatWithN65PressureKey.filter((combat) => !hasN64PressureAudit(combat))
     : [];
@@ -173,8 +182,17 @@ function analyzeTrace(path, mapSlug) {
     combatRegionOnlyPressureKey,
     combatLegacyMissingN65Fields,
     combatWithN64PressureAudit,
+    combatWithN64PressureScope,
+    combatPressureScopeKindDistribution,
+    combatPressureStreakGt1,
+    combatPressureAppliedPositive,
+    combatContestedPressureStreakGt1,
+    combatContestedPressureApplied,
+    combatNonLethalPressureKillViolation,
+    combatDuelPairOnlyPrimaryPressure,
     combatN65WithoutN64PressureAudit,
     traceHasN64AuditFields,
+    traceRequiresN64bPressureScope,
     actionQualityWarningCount,
     urgencyFailureCount,
     combatExplanations,
@@ -251,8 +269,17 @@ targetClaimBindRate,
     combatRegionOnlyPressureKeyCount: combatRegionOnlyPressureKey.length,
     combatLegacyMissingN65FieldsCount: combatLegacyMissingN65Fields.length,
     combatPressureAuditCount: combatWithN64PressureAudit.length,
+    combatPressureScopePresentCount: combatWithN64PressureScope.length,
+    combatPressureScopeKindDistribution,
+    combatPressureStreakGt1Count: combatPressureStreakGt1.length,
+    combatPressureAppliedPositiveCount: combatPressureAppliedPositive.length,
+    contestedPressureStreakGt1Count: combatContestedPressureStreakGt1.length,
+    contestedPressureAppliedCount: combatContestedPressureApplied.length,
+    nonLethalPressureKillViolationCount: combatNonLethalPressureKillViolation.length,
+    combatDuelPairOnlyPrimaryPressureCount: combatDuelPairOnlyPrimaryPressure.length,
     legacyCombatWithoutPressureCount: combatN65WithoutN64PressureAudit.length,
     n64TraceFieldPresent: traceHasN64AuditFields,
+    n64bPressureScopeVersionPresent: traceRequiresN64bPressureScope,
     actionQualityWarningCount,
     urgencyFailureCount,
     combatExplanationCount: combatExplanations.length,
@@ -316,6 +343,14 @@ function buildBlockedRealProviderRun(reason) {
     combatRegionOnlyPressureKeyCount: 0,
     combatLegacyMissingN65FieldsCount: 0,
     combatPressureAuditCount: 0,
+    combatPressureScopePresentCount: 0,
+    combatPressureScopeKindDistribution: {},
+    combatPressureStreakGt1Count: 0,
+    combatPressureAppliedPositiveCount: 0,
+    contestedPressureStreakGt1Count: 0,
+    contestedPressureAppliedCount: 0,
+    nonLethalPressureKillViolationCount: 0,
+    combatDuelPairOnlyPrimaryPressureCount: 0,
     legacyCombatWithoutPressureCount: 0,
     actionQualityWarningCount: 0,
     urgencyFailureCount: 0,
@@ -354,7 +389,9 @@ function classifyRunQuality(failures) {
     "finance_submitted_cap_violation",
     "judge_input_not_submitted",
     "missing_n65_pressure_key",
-    "invalid_n65_pressure_key"
+    "invalid_n65_pressure_key",
+    "n64_pressure_scope_missing",
+    "n64_nonlethal_pressure_kill_violation"
   ]);
   return failures.some((failure) => hardFailureCategories.has(failure.category))
     ? "fail"
@@ -626,6 +663,65 @@ function hasN64TraceAuditFields(trace, combats) {
 function hasN64PressureAudit(combat) {
   return Boolean(combat.audit?.pressure || combat.pressure);
 }
+function readN64PressureAudit(combat) {
+  return combat.audit?.pressure ?? combat.pressure ?? null;
+}
+
+function readN64PressureScopeKind(combat) {
+  return readN64PressureAudit(combat)?.pressureScopeKind
+    ?? combat.audit?.duelPairing?.pressureScopeKind
+    ?? null;
+}
+
+function readN64PrimaryPressureKey(combat) {
+  return readN64PressureAudit(combat)?.primaryPressureKey
+    ?? readN64PressureAudit(combat)?.pressureKey
+    ?? combat.audit?.duelPairing?.primaryPressureKey
+    ?? null;
+}
+
+function hasN64PressureScope(combat) {
+  return Boolean(readN64PrimaryPressureKey(combat) && readN64PressureScopeKind(combat));
+}
+
+function hasPressureStreakGt1(combat) {
+  return readNumber(readN64PressureAudit(combat)?.streak) > 1;
+}
+
+function hasPressureAppliedPositive(combat) {
+  return readNumber(readN64PressureAudit(combat)?.appliedScoreDelta) > 0;
+}
+
+function hasContestedPressureStreakGt1(combat) {
+  const pressure = readN64PressureAudit(combat);
+  return readNumber(pressure?.streak) > 1 && pressure?.prePressureAdvantage === "contested";
+}
+
+function hasContestedPressureApplied(combat) {
+  const pressure = readN64PressureAudit(combat);
+  return pressure?.prePressureAdvantage === "contested" && readNumber(pressure?.appliedScoreDelta) > 0;
+}
+
+function hasNonLethalPressureKillViolation(combat) {
+  const pressure = readN64PressureAudit(combat);
+  return readNumber(pressure?.appliedScoreDelta) > 0
+    && pressure?.pressureEffectCap !== "lethal_allowed"
+    && (pressure?.postPressureVerdict === "kill" || combat.verdict === "kill");
+}
+
+function hasDuelPairOnlyPrimaryPressure(combat) {
+  const key = readN64PrimaryPressureKey(combat);
+  return typeof key === "string" && key.startsWith("duelPair:");
+}
+
+function buildPressureScopeKindDistribution(combats) {
+  return combats.reduce((acc, combat) => {
+    const kind = readN64PressureScopeKind(combat) ?? "missing";
+    acc[kind] = (acc[kind] ?? 0) + 1;
+    return acc;
+  }, {});
+}
+
 function hasN65LiteFields(combat) {
   return Array.isArray(combat.duelPairs) || Array.isArray(combat.fireLanes) || Array.isArray(combat.pressureKeys) || Boolean(combat.audit?.duelPairing);
 }
@@ -763,6 +859,16 @@ function buildFailures(input) {
       count: input.combatN65WithoutN64PressureAudit.length
     });
   }
+  if (input.traceRequiresN64bPressureScope && (input.combatWithN64PressureAudit?.length ?? 0) > 0 && (input.combatWithN64PressureScope?.length ?? 0) === 0) {
+    add("n64_pressure_scope_missing", "新 trace 有 N64 pressure audit，但缺 N64b pressureScope / primaryPressureKey。", {
+      count: input.combatWithN64PressureAudit.length
+    });
+  }
+  if (input.combatNonLethalPressureKillViolation?.length > 0) {
+    add("n64_nonlethal_pressure_kill_violation", "存在非致命 pressure cap 下仍被 pressure 推成 kill 的 combat。", {
+      count: input.combatNonLethalPressureKillViolation.length
+    });
+  }
   if (input.combats.length > 0 && input.combats.some((combat) => !combat.financeProjection)) {
     add("old_trace_missing_fields", "部分 combat 未记录 N60 financeProjection。");
   }
@@ -795,6 +901,16 @@ function buildSummary(runs) {
     acc.combatRegionOnlyPressureKeyCount += run.combatRegionOnlyPressureKeyCount ?? 0;
     acc.combatLegacyMissingN65FieldsCount += run.combatLegacyMissingN65FieldsCount ?? 0;
     acc.combatPressureAuditCount += run.combatPressureAuditCount ?? 0;
+    acc.combatPressureScopePresentCount += run.combatPressureScopePresentCount ?? 0;
+    acc.combatPressureStreakGt1Count += run.combatPressureStreakGt1Count ?? 0;
+    acc.combatPressureAppliedPositiveCount += run.combatPressureAppliedPositiveCount ?? 0;
+    acc.contestedPressureStreakGt1Count += run.contestedPressureStreakGt1Count ?? 0;
+    acc.contestedPressureAppliedCount += run.contestedPressureAppliedCount ?? 0;
+    acc.nonLethalPressureKillViolationCount += run.nonLethalPressureKillViolationCount ?? 0;
+    acc.combatDuelPairOnlyPrimaryPressureCount += run.combatDuelPairOnlyPrimaryPressureCount ?? 0;
+    for (const [kind, count] of Object.entries(run.combatPressureScopeKindDistribution ?? {})) {
+      acc.combatPressureScopeKindDistribution[kind] = (acc.combatPressureScopeKindDistribution[kind] ?? 0) + count;
+    }
     acc.legacyCombatWithoutPressureCount += run.legacyCombatWithoutPressureCount ?? 0;
     acc.actionQualityWarningCount += run.actionQualityWarningCount ?? 0;
     acc.urgencyFailureCount += run.urgencyFailureCount ?? 0;
@@ -853,6 +969,14 @@ function buildSummary(runs) {
     combatRegionOnlyPressureKeyCount: 0,
     combatLegacyMissingN65FieldsCount: 0,
     combatPressureAuditCount: 0,
+    combatPressureScopePresentCount: 0,
+    combatPressureScopeKindDistribution: {},
+    combatPressureStreakGt1Count: 0,
+    combatPressureAppliedPositiveCount: 0,
+    contestedPressureStreakGt1Count: 0,
+    contestedPressureAppliedCount: 0,
+    nonLethalPressureKillViolationCount: 0,
+    combatDuelPairOnlyPrimaryPressureCount: 0,
     legacyCombatWithoutPressureCount: 0,
     actionQualityWarningCount: 0,
     urgencyFailureCount: 0,

@@ -376,6 +376,7 @@ function minimalTrace(agentA: Agent, attackTeamId: string, defenseTeamId: string
       urgencyFailures: [],
       actionQualityWarningCount: 0,
       urgencyFailureCount: 0,
+      n64bPressureScopeVersion: "pressure_scope_v1",
       tacticalAudit: {
         selectedVariant: "a_short_split / site_anchor",
         selectedAttackVariant: "a_short_split",

@@ -96,6 +96,17 @@ export interface HexCombatFireLane {
   exposureFlags: string[];
 }
 
+export type HexCombatPressureScopeKind = "objective_exposure" | "cell_contact" | "fire_lane" | "duel_pair";
+
+export interface HexCombatPressureScope {
+  pressureKey: string;
+  scopeKind: HexCombatPressureScopeKind;
+  laneScope?: string;
+  objectiveScope?: string;
+  cellScope?: string;
+  attributionDuelPairKey?: string;
+  reasons: string[];
+}
 export interface HexCombatDuelPair {
   duelPairId: string;
   primaryAgentId: string;
@@ -122,6 +133,8 @@ export interface HexCombatContact {
   duelPairs: HexCombatDuelPair[];
   fireLanes: HexCombatFireLane[];
   pressureKeys: string[];
+  pressureScope?: HexCombatPressureScope;
+  primaryPressureKey?: string;
   minCellDistance?: number;
   contactThreatLevel?: HexCombatContactThreatLevel;
   lethalEligible?: boolean;
@@ -171,6 +184,16 @@ export interface HexCombatScoreboard {
 
 export interface HexCombatPressureAudit {
   pressureKey: string;
+  primaryPressureKey?: string;
+  pressureScopeKind?: HexCombatPressureScopeKind;
+  attributionDuelPairKey?: string;
+  pressureAppliedToSide?: HexSide;
+  prePressureAdvantage?: HexCombatAdvantage;
+  postPressureAdvantage?: HexCombatAdvantage;
+  prePressureVerdict?: HexCombatVerdict;
+  postPressureVerdict?: HexCombatVerdict;
+  pressureChangedVerdict?: boolean;
+  pressureEffectCap?: "none" | "nonlethal_pressure_only" | "lethal_allowed";
   previousPressure: number;
   pressureDelta: number;
   currentPressure: number;
@@ -178,6 +201,8 @@ export interface HexCombatPressureAudit {
   appliedScoreDelta: number;
   decayApplied: number;
   resetReasons: string[];
+  notAppliedReasons?: string[];
+  blockedLethalReasons?: string[];
   escalationReasons: string[];
 }
 
@@ -251,6 +276,8 @@ export interface HexCombatAudit {
   duelPairing?: {
     primaryDuelPairId?: string;
     primaryPressureKey?: string;
+    pressureScopeKind?: HexCombatPressureScopeKind;
+    attributionDuelPairKey?: string;
     duelPairCount: number;
     fireLaneCount: number;
     pressureKeys: string[];

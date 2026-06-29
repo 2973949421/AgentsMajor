@@ -1,4 +1,4 @@
-# 当前工作状态
+﻿# 当前工作状态
 
 本文是 Agent Major 的当前状态锚点，只回答“现在在哪里、什么是主线、下一步候选是什么”。历史执行记录见 `docs/archive/`，长期设想见 `docs/backlog/`。
 
@@ -262,4 +262,4 @@ N65-full：N 对 N / 1 对 N 对枪配对与归因。
 - pressure 只作用于当前 contact 的既有优势方，且有单次加分上限；远距离、隔掩体或 lethal gate blocked 仍不能因为压力直接击杀。
 - round runner 在每个 phase 内先对未出现 key 做 decay，再把 pressure snapshot 传给 combat resolver，最后只用 dedupe 后的 combat resolution 更新历史。
 - `actionQualityWarnings / urgencyFailures` 独立于 round quality，用来解释 final phase 空转、无主动交火或 C4 未下包等“正常输”的原因，不把这些战术坏选择包装成 invalid round。
-- Web / N61 增加 N64 pressure audit 可见性；下一步在新 real map 验证后进入 N65-full：N 对 N / 1 对 N 对枪配对与归因。
+- Web / N61 增加 N64 pressure audit 可见性；N64b-2 第二刀补充 contested pressure tie-break：同一 cell / objective / lane 连续接触且 pre-pressure 分数存在轻微领先方时，`contested_suppression` 可获得受限 pressure delta；非致命 cap 只能推动压制 / 退让，不能绕过 lethal gate 形成 kill。下一步在新 real map 验证 `contestedPressureAppliedCount` 与安全指标后进入 N65-full：N 对 N / 1 对 N 对枪配对与归因。

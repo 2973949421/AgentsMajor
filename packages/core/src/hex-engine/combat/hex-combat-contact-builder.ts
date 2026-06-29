@@ -10,6 +10,7 @@ import type {
   HexCombatFireLane,
   HexCombatLethalGateStatus,
   HexCombatParticipant,
+  HexCombatPressureScope,
   HexCombatTriggerReason
 } from "./hex-combat-types.js";
 
@@ -198,9 +199,12 @@ function buildPairContact(input: {
   }
   const fireLane = buildFireLane({ contact, attackParticipant: input.attackParticipant, defenseParticipant: input.defenseParticipant });
   const duelPair = buildDuelPair({ contact, fireLane, attackParticipant: input.attackParticipant, defenseParticipant: input.defenseParticipant });
+  const pressureScope = buildPressureScope({ contact, fireLane, duelPair });
   contact.fireLanes = [fireLane];
   contact.duelPairs = [duelPair];
-  contact.pressureKeys = [duelPair.pressureKey];
+  contact.pressureScope = pressureScope;
+  contact.primaryPressureKey = pressureScope.pressureKey;
+  contact.pressureKeys = uniqueStrings([pressureScope.pressureKey, duelPair.pressureKey]);
   return contact;
 }
 
@@ -493,11 +497,10 @@ function buildFireLane(input: {
   const cellContactId = input.contact.minCellDistance !== undefined
     ? `cell_contact:${input.attackParticipant.targetCellId}:${input.defenseParticipant.targetCellId}`
     : undefined;
-  const pairScope = buildStablePairScope(input.attackParticipant, input.defenseParticipant);
   const laneScope = buildStableLaneScope(input.contact, cellContactId);
   const objectiveExposureId = input.contact.objectiveExposure ? `objective_exposure:${laneScope}` : undefined;
   return {
-    laneId: buildStableId("fire_lane", pairScope, laneScope),
+    laneId: buildStableId("fire_lane", laneScope),
     contactId: input.contact.contactId,
     attackAgentId: input.attackParticipant.agentId,
     defenseAgentId: input.defenseParticipant.agentId,
@@ -518,7 +521,8 @@ function buildDuelPair(input: {
   const primary = choosePrimaryDuelist(input.attackParticipant, input.defenseParticipant);
   const target = primary.agentId === input.attackParticipant.agentId ? input.defenseParticipant : input.attackParticipant;
   const directness = scoreDuelDirectness(input.contact);
-  const duelPairId = buildStableId("duel_pair", input.fireLane.laneId.replace(/^fire_lane_/, ""));
+  const pairScope = buildStablePairScope(input.attackParticipant, input.defenseParticipant);
+  const duelPairId = buildStableId("duel_pair", pairScope, input.fireLane.laneId.replace(/^fire_lane_/, ""));
   return {
     duelPairId,
     primaryAgentId: primary.agentId,
@@ -533,6 +537,49 @@ function buildDuelPair(input: {
   };
 }
 
+function buildPressureScope(input: {
+  contact: HexCombatContact;
+  fireLane: HexCombatFireLane;
+  duelPair: HexCombatDuelPair;
+}): HexCombatPressureScope {
+  const laneScope = input.fireLane.laneId.replace(/^fire_lane_/, "");
+  const base = {
+    laneScope,
+    attributionDuelPairKey: input.duelPair.pressureKey
+  };
+  if (input.fireLane.objectiveExposureId) {
+    return {
+      ...base,
+      pressureKey: input.fireLane.objectiveExposureId,
+      scopeKind: "objective_exposure",
+      objectiveScope: input.fireLane.objectiveExposureId.replace(/^objective_exposure:/, ""),
+      reasons: uniqueStrings(["n64b_pressure_scope_objective_exposure", ...input.fireLane.exposureFlags])
+    };
+  }
+  if (input.fireLane.cellContactId) {
+    return {
+      ...base,
+      pressureKey: input.fireLane.cellContactId,
+      scopeKind: "cell_contact",
+      cellScope: input.fireLane.cellContactId.replace(/^cell_contact:/, ""),
+      reasons: uniqueStrings(["n64b_pressure_scope_cell_contact", ...input.fireLane.exposureFlags])
+    };
+  }
+  if (input.fireLane.pointIds.length > 0) {
+    return {
+      ...base,
+      pressureKey: `fireLane:${input.fireLane.laneId}`,
+      scopeKind: "fire_lane",
+      reasons: uniqueStrings(["n64b_pressure_scope_fire_lane", ...input.fireLane.exposureFlags])
+    };
+  }
+  return {
+    ...base,
+    pressureKey: input.duelPair.pressureKey,
+    scopeKind: "duel_pair",
+    reasons: uniqueStrings(["n64b_pressure_scope_duel_pair_fallback", ...input.duelPair.reasons])
+  };
+}
 function buildStablePairScope(attackParticipant: HexCombatParticipant, defenseParticipant: HexCombatParticipant): string {
   return buildStableId("pair", attackParticipant.agentId, defenseParticipant.agentId);
 }

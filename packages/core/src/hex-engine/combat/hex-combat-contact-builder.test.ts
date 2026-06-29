@@ -51,10 +51,46 @@ describe("Hex combat contact builder", () => {
     expect(pair).toMatchObject({ primaryAgentId: "t_0", targetAgentId: "ct_0", lethalGateStatus: "passed" });
     expect(pair?.laneId).toBe(contacts[0]?.fireLanes[0]?.laneId);
     expect(pair?.pressureKey).toBe(`duelPair:${pair?.duelPairId}`);
-    expect(contacts[0]?.pressureKeys).toContain(pair?.pressureKey);
-    expect(pair?.pressureKey).not.toMatch(/^(attack|defense|a_site|same_region)$/);
+    expect(contacts[0]?.primaryPressureKey).toBe(contacts[0]?.pressureScope?.pressureKey);
+    expect(contacts[0]?.primaryPressureKey).not.toBe(pair?.pressureKey);
+    expect(contacts[0]?.pressureScope?.attributionDuelPairKey).toBe(pair?.pressureKey);
+    expect(contacts[0]?.pressureKeys).toEqual(expect.arrayContaining([contacts[0]?.primaryPressureKey, pair?.pressureKey]));
+    expect(contacts[0]?.primaryPressureKey).not.toMatch(/^(attack|defense|a_site|same_region)$/);
   });
 
+  it("keeps primary pressure scope stable when the same lane changes duelists", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [attackCell, defenseCell] = findCellsInRegion(asset, "a_site", 2);
+    const firstMemory = initializeCombatMemory(asset, [
+      { agentId: "t_0", side: "attack", cellId: attackCell!.cellId },
+      { agentId: "ct_0", side: "defense", cellId: defenseCell!.cellId }
+    ]);
+    const secondMemory = initializeCombatMemory(asset, [
+      { agentId: "t_1", side: "attack", cellId: attackCell!.cellId },
+      { agentId: "ct_0", side: "defense", cellId: defenseCell!.cellId }
+    ]);
+    const firstContacts = buildHexCombatContacts({
+      asset,
+      memory: firstMemory,
+      actions: [
+        buildCombatAction({ memory: firstMemory, agentId: "t_0", actionType: "execute_site" }),
+        buildCombatAction({ memory: firstMemory, agentId: "ct_0", actionType: "peek" })
+      ]
+    });
+    const secondContacts = buildHexCombatContacts({
+      asset,
+      memory: secondMemory,
+      actions: [
+        buildCombatAction({ memory: secondMemory, agentId: "t_1", actionType: "execute_site" }),
+        buildCombatAction({ memory: secondMemory, agentId: "ct_0", actionType: "peek" })
+      ]
+    });
+
+    expect(firstContacts[0]?.primaryPressureKey).toBe(secondContacts[0]?.primaryPressureKey);
+    expect(firstContacts[0]?.pressureScope?.scopeKind).toBe(secondContacts[0]?.pressureScope?.scopeKind);
+    expect(firstContacts[0]?.duelPairs[0]?.duelPairId).not.toBe(secondContacts[0]?.duelPairs[0]?.duelPairId);
+    expect(firstContacts[0]?.pressureScope?.attributionDuelPairKey).not.toBe(secondContacts[0]?.pressureScope?.attributionDuelPairKey);
+  });
   it("keeps pressureKey stable for the same pair and lane across phases", () => {
     const asset = loadOfficialDust2HexMap();
     const [attackCell, defenseCell] = findCellsInRegion(asset, "a_site", 2);

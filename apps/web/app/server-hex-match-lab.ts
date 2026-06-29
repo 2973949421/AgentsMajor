@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+﻿import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 
@@ -871,6 +871,18 @@ export interface HexMatchLabFireLaneSummary {
 
 export interface HexMatchLabCombatPressureSummary {
   pressureKey: string;
+  primaryPressureKey?: string | undefined;
+  pressureScopeKind?: string | undefined;
+  attributionDuelPairKey?: string | undefined;
+  pressureAppliedToSide?: string | undefined;
+  prePressureAdvantage?: string | undefined;
+  postPressureAdvantage?: string | undefined;
+  prePressureVerdict?: string | undefined;
+  postPressureVerdict?: string | undefined;
+  pressureChangedVerdict?: boolean | undefined;
+  pressureEffectCap?: string | undefined;
+  notAppliedReasons: string[];
+  blockedLethalReasons: string[];
   previousPressure: number;
   pressureDelta: number;
   currentPressure: number;
@@ -4006,6 +4018,18 @@ function readCombatPressure(value: unknown): HexMatchLabCombatPressureSummary | 
   if (!record) return undefined;
   return {
     pressureKey: readString(record.pressureKey) ?? "unknown_pressure_key",
+    primaryPressureKey: readString(record.primaryPressureKey),
+    pressureScopeKind: readString(record.pressureScopeKind),
+    attributionDuelPairKey: readString(record.attributionDuelPairKey),
+    pressureAppliedToSide: readString(record.pressureAppliedToSide),
+    prePressureAdvantage: readString(record.prePressureAdvantage),
+    postPressureAdvantage: readString(record.postPressureAdvantage),
+    prePressureVerdict: readString(record.prePressureVerdict),
+    postPressureVerdict: readString(record.postPressureVerdict),
+    pressureChangedVerdict: typeof record.pressureChangedVerdict === "boolean" ? record.pressureChangedVerdict : undefined,
+    pressureEffectCap: readString(record.pressureEffectCap),
+    notAppliedReasons: readStringArray(record.notAppliedReasons),
+    blockedLethalReasons: readStringArray(record.blockedLethalReasons),
     previousPressure: Number(record.previousPressure ?? 0),
     pressureDelta: Number(record.pressureDelta ?? 0),
     currentPressure: Number(record.currentPressure ?? 0),

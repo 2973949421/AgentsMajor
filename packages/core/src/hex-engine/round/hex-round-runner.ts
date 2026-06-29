@@ -210,6 +210,7 @@ export interface HexRoundTrace {
     urgencyFailures: HexActionQualityWarning[];
     actionQualityWarningCount: number;
     urgencyFailureCount: number;
+    n64bPressureScopeVersion: "pressure_scope_v1";
     tacticalAudit: HexRoundTacticalAudit;
   };
 }
@@ -536,6 +537,7 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
       urgencyFailures,
       actionQualityWarningCount: actionQualityWarnings.length,
       urgencyFailureCount: urgencyFailures.length,
+      n64bPressureScopeVersion: "pressure_scope_v1",
       tacticalAudit: tacticalSelection.audit
     }
   };

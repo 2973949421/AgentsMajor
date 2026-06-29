@@ -1,4 +1,4 @@
-# Phase 2.0-pre Combat Realism Freeze
+﻿# Phase 2.0-pre Combat Realism Freeze
 
 ## 1. Position
 
@@ -427,7 +427,7 @@ wound 第一版只作为 audit-only intermediate effect，不引入 HP / injury 
 tactical bad choice 进入 actionQualityWarning / urgencyFailure，通常不导致 invalid_round；例如 final phase T 有 C4 在包点却不 plant，应正常输 timeout/no_plant，而不是让回合无效。
 ```
 
-N64 implementation note（2026-06-28）：当前实现只按 N65-lite pressureKey 在同一 contact 链路内累积压力；缺席 1 phase 衰减，缺席 2 phase 清零，forced_back 降低压力，casualty 清理 key；pressure delta 不能绕过 lethal / casualty gate。
+N64 implementation note（2026-06-28）：当前实现只按 N65-lite pressureKey 在同一 contact 链路内累积压力；缺席 1 phase 衰减，缺席 2 phase 清零，forced_back 降低压力，casualty 清理 key；pressure delta 不能绕过 lethal / casualty gate。N64b-2 只补 contested pressure tie-break：`contested_suppression` 不再一律拒绝 pressure；若同一 cell_contact / objective_exposure / fire_lane 连续接触、streak >= 2 且 pre-pressure scoreboard 有轻微领先方，可应用受限 delta。非致命或 cover / distance blocked 只能推动 suppression / forced_back，不允许 kill。
 
 N65-full 的硬边界：
 

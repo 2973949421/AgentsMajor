@@ -120,7 +120,9 @@ describe("Hex combat resolver", () => {
     expect(resolution.fireLanes).toHaveLength(1);
     expect(resolution.duelPairs?.[0]?.pressureKey).toMatch(/^duelPair:/);
     expect(resolution.pressureKeys).toContain(resolution.duelPairs?.[0]?.pressureKey);
-    expect(resolution.audit.duelPairing?.primaryPressureKey).toBe(resolution.duelPairs?.[0]?.pressureKey);
+    expect(resolution.audit.duelPairing?.primaryPressureKey).not.toBe(resolution.duelPairs?.[0]?.pressureKey);
+    expect(resolution.audit.duelPairing?.attributionDuelPairKey).toBe(resolution.duelPairs?.[0]?.pressureKey);
+    expect(resolution.audit.duelPairing?.pressureScopeKind).toMatch(/^(objective_exposure|cell_contact|fire_lane|duel_pair)$/);
     expect(resolution.scores.attack.financeScore).toBeGreaterThan(resolution.scores.defense.financeScore ?? 0);
     expect(resolution.scores.attack.financeFirepowerScore?.appliedToCombatScore).toBeGreaterThan(0);
     expect(resolution.scores.attack.financeFirepowerScore?.participantAcceptedEvidenceRefs).toEqual(expect.arrayContaining(["FRED002", "FRED003"]));

@@ -10,8 +10,12 @@ export function buildDuelPairingAudit(contact: HexCombatContact): HexCombatAudit
     ...(primary?.reasons ?? []),
     ...(contact.fireLanes ?? []).flatMap((lane) => lane.exposureFlags)
   ]);
+  const primaryPressureKey = contact.primaryPressureKey ?? primary?.pressureKey;
   return {
-    ...(primary ? { primaryDuelPairId: primary.duelPairId, primaryPressureKey: primary.pressureKey } : {}),
+    ...(primary ? { primaryDuelPairId: primary.duelPairId } : {}),
+    ...(primaryPressureKey ? { primaryPressureKey } : {}),
+    ...(contact.pressureScope?.scopeKind ? { pressureScopeKind: contact.pressureScope.scopeKind } : {}),
+    ...(contact.pressureScope?.attributionDuelPairKey ? { attributionDuelPairKey: contact.pressureScope.attributionDuelPairKey } : {}),
     duelPairCount: contact.duelPairs?.length ?? 0,
     fireLaneCount: contact.fireLanes?.length ?? 0,
     pressureKeys: [...(contact.pressureKeys ?? [])],

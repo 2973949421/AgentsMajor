@@ -1,4 +1,4 @@
-# 当前优先路线图
+﻿# 当前优先路线图
 
 本文只记录近期优先级和长期方向。旧 Phase 执行历史见 `docs/archive/phase-history/`，旧长期设想的展开稿见 `docs/backlog/`。
 
@@ -369,4 +369,4 @@ docs/backlog/README.md
 - N64 基于 N65-lite `pressureKey` 维护 pressure history，不按 team / side / region 粗粒度累计压力。
 - 同一主对枪 / 枪线连续接触会记录 previous / current pressure、streak、delta、decay / reset reason，并可在 gate 允许范围内推动 forced_back / wound / casualty 候选。
 - `actionQualityWarning / urgencyFailure` 用于解释 final phase 空转、C4 未下包、无主动交火等战术问题；它们不是 invalid round。
-- 下一步不是继续窄修 N64，默认进入 N65-full：N 对 N / 1 对 N 对枪配对与归因。
+- N64b-2 第二刀只修 contested pressure tie-break：当同一 pressure scope 连续接触且 pre-pressure 分数有确定性轻微领先方时，pressure 可有限应用到领先方；完全打平、streak=1、cover/distance blocked 仍不能乱杀。若新 6 round 中 `contestedPressureAppliedCount > 0` 且 `nonLethalPressureKillViolationCount = 0`，下一步进入 N65-full：N 对 N / 1 对 N 对枪配对与归因。

@@ -144,12 +144,35 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
   const pressureAudit = buildHexCombatPressureAudit({
     contact: input.contact,
     advantage: preliminaryOutcome.advantage,
+    verdict: preliminaryOutcome.verdict,
+    scoreboard: varianceAdjustedScores,
     ...(input.pressureState ? { state: input.pressureState } : {})
   });
-  const adjustedScores = applyHexCombatPressureToScoreboard(varianceAdjustedScores, pressureAudit, preliminaryOutcome.advantage);
-  const outcome = buildCombatOutcome(adjustedScores, input.contact);
-  if (pressureAudit && outcome.verdict !== preliminaryOutcome.verdict) {
-    pressureAudit.escalationReasons.push(`n64_pressure_changed_verdict:${preliminaryOutcome.verdict}->${outcome.verdict}`);
+  const adjustedScores = applyHexCombatPressureToScoreboard(varianceAdjustedScores, pressureAudit);
+  const pressureAdjustedOutcome = buildCombatOutcome(adjustedScores, input.contact);
+  let outcome = pressureAdjustedOutcome;
+  if (pressureAudit && pressureAudit.pressureEffectCap !== "lethal_allowed" && preliminaryOutcome.verdict !== "kill" && pressureAdjustedOutcome.verdict === "kill") {
+    outcome = {
+      ...pressureAdjustedOutcome,
+      verdict: "wound_or_forced_back",
+      auditReasons: [
+        ...pressureAdjustedOutcome.auditReasons,
+        "n64_nonlethal_pressure_blocked_kill"
+      ]
+    };
+    pressureAudit.blockedLethalReasons = [
+      ...(pressureAudit.blockedLethalReasons ?? []),
+      "n64_nonlethal_pressure_blocked_kill"
+    ];
+    pressureAudit.escalationReasons.push("n64_nonlethal_pressure_blocked_kill");
+  }
+  if (pressureAudit) {
+    pressureAudit.postPressureAdvantage = outcome.advantage;
+    pressureAudit.postPressureVerdict = outcome.verdict;
+    pressureAudit.pressureChangedVerdict = outcome.verdict !== preliminaryOutcome.verdict;
+    if (pressureAudit.pressureChangedVerdict) {
+      pressureAudit.escalationReasons.push(`n64_pressure_changed_verdict:${preliminaryOutcome.verdict}->${outcome.verdict}`);
+    }
   }
   const advantage = outcome.advantage;
   const financeEvidenceAdoption = input.financeDuel

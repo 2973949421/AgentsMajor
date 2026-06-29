@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type { ReactNode } from "react";
 
@@ -1034,10 +1034,41 @@ function formatDuelPairing(combat: HexMatchLabPhaseSummary["combats"][number]): 
 function formatN64Pressure(combat: HexMatchLabPhaseSummary["combats"][number]): string {
   const pressure = combat.pressure;
   if (!pressure) return combat.pressureKeys.length > 0 ? "N64 压力历史：本 trace 有 pressureKey，但未记录压力审计。" : "N64 压力历史：旧 trace 未记录。";
-  const changed = pressure.escalationReasons.find((reason) => reason.startsWith("n64_pressure_changed_verdict:"));
-  const changedText = changed ? `；改变结论 ${changed.replace("n64_pressure_changed_verdict:", "")}` : "；未改变本次结论";
+  const changedText = pressure.pressureChangedVerdict
+    ? `；改变结论 ${pressure.prePressureVerdict ?? "unknown"}->${pressure.postPressureVerdict ?? "unknown"}`
+    : "；未改变本次结论";
   const resetText = pressure.resetReasons.length > 0 ? `；衰减/重置 ${pressure.resetReasons.join("、")}` : "";
-  return `N64 压力历史：key ${pressure.pressureKey}；连续 ${pressure.streak}；压力 ${pressure.previousPressure}+${pressure.pressureDelta}=>${pressure.currentPressure}；本次加分 ${pressure.appliedScoreDelta}${changedText}${resetText}。`;
+  const scopeText = pressure.pressureScopeKind ? `范围 ${formatPressureScopeKind(pressure.pressureScopeKind)}` : "范围未记录";
+  const primaryKey = pressure.primaryPressureKey ?? pressure.pressureKey;
+  const attributionText = pressure.attributionDuelPairKey ? `；归因 pair ${pressure.attributionDuelPairKey}` : "";
+  const sideText = pressure.pressureAppliedToSide ? `；应用方 ${formatPressureSide(pressure.pressureAppliedToSide)}` : "；未应用到具体一方";
+  const capText = pressure.pressureEffectCap ? `；封顶 ${formatPressureEffectCap(pressure.pressureEffectCap)}` : "";
+  const notAppliedText = pressure.notAppliedReasons.length > 0 ? `；未应用原因 ${pressure.notAppliedReasons.join("、")}` : "";
+  const blockedText = pressure.blockedLethalReasons.length > 0 ? `；致命阻断 ${pressure.blockedLethalReasons.join("、")}` : "";
+  return `N64 压力历史：${scopeText}；key ${primaryKey}；连续 ${pressure.streak}；压力 ${pressure.previousPressure}+${pressure.pressureDelta}=>${pressure.currentPressure}；本次加分 ${pressure.appliedScoreDelta}${sideText}${capText}${changedText}${resetText}${notAppliedText}${blockedText}${attributionText}。`;
+}
+
+function formatPressureSide(side: string): string {
+  return side === "attack" ? "进攻方" : side === "defense" ? "防守方" : side;
+}
+
+function formatPressureEffectCap(cap: string): string {
+  const labels: Record<string, string> = {
+    none: "不生效",
+    nonlethal_pressure_only: "非致命，只能压制/退让",
+    lethal_allowed: "致命门通过，可进入击杀候选"
+  };
+  return labels[cap] ?? cap;
+}
+
+function formatPressureScopeKind(kind: string): string {
+  const labels: Record<string, string> = {
+    objective_exposure: "目标暴露",
+    cell_contact: "格子接触",
+    fire_lane: "火线",
+    duel_pair: "单对单 fallback"
+  };
+  return labels[kind] ?? kind;
 }
 function formatContactThreat(combat: HexMatchLabPhaseSummary["combats"][number]): string {
   const label = combat.contactThreatLevel === "lethal"
