@@ -9,7 +9,7 @@
 当前进度：N20-N55 已完成第一版 Web 中文审计收口；N55 收口修正已新增 phase0 真实开局输出层，并把后续 phase 行动改成只引用可消费开局输出。N56 已把金融 round 改成投资决策题，N57 已覆盖升级现有 fact bank 到 v2，N58 已把 phase0 输出从自然语言段落升级为结构化 `stanceCard / challengeCard`。provider 失败、无效响应、非法证据引用、非法立场或非法 targetClaimId 只能作为失败审计保存，不能进入局内行动层。N59 已完成第一版金融证据绑定裁判：裁判从 `stanceCard / challengeCard`、Fact Bank v2 metadata 和 required evidence schema 产出 accepted / rejected / missing / scoreCaps、stanceScore / challengeScore、financialResult 和 combatEffectAllowed；没有 accepted evidence 时只能是 `no_financial_win_allowed` 或 `contested`，不能判金融胜利。N60 已完成第一版金融结果与战斗投影解耦：金融分只保留为审计，combat 总分不再直接吃金融作文或 N59 分数；战斗裁定新增 `financeProjection`，只按 `combatEffectAllowed` 说明金融可解释的压制、退让、控图或 possible_kill，击杀仍必须由 CS 致命接触产生。N61 已完成 real provider 小样本验收：第 6 局失败样本暴露 N58 real schema 适配问题；随后完成 N58/N61 窄修并生成第 7 局真实 trace。第 7 局 10 条 phase0 全部为可消费真实结构化卡片，5 条 stanceCard、5 条 challengeCard，claim / challenge 绑定率 100%，33 个 finance verdict 中 0 个无采信金融胜利，33 个 combat 解释全部区分金融与 CS，整体结论为 `pass`。
 当前入口：/hex-lab/match。
 当前底层事实：official Dust2 Hex map、Hex phase memory、Hex action/combat/economy/round runner、Hex map runner、Hex trace artifacts。
-下一阶段候选：N56-N61 已完成第一版闭环，但真实 map 样本进一步暴露 provider 断线、phase0 0/10 可消费和 action 50/50 fallback 仍会被 timeout/no plant 包装成正常结果的 P0 风险。P0/P1 合并修复补丁已把 invalid round 提交闭环、Web/N61 可审计读取、战术 anti-repeat 目标填充和击杀归因去重后历史更新落地；N62B 已把 phase0 原始金融观点 `rawFinanceOpinionZh` 接入经济裁剪提交门，生成 `submittedOpinionZh` 与 submitted structured card；N59 judge 只消费 submitted finance output。N63 已完成第一版：submitted/N59 采信结果通过 financeFirepowerScore 接回 combat totalScore，并受 N59 projection、N62 combatEffectCap 与 CS contact/lethal/casualty gate 共同限制。下一步进入 N65-lite 最小对枪配对 key；之后再做 N64 combat 压力收敛与审计首屏、N65-full 多人归因。P2 审计台大清理后移到 N65-full 后。
+下一阶段候选：N56-N61 已完成第一版闭环，但真实 map 样本进一步暴露 provider 断线、phase0 0/10 可消费和 action 50/50 fallback 仍会被 timeout/no plant 包装成正常结果的 P0 风险。P0/P1 合并修复补丁已把 invalid round 提交闭环、Web/N61 可审计读取、战术 anti-repeat 目标填充和击杀归因去重后历史更新落地；N62B 已把 phase0 原始金融观点 `rawFinanceOpinionZh` 接入经济裁剪提交门，生成 `submittedOpinionZh` 与 submitted structured card；N59 judge 只消费 submitted finance output。N63 已完成第一版：submitted/N59 采信结果通过 financeFirepowerScore 接回 combat totalScore，并受 N59 projection、N62 combatEffectCap 与 CS contact/lethal/casualty gate 共同限制。N65-lite 已提供最小 `duelPair / fireLane / pressureKey`；N64 已进入落地：combat pressure history 按 pressureKey 做 accumulation / decay / reset，并把压力审计投到 Web 首屏。下一步在 N64 验证后进入 N65-full 多人归因。P2 审计台大清理后移到 N65-full 后。
 ```
 
 补充状态：Hex RoundReport 已重新接回经济 Output Gate。Hex action 先作为 RawOutput 进入审计，再按 `buyType / economyPosture / outputBudget` 裁剪成 `SubmittedOutput`；`RoundReport.agentOutputs` 使用裁剪后投影，`tokenSubmission.submittedOutputs` 保存完整提交元数据，Judge / RoundReport 不再消费被裁掉的 raw 字段。Web dev 启动前已改为直接 TypeScript 编译 shared / db / llm / core，避免源码已更新但 `@agent-major/core/dist` 仍旧导致页面吃不到新内核。
@@ -107,7 +107,7 @@ apps/web/.next-dev-3001.err.log
 
 ## 5. 下一步候选
 
-当前下一步不建议继续调 combat，也不建议立刻做结构封板第二轮。N42-N55 已经把 Finance Major（金融投资对抗）原型接入到证据包、队伍资产、真实 phase0 输出、局内行动、裁判采信链和 Web 中文审计；N56 已把旧“守方自证 / 攻方质疑”的证明题口径改成“决策题 + 立场方 / 挑战方 + 必需证据结构”；N57 已按原路径覆盖升级 Fact Bank v2；N57b / N57c 已把 active 数据底座收敛为 FRED + BaoStock + AKShare 三主源；N58 已把 phase0 变成结构化 stance / challenge 卡片；N59 已把金融裁判改为证据绑定第一版，N60 已完成金融投影权限隔离第一版。N61 real 小样本已完成，第 7 局真实输出曾达标；但真实 map 样本已暴露 provider 退化坏 round 仍会污染胜负统计。P0/P1 合并修复补丁已完成质量闸门提交闭环、战术反重复输入闭环和击杀归因历史去重；N62B 已完成 phase0 金融经济裁剪提交门修正：rawFinanceOpinionZh 原文保留审计，经济系统从原文摘录 submittedOpinionZh，并让 submitted finance card 成为 N59 judge 唯一新主线输入。N63 已完成第一版：financeFirepowerScore 已进入 combat 主链路，但不绕过 CS gate。下一步进入 N65-lite 最小 duel pair / fire lane / pressureKey；P2 审计台大清理后移到 N65-full 后。
+当前下一步不建议继续调 combat，也不建议立刻做结构封板第二轮。N42-N55 已经把 Finance Major（金融投资对抗）原型接入到证据包、队伍资产、真实 phase0 输出、局内行动、裁判采信链和 Web 中文审计；N56 已把旧“守方自证 / 攻方质疑”的证明题口径改成“决策题 + 立场方 / 挑战方 + 必需证据结构”；N57 已按原路径覆盖升级 Fact Bank v2；N57b / N57c 已把 active 数据底座收敛为 FRED + BaoStock + AKShare 三主源；N58 已把 phase0 变成结构化 stance / challenge 卡片；N59 已把金融裁判改为证据绑定第一版，N60 已完成金融投影权限隔离第一版。N61 real 小样本已完成，第 7 局真实输出曾达标；但真实 map 样本已暴露 provider 退化坏 round 仍会污染胜负统计。P0/P1 合并修复补丁已完成质量闸门提交闭环、战术反重复输入闭环和击杀归因历史去重；N62B 已完成 phase0 金融经济裁剪提交门修正：rawFinanceOpinionZh 原文保留审计，经济系统从原文摘录 submittedOpinionZh，并让 submitted finance card 成为 N59 judge 唯一新主线输入。N63 已完成第一版：financeFirepowerScore 已进入 combat 主链路，但不绕过 CS gate。N65-lite 已完成最小 duel pair / fire lane / pressureKey；N64 已进入落地，负责 pressureKey 级持续对枪压力和 Web 首屏审计。P2 审计台大清理后移到 N65-full 后。
 
 ```text
 N42：Finance Evidence + Finance Duel 契约。（已完成）
@@ -256,8 +256,10 @@ N65-full：N 对 N / 1 对 N 对枪配对与归因。
 - Web 审计显示经济版型、spend、汇率、预算、裁剪模式、预算使用率和 raw 是否不足。N62D 不改 N59、N63、combat 阈值、经济结算或 hard winner。
 
 
-## N63x ?????????2026-06-28?
+## N64 状态补充（2026-06-28）
 
-- ???? round ?? N62D ?????N63 ????? N65-lite pressureKey ???? N61 ??????????????????
-- ????? N63x??? Web ???finance submitted gate policy/slicer/spans?combat scoring/firepower/audit helper??????????
-- N63x ?? N59/N62D/N63/N65-lite ????? C4 objective???? N64????????? round ???? C4 objective continuity ?? N64 ?????
+- N64 新增 combat pressure history：按 N65-lite 的 `pressureKey` 记录 previous / current pressure、streak、delta、decay / reset reason 和本次是否改变 verdict。
+- pressure 只作用于当前 contact 的既有优势方，且有单次加分上限；远距离、隔掩体或 lethal gate blocked 仍不能因为压力直接击杀。
+- round runner 在每个 phase 内先对未出现 key 做 decay，再把 pressure snapshot 传给 combat resolver，最后只用 dedupe 后的 combat resolution 更新历史。
+- `actionQualityWarnings / urgencyFailures` 独立于 round quality，用来解释 final phase 空转、无主动交火或 C4 未下包等“正常输”的原因，不把这些战术坏选择包装成 invalid round。
+- Web / N61 增加 N64 pressure audit 可见性；下一步在新 real map 验证后进入 N65-full：N 对 N / 1 对 N 对枪配对与归因。

@@ -372,6 +372,10 @@ function minimalTrace(agentA: Agent, attackTeamId: string, defenseTeamId: string
         c4DroppedUnrecoveredAtFinal: false,
         c4ContinuityReasons: []
       },
+      actionQualityWarnings: [],
+      urgencyFailures: [],
+      actionQualityWarningCount: 0,
+      urgencyFailureCount: 0,
       tacticalAudit: {
         selectedVariant: "a_short_split / site_anchor",
         selectedAttackVariant: "a_short_split",

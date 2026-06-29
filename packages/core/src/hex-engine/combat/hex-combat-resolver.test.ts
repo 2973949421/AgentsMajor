@@ -16,6 +16,44 @@ import {
 } from "./hex-combat-test-helpers.js";
 
 describe("Hex combat resolver", () => {
+  it("applies N64 pressure delta only through the current pressureKey", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [attackCell, defenseCell] = findCellsInRegion(asset, "a_site", 2);
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_0", side: "attack", cellId: attackCell!.cellId },
+      { agentId: "ct_0", side: "defense", cellId: defenseCell!.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({ memory, agentId: "t_0", actionType: "execute_site", targetCellId: defenseCell!.cellId }),
+      buildCombatAction({ memory, agentId: "ct_0", actionType: "hold_position", targetCellId: defenseCell!.cellId, valid: false })
+    ];
+    const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
+    const pressureKey = contact.pressureKeys[0]!;
+
+    const withoutPressure = resolveHexCombat({ asset, memory, contact, actions });
+    const withPressure = resolveHexCombat({
+      asset,
+      memory,
+      contact,
+      actions,
+      pressureState: {
+        pressureKey,
+        phaseIndex: 1,
+        lastSeenPhaseIndex: 1,
+        streak: 1,
+        accumulatedPressure: 6,
+        lastAdvantage: "attack",
+        lastVerdict: "contested_suppression",
+        lastContactId: contact.contactId,
+        resetReasons: []
+      }
+    });
+
+    expect(withPressure.audit.pressure?.pressureKey).toBe(pressureKey);
+    expect(withPressure.audit.pressure?.appliedScoreDelta).toBeGreaterThan(0);
+    expect(withPressure.scores.attack.totalScore).toBeGreaterThanOrEqual(withoutPressure.scores.attack.totalScore);
+    expect(withPressure.csReasons).toEqual(expect.arrayContaining([expect.stringContaining("n64:pressure_delta:")]));
+  });
   it("lets finance challenge evidence drive attack combat attribution while keeping business compatibility fields", () => {
     const asset = loadOfficialDust2HexMap();
     const [attackCell, defenseCell, supportCell] = findCellsInRegion(asset, "a_site", 3);

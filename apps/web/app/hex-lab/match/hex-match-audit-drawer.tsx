@@ -902,6 +902,8 @@ function CombatAudit(props: { phase: HexMatchLabPhaseSummary | undefined }) {
           <p>{formatN59JudgeSummary(combat.financeEvidenceAdoption)}</p>
           <p>{formatCombatEffects(combat.financeEvidenceAdoption)}</p>
           <p>{formatN63Firepower(combat)}</p>
+          <p>{formatDuelPairing(combat)}</p>
+          <p>{formatN64Pressure(combat)}</p>
           <p>{formatFinanceProjection(combat.financeProjection)}</p>
           <p>接触强度: {formatContactThreat(combat)}</p>
           <p>战斗结论: {combat.killAttributions.length > 0 ? "形成击杀" : combat.suppressions.length > 0 ? "形成压制" : "未形成击杀或压制"}</p>
@@ -1021,6 +1023,21 @@ function formatClaimsAndChallenges(adoption: HexMatchLabPhaseSummary["combats"][
   const claims = adoption.defense.acceptedClaims.length > 0 ? `立场 claim ${adoption.defense.acceptedClaims.join("、")}` : "立场无采信 claim";
   const challenges = adoption.attack.acceptedChallenges.length > 0 ? `挑战 ${adoption.attack.acceptedChallenges.join("、")}` : "挑战无采信 challenge";
   return `${claims}；${challenges}`;
+}
+function formatDuelPairing(combat: HexMatchLabPhaseSummary["combats"][number]): string {
+  const pair = [...combat.duelPairs].sort((left, right) => right.directnessScore - left.directnessScore || left.duelPairId.localeCompare(right.duelPairId))[0];
+  if (!pair) return "N65-lite 主对枪：旧 trace 未记录。";
+  const support = pair.contributorAgentIds.length > 0 ? `；支援 ${pair.contributorAgentIds.join("、")}` : "";
+  return `N65-lite 主对枪：${pair.primaryAgentId} vs ${pair.targetAgentId}；枪线 ${pair.laneId}；pressureKey ${pair.pressureKey}；直接度 ${pair.directnessScore}；致命门 ${pair.lethalGateStatus}${support}。`;
+}
+
+function formatN64Pressure(combat: HexMatchLabPhaseSummary["combats"][number]): string {
+  const pressure = combat.pressure;
+  if (!pressure) return combat.pressureKeys.length > 0 ? "N64 压力历史：本 trace 有 pressureKey，但未记录压力审计。" : "N64 压力历史：旧 trace 未记录。";
+  const changed = pressure.escalationReasons.find((reason) => reason.startsWith("n64_pressure_changed_verdict:"));
+  const changedText = changed ? `；改变结论 ${changed.replace("n64_pressure_changed_verdict:", "")}` : "；未改变本次结论";
+  const resetText = pressure.resetReasons.length > 0 ? `；衰减/重置 ${pressure.resetReasons.join("、")}` : "";
+  return `N64 压力历史：key ${pressure.pressureKey}；连续 ${pressure.streak}；压力 ${pressure.previousPressure}+${pressure.pressureDelta}=>${pressure.currentPressure}；本次加分 ${pressure.appliedScoreDelta}${changedText}${resetText}。`;
 }
 function formatContactThreat(combat: HexMatchLabPhaseSummary["combats"][number]): string {
   const label = combat.contactThreatLevel === "lethal"

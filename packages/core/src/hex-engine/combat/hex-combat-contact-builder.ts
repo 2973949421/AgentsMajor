@@ -493,9 +493,11 @@ function buildFireLane(input: {
   const cellContactId = input.contact.minCellDistance !== undefined
     ? `cell_contact:${input.attackParticipant.targetCellId}:${input.defenseParticipant.targetCellId}`
     : undefined;
-  const objectiveExposureId = input.contact.objectiveExposure ? `objective_exposure:${input.contact.contactId}` : undefined;
+  const pairScope = buildStablePairScope(input.attackParticipant, input.defenseParticipant);
+  const laneScope = buildStableLaneScope(input.contact, cellContactId);
+  const objectiveExposureId = input.contact.objectiveExposure ? `objective_exposure:${laneScope}` : undefined;
   return {
-    laneId: `fire_lane_${input.contact.contactId}`,
+    laneId: buildStableId("fire_lane", pairScope, laneScope),
     contactId: input.contact.contactId,
     attackAgentId: input.attackParticipant.agentId,
     defenseAgentId: input.defenseParticipant.agentId,
@@ -516,7 +518,7 @@ function buildDuelPair(input: {
   const primary = choosePrimaryDuelist(input.attackParticipant, input.defenseParticipant);
   const target = primary.agentId === input.attackParticipant.agentId ? input.defenseParticipant : input.attackParticipant;
   const directness = scoreDuelDirectness(input.contact);
-  const duelPairId = `duel_pair_${input.contact.phaseIndex}_${input.attackParticipant.agentId}_${input.defenseParticipant.agentId}`;
+  const duelPairId = buildStableId("duel_pair", input.fireLane.laneId.replace(/^fire_lane_/, ""));
   return {
     duelPairId,
     primaryAgentId: primary.agentId,
@@ -529,6 +531,35 @@ function buildDuelPair(input: {
     reasons: directness.reasons,
     contributorAgentIds: []
   };
+}
+
+function buildStablePairScope(attackParticipant: HexCombatParticipant, defenseParticipant: HexCombatParticipant): string {
+  return buildStableId("pair", attackParticipant.agentId, defenseParticipant.agentId);
+}
+
+function buildStableLaneScope(contact: HexCombatContact, cellContactId: string | undefined): string {
+  const pointScope = stableListScope("points", contact.pointIds);
+  if (contact.objectiveExposure && pointScope) return `objective_${pointScope}`;
+  if (contact.objectiveExposure && cellContactId) return `objective_${cellContactId}`;
+  if (pointScope) return pointScope;
+  if (cellContactId) return cellContactId;
+  const regionScope = stableListScope("regions", contact.regionIds);
+  if (contact.objectiveExposure && regionScope) return `objective_${regionScope}`;
+  if (regionScope) return regionScope;
+  return "direct_contact";
+}
+
+function stableListScope(prefix: string, values: readonly string[]): string | undefined {
+  const stableValues = uniqueStrings([...values].sort());
+  return stableValues.length > 0 ? `${prefix}_${stableValues.join("_")}` : undefined;
+}
+
+function buildStableId(prefix: string, ...parts: string[]): string {
+  return `${prefix}_${parts.map(sanitizeStableIdPart).join("_")}`;
+}
+
+function sanitizeStableIdPart(part: string): string {
+  return part.replace(/[^a-zA-Z0-9_-]+/g, "_").replace(/^_+|_+$/g, "") || "unknown";
 }
 
 function choosePrimaryDuelist(attackParticipant: HexCombatParticipant, defenseParticipant: HexCombatParticipant): HexCombatParticipant {

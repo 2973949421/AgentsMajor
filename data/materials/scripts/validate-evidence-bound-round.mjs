@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -133,6 +133,13 @@ function analyzeTrace(path, mapSlug) {
   const combatMissingN65PressureKey = directCombats.filter((combat) => !hasN65LitePressureKey(combat));
   const combatRegionOnlyPressureKey = directCombats.filter(hasRegionOnlyPressureKey);
   const combatLegacyMissingN65Fields = directCombats.filter((combat) => !hasN65LiteFields(combat));
+  const combatWithN64PressureAudit = combatWithN65PressureKey.filter(hasN64PressureAudit);
+  const traceHasN64AuditFields = hasN64TraceAuditFields(trace, combats);
+  const combatN65WithoutN64PressureAudit = traceHasN64AuditFields
+    ? combatWithN65PressureKey.filter((combat) => !hasN64PressureAudit(combat))
+    : [];
+  const actionQualityWarningCount = readNumber(trace.audit?.actionQualityWarningCount ?? trace.audit?.actionQualityWarnings?.length);
+  const urgencyFailureCount = readNumber(trace.audit?.urgencyFailureCount ?? trace.audit?.urgencyFailures?.length);
   const targetClaimBindRate = challengeCatalog.length > 0
     ? roundTo(challengeCatalog.filter((challenge) => claimCatalog.claimIds.has(challenge.targetClaimId)).length / challengeCatalog.length)
     : 0;
@@ -165,6 +172,11 @@ function analyzeTrace(path, mapSlug) {
     combatMissingN65PressureKey,
     combatRegionOnlyPressureKey,
     combatLegacyMissingN65Fields,
+    combatWithN64PressureAudit,
+    combatN65WithoutN64PressureAudit,
+    traceHasN64AuditFields,
+    actionQualityWarningCount,
+    urgencyFailureCount,
     combatExplanations,
     combatFinanceCsSeparatedRatio,
     phase0Diagnostics,
@@ -238,6 +250,11 @@ targetClaimBindRate,
     combatMissingN65PressureKeyCount: combatMissingN65PressureKey.length,
     combatRegionOnlyPressureKeyCount: combatRegionOnlyPressureKey.length,
     combatLegacyMissingN65FieldsCount: combatLegacyMissingN65Fields.length,
+    combatPressureAuditCount: combatWithN64PressureAudit.length,
+    legacyCombatWithoutPressureCount: combatN65WithoutN64PressureAudit.length,
+    n64TraceFieldPresent: traceHasN64AuditFields,
+    actionQualityWarningCount,
+    urgencyFailureCount,
     combatExplanationCount: combatExplanations.length,
     combatFinanceCsSeparatedCount: combatFinanceCsSeparated.length,
     combatFinanceCsSeparatedRatio,
@@ -298,6 +315,10 @@ function buildBlockedRealProviderRun(reason) {
     combatMissingN65PressureKeyCount: 0,
     combatRegionOnlyPressureKeyCount: 0,
     combatLegacyMissingN65FieldsCount: 0,
+    combatPressureAuditCount: 0,
+    legacyCombatWithoutPressureCount: 0,
+    actionQualityWarningCount: 0,
+    urgencyFailureCount: 0,
     combatExplanationCount: 0,
     combatFinanceCsSeparatedCount: 0,
     combatFinanceCsSeparatedRatio: 0,
@@ -597,6 +618,14 @@ function hasOpposingCombatParticipants(combat) {
   return sides.has("attack") && sides.has("defense");
 }
 
+function hasN64TraceAuditFields(trace, combats) {
+  return Array.isArray(trace.audit?.actionQualityWarnings)
+    || Array.isArray(trace.audit?.urgencyFailures)
+    || combats.some(hasN64PressureAudit);
+}
+function hasN64PressureAudit(combat) {
+  return Boolean(combat.audit?.pressure || combat.pressure);
+}
 function hasN65LiteFields(combat) {
   return Array.isArray(combat.duelPairs) || Array.isArray(combat.fireLanes) || Array.isArray(combat.pressureKeys) || Boolean(combat.audit?.duelPairing);
 }
@@ -729,6 +758,11 @@ function buildFailures(input) {
       count: input.combatParticipantEvidenceWithoutFirepower.length
     });
   }
+  if (input.combatN65WithoutN64PressureAudit?.length > 0) {
+    add("n64_pressure_audit_missing", "新 trace 有 N65-lite pressureKey，但缺 N64 pressure audit。", {
+      count: input.combatN65WithoutN64PressureAudit.length
+    });
+  }
   if (input.combats.length > 0 && input.combats.some((combat) => !combat.financeProjection)) {
     add("old_trace_missing_fields", "部分 combat 未记录 N60 financeProjection。");
   }
@@ -760,6 +794,10 @@ function buildSummary(runs) {
     acc.combatMissingN65PressureKeyCount += run.combatMissingN65PressureKeyCount ?? 0;
     acc.combatRegionOnlyPressureKeyCount += run.combatRegionOnlyPressureKeyCount ?? 0;
     acc.combatLegacyMissingN65FieldsCount += run.combatLegacyMissingN65FieldsCount ?? 0;
+    acc.combatPressureAuditCount += run.combatPressureAuditCount ?? 0;
+    acc.legacyCombatWithoutPressureCount += run.legacyCombatWithoutPressureCount ?? 0;
+    acc.actionQualityWarningCount += run.actionQualityWarningCount ?? 0;
+    acc.urgencyFailureCount += run.urgencyFailureCount ?? 0;
     acc.phase0OutputCount += run.phase0OutputCount;
     acc.usablePhase0OutputCount += run.usablePhase0OutputCount;
     acc.invalidPhase0OutputCount += run.invalidPhase0OutputCount;
@@ -814,6 +852,10 @@ function buildSummary(runs) {
     combatMissingN65PressureKeyCount: 0,
     combatRegionOnlyPressureKeyCount: 0,
     combatLegacyMissingN65FieldsCount: 0,
+    combatPressureAuditCount: 0,
+    legacyCombatWithoutPressureCount: 0,
+    actionQualityWarningCount: 0,
+    urgencyFailureCount: 0,
     phase0OutputCount: 0,
     usablePhase0OutputCount: 0,
     invalidPhase0OutputCount: 0,

@@ -10,7 +10,7 @@ Simulation First, Broadcast Second.
 ```
 
 当前主线仍是 HexGrid 工程骨架，不是旧 Node/Sector，也不是继续扩 Phase18。N42 起的下一阶段，是在 HexGrid 上切换到 Finance Major（金融投资对抗）原型。
-N61 后真实 map 样本新增 P0：provider 断线、phase0 卡片不可消费或 phase action 大面积 fallback 时，round 必须被质量闸门拦截。P0/P1 合并修复补丁已把 `invalid_round` 提交闭环、Web/N61 可审计读取、战术 anti-repeat 实效和击杀归因去重后历史更新落地；N62B 已完成 phase0 金融经济裁剪提交门修正：rawFinanceOpinionZh 原文只保留审计，submittedOpinionZh 摘录与 submitted finance card 成为 N59 judge 主线输入。N63 已完成第一版：financeFirepowerScore 已接回 combat 主链路，仍受 submitted cap、N59 projection 和 CS gate 限制。下一步进入 N65-lite；P2 审计台大清理后移到 N65-full 后。
+N61 后真实 map 样本新增 P0：provider 断线、phase0 卡片不可消费或 phase action 大面积 fallback 时，round 必须被质量闸门拦截。P0/P1 合并修复补丁已把 `invalid_round` 提交闭环、Web/N61 可审计读取、战术 anti-repeat 实效和击杀归因去重后历史更新落地；N62B 已完成 phase0 金融经济裁剪提交门修正：rawFinanceOpinionZh 原文只保留审计，submittedOpinionZh 摘录与 submitted finance card 成为 N59 judge 主线输入。N63 已完成第一版：financeFirepowerScore 已接回 combat 主链路，仍受 submitted cap、N59 projection 和 CS gate 限制。N65-lite 已完成；N64 已进入落地，负责 pressureKey 级持续对枪压力和 Web 首屏审计。P2 审计台大清理后移到 N65-full 后。
 
 并行 fork 说明：`fork-p1-finance-judge-balance` 已按 N59 裁判平衡范围落地。它不能替代 P0 round 质量闸门，也不能把 provider 退化、phase0 不可消费或 action fallback 的坏样本包装成有效 round。
 
@@ -70,7 +70,7 @@ N64：Combat 压力收敛与审计首屏。
 N65-full：N 对 N / 1 对 N 对枪配对与归因。
 ```
 
-执行顺序不能颠倒：N62B 已保证经济裁剪后的 submittedOpinionZh / submitted finance card 是唯一 judge 输入；N63 已把 submitted card 经 N59 采信形成 pressureScore / lethalScore / totalScore，并与 CS 执行分共同进入 combat；下一步 N65-lite 必须先生成 duelPair / fireLane / pressureKey，避免 N64 在 side-level 或 region-level 上堆压力；N64 再用这些 key 做持续接触收敛和 Web 首屏可读性；N65-full 最后补齐 1vN / NvN、多枪线 assist、support/IGL fallback killer 和去重后归因。P2 审计台专项只作为 N64/N65-full 的展示收口，不提前替代主链修复。
+执行顺序不能颠倒：N62B 已保证经济裁剪后的 submittedOpinionZh / submitted finance card 是唯一 judge 输入；N63 已把 submitted card 经 N59 采信形成 pressureScore / lethalScore / totalScore，并与 CS 执行分共同进入 combat；N65-lite 已生成 duelPair / fireLane / pressureKey，N64 正在使用这些 key 做持续接触收敛和 Web 首屏可读性；N65-full 最后补齐 1vN / NvN、多枪线 assist、support/IGL fallback killer 和去重后归因。P2 审计台专项只作为 N64/N65-full 的展示收口，不提前替代主链修复。
 
 ### Done：P0/P1 合并修复，坏 Round 闸门与战术 / 归因收口
 
@@ -364,8 +364,9 @@ docs/backlog/README.md
 - 下一步先跑新 map 统计 N62D 的 spend / budget / submitted / cutMode；若经济优势可解释，再进入 N64。
 
 
-## N63x ?????????2026-06-28?
+## N64 已纳入：Combat 压力收敛与审计首屏
 
-- ???? round ?? N62D ?????N63 ????? N65-lite pressureKey ???? N61 ??????????????????
-- ????? N63x??? Web ???finance submitted gate policy/slicer/spans?combat scoring/firepower/audit helper??????????
-- N63x ?? N59/N62D/N63/N65-lite ????? C4 objective???? N64????????? round ???? C4 objective continuity ?? N64 ?????
+- N64 基于 N65-lite `pressureKey` 维护 pressure history，不按 team / side / region 粗粒度累计压力。
+- 同一主对枪 / 枪线连续接触会记录 previous / current pressure、streak、delta、decay / reset reason，并可在 gate 允许范围内推动 forced_back / wound / casualty 候选。
+- `actionQualityWarning / urgencyFailure` 用于解释 final phase 空转、C4 未下包、无主动交火等战术问题；它们不是 invalid round。
+- 下一步不是继续窄修 N64，默认进入 N65-full：N 对 N / 1 对 N 对枪配对与归因。

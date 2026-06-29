@@ -26,6 +26,12 @@ import {
   type HexCombatCasualty,
   type HexCombatResolution
 } from "../combat/index.js";
+import {
+  advanceHexCombatPressureHistoryForPhase,
+  createHexCombatPressureHistory,
+  getPrimaryPressureKey,
+  updateHexCombatPressureHistoryFromResolutions
+} from "../combat/hex-combat-pressure.js";
 import type { TeamEconomyPlan } from "../../economy/economy-rules.js";
 import {
   advanceHexPhaseMemory,
@@ -159,6 +165,15 @@ export interface HexRoundPhaseTrace {
   winCondition: HexWinConditionResult;
 }
 
+export interface HexActionQualityWarning {
+  phaseId: HexPhaseId;
+  phaseIndex: number;
+  reason: string;
+  severity: "warning" | "urgency_failure";
+  source: "fallback" | "rejected_draft" | "objective";
+  agentId?: string;
+}
+
 export interface HexRoundTrace {
   schemaVersion: 1;
   source: "hex_round_engine_trace";
@@ -191,6 +206,10 @@ export interface HexRoundTrace {
     roundQualitySummaryZh: string;
     roundQualityCounts: HexRoundQualityCounts;
     c4ContinuityAudit: HexC4ContinuityAudit;
+    actionQualityWarnings: HexActionQualityWarning[];
+    urgencyFailures: HexActionQualityWarning[];
+    actionQualityWarningCount: number;
+    urgencyFailureCount: number;
     tacticalAudit: HexRoundTacticalAudit;
   };
 }
@@ -266,6 +285,7 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
     memory
   });
   let roundRouteMemory = buildInitialRoundRouteMemory(asset, memory);
+  let combatPressureHistory = createHexCombatPressureHistory();
   const businessDuel = input.businessDuel ?? buildFixtureHexRoundBusinessDuel({
     roundNumber: input.roundNumber,
     attackTeamId: input.attackTeamId,
@@ -378,8 +398,10 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
       actions: acceptedActions,
       businessDuel
     });
+    combatPressureHistory = advanceHexCombatPressureHistoryForPhase(combatPressureHistory, combatContacts, phaseIndex);
     const phaseAttributionHistory = cloneHexCombatAttributionHistory(attributionHistory);
     const combatResolutionDrafts = combatContacts.map((contact) => {
+      const pressureKey = getPrimaryPressureKey(contact);
       const resolution = resolveHexCombat({
         asset,
         memory: memoryAfterMovement,
@@ -390,7 +412,8 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
         financeDuel,
         submittedFinanceOutputs,
         roundStartAgentOutputs: usableRoundStartAgentOutputs,
-        attributionHistory: phaseAttributionHistory
+        attributionHistory: phaseAttributionHistory,
+        ...(pressureKey && combatPressureHistory[pressureKey] ? { pressureState: combatPressureHistory[pressureKey] } : {})
       });
       return resolution;
     });
@@ -399,6 +422,7 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
       resolutions: combatResolutionDrafts
     });
     recordHexCombatAttributionHistory(attributionHistory, combatResolutions, phaseIndex);
+    combatPressureHistory = updateHexCombatPressureHistoryFromResolutions(combatPressureHistory, combatResolutions);
     const combatEvents = combatResolutions.flatMap((resolution) => resolution.memoryEvents);
     const memoryAfterCombat = applyHexPhaseMemoryEvents({
       asset,
@@ -473,6 +497,9 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
     });
   }
 
+  const actionQualityWarnings = buildActionQualityWarnings(phases, finalWinCondition);
+  const urgencyFailures = actionQualityWarnings.filter((warning) => warning.severity === "urgency_failure");
+
   return {
     schemaVersion: 1,
     source: "hex_round_engine_trace",
@@ -505,11 +532,98 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
       roundQualitySummaryZh: roundQualityAudit.roundQualitySummaryZh,
       roundQualityCounts: { ...roundQualityAudit.counts },
       c4ContinuityAudit: buildC4ContinuityAudit(phases, finalWinCondition),
+      actionQualityWarnings,
+      urgencyFailures,
+      actionQualityWarningCount: actionQualityWarnings.length,
+      urgencyFailureCount: urgencyFailures.length,
       tacticalAudit: tacticalSelection.audit
     }
   };
 }
 
+function buildActionQualityWarnings(
+  phases: readonly HexRoundPhaseTrace[],
+  finalWinCondition: HexWinConditionResult | undefined
+): HexActionQualityWarning[] {
+  const warnings: HexActionQualityWarning[] = [];
+  for (const phase of phases) {
+    for (const action of phase.commandResult.fallbackActions) {
+      const reason = action.fallbackReason;
+      if (!reason || isBenignSkippedFallback(reason)) {
+        continue;
+      }
+      if (isTrackedActionQualityReason(reason)) {
+        warnings.push(buildActionQualityWarning({
+          phase,
+          reason,
+          source: "fallback",
+          severity: reason.includes("final_phase_future_setup_intent") ? "urgency_failure" : "warning",
+          agentId: action.agentId
+        }));
+      }
+    }
+    for (const draft of phase.commandResult.rejectedDrafts) {
+      for (const reason of draft.errors.filter(isTrackedActionQualityReason)) {
+        warnings.push(buildActionQualityWarning({
+          phase,
+          reason,
+          source: "rejected_draft",
+          severity: reason.includes("final_phase_future_setup_intent") ? "urgency_failure" : "warning",
+          agentId: draft.agentId
+        }));
+      }
+    }
+  }
+  const finalPhase = phases.at(-1);
+  if (finalPhase && finalWinCondition?.roundWinType === "timeout_no_plant") {
+    warnings.push(buildActionQualityWarning({
+      phase: finalPhase,
+      reason: "final_phase_timeout_no_plant_objective_failure",
+      source: "objective",
+      severity: "urgency_failure"
+    }));
+  }
+  return dedupeActionQualityWarnings(warnings);
+}
+
+function buildActionQualityWarning(input: {
+  phase: HexRoundPhaseTrace;
+  reason: string;
+  source: HexActionQualityWarning["source"];
+  severity: HexActionQualityWarning["severity"];
+  agentId?: string;
+}): HexActionQualityWarning {
+  return {
+    phaseId: input.phase.phaseId,
+    phaseIndex: input.phase.phaseIndex,
+    reason: input.reason,
+    severity: input.severity,
+    source: input.source,
+    ...(input.agentId ? { agentId: input.agentId } : {})
+  };
+}
+
+function isTrackedActionQualityReason(reason: string): boolean {
+  return reason.includes("move_over_budget")
+    || reason.includes("economy_disallows_action")
+    || reason.includes("final_phase_future_setup_intent")
+    || reason.includes("phase_repeated_round_thesis")
+    || reason.includes("no_active_combat_action");
+}
+
+function dedupeActionQualityWarnings(warnings: readonly HexActionQualityWarning[]): HexActionQualityWarning[] {
+  const seen = new Set<string>();
+  const deduped: HexActionQualityWarning[] = [];
+  for (const warning of warnings) {
+    const key = `${warning.phaseIndex}:${warning.agentId ?? "round"}:${warning.reason}:${warning.source}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.push(warning);
+  }
+  return deduped;
+}
 function buildHexRoundQualityAudit(
   roundStartAgentOutputs: readonly HexRoundStartAgentOutput[],
   phases: readonly HexRoundPhaseTrace[]

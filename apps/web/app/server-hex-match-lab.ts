@@ -1,4 +1,4 @@
-﻿import { randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
 
@@ -844,9 +844,49 @@ export interface HexMatchLabActionSummary {
   responseArtifactId?: string | undefined;
 }
 
+export interface HexMatchLabDuelPairSummary {
+  duelPairId: string;
+  primaryAgentId: string;
+  targetAgentId: string;
+  side: string;
+  laneId: string;
+  pressureKey: string;
+  directnessScore: number;
+  lethalGateStatus: string;
+  reasons: string[];
+  contributorAgentIds: string[];
+}
+
+export interface HexMatchLabFireLaneSummary {
+  laneId: string;
+  contactId: string;
+  attackAgentId: string;
+  defenseAgentId: string;
+  regionIds: string[];
+  pointIds: string[];
+  cellContactId?: string | undefined;
+  objectiveExposureId?: string | undefined;
+  exposureFlags: string[];
+}
+
+export interface HexMatchLabCombatPressureSummary {
+  pressureKey: string;
+  previousPressure: number;
+  pressureDelta: number;
+  currentPressure: number;
+  streak: number;
+  appliedScoreDelta: number;
+  decayApplied: number;
+  resetReasons: string[];
+  escalationReasons: string[];
+}
 export interface HexMatchLabCombatSummary {
   contactId: string;
   participants: string[];
+  duelPairs: HexMatchLabDuelPairSummary[];
+  fireLanes: HexMatchLabFireLaneSummary[];
+  pressureKeys: string[];
+  pressure?: HexMatchLabCombatPressureSummary | undefined;
   advantage?: string | undefined;
   verdict?: string | undefined;
   contactThreatLevel?: string | undefined;
@@ -3624,6 +3664,10 @@ function summarizePhase(
     combats: phase.combatResolutions.map((resolution) => ({
       contactId: resolution.contactId,
       participants: resolution.participants.map((participant) => participant.agentId),
+      duelPairs: readDuelPairs(resolution.duelPairs),
+      fireLanes: readFireLanes(resolution.fireLanes),
+      pressureKeys: readStringArray(resolution.pressureKeys),
+      pressure: readCombatPressure(resolution.audit.pressure),
       advantage: resolution.advantage,
       verdict: resolution.verdict,
       contactThreatLevel: resolution.audit.contactThreat?.level,
@@ -3956,6 +4000,21 @@ function readFireLanes(value: unknown): HexMatchLabFireLaneSummary[] {
       exposureFlags: readStringArray(record.exposureFlags)
     };
   }) : [];
+}
+function readCombatPressure(value: unknown): HexMatchLabCombatPressureSummary | undefined {
+  const record = parseRecord(value);
+  if (!record) return undefined;
+  return {
+    pressureKey: readString(record.pressureKey) ?? "unknown_pressure_key",
+    previousPressure: Number(record.previousPressure ?? 0),
+    pressureDelta: Number(record.pressureDelta ?? 0),
+    currentPressure: Number(record.currentPressure ?? 0),
+    streak: Number(record.streak ?? 0),
+    appliedScoreDelta: Number(record.appliedScoreDelta ?? 0),
+    decayApplied: Number(record.decayApplied ?? 0),
+    resetReasons: readStringArray(record.resetReasons),
+    escalationReasons: readStringArray(record.escalationReasons)
+  };
 }
 function readFinanceFirepower(score: unknown): HexMatchLabFinanceFirepowerSummary | undefined {
   const record = parseRecord(score);

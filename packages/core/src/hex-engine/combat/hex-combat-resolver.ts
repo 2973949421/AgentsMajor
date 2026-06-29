@@ -8,6 +8,11 @@ import type { HexRoundMemory, HexSide } from "../state/index.js";
 import { buildHexCombatCasualties, buildHexCombatSuppressions } from "./hex-combat-casualties.js";
 import type { HexCombatAttributionScore } from "./hex-combat-casualties.js";
 import { buildFinanceFirepowerScore } from "./hex-combat-finance-firepower.js";
+import {
+  applyHexCombatPressureToScoreboard,
+  buildHexCombatPressureAudit,
+  type HexCombatPressureState
+} from "./hex-combat-pressure.js";
 import { buildCsReasons, scoreCsEvidence } from "./hex-combat-score-builder.js";
 import { buildDuelPairingAudit } from "./hex-combat-verdict-audit.js";
 import { materializeHexCombatMemoryEvents } from "./hex-combat-events.js";
@@ -50,6 +55,7 @@ export interface ResolveHexCombatInput {
   varianceMode?: HexCombatVarianceMode;
   seed?: string;
   attributionHistory?: HexCombatAttributionHistory;
+  pressureState?: HexCombatPressureState;
 }
 
 export interface HexCombatVarianceInput {
@@ -133,9 +139,18 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
     varianceInput.seed = input.seed;
   }
   const variance = applyHexCombatVariance(varianceInput);
-  const adjustedScores = buildScoreboard(attackEvidence, defenseEvidence, variance.attackScore, variance.defenseScore);
-  const margin = Math.abs(adjustedScores.attack.totalScore - adjustedScores.defense.totalScore);
+  const varianceAdjustedScores = buildScoreboard(attackEvidence, defenseEvidence, variance.attackScore, variance.defenseScore);
+  const preliminaryOutcome = buildCombatOutcome(varianceAdjustedScores, input.contact);
+  const pressureAudit = buildHexCombatPressureAudit({
+    contact: input.contact,
+    advantage: preliminaryOutcome.advantage,
+    ...(input.pressureState ? { state: input.pressureState } : {})
+  });
+  const adjustedScores = applyHexCombatPressureToScoreboard(varianceAdjustedScores, pressureAudit, preliminaryOutcome.advantage);
   const outcome = buildCombatOutcome(adjustedScores, input.contact);
+  if (pressureAudit && outcome.verdict !== preliminaryOutcome.verdict) {
+    pressureAudit.escalationReasons.push(`n64_pressure_changed_verdict:${preliminaryOutcome.verdict}->${outcome.verdict}`);
+  }
   const advantage = outcome.advantage;
   const financeEvidenceAdoption = input.financeDuel
     ? {
@@ -224,6 +239,7 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
       ...(input.contact.prunedCandidateCount ? { prunedCandidateCount: input.contact.prunedCandidateCount } : {})
     },
     ...(duelPairingAudit ? { duelPairing: duelPairingAudit } : {}),
+    ...(pressureAudit ? { pressure: pressureAudit } : {}),
     roleContributions: [...attributionScores.entries()].map(([agentId, score]) => {
       const participant = input.contact.participants.find((candidate) => candidate.agentId === agentId);
       return {

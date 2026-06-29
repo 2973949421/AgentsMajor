@@ -15,10 +15,10 @@ export function humanizeDuelPairingSummary(input: {
 }): string {
   const pair = [...input.duelPairs].sort((left, right) => right.directnessScore - left.directnessScore || left.duelPairId.localeCompare(right.duelPairId))[0];
   if (!pair) {
-    return "? trace ??? N65-lite ??? pair / pressureKey?";
+    return "旧 trace 未记录 N65-lite 主对枪 pair / pressureKey。";
   }
   const primary = input.formatAgentName(pair.primaryAgentId);
   const target = input.formatAgentName(pair.targetAgentId);
-  const support = pair.contributorAgentIds.length > 0 ? "????" + pair.contributorAgentIds.map(input.formatAgentName).join("?") : "";
-  return "????" + primary + " vs " + target + "??? " + pair.laneId + "?pressureKey " + pair.pressureKey + "???? " + pair.directnessScore + "???? " + pair.lethalGateStatus + support + "?";
+  const support = pair.contributorAgentIds.length > 0 ? "；支援：" + pair.contributorAgentIds.map(input.formatAgentName).join("、") : "";
+  return "主对枪：" + primary + " vs " + target + "；枪线 " + pair.laneId + "；pressureKey " + pair.pressureKey + "；直接度 " + pair.directnessScore + "；致命门 " + pair.lethalGateStatus + support + "。";
 }

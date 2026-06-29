@@ -871,6 +871,8 @@ A 点 pressure 不会在双方转点后污染 B 点接触。
 Web 不需要读 raw JSON 就能回答：谁的观点火力更强、谁的行动位置更好、为什么压制/退让/击杀。
 ```
 
+N64 implementation note（2026-06-28）：第一版已按 pressureKey 增加 pressure history helper、resolver pressure audit、round runner accumulation / decay / reset，以及 Web / N61 可见性；不改 N59、N62D、N63 公式和 combat gate。
+
 ## 16. N65-full：N 对 N / 1 对 N 对枪配对与归因
 
 目标：补齐多人接触模型。当前 combat 仍容易把多人接触压扁成“side-level winner -> losing side 选一个 target -> winning side 选一个 killer”。N65-full 不改变 N63 的金融火力和 N64 的压力收敛，而是在 contact 内建立完整的 duel pairing / fire lane pairing 与多人归因。

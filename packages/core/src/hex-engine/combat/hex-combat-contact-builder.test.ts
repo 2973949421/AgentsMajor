@@ -55,6 +55,43 @@ describe("Hex combat contact builder", () => {
     expect(pair?.pressureKey).not.toMatch(/^(attack|defense|a_site|same_region)$/);
   });
 
+  it("keeps pressureKey stable for the same pair and lane across phases", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [attackCell, defenseCell] = findCellsInRegion(asset, "a_site", 2);
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_0", side: "attack", cellId: attackCell!.cellId },
+      { agentId: "ct_0", side: "defense", cellId: defenseCell!.cellId }
+    ]);
+    const firstContacts = buildHexCombatContacts({
+      asset,
+      memory,
+      actions: [
+        buildCombatAction({ memory, agentId: "t_0", actionType: "execute_site" }),
+        buildCombatAction({ memory, agentId: "ct_0", actionType: "peek" })
+      ]
+    });
+    const nextMemory = advanceHexPhaseMemory({
+      asset,
+      previousMemory: memory,
+      nextPhaseId: "first_contact",
+      events: []
+    });
+    const nextContacts = buildHexCombatContacts({
+      asset,
+      memory: nextMemory,
+      actions: [
+        buildCombatAction({ memory: nextMemory, agentId: "t_0", actionType: "execute_site" }),
+        buildCombatAction({ memory: nextMemory, agentId: "ct_0", actionType: "peek" })
+      ]
+    });
+
+    expect(firstContacts[0]?.contactId).not.toBe(nextContacts[0]?.contactId);
+    expect(firstContacts[0]?.pressureKeys[0]).toBe(nextContacts[0]?.pressureKeys[0]);
+    expect(firstContacts[0]?.duelPairs[0]?.duelPairId).toBe(nextContacts[0]?.duelPairs[0]?.duelPairId);
+    expect(firstContacts[0]?.fireLanes[0]?.laneId).toBe(nextContacts[0]?.fireLanes[0]?.laneId);
+    expect(firstContacts[0]?.pressureKeys[0]).not.toContain("duel_pair_0_");
+    expect(nextContacts[0]?.pressureKeys[0]).not.toContain("duel_pair_1_");
+  });
   it("creates contact for shared point overlap", () => {
     const asset = loadOfficialDust2HexMap();
     const [attackCell, defenseCell] = findCellsWithSharedPoint(asset);

@@ -169,6 +169,18 @@ export interface HexCombatScoreboard {
   neutralScore: number;
 }
 
+export interface HexCombatPressureAudit {
+  pressureKey: string;
+  previousPressure: number;
+  pressureDelta: number;
+  currentPressure: number;
+  streak: number;
+  appliedScoreDelta: number;
+  decayApplied: number;
+  resetReasons: string[];
+  escalationReasons: string[];
+}
+
 export interface HexCombatCasualty {
   agentId: string;
   targetAgentId: string;
@@ -244,6 +256,7 @@ export interface HexCombatAudit {
     pressureKeys: string[];
     reasons: string[];
   };
+  pressure?: HexCombatPressureAudit;
   roleContributions?: Array<{
     agentId: string;
     side: HexSide;
