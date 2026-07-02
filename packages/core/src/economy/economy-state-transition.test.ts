@@ -42,7 +42,7 @@ describe("economy state transition", () => {
 });
 
 function agents(teamId: string): Agent[] {
-  return ["entry", "star_rifler", "awper", "igl", "support"].map((role) => ({
+  return ["entry", "rifler", "awper", "igl", "lurker"].map((role) => ({
     id: `${teamId}_${role}`,
     teamId,
     driverModelId: "driver_test",

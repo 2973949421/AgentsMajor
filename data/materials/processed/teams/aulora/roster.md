@@ -5,7 +5,7 @@
 - XANTARES | entry | Entry / Star Rifler | 高 | player_aulora_xantares
 - woxic | awper | AWPer | 高 | player_aulora_woxic
 - soulfly | rifler | Rifler / Anchor | 中 | player_aulora_soulfly
-- Wicadia | rifler | Rifler / Entry-support | 中-高 | player_aulora_wicadia
+- Wicadia | lurker | Lurker / rifler | 中-高 | player_aulora_wicadia
 
 ## Coach
 - 正式教练：Fabre (coach_aulora_fabre，Coach，可信度 高)

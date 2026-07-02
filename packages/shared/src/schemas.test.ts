@@ -38,7 +38,7 @@ describe("shared contracts", () => {
       agentSchema.parse({
         id: "agent_001",
         teamId: "team_001",
-        role: "star_rifler",
+        role: "rifler",
         displayName: "Ghost Star",
         baseProfile: {
           personalitySummary: "Aggressive star",

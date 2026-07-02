@@ -1,4 +1,4 @@
-# N56-N65 Evidence-bound Round Roadmap
+﻿# N56-N65 Evidence-bound Round Roadmap
 
 本文是 Finance Major 在 N55 后的正式路线。它不是路线宣言，而是后续实现必须遵守的工程依赖链契约。当前状态：N56-N61 已完成第一版闭环，N62 已完成 phase0 raw 金融卡到 submitted finance card 的经济裁剪提交门；外部静态审查指出当前最大偏差不是方向错误，而是 N60 安全隔离过头：金融证据链已可审计，但 phase0 有效观点火力没有真正作为 combat 主火力进入伤亡裁定。因此 N62-N65 不扩成长串路线，但必须按 PRO 修订为：N62、N63、N65-lite、N64、N65-full。N65-lite 是 N65 的前置薄层，不新增大阶段，只为 N64 提供压力归属 key。
 
@@ -820,7 +820,7 @@ N64 pressure accumulation 必须消费 pressureKey。
 ```text
 N65-lite 不负责完整 1vN surrounded pressure、crossfire angle separation、escape route 或 assist attribution。
 N65-lite 只保证 N64 不再把压力累积到 side-level。
-support / IGL 在 N65-lite 中可以成为 contributor，但默认不成为 primary duelist，除非没有其他 direct candidate。
+支援贡献者 / IGL 在 N65-lite 中可以成为 contributor，但默认不成为 primary duelist，除非没有其他 direct candidate。
 ```
 
 成功标准：
@@ -891,8 +891,8 @@ NvN：按距离、枪线、同点位、包点入口、角色动作生成若干 d
 
 ```text
 killer 优先来自 direct duel pair 中的 active duelist：entry / star rifler / AWPer / rifler。
-support / IGL 默认进入 assist / suppression。
-support / IGL fallback killer 必须同时满足：lethal gate passed、direct contact exists、no entry/rifler/AWPer direct candidate、actionType 不是纯 gather_info / rotate / map_control，并写明 sole_direct_candidate_allowed。
+支援贡献者 / IGL 默认进入 assist / suppression。
+支援贡献者 / IGL fallback killer 必须同时满足：lethal gate passed、direct contact exists、no entry/rifler/AWPer direct candidate、actionType 不是纯 gather_info / rotate / map_control，并写明 sole_direct_candidate_allowed。
 AWPer long-range kill 必须满足：open line、distance in AWP lethal band、cover not blocking lethal、actionType in watch_angle / peek / seek_duel。
 多人夹击时，主杀来自最强直接枪线，其他有效枪线进入 assisterAgentIds 或 suppression reasons。
 objective actor 暴露、C4 carrier、plant / defuse 行为提高 target vulnerability，但不能绕过 lethal gate。
@@ -957,3 +957,39 @@ awp_buy / double_awp：500-580 字，multi_slice_plus，possible_kill
 ```
 
 边界：LLM 不接触 submitted 字数预算、cutMode 或 combatEffectCap；submitted 文本只能摘自 rawFinanceOpinionZh，不能补写、不能替 agent 换证据、不能改 targetClaimId。N62D 不修改 N59 采信规则、N63 火力公式、combat gate、经济结算或 hard winner。
+
+## N62D 后经济行为验收方向
+
+N62D 之后，经济系统已经能把 spend、buy pattern、cut mode、submitted budget 和 combatEffectCap 写进 submitted finance output。但 2-7 map 验收显示，经济优势还没有稳定转化成行动风格差异，且 rifle_buy 存在预算未吃满的 watch 项。
+
+已知事实：
+
+```text
+pistol_round：平均 submitted 85.5，pistol_core_window。
+eco：平均 submitted 40，random_window。
+force_buy：平均 submitted 224.4，multi_slice_lite。
+half_buy：平均 submitted 217.7，core_window。
+rifle_buy：平均 budget 383.6，但 submitted 平均约 209.8。
+```
+
+后续不先改 N59 / N63 公式，而在 N67 中处理经济行为口径：
+
+```text
+经济不只影响 submitted 字数，也要影响风险偏好和执行方式。
+T eco 可以抱团爆点，CT eco 可以赌点 / 叠点 / 前压。
+CT full 可以守点、反清或控图，T full 可以慢控也可以提速。
+force 花得狠时可以更极端，但不能自动升级成 full buy 火力。
+```
+
+禁止：
+
+```text
+不让 LLM 直接决定 submitted budget / cutMode / combatEffectCap。
+不让 raw 绕过 submitted gate。
+不把经济行为做成固定模板。
+不通过金融火力公式硬修行动空转。
+```
+
+## N67-role 角色口径补充（2026-07-02）
+
+Finance Major 的金融专家身份继续独立：PM / Macro / Commodity / Company / Risk 不等于局内 CS 主角色。局内 CS 主角色统一为 `IGL / AWPer / rifler / lurker / entry`；新生成 active roster 要求每队五名上场选手各占一类；`star / supportive / anchor / flex / stand_in` 作为标签或状态进入轻量倾向，不作为主角色；展示层主角色保持英文。`supportContributorAgentIds` 是 combat 结构字段，不是选手主角色。

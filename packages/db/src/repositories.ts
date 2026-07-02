@@ -23,6 +23,8 @@ import type {
 } from "@agent-major/shared";
 import {
   agentSchema,
+  normalizeCsRole,
+  normalizeCsRoleTags,
   artifactSchema,
   driverModelSchema,
   economyStateSchema,
@@ -1266,10 +1268,10 @@ function mapAgent(row: Row) {
   });
 }
 
+const canonicalCsRoleTagSet = new Set(["igl", "awper", "entry", "lurker", "rifler"]);
+
 function normalizeLegacyAgentRole(role: string): string {
-  if (role === "star") return "star_rifler";
-  if (role === "closer") return "rifler";
-  return role;
+  return normalizeCsRole(role);
 }
 
 function normalizeAgentRoleTags(value: unknown): unknown {
@@ -1277,12 +1279,11 @@ function normalizeAgentRoleTags(value: unknown): unknown {
     return value;
   }
 
-  return value.map((item) => (typeof item === "string" ? normalizeLegacyAgentRoleTag(item) : item));
+  return normalizeCsRoleTags(value).filter((tag) => !canonicalCsRoleTagSet.has(tag));
 }
 
 function normalizeLegacyAgentRoleTag(role: string): string {
-  if (role === "star") return "star_rifler";
-  return role;
+  return normalizeCsRoleTags(role)[0] ?? normalizeCsRole(role);
 }
 
 function normalizeRoleProfile(value: unknown): unknown {

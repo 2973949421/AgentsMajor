@@ -6,7 +6,7 @@
   "real_name": null,
   "in_game_id": "iM",
   "display_name": "iM",
-  "role": "rifler",
+  "role": "entry",
   "status": "active",
   "cs_role_profile": {
     "source_path": "raw/teams/agent_major_player_roles.md",
@@ -17,9 +17,9 @@
       "Rifler",
       "Entry-style rifler"
     ],
-    "primary_role": "rifler",
+    "primary_role": "entry",
     "secondary_roles": [
-      "entry"
+      "rifler"
     ],
     "position_tags": [
       "rifler",
@@ -40,28 +40,29 @@
     "打头阵"
   ],
   "persona_tags": [
-    "rifle-worker",
-    "round-connector",
+    "frontline-instigator",
+    "heat-checker",
     "front-push"
   ],
   "playstyle_tags": [
-    "rifle-trade",
-    "site-pressure",
+    "first-contact",
+    "space-creator",
     "wide-swing",
     "entry-contact"
   ],
   "caster_focus_tags": [
-    "machine_map_point_pressure"
+    "machine_force_buy_shock"
   ],
   "barrage_focus_tags": [
-    "player_targeting"
+    "player_targeting",
+    "research"
   ],
   "news_focus_tags": [
     "history-burden",
     "upset-watch"
   ],
   "cross_circle_tags": [
-    "customer_service_to_cleanup"
+    "cabinet_to_live_room_chaos"
   ],
   "future_agent_profile": {
     "persona_summary": "把前线打穿时很像点火器，没点燃就会被弹幕拿来拷打执行质量。",
@@ -69,8 +70,8 @@
     "narrative_axes": [
       "history-burden",
       "upset-watch",
-      "rifle-worker",
-      "round-connector",
+      "frontline-instigator",
+      "heat-checker",
       "front-push"
     ],
     "reserved_memory_slots": [
@@ -84,8 +85,8 @@
     "binding_version": "2026-05-03-llm-binding-v1",
     "binding_scope": "asset_preallocation",
     "runtime_enabled": false,
-    "role_template_id": "llm_role_template_rifler",
-    "preferred_driver_model_id": "driver_qwen_3_6_plus",
+    "role_template_id": "llm_role_template_entry",
+    "preferred_driver_model_id": "driver_minimax_m2_5",
     "fallback_driver_model_ids": [
       "driver_qwen_3_5_plus"
     ],
@@ -122,16 +123,27 @@
         "enabled": false,
         "temperature": 0.7,
         "max_output_tokens": 450
+      },
+      {
+        "task_id": "meme_reaction_line",
+        "model_profile_id": "llm_profile_barrage_chaos",
+        "driver_model_id": "driver_minimax_m2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_5_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.7,
+        "max_output_tokens": 450
       }
     ],
     "prompt_bias_tags": [
-      "rifle-worker",
-      "round-connector",
-      "site-pressure",
-      "trade-layer",
-      "rifle-trade",
+      "frontline-instigator",
+      "first-contact",
+      "space-creator",
+      "high-variance",
       "wide-swing",
       "entry-contact",
+      "heat-checker",
       "front-push"
     ],
     "env_contract_refs": [
@@ -142,7 +154,7 @@
     ],
     "override_ids": [],
     "ops_notes": [
-      "Use as the default player fallback when no sharper role is available."
+      "Prefer first-contact, overpeek, space creation, and instant reaction hooks."
     ]
   },
   "ops_hooks": {
@@ -155,7 +167,7 @@
     ],
     "card_priority": 45,
     "broadcast_entry_points": [
-      "machine_map_point_pressure"
+      "machine_force_buy_shock"
     ]
   },
   "canon_notes": []

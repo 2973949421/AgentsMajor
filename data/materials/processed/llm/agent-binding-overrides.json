@@ -107,7 +107,7 @@
       "team_id": "team_furia",
       "team_slug": "furia",
       "display_name": "KSCERATO",
-      "role": "star_rifler",
+      "role": "lurker",
       "selection_reason": "heat_level=high and card_priority<=20",
       "applied_task_ids": [
         "spotlight_moment_copy"
@@ -139,7 +139,7 @@
       "team_id": "team_falcon_7b",
       "team_slug": "falcon-7b",
       "display_name": "NiKo",
-      "role": "star_rifler",
+      "role": "rifler",
       "selection_reason": "heat_level=high and card_priority<=20",
       "applied_task_ids": [
         "spotlight_moment_copy"
@@ -267,7 +267,7 @@
       "team_id": "team_phaseclan",
       "team_slug": "phaseclan",
       "display_name": "frozen",
-      "role": "star_rifler",
+      "role": "lurker",
       "selection_reason": "heat_level=high and card_priority<=20",
       "applied_task_ids": [
         "spotlight_moment_copy"

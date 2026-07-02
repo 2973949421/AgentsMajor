@@ -100,9 +100,9 @@ describe("sqlite repositories", () => {
 
       const agent = await repositories.agents.getById("agent_legacy_closer");
       expect(agent?.role).toBe("rifler");
-      expect(agent?.secondaryRoles).toEqual(["closer", "star_rifler"]);
+      expect(agent?.secondaryRoles).toEqual(["closer", "star"]);
       expect(agent?.roleProfile?.primaryRole).toBe("rifler");
-      expect(agent?.roleProfile?.secondaryRoles).toEqual(["closer", "star_rifler"]);
+      expect(agent?.roleProfile?.secondaryRoles).toEqual(["closer", "star"]);
       expect(agent?.roleProfile?.positionTags).toEqual(["closer"]);
     } finally {
       repositories.close();

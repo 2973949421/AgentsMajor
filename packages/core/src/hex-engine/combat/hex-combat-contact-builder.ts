@@ -1,4 +1,4 @@
-import type { HexCell, HexMapAsset } from "@agent-major/shared";
+﻿import { normalizeCsRole, normalizeCsRoleProfile, type HexCell, type HexMapAsset } from "@agent-major/shared";
 import type { HexValidatedAgentAction } from "../action/index.js";
 import type { HexRoundBusinessDuel } from "../business/index.js";
 import { findHexPath } from "../path/index.js";
@@ -11,6 +11,7 @@ import type {
   HexCombatLethalGateStatus,
   HexCombatParticipant,
   HexCombatPressureScope,
+  HexCombatShape,
   HexCombatTriggerReason
 } from "./hex-combat-types.js";
 
@@ -70,7 +71,7 @@ export function buildHexCombatContacts(input: BuildHexCombatContactsInput): HexC
     }
   }
 
-  return selectKeyContacts(contacts);
+  return selectKeyContacts(groupMultiPairContacts(contacts));
 }
 
 function buildParticipant(
@@ -400,6 +401,232 @@ function markSupportParticipant(participant: HexCombatParticipant): HexCombatPar
   };
 }
 
+function groupMultiPairContacts(contacts: HexCombatContact[]): HexCombatContact[] {
+  const grouped = new Map<string, HexCombatContact[]>();
+  const passthrough: HexCombatContact[] = [];
+  for (const contact of contacts) {
+    const key = contact.primaryPressureKey;
+    if (!key || key.startsWith("duelPair:")) {
+      passthrough.push(materializeContactPairingMetadata(contact));
+      continue;
+    }
+    const groupKey = `${contact.phaseIndex}:${key}`;
+    const bucket = grouped.get(groupKey) ?? [];
+    bucket.push(contact);
+    grouped.set(groupKey, bucket);
+  }
+  const merged: HexCombatContact[] = [];
+  for (const group of grouped.values()) {
+    if (group.length === 1) {
+      merged.push(materializeContactPairingMetadata(group[0]!));
+      continue;
+    }
+    merged.push(mergeMultiPairContactGroup(group));
+  }
+  return [...passthrough, ...merged];
+}
+
+function materializeContactPairingMetadata(contact: HexCombatContact): HexCombatContact {
+  const directAgentIds = collectDirectAgentIds(contact.duelPairs, contact.participants);
+  const directAttackIds = contact.participants.filter((participant) => directAgentIds.has(participant.agentId) && participant.side === "attack").map((participant) => participant.agentId);
+  const directDefenseIds = contact.participants.filter((participant) => directAgentIds.has(participant.agentId) && participant.side === "defense").map((participant) => participant.agentId);
+  const combatShape = buildCombatShape(directAttackIds.length, directDefenseIds.length);
+  const sortedPairs = sortDuelPairs(contact.duelPairs);
+  const primaryDuelPairId = sortedPairs[0]?.duelPairId;
+  const secondaryDuelPairIds = sortedPairs.slice(1).map((pair) => pair.duelPairId);
+  const supportContributorAgentIds = collectSupportContributorAgentIds(contact, directAgentIds);
+  const outnumbered = collectOutnumberedAgentIds(directAttackIds, directDefenseIds);
+  return {
+    ...contact,
+    combatShape,
+    ...(primaryDuelPairId ? { primaryDuelPairId } : {}),
+    secondaryDuelPairIds,
+    supportContributorAgentIds,
+    outnumberedAgentIds: outnumbered.agentIds,
+    ...(outnumbered.side ? { surroundedSide: outnumbered.side } : {}),
+    multiPairReasons: uniqueStrings([...(contact.multiPairReasons ?? []), "n65_single_pair_contact"])
+  };
+}
+
+function mergeMultiPairContactGroup(group: HexCombatContact[]): HexCombatContact {
+  const sortedContacts = [...group].sort((left, right) => (right.relevanceScore ?? 0) - (left.relevanceScore ?? 0) || left.contactId.localeCompare(right.contactId));
+  const anchor = sortedContacts[0]!;
+  const groupPressureKey = anchor.primaryPressureKey ?? anchor.pressureScope?.pressureKey;
+  const rawPairs = sortDuelPairs(uniqueDuelPairs(group.flatMap((contact) => contact.duelPairs)));
+  const participantPool = group.flatMap((contact) => contact.participants);
+  const directPairs = rawPairs.filter((pair) => !pairHasSupportDuelist(pair, participantPool));
+  const candidatePairs = directPairs.length > 0 ? directPairs : rawPairs;
+  const keptPairs = candidatePairs.slice(0, 4);
+  const omittedPairs = [...candidatePairs.slice(4), ...rawPairs.filter((pair) => !candidatePairs.some((candidate) => candidate.duelPairId === pair.duelPairId))];
+  const directAgentIds = collectDirectAgentIds(keptPairs, group.flatMap((contact) => contact.participants));
+  const omittedDirectAgentIds = collectDirectAgentIds(omittedPairs, group.flatMap((contact) => contact.participants));
+  const contactId = `hex_combat_${anchor.phaseIndex}_group_${sanitizeStableIdPart(groupPressureKey ?? anchor.contactId)}`;
+  const mergedFireLanes = uniqueFireLanes(group.flatMap((contact) => contact.fireLanes)).map((lane) => ({ ...lane, contactId }));
+  const mergedParticipants = mergeParticipants(group.flatMap((contact) => contact.participants), directAgentIds, omittedDirectAgentIds);
+  const directAttackIds = mergedParticipants.filter((participant) => directAgentIds.has(participant.agentId) && participant.side === "attack").map((participant) => participant.agentId);
+  const directDefenseIds = mergedParticipants.filter((participant) => directAgentIds.has(participant.agentId) && participant.side === "defense").map((participant) => participant.agentId);
+  const combatShape = buildCombatShape(directAttackIds.length, directDefenseIds.length);
+  const supportContributorAgentIds = uniqueStrings([
+    ...mergedParticipants.filter((participant) => participant.supportParticipant).map((participant) => participant.agentId),
+    ...group.flatMap((contact) => contact.supportContributorAgentIds ?? []),
+    ...keptPairs.flatMap((pair) => pair.contributorAgentIds),
+    ...omittedDirectAgentIds
+  ]).filter((agentId) => !directAgentIds.has(agentId));
+  const duelPairs = keptPairs.map((pair, index) => ({
+    ...pair,
+    contributorAgentIds: uniqueStrings([...pair.contributorAgentIds, ...supportContributorAgentIds]),
+    reasons: uniqueStrings([...pair.reasons, index === 0 ? "n65_primary_duel_pair" : "n65_secondary_duel_pair", ...(supportContributorAgentIds.length > 0 ? ["n65_support_contributors"] : [])])
+  }));
+  const primaryDuelPairId = duelPairs[0]?.duelPairId;
+  const secondaryDuelPairIds = duelPairs.slice(1).map((pair) => pair.duelPairId);
+  const outnumbered = collectOutnumberedAgentIds(directAttackIds, directDefenseIds);
+  const pressureScope = group.find((contact) => contact.primaryPressureKey === groupPressureKey && contact.pressureScope)?.pressureScope ?? anchor.pressureScope;
+  const minCellDistance = minDefined(group.map((contact) => contact.minCellDistance));
+  return {
+    contactId,
+    phaseId: anchor.phaseId,
+    phaseIndex: anchor.phaseIndex,
+    combatShape,
+    participants: mergedParticipants,
+    attackAgentIds: mergedParticipants.filter((participant) => participant.side === "attack").map((participant) => participant.agentId),
+    defenseAgentIds: mergedParticipants.filter((participant) => participant.side === "defense").map((participant) => participant.agentId),
+    triggerReasons: uniqueStrings(group.flatMap((contact) => contact.triggerReasons)),
+    regionIds: uniqueStrings(group.flatMap((contact) => contact.regionIds)),
+    pointIds: uniqueStrings(group.flatMap((contact) => contact.pointIds)),
+    duelPairs,
+    fireLanes: mergedFireLanes,
+    pressureKeys: uniqueStrings([...(groupPressureKey ? [groupPressureKey] : []), ...group.flatMap((contact) => contact.pressureKeys), ...duelPairs.map((pair) => pair.pressureKey)]),
+    ...(pressureScope ? { pressureScope } : {}),
+    ...(groupPressureKey ? { primaryPressureKey: groupPressureKey } : {}),
+    ...(primaryDuelPairId ? { primaryDuelPairId } : {}),
+    secondaryDuelPairIds,
+    supportContributorAgentIds,
+    outnumberedAgentIds: outnumbered.agentIds,
+    ...(outnumbered.side ? { surroundedSide: outnumbered.side } : {}),
+    ...(minCellDistance !== undefined ? { minCellDistance } : {}),
+    contactThreatLevel: mergeThreatLevel(group),
+    lethalEligible: group.some((contact) => contact.lethalEligible),
+    lethalGateReasons: uniqueStrings(group.flatMap((contact) => contact.lethalGateReasons ?? [])),
+    lethalGateBlockedReasons: uniqueStrings(group.flatMap((contact) => contact.lethalGateBlockedReasons ?? [])),
+    lineOfFireExposure: group.some((contact) => contact.lineOfFireExposure),
+    openSightNoCover: group.some((contact) => contact.openSightNoCover),
+    samePointExposure: group.some((contact) => contact.samePointExposure),
+    objectiveExposure: group.some((contact) => contact.objectiveExposure),
+    implicitDuelFromMovement: group.some((contact) => contact.implicitDuelFromMovement),
+    coverBlockedLethal: group.length > 0 && group.every((contact) => contact.coverBlockedLethal),
+    relevanceScore: group.reduce((sum, contact) => sum + (contact.relevanceScore ?? 0), 0),
+    retentionReasons: uniqueStrings([...group.flatMap((contact) => contact.retentionReasons ?? []), "n65_full_multi_pair_group"]),
+    multiPairReasons: uniqueStrings([
+      "n65_full_multi_pair_group",
+      `n65_combat_shape:${combatShape}`,
+      ...(groupPressureKey ? [`n65_group_pressure_key:${groupPressureKey}`] : []),
+      ...(omittedPairs.length > 0 ? [`n65_duel_pair_limit_omitted:${omittedPairs.length}`] : []),
+      ...(outnumbered.side ? [`n65_surrounded_side:${outnumbered.side}`] : [])
+    ])
+  };
+}
+
+function sortDuelPairs(pairs: readonly HexCombatDuelPair[]): HexCombatDuelPair[] {
+  return [...pairs].sort((left, right) => right.directnessScore - left.directnessScore || left.duelPairId.localeCompare(right.duelPairId));
+}
+
+function uniqueDuelPairs(pairs: readonly HexCombatDuelPair[]): HexCombatDuelPair[] {
+  const byId = new Map<string, HexCombatDuelPair>();
+  for (const pair of pairs) {
+    const existing = byId.get(pair.duelPairId);
+    if (!existing || pair.directnessScore > existing.directnessScore) {
+      byId.set(pair.duelPairId, pair);
+    }
+  }
+  return [...byId.values()];
+}
+
+function uniqueFireLanes(lanes: readonly HexCombatFireLane[]): HexCombatFireLane[] {
+  const byId = new Map<string, HexCombatFireLane>();
+  for (const lane of lanes) {
+    if (!byId.has(lane.laneId)) {
+      byId.set(lane.laneId, lane);
+    }
+  }
+  return [...byId.values()];
+}
+
+function collectDirectAgentIds(pairs: readonly HexCombatDuelPair[], participants: readonly HexCombatParticipant[]): Set<string> {
+  const participantById = new Map(participants.map((participant) => [participant.agentId, participant]));
+  const ids = new Set<string>();
+  for (const pair of pairs) {
+    ids.add(pair.primaryAgentId);
+    ids.add(pair.targetAgentId);
+    const primary = participantById.get(pair.primaryAgentId);
+    const target = participantById.get(pair.targetAgentId);
+    if (primary?.side === target?.side) {
+      continue;
+    }
+  }
+  return ids;
+}
+
+function mergeParticipants(participants: readonly HexCombatParticipant[], directAgentIds: ReadonlySet<string>, omittedDirectAgentIds: ReadonlySet<string>): HexCombatParticipant[] {
+  const byId = new Map<string, HexCombatParticipant>();
+  for (const participant of participants) {
+    const current = byId.get(participant.agentId);
+    const supportParticipant = directAgentIds.has(participant.agentId) ? false : Boolean(participant.supportParticipant || omittedDirectAgentIds.has(participant.agentId));
+    const next = {
+      ...participant,
+      currentPointIds: [...participant.currentPointIds],
+      targetPointIds: [...participant.targetPointIds],
+      currentFlags: [...participant.currentFlags],
+      targetFlags: [...participant.targetFlags],
+      supportParticipant
+    };
+    if (!current || (current.supportParticipant && !next.supportParticipant)) {
+      byId.set(participant.agentId, next);
+    }
+  }
+  return [...byId.values()].sort((left, right) => left.agentId.localeCompare(right.agentId));
+}
+
+function collectSupportContributorAgentIds(contact: HexCombatContact, directAgentIds: ReadonlySet<string>): string[] {
+  return uniqueStrings([
+    ...contact.participants.filter((participant) => participant.supportParticipant).map((participant) => participant.agentId),
+    ...contact.duelPairs.flatMap((pair) => pair.contributorAgentIds)
+  ]).filter((agentId) => !directAgentIds.has(agentId));
+}
+
+function buildCombatShape(attackDirectCount: number, defenseDirectCount: number): HexCombatShape {
+  if (attackDirectCount <= 1 && defenseDirectCount <= 1) return "one_v_one";
+  if (attackDirectCount <= 1 && defenseDirectCount > 1) return "one_v_many";
+  if (attackDirectCount > 1 && defenseDirectCount <= 1) return "many_v_one";
+  return "many_v_many";
+}
+
+function collectOutnumberedAgentIds(attackDirectIds: readonly string[], defenseDirectIds: readonly string[]): { side?: "attack" | "defense"; agentIds: string[] } {
+  if (attackDirectIds.length > 0 && attackDirectIds.length < defenseDirectIds.length) {
+    return { side: "attack", agentIds: [...attackDirectIds] };
+  }
+  if (defenseDirectIds.length > 0 && defenseDirectIds.length < attackDirectIds.length) {
+    return { side: "defense", agentIds: [...defenseDirectIds] };
+  }
+  return { agentIds: [] };
+}
+
+function mergeThreatLevel(group: readonly HexCombatContact[]): HexCombatContactThreatLevel {
+  if (group.some((contact) => contact.contactThreatLevel === "lethal")) return "lethal";
+  if (group.some((contact) => contact.contactThreatLevel === "suppression")) return "suppression";
+  return "observation";
+}
+
+function pairHasSupportDuelist(pair: HexCombatDuelPair, participants: readonly HexCombatParticipant[]): boolean {
+  const participantById = new Map(participants.map((participant) => [participant.agentId, participant]));
+  const primary = participantById.get(pair.primaryAgentId);
+  const target = participantById.get(pair.targetAgentId);
+  return Boolean((primary && (isSupportAction(primary.action) || isRoleSupport(primary))) || (target && (isSupportAction(target.action) || isRoleSupport(target))));
+}
+
+function minDefined(values: ReadonlyArray<number | undefined>): number | undefined {
+  const defined = values.filter((value): value is number => value !== undefined);
+  return defined.length > 0 ? Math.min(...defined) : undefined;
+}
 function selectKeyContacts(contacts: HexCombatContact[]): HexCombatContact[] {
   const sorted = [...contacts].sort((left, right) => {
     const objectiveDelta = Number(isObjectiveContact(right)) - Number(isObjectiveContact(left));
@@ -622,12 +849,12 @@ function scorePrimaryDuelist(participant: HexCombatParticipant): number {
   let score = 0;
   if (isActiveCombatAction(participant.action)) score += 20;
   if (["peek", "seek_duel", "execute_site", "retake", "watch_angle"].includes(participant.action.actionType)) score += 15;
-  if (participant.roleLabel === "awper") score += 12;
-  if (participant.roleLabel === "star_rifler") score += 11;
-  if (participant.roleLabel === "entry") score += 10;
-  if (participant.roleLabel === "rifler") score += 6;
-  if (participant.roleLabel === "igl") score -= 12;
-  if (participant.roleLabel === "support") score -= 16;
+  const roleProfile = normalizeCsRoleProfile(participant.roleLabel);
+  if (roleProfile.role === "awper") score += 12;
+  if (roleProfile.isStar) score += 4;
+  if (roleProfile.role === "entry") score += 10;
+  if (roleProfile.role === "rifler") score += 6;
+  if (roleProfile.role === "igl") score -= 12;
   if (participant.supportParticipant) score -= 30;
   return score;
 }
@@ -697,8 +924,12 @@ function isSupportParticipantForContact(participant: HexCombatParticipant, conta
 
 function supportScore(participant: HexCombatParticipant, contact: HexCombatContact, distanceBetween: DistanceCalculator): number {
   let score = 0;
+  const roleProfile = normalizeCsRoleProfile(participant.roleLabel);
   if (isRoleSupport(participant)) {
     score += 10;
+  }
+  if (roleProfile.tags.includes("supportive")) {
+    score += 4;
   }
   if (["prepare_trade", "use_utility", "map_control", "watch_angle"].includes(participant.action.actionType)) {
     score += 8;
@@ -736,13 +967,12 @@ function isEntryDuel(attackParticipant: HexCombatParticipant, defenseParticipant
 }
 
 function isRolePressure(participant: HexCombatParticipant): boolean {
-  const role = normalizeRoleLabel(participant.roleLabel);
-  return ["awper", "star_rifler", "entry"].includes(role) && isActiveCombatAction(participant.action);
+  const roleProfile = normalizeCsRoleProfile(participant.roleLabel);
+  return (roleProfile.role === "awper" || roleProfile.role === "entry" || roleProfile.isStar) && isActiveCombatAction(participant.action);
 }
-
 function isRoleSupport(participant: HexCombatParticipant): boolean {
   const role = normalizeRoleLabel(participant.roleLabel);
-  return role === "igl" || role === "support";
+  return role === "igl";
 }
 
 function hasKnownEnemyContact(memory: HexRoundMemory, observerAgentId: string, enemyAgentId: string): boolean {
@@ -814,5 +1044,5 @@ function uniqueStrings<T extends string>(items: T[]): T[] {
 }
 
 function normalizeRoleLabel(role: string | undefined): string {
-  return (role ?? "unknown").toLowerCase().replace(/[\s-]+/g, "_");
+  return normalizeCsRole(role);
 }

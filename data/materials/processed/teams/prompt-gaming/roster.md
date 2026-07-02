@@ -3,9 +3,9 @@
 ## Active Five
 - vsm | rifler | Rifler / Star | 中 | player_prompt_gaming_vsm
 - biguzera | igl | IGL / Rifler | 高 | player_prompt_gaming_biguzera
-- piriajr | rifler | Rifler / Support / Flex | 中 | player_prompt_gaming_piriajr
+- piriajr | lurker | Lurker / Support / Flex | 中 | player_prompt_gaming_piriajr
 - saffee | awper | AWPer | 高 | player_prompt_gaming_saffee
-- snow | rifler | Rifler / Entry-style | 中 | player_prompt_gaming_snow
+- snow | entry | Rifler / Entry-style | 中 | player_prompt_gaming_snow
 
 ## Coach
 - 正式教练：rikz (coach_prompt_gaming_rikz，Coach，可信度 高)

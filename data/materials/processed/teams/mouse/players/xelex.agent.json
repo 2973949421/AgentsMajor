@@ -20,20 +20,20 @@
     ],
     "primary_role": "rifler",
     "secondary_roles": [
-      "support",
-      "star_rifler"
+      "supportive",
+      "star"
     ],
     "position_tags": [
       "rifler",
-      "support",
-      "star_rifler"
+      "supportive",
+      "star"
     ],
     "confidence": "中",
     "notes": "从 MOUZ NXT 提拔，具体一线角色可项目化设定。",
     "agent_major_responsibilities": [
       "通用火力 / 回合执行 / 补枪衔接",
       "补全细节 / 修复方案 / 提供上下文",
-      "核心输出 / 关键回合 carry"
+      "明星前缀 / 关键回合 carry"
     ]
   },
   "aliases": [

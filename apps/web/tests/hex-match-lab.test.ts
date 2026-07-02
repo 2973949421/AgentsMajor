@@ -1,9 +1,10 @@
-import { readFileSync } from "node:fs";
+﻿import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { normalizeHexMatchLabRunRequest } from "../app/server-hex-match-lab";
+import { buildHexMatchPhasePlaybackFrame, getHexMatchPhaseTickCount } from "../app/hex-lab/match/hex-match-phase-ticks";
+import { normalizeHexMatchLabRunRequest, type HexMatchLabPhaseSummary, type HexMatchLabPlayerCard } from "../app/server-hex-match-lab";
 
 const appRoot = resolve(import.meta.dirname, "../app");
 
@@ -36,11 +37,46 @@ describe("Hex Match Lab", () => {
     expect("mapGameId" in normalized).toBe(false);
   });
 
+  it("derives phase playback ticks from action paths without changing trace facts", () => {
+    const phase = buildTestPhase([
+      { agentId: "agent_a", currentCellId: "a0", pathCellIds: ["a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8", "a9", "a10"] },
+      { agentId: "agent_b", currentCellId: "b0", pathCellIds: ["b1", "b2", "b3", "b4", "b5"] }
+    ]);
+
+    expect(getHexMatchPhaseTickCount(phase)).toBe(10);
+
+    const firstFrame = buildHexMatchPhasePlaybackFrame(phase, 0);
+    expect(firstFrame.tickLabel).toBe("Phase tick 1/10");
+    expect(firstFrame.legacyFallback).toBe(false);
+    expect(firstFrame.players.find((player) => player.agentId === "agent_a")?.currentCellId).toBe("a1");
+    expect(firstFrame.players.find((player) => player.agentId === "agent_b")?.currentCellId).toBe("b1");
+
+    const sixthFrame = buildHexMatchPhasePlaybackFrame(phase, 5);
+    expect(sixthFrame.players.find((player) => player.agentId === "agent_a")?.currentCellId).toBe("a6");
+    expect(sixthFrame.players.find((player) => player.agentId === "agent_b")?.currentCellId).toBe("b5");
+    expect(sixthFrame.agentStates.find((state) => state.agentId === "agent_b")?.stopped).toBe(true);
+
+    const deathPhase = buildTestPhase([
+      { agentId: "agent_b", currentCellId: "b0", pathCellIds: ["b1", "b2", "b3"] }
+    ], "agent_b");
+    const preDeathReveal = buildHexMatchPhasePlaybackFrame(deathPhase, 0);
+    expect(preDeathReveal.players.find((player) => player.agentId === "agent_b")?.lifeStatus).toBe("alive");
+    const deathReveal = buildHexMatchPhasePlaybackFrame(deathPhase, 2);
+    expect(deathReveal.players.find((player) => player.agentId === "agent_b")?.lifeStatus).toBe("dead");
+    expect(deathReveal.agentStates.find((state) => state.agentId === "agent_b")?.phaseDeathRevealed).toBe(true);
+
+    const legacyFrame = buildHexMatchPhasePlaybackFrame(buildTestPhase([]), 9);
+    expect(legacyFrame.tickCount).toBe(1);
+    expect(legacyFrame.legacyFallback).toBe(true);
+    expect(legacyFrame.players.find((player) => player.agentId === "agent_a")?.currentCellId).toBe("a0");
+  });
+
   it("defines a match-first real LLM validation surface", () => {
     const client = readAppFile("hex-lab/match/hex-match-lab-client.tsx");
     const mapViewer = readAppFile("hex-lab/match/hex-match-map-viewer.tsx");
     const playerPanel = readAppFile("hex-lab/match/hex-match-player-panel.tsx");
     const timeline = readAppFile("hex-lab/match/hex-match-timeline.tsx");
+    const phaseTicks = readAppFile("hex-lab/match/hex-match-phase-ticks.ts");
     const drawer = readAppFile("hex-lab/match/hex-match-audit-drawer.tsx");
     const css = readAppFile("hex-lab/match/hex-match-lab.module.css");
 
@@ -54,6 +90,8 @@ describe("Hex Match Lab", () => {
     expect(client).toContain("一直跑");
     expect(client).toContain("停止");
     expect(client).toContain("打开本 round 审计");
+    expect(client).toContain("selectedPhaseTickIndex");
+    expect(client).toContain("buildHexMatchPhasePlaybackFrame");
     expect(client).toContain("/api/hex-lab/match/live-run");
     expect(client).toContain("/api/hex-lab/match/map-asset");
     expect(client).toContain("当前地图已完成，不能继续提交回合。");
@@ -68,6 +106,10 @@ describe("Hex Match Lab", () => {
     expect(mapViewer).toContain("mapPathIntent");
     expect(mapViewer).toContain("mapAgentGhost");
     expect(mapViewer).toContain("mapCombat");
+    expect(mapViewer).toContain("playbackFrame");
+    expect(mapViewer).toContain("tickPlaybackNote");
+    expect(mapViewer).toContain("mapAgentDead");
+    expect(mapViewer).toContain("阵亡");
     expect(playerPanel).toContain("roleLabel");
     expect(playerPanel).toContain("KDA");
     expect(playerPanel).toContain("roundKills");
@@ -76,6 +118,11 @@ describe("Hex Match Lab", () => {
     expect(playerPanel).toContain("AP");
     expect(timeline).toContain("Round / Phase 回放控制");
     expect(timeline).toContain("播放 trace");
+    expect(timeline).toContain("上一 tick");
+    expect(timeline).toContain("下一 tick");
+    expect(timeline).toContain("phaseTickLabel");
+    expect(phaseTicks).toContain("buildHexMatchPhasePlaybackFrame");
+    expect(phaseTicks).toContain("legacyFallback");
     expect(drawer).toContain("金融决策审计");
     expect(drawer).toContain("这页按三步读");
     expect(drawer).toContain("先看 Phase0 金融卡");
@@ -101,6 +148,9 @@ describe("Hex Match Lab", () => {
     expect(drawer).toContain("无正向采信");
     expect(drawer).toContain("金融层未形成额外胜负解释");
     expect(drawer).toContain("CS 执行解释");
+    expect(drawer).toContain("N65-full 对枪形态");
+    expect(drawer).toContain("主对枪");
+    expect(drawer).toContain("次级 pair");
     expect(drawer).toContain("Round 质量闸门");
     expect(drawer).toContain("战术选择审计");
     expect(drawer).toContain("为什么选这套");
@@ -115,13 +165,14 @@ describe("Hex Match Lab", () => {
     expect(css).toContain(".centerStage");
     expect(css).toContain(".mapBombDropped");
     expect(css).toContain(".mapAgentGhost");
+    expect(css).toContain(".mapAgentDead");
     expect(css).toContain(".mapPathIntent");
     expect(css).toContain(".floatingConsole");
     expect(css).toContain(".consoleReveal");
     expect(css).toContain(".liveCallRow");
     expect(css).toContain(".timelinePanel");
 
-    for (const source of [client, mapViewer, playerPanel, timeline, drawer]) {
+    for (const source of [client, mapViewer, playerPanel, timeline, phaseTicks, drawer]) {
       expect(source).not.toMatch(/娌|鍦|绛|褰|瀹|鏂|锛|銆|€|鐪|楠|鎻|杩|閫|涓/);
       expect(source).not.toContain("sector-map.json");
       expect(source).not.toContain("node-graph.json");
@@ -219,6 +270,8 @@ describe("Hex Match Lab", () => {
     expect(server).toContain("pathCellIds");
     expect(server).toContain("droppedCellId");
     expect(server).toContain("sitePressure");
+    expect(server).toContain("multiPairing");
+    expect(server).toContain("HexMatchLabMultiPairingSummary");
     expect(server).not.toContain("runDust2NodeMapExperimental");
     expect(server).not.toContain("commitDust2NodeRoundExperimental");
     expect(server).not.toContain("loadMapSectorMap");
@@ -235,3 +288,64 @@ describe("Hex Match Lab", () => {
     expect(source).toContain("LiveReplayPlayer");
   });
 });
+
+function buildTestPhase(actions: Array<{ agentId: string; currentCellId: string; pathCellIds: string[] }>, killedAgentId?: string): HexMatchLabPhaseSummary {
+  const players: HexMatchLabPlayerCard[] = [
+    buildTestPlayer("agent_a", "a0"),
+    buildTestPlayer("agent_b", "b0")
+  ];
+  return {
+    phaseId: "test_phase",
+    phaseIndex: 0,
+    callsAttempted: 0,
+    acceptedActionCount: actions.length,
+    rejectedDraftCount: 0,
+    fallbackActionCount: 0,
+    combatContactCount: 0,
+    combatResolutionCount: 0,
+    memoryEventCount: 0,
+    rejectedEventCount: 0,
+    aliveAttackCount: 1,
+    aliveDefenseCount: 1,
+    bombState: { planted: false },
+    actions: actions.map((action) => ({
+      agentId: action.agentId,
+      actionType: "move",
+      currentCellId: action.currentCellId,
+      targetCellId: action.pathCellIds.at(-1),
+      pathCellIds: action.pathCellIds,
+      verticalLinkIds: [],
+      valid: true,
+      validationErrors: [],
+      repairedFields: []
+    })),
+    combats: killedAgentId ? [{ contactId: "combat_1", participants: ["agent_a", "agent_b"], casualties: [`${killedAgentId}:killed`], killAttributions: [{ targetAgentId: killedAgentId, result: "killed", assisterAgentIds: [], attributionReasons: [] }] }] : [],
+    players: killedAgentId ? players.map((player) => player.agentId === killedAgentId ? { ...player, lifeStatus: "dead" } : player) : players,
+    llmAudit: { expectedCalls: 0, actualCalls: 0, acceptedCount: 0, rejectedCount: 0, fallbackCount: 0, providerErrorCount: 0, invalidResponseCount: 0, requestArtifactIds: [], responseArtifactIds: [], retryRecoveredCount: 0, finalFallbackCount: 0 },
+    memoryBeforeSummary: { agentCount: 2, aliveAttackCount: 1, aliveDefenseCount: 1, c4CarrierAgentId: "agent_a", knownEnemyCount: 0, recentEventCount: 0 },
+    memoryAfterSummary: { agentCount: 2, aliveAttackCount: 1, aliveDefenseCount: 1, c4CarrierAgentId: "agent_a", knownEnemyCount: 0, recentEventCount: 0 }
+  } as HexMatchLabPhaseSummary;
+}
+
+function buildTestPlayer(agentId: string, currentCellId: string): HexMatchLabPlayerCard {
+  return {
+    agentId,
+    displayName: agentId,
+    roleLabel: "rifler",
+    kda: "0/0/0",
+    roundKills: 0,
+    teamId: agentId === "agent_a" ? "attack" : "defense",
+    side: agentId === "agent_a" ? "attack" : "defense",
+    lifeStatus: "alive",
+    currentCellId,
+    currentPointIds: [],
+    currentPointNames: [],
+    apBudget: 3,
+    apSpent: 0,
+    apRemaining: 3,
+    carryingC4: agentId === "agent_a",
+    knownEnemyCount: 0,
+    lastSeenEnemyCount: 0,
+    validationErrors: []
+  };
+}

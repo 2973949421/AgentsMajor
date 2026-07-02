@@ -4,7 +4,7 @@
 - FalleN | igl | IGL / secondary AWPer | 中-高 | player_furia_fallen
 - yuurih | rifler | Rifler / Support | 中-高 | player_furia_yuurih
 - YEKINDAR | entry | Entry / aggressive rifler | 高 | player_furia_yekindar
-- KSCERATO | star_rifler | Star Rifler / Lurker | 高 | player_furia_kscerato
+- KSCERATO | lurker | Star Rifler / Lurker | 高 | player_furia_kscerato
 - molodoy | awper | AWPer | 高 | player_furia_molodoy
 
 ## Coach

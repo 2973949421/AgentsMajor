@@ -2,9 +2,9 @@
 
 ## Active Five
 - alex666 | igl | IGL | 高 | player_bit8_alex666
-- npl | rifler | Rifler / Playmaker | 中-高 | player_bit8_npl
+- npl | entry | Entry / Playmaker | 中-高 | player_bit8_npl
 - kensizor | rifler | Rifler | 中-高 | player_bit8_kensizor
-- esenthial | support | Support / Anchor / Rifler | 中 | player_bit8_esenthial
+- esenthial | lurker | Lurker / Anchor / Rifler | 中 | player_bit8_esenthial
 - s1zzi | awper | AWPer | 低-中 | player_bit8_s1zzi
 
 ## Coach

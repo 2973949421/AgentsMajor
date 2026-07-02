@@ -1,4 +1,4 @@
-import type { Agent, AgentEconomyDelta, EconomyState, JudgeRoundWinType, RoundReport } from "@agent-major/shared";
+import { normalizeCsRole, type Agent, type AgentEconomyDelta, type EconomyState, type JudgeRoundWinType, type RoundReport } from "@agent-major/shared";
 
 import type { AgentBuyDecision, TeamEconomyPlan } from "./economy-rules.js";
 import {
@@ -167,7 +167,7 @@ function buildRoundEconomyOutcomeContext(input: {
   }
 
   if (input.roundWinType === "defense_defuse") {
-    const defuser = activeByTeam[defenderTeamId]?.find((agent) => agent.role === "support") ?? activeByTeam[defenderTeamId]?.[0];
+    const defuser = activeByTeam[defenderTeamId]?.find((agent) => normalizeCsRole(agent.role) === "rifler") ?? activeByTeam[defenderTeamId]?.[0];
     if (defuser) {
       bonusRewardByAgent[defuser.id] = (bonusRewardByAgent[defuser.id] ?? 0) + cs2EconomyRules.objectiveActorReward;
       agentNotesById[defuser.id] = [...(agentNotesById[defuser.id] ?? []), "拆包奖励 +300"];

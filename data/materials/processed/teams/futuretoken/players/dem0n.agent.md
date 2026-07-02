@@ -11,9 +11,9 @@
 ## CS Role Profile
 - 原始位置：Rifler / Star
 - 主位置：rifler
-- 次级位置：star_rifler
+- 次级位置：star
 - 可信度：中
-- Agent Major 职责：通用火力 / 回合执行 / 补枪衔接；核心输出 / 关键回合 carry
+- Agent Major 职责：通用火力 / 回合执行 / 补枪衔接；明星前缀 / 关键回合 carry
 - 备注：步枪火力位。
 - 来源：raw/teams/agent_major_player_roles.md
 

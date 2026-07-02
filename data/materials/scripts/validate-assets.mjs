@@ -1,4 +1,4 @@
-import fs from "node:fs";
+﻿import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -30,7 +30,7 @@ function loadRuntimeDriverModelIds() {
 
 function loadSharedEnumValues(exportName) {
   const source = fs.readFileSync(sharedEnumsPath, "utf8");
-  const match = new RegExp(`export const ${exportName} = \\[([^\\n]+)\\] as const;`).exec(source);
+  const match = new RegExp(`export const ${exportName} = \\[([\\s\\S]*?)\\] as const;`).exec(source);
   assert(match, `Unable to parse ${exportName} from packages/shared/src/enums.ts.`);
   return new Set([...match[1].matchAll(/"([^"]+)"/g)].map((item) => item[1]));
 }
@@ -85,6 +85,8 @@ const validPrimaryRoles = loadSharedEnumValues("agentRoles");
 const validRoleTags = loadSharedEnumValues("agentRoleTags");
 const validModelProfileIds = new Set(llmModelProfilesRegistry.profiles.map((profile) => profile.id));
 const validRoleTemplateIds = new Set(llmRoleBindingTemplatesRegistry.templates.map((template) => template.template_id));
+const canonicalPlayerRoles = new Set(["igl", "awper", "entry", "lurker", "rifler"]);
+const legacyPlayerPrimaryRoles = new Set(["support", "anchor", "flex", "star_rifler", "entry_fragger", "stand_in"]);
 const validOverrideIds = new Set(agentBindingOverridesRegistry.overrides.map((override) => override.override_id));
 
 const teamDirs = fs.readdirSync(teamsRoot, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
@@ -272,6 +274,8 @@ for (const teamRef of teamsIndex.teams) {
   assert(playerFiles.length === 5, `${teamRef.team_slug} must have 5 player agent json files.`);
   assert(coachFiles.length === 1, `${teamRef.team_slug} must have exactly 1 coach agent json file.`);
 
+  const activeRoleCounts = new Map();
+
   for (const playerFile of playerFiles) {
     const player = readJson(path.join(playersDir, playerFile));
     entityFileIds.add(player.entity_id);
@@ -279,8 +283,14 @@ for (const teamRef of teamsIndex.teams) {
     assert(player.cs_role_profile?.raw_position, `${player.entity_id} must include cs_role_profile.raw_position.`);
     assert(player.cs_role_profile?.confidence, `${player.entity_id} must include cs_role_profile.confidence.`);
     assert(validPrimaryRoles.has(player.role), `${player.entity_id} role is not accepted by shared schema: ${player.role}`);
+    assert(canonicalPlayerRoles.has(player.role), `${player.entity_id} role must use N67 canonical CS role, received ${player.role}.`);
+    assert(!legacyPlayerPrimaryRoles.has(player.cs_role_profile.primary_role), `${player.entity_id} primary_role must not use legacy role ${player.cs_role_profile.primary_role}.`);
+    activeRoleCounts.set(player.role, (activeRoleCounts.get(player.role) ?? 0) + 1);
     assertRoleProfileAccepted(player.cs_role_profile, player.entity_id);
     validateFutureDriverBinding(player);
+  }
+  for (const role of canonicalPlayerRoles) {
+    assert(activeRoleCounts.get(role) === 1, `${teamRef.team_slug} active roster must include exactly one ${role}; got ${activeRoleCounts.get(role) ?? 0}.`);
   }
 
   const coach = readJson(path.join(coachDir, coachFiles[0]));
@@ -307,6 +317,10 @@ for (const entity of entitiesIndex.entities) {
   assert(fs.existsSync(path.join(processedRoot, entity.json_path.replace(/^processed[\\/]/, ""))), `Entity json_path does not exist for ${entity.entity_id}.`);
   assert(entity.cs_role_profile?.raw_position, `Entity index missing role profile for ${entity.entity_id}.`);
   assert(validPrimaryRoles.has(entity.role), `Entity index ${entity.entity_id} role is not accepted by shared schema: ${entity.role}`);
+  if (entity.entity_type === "player") {
+    assert(canonicalPlayerRoles.has(entity.role), `Entity index ${entity.entity_id} role must use N67 canonical CS role, received ${entity.role}.`);
+    assert(!legacyPlayerPrimaryRoles.has(entity.cs_role_profile.primary_role), `Entity index ${entity.entity_id} primary_role must not use legacy role ${entity.cs_role_profile.primary_role}.`);
+  }
   assertRoleProfileAccepted(entity.cs_role_profile, `Entity index ${entity.entity_id}`);
   assert(llmIndexEntityIds.has(entity.entity_id), `llm-bindings.index.json missing ${entity.entity_id}.`);
 }
@@ -315,6 +329,9 @@ for (const entry of llmBindingsIndex.entities) {
   assert(entityFileIds.has(entry.entity_id), `LLM binding index references missing file entity ${entry.entity_id}.`);
   assert(entry.runtime_enabled === false, `LLM binding index entry ${entry.entity_id} must stay runtime disabled for v1.`);
   assert(validPrimaryRoles.has(entry.role), `LLM binding index entry ${entry.entity_id} role is not accepted by shared schema: ${entry.role}`);
+  if (entry.entity_type === "player") {
+    assert(canonicalPlayerRoles.has(entry.role), `LLM binding index entry ${entry.entity_id} role must use N67 canonical CS role, received ${entry.role}.`);
+  }
   assert(validRoleTemplateIds.has(entry.role_template_id), `LLM binding index entry ${entry.entity_id} references unknown role template.`);
   assertDriverIds([entry.preferred_driver_model_id, ...entry.fallback_driver_model_ids], validRuntimeDriverIds, `LLM binding index ${entry.entity_id}`);
   for (const profileId of entry.model_profile_ids) {
@@ -330,6 +347,10 @@ for (const entry of rolesIndex.entries) {
   assert(entityFileIds.has(entry.entity_id), `Role index references missing file entity ${entry.entity_id}.`);
   assert(entry.cs_role_profile?.source_path === "raw/teams/agent_major_player_roles.md", `Role index entry ${entry.entity_id} must point to the raw role source.`);
   assert(validPrimaryRoles.has(entry.role), `Role index entry ${entry.entity_id} role is not accepted by shared schema: ${entry.role}`);
+  if (entry.entity_type === "player") {
+    assert(canonicalPlayerRoles.has(entry.role), `Role index entry ${entry.entity_id} role must use N67 canonical CS role, received ${entry.role}.`);
+    assert(!legacyPlayerPrimaryRoles.has(entry.cs_role_profile.primary_role), `Role index ${entry.entity_id} primary_role must not use legacy role ${entry.cs_role_profile.primary_role}.`);
+  }
   assertRoleProfileAccepted(entry.cs_role_profile, `Role index ${entry.entity_id}`);
 }
 

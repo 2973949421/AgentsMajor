@@ -1,4 +1,4 @@
-.shell {
+﻿.shell {
   min-height: 100vh;
   background: #070b0f;
   color: #edf4fb;
@@ -463,6 +463,12 @@
   line-height: 1.4;
 }
 
+.tickPlaybackNote {
+  color: #a7dcbc !important;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .hexMapSvg {
   display: block;
   width: 100%;
@@ -681,6 +687,26 @@
 .mapAgentGhostSelected .mapAgentDefense {
   stroke: #dbe7f2;
   stroke-dasharray: 1.2 1;
+}
+
+.mapAgentDead .mapAgentAttack,
+.mapAgentDead .mapAgentDefense {
+  fill: #69727d;
+  stroke: #d7dde4;
+  stroke-width: 1.15;
+}
+
+.mapAgentDead .mapAgentHalo {
+  fill: rgba(105, 114, 125, 0.2);
+  stroke: rgba(215, 221, 228, 0.82);
+}
+
+.mapAgentDead .mapAgentText {
+  fill: #f3f6f9;
+  font-size: 4.4px;
+  font-weight: 1000;
+  stroke: #20262d;
+  stroke-width: 1.25;
 }
 
 .mapAgentText {

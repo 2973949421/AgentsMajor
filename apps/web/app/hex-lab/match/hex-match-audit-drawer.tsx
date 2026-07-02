@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import type { ReactNode } from "react";
 
@@ -819,6 +819,7 @@ function LlmAudit(props: { trace: HexMatchLabRoundTraceDetail | undefined; phase
         </article>
       ) : null}
       {audit.c4ContinuityAudit ? <C4ContinuityAuditCard audit={audit.c4ContinuityAudit} /> : null}
+      {audit.objectiveBehaviorAudit ? <ObjectiveBehaviorAuditCard audit={audit.objectiveBehaviorAudit} /> : null}
       <MetricLine label="预期 / 实际调用" value={`${audit.expectedCalls} / ${audit.totalLlmCallsAttempted}`} />
       <MetricLine label="接受 / 拒绝 / 降级" value={`${audit.acceptedDrafts} / ${audit.rejectedDrafts} / ${audit.fallbackCount}`} />
       <MetricLine label={"provider \u91cd\u8bd5"} value={`\u6062\u590d ${audit.providerRetryRecoveredCount} / \u6700\u7ec8\u5931\u8d25 ${audit.providerRetryFinalFailureCount}`} />
@@ -851,6 +852,27 @@ function C4ContinuityAuditCard(props: { audit: NonNullable<HexMatchLabRoundTrace
       <p>carrier 死亡 {audit.c4CarrierKilledCount} 次；掉包 {audit.c4DroppedCount} 次；接包 {audit.c4PickupCount} 次。</p>
       {audit.c4DroppedUnrecoveredAtFinal ? <p className={styles.guardText}>本 round 结束时 C4 仍未恢复，timeout/no plant 应优先按 C4 目标断点审计。</p> : null}
       {audit.c4ContinuityReasons.length ? <p>原因：{audit.c4ContinuityReasons.join("；")}</p> : null}
+    </article>
+  );
+}
+function ObjectiveBehaviorAuditCard(props: { audit: NonNullable<HexMatchLabRoundTraceDetail["audit"]["objectiveBehaviorAudit"]> }) {
+  const audit = props.audit;
+  const styleEntries = Object.entries(audit.economyActionStyleCounts ?? {});
+  return (
+    <article className={styles.auditCard}>
+      <h3>N67 中后期行动校准</h3>
+      <p>objective stall：{audit.objectiveStallCount}；中后期有效行动：{audit.lateMeaningfulActionCount}；C4 恢复机会 / 尝试：{audit.c4RecoveryOpportunityCount} / {audit.c4RecoveryAttemptCount}。</p>
+      {audit.objectiveStallPhaseIds.length ? <p className={styles.guardText}>空转 phase：{audit.objectiveStallPhaseIds.join("、")}。这些是战术质量警告，不会直接改写 hard winner。</p> : null}
+      {audit.c4AbandonReasonCount > 0 ? <p className={styles.guardText}>存在掉包未恢复且无恢复尝试的回合目标断点。</p> : null}
+      {styleEntries.length ? <p>经济行动风格：{styleEntries.map(([style, count]) => `${style} ${count}`).join("；")}</p> : null}
+      {audit.objectiveBehaviorReasons.length ? (
+        <details>
+          <summary>行动校准原因</summary>
+          <ul>
+            {audit.objectiveBehaviorReasons.slice(0, 12).map((reason) => <li key={reason}>{reason}</li>)}
+          </ul>
+        </details>
+      ) : null}
     </article>
   );
 }
@@ -1026,9 +1048,27 @@ function formatClaimsAndChallenges(adoption: HexMatchLabPhaseSummary["combats"][
 }
 function formatDuelPairing(combat: HexMatchLabPhaseSummary["combats"][number]): string {
   const pair = [...combat.duelPairs].sort((left, right) => right.directnessScore - left.directnessScore || left.duelPairId.localeCompare(right.duelPairId))[0];
-  if (!pair) return "N65-lite 主对枪：旧 trace 未记录。";
+  if (!pair) return "N65-full 对枪配对：旧 trace 未记录主对枪 pair / pressureKey。";
+  const multi = combat.multiPairing;
+  if (multi) {
+    const primaryPair = combat.duelPairs.find((candidate) => candidate.duelPairId === multi.primaryDuelPairId) ?? pair;
+    const secondary = multi.secondaryDuelPairIds.length > 0 ? `；次级 pair ${multi.secondaryDuelPairIds.join("、")}` : "";
+    const support = multi.supportContributorAgentIds.length > 0 ? `；支援 ${multi.supportContributorAgentIds.join("、")}` : "";
+    const surrounded = multi.surroundedSide ? `；被包围侧 ${formatPressureSide(multi.surroundedSide)}` : "";
+    return `N65-full 对枪形态：${formatCombatShape(multi.combatShape)}；主对枪 ${primaryPair.primaryAgentId} vs ${primaryPair.targetAgentId}；pressureKey ${combat.pressure?.primaryPressureKey ?? primaryPair.pressureKey}${secondary}${support}${surrounded}；归因 ${multi.attributionMode}。`;
+  }
   const support = pair.contributorAgentIds.length > 0 ? `；支援 ${pair.contributorAgentIds.join("、")}` : "";
   return `N65-lite 主对枪：${pair.primaryAgentId} vs ${pair.targetAgentId}；枪线 ${pair.laneId}；pressureKey ${pair.pressureKey}；直接度 ${pair.directnessScore}；致命门 ${pair.lethalGateStatus}${support}。`;
+}
+
+function formatCombatShape(shape: string): string {
+  const labels: Record<string, string> = {
+    one_v_one: "一对一",
+    one_v_many: "一对多",
+    many_v_one: "多打一",
+    many_v_many: "多对多"
+  };
+  return labels[shape] ?? shape;
 }
 
 function formatN64Pressure(combat: HexMatchLabPhaseSummary["combats"][number]): string {

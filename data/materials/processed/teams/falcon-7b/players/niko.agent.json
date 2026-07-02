@@ -6,7 +6,7 @@
   "real_name": null,
   "in_game_id": "NiKo",
   "display_name": "NiKo",
-  "role": "star_rifler",
+  "role": "rifler",
   "status": "active",
   "cs_role_profile": {
     "source_path": "raw/teams/agent_major_player_roles.md",
@@ -17,19 +17,22 @@
       "Star Rifler",
       "closer"
     ],
-    "primary_role": "star_rifler",
+    "primary_role": "rifler",
     "secondary_roles": [
+      "star",
       "closer"
     ],
     "position_tags": [
-      "star_rifler",
-      "closer"
+      "star",
+      "closer",
+      "rifler"
     ],
     "confidence": "高",
     "notes": "核心步枪、后期收割与残局位。",
     "agent_major_responsibilities": [
-      "Core output / quality bar / round closeout",
-      "Convert winning windows and pressure rounds into finished results"
+      "明星前缀 / 关键回合 carry",
+      "残局处理 / 压力判断 / 终局收束",
+      "通用火力 / 回合执行 / 补枪衔接"
     ]
   },
   "aliases": [
@@ -43,19 +46,19 @@
     "尼公子"
   ],
   "persona_tags": [
-    "headline-core",
-    "win-condition",
+    "rifle-worker",
+    "round-connector",
     "tragedy-star",
     "headline-engine"
   ],
   "playstyle_tags": [
-    "impact-rifle",
-    "resource-heavy",
+    "rifle-trade",
+    "site-pressure",
     "rifle-crash",
     "multi-frag"
   ],
   "caster_focus_tags": [
-    "machine_star_carry"
+    "machine_map_point_pressure"
   ],
   "barrage_focus_tags": [
     "player_targeting",
@@ -66,21 +69,18 @@
     "history-burden"
   ],
   "cross_circle_tags": [
-    "band_to_superteam"
+    "customer_service_to_cleanup"
   ],
   "future_agent_profile": {
-    "persona_summary": "NiKo 在 Finance Major 中承担公司 / 财务建模专家职责：看盈利弹性和估值重估：收入弹性、利润率变化、经营杠杆、资本开支、估值乘数是否匹配。",
+    "persona_summary": "顶级 headline 选手。赢了是战神，输了就会立刻被写回遗憾文学。",
     "voice_mode": "cn-live-room-competitive",
     "narrative_axes": [
       "money-superteam",
       "history-burden",
-      "headline-core",
-      "win-condition",
+      "rifle-worker",
+      "round-connector",
       "tragedy-star",
-      "headline-engine",
-      "finance-major",
-      "nonferrous-research",
-      "Company / Financial Modeling"
+      "headline-engine"
     ],
     "reserved_memory_slots": [
       "career-arc",
@@ -93,25 +93,14 @@
     "binding_version": "2026-05-03-llm-binding-v1",
     "binding_scope": "asset_preallocation",
     "runtime_enabled": false,
-    "role_template_id": "llm_role_template_star_rifler",
-    "preferred_driver_model_id": "driver_kimi_k2_5",
+    "role_template_id": "llm_role_template_rifler",
+    "preferred_driver_model_id": "driver_qwen_3_6_plus",
     "fallback_driver_model_ids": [
-      "driver_qwen_3_6_plus"
+      "driver_qwen_3_5_plus"
     ],
     "task_bindings": [
       {
         "task_id": "profile_card_copy",
-        "model_profile_id": "llm_profile_strong_reasoning",
-        "driver_model_id": "driver_qwen_3_max_2026_01_23",
-        "fallback_driver_model_ids": [
-          "driver_qwen_3_6_plus"
-        ],
-        "enabled": false,
-        "temperature": 0.4,
-        "max_output_tokens": 900
-      },
-      {
-        "task_id": "news_story_copy",
         "model_profile_id": "llm_profile_strong_reasoning",
         "driver_model_id": "driver_qwen_3_max_2026_01_23",
         "fallback_driver_model_ids": [
@@ -133,6 +122,17 @@
         "max_output_tokens": 500
       },
       {
+        "task_id": "barrage_style_line",
+        "model_profile_id": "llm_profile_barrage_chaos",
+        "driver_model_id": "driver_minimax_m2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_5_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.7,
+        "max_output_tokens": 450
+      },
+      {
         "task_id": "spotlight_moment_copy",
         "model_profile_id": "llm_profile_caster_expressive",
         "driver_model_id": "driver_kimi_k2_5",
@@ -145,17 +145,15 @@
       }
     ],
     "prompt_bias_tags": [
-      "headline-core",
-      "win-condition",
-      "impact-rifle",
-      "resource-heavy",
+      "rifle-worker",
+      "round-connector",
+      "site-pressure",
+      "trade-layer",
+      "rifle-trade",
       "rifle-crash",
       "multi-frag",
       "tragedy-star",
-      "headline-engine",
-      "finance-duel",
-      "nonferrous",
-      "company---financial-modeling"
+      "headline-engine"
     ],
     "env_contract_refs": [
       "AGENT_MAJOR_REAL_LLM_ENABLED",
@@ -167,7 +165,7 @@
       "llm_override_spotlight_player_falcon_7b_niko"
     ],
     "ops_notes": [
-      "Use quality-bar, core damage, and closeout-pressure framing."
+      "Use as the default player fallback when no sharper role is available."
     ]
   },
   "ops_hooks": {
@@ -181,37 +179,8 @@
     ],
     "card_priority": 3,
     "broadcast_entry_points": [
-      "machine_star_carry"
+      "machine_map_point_pressure"
     ]
   },
-  "canon_notes": [],
-  "finance_agent_profile": {
-    "version": "2026-06-14-n43-finance-v1",
-    "financeRole": "Company / Financial Modeling",
-    "financeRoleCn": "公司 / 财务建模专家",
-    "responsibility": "将商品价格假设映射到代表公司利润弹性、估值与风险敞口。",
-    "investmentStyle": "进攻型周期成长",
-    "domainFocus": [
-      "成本曲线",
-      "盈利弹性",
-      "估值锚"
-    ],
-    "expectedContribution": "围绕 Dust2 有色 / 行业判断 round 子命题输出可审计金融判断，引用证据或明确缺口，不使用旧商业空话。",
-    "failureMode": "模型细节压过行业拐点。",
-    "promptGuidance": [
-      "语义输出使用中文。",
-      "结构字段、枚举和 cell id 保持英文。",
-      "不得写 winner、kill、economyDelta 或数据库事实。",
-      "必须区分代理事实、推断和 missingEvidence。"
-    ],
-    "signatureLens": "看盈利弹性和估值重估：收入弹性、利润率变化、经营杠杆、资本开支、估值乘数是否匹配。",
-    "preferredEvidenceType": "财报、盈利预测、估值倍数、利润率、现金流、分部经营、管理层指引。",
-    "attackStyle": "反对空泛说贵或便宜；要求对方说明盈利情景、估值假设和剩余回报来源。",
-    "defenseStyle": "用情景模型防守：基准、乐观、悲观三档，不把单一倍数当成答案。",
-    "decisionThreshold": "当盈利弹性可解释、估值未明显透支、下行情景可承受时，愿意支持强结论。",
-    "blindSpot": "可能低估商业模式变化或监管冲击对模型参数的破坏。",
-    "crossMapStrength": "美股科技、TMT、消费、医药、金融地产中的公司比较。",
-    "crossMapWeakness": "数据极少、盈利极不稳定、主要依赖宏观价格的地图。",
-    "oneLineVoice": "观点最后都要落到盈利和估值上。"
-  }
+  "canon_notes": []
 }

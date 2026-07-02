@@ -2,9 +2,9 @@
 
 ## Active Five
 - huNter- | igl | IGL / Lurker | 中-高 | player_g2pt_hunter
-- NertZ | star_rifler | Star Rifler / Lurker | 中-高 | player_g2pt_nertz
+- NertZ | lurker | Star Rifler / Lurker | 中-高 | player_g2pt_nertz
 - SunPayus | awper | AWPer | 高 | player_g2pt_sunpayus
-- HeavyGod | rifler | Rifler / Entry-style | 中 | player_g2pt_heavygod
+- HeavyGod | entry | Rifler / Entry-style | 中 | player_g2pt_heavygod
 - MATYS | rifler | Rifler / Support / Flex | 中 | player_g2pt_matys
 
 ## Coach

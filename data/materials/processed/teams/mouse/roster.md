@@ -3,7 +3,7 @@
 ## Active Five
 - torzsi | awper | AWPer | 高 | player_mouse_torzsi
 - Spinx | lurker | Lurker / Star Rifler | 高 | player_mouse_spinx
-- jL | rifler | Rifler / Entry-style / Flex | 中 | player_mouse_jl
+- jL | entry | Rifler / Entry-style / Flex | 中 | player_mouse_jl
 - xertioN | igl | IGL / aggressive rifler | 中-高 | player_mouse_xertion
 - xelex | rifler | Rifler / Support / young firepower | 中 | player_mouse_xelex
 

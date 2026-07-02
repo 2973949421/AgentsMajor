@@ -84,17 +84,17 @@
         ],
         "primary_role": "awper",
         "secondary_roles": [
-          "star_rifler"
+          "star"
         ],
         "position_tags": [
           "awper",
-          "star_rifler"
+          "star"
         ],
         "confidence": "高",
         "notes": "队伍核心主狙与超级明星位。",
         "agent_major_responsibilities": [
           "高精度关键论点 / 单点突破 / 高风险高收益调用",
-          "核心输出 / 关键回合 carry"
+          "明星前缀 / 关键回合 carry"
         ]
       }
     },
@@ -138,7 +138,7 @@
       "entity_id": "player_vitallmty_mezii",
       "entity_type": "player",
       "display_name": "mezii",
-      "role": "support",
+      "role": "rifler",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "VitaLLMty",
@@ -149,22 +149,25 @@
           "Anchor",
           "flex rifler"
         ],
-        "primary_role": "support",
+        "primary_role": "rifler",
         "secondary_roles": [
+          "supportive",
           "anchor",
           "flex"
         ],
         "position_tags": [
-          "support",
+          "supportive",
           "anchor",
-          "flex"
+          "flex",
+          "rifler"
         ],
         "confidence": "中-高",
         "notes": "多功能补位，偏团队型步枪位。",
         "agent_major_responsibilities": [
           "补全细节 / 修复方案 / 提供上下文",
           "防守型论证 / 稳定性校验",
-          "多场景适配 / 缺口填补 / 角色切换"
+          "多场景适配 / 缺口填补 / 角色切换",
+          "通用火力 / 回合执行 / 补枪衔接"
         ]
       }
     },
@@ -231,7 +234,7 @@
       "entity_id": "player_neural_vincere_im",
       "entity_type": "player",
       "display_name": "iM",
-      "role": "rifler",
+      "role": "entry",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "Neural Vincere",
@@ -241,9 +244,9 @@
           "Rifler",
           "Entry-style rifler"
         ],
-        "primary_role": "rifler",
+        "primary_role": "entry",
         "secondary_roles": [
-          "entry"
+          "rifler"
         ],
         "position_tags": [
           "rifler",
@@ -325,29 +328,29 @@
       "entity_id": "player_neural_vincere_makazze",
       "entity_type": "player",
       "display_name": "makazze",
-      "role": "rifler",
+      "role": "lurker",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "Neural Vincere",
         "member_type": "player",
-        "raw_position": "Rifler / young firepower",
+        "raw_position": "Lurker / young rifler",
         "raw_position_parts": [
-          "Rifler",
-          "young firepower"
+          "Lurker",
+          "young rifler"
         ],
-        "primary_role": "rifler",
+        "primary_role": "lurker",
         "secondary_roles": [
-          "star_rifler"
+          "rifler"
         ],
         "position_tags": [
-          "rifler",
-          "star_rifler"
+          "lurker",
+          "rifler"
         ],
         "confidence": "中",
-        "notes": "年轻步枪火力位，具体一线角色仍需随项目口径固定。",
+        "notes": "年轻步枪火力位；项目中固定为断后/侧翼位以补齐五角色。",
         "agent_major_responsibilities": [
-          "通用火力 / 回合执行 / 补枪衔接",
-          "核心输出 / 关键回合 carry"
+          "反制 / 偷点 / 找对手逻辑漏洞",
+          "通用火力 / 回合执行 / 补枪衔接"
         ]
       }
     },
@@ -435,11 +438,11 @@
         ],
         "primary_role": "rifler",
         "secondary_roles": [
-          "support"
+          "supportive"
         ],
         "position_tags": [
           "rifler",
-          "support"
+          "supportive"
         ],
         "confidence": "中-高",
         "notes": "团队型步枪与补位。",
@@ -489,7 +492,7 @@
       "entity_id": "player_furia_kscerato",
       "entity_type": "player",
       "display_name": "KSCERATO",
-      "role": "star_rifler",
+      "role": "lurker",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "FurIA",
@@ -499,18 +502,18 @@
           "Star Rifler",
           "Lurker"
         ],
-        "primary_role": "star_rifler",
+        "primary_role": "lurker",
         "secondary_roles": [
-          "lurker"
+          "star"
         ],
         "position_tags": [
-          "star_rifler",
+          "star",
           "lurker"
         ],
         "confidence": "高",
         "notes": "核心步枪与残局强点。",
         "agent_major_responsibilities": [
-          "核心输出 / 关键回合 carry",
+          "明星前缀 / 关键回合 carry",
           "反制 / 偷点 / 找对手逻辑漏洞"
         ]
       }
@@ -606,7 +609,7 @@
       "entity_id": "player_falcon_7b_niko",
       "entity_type": "player",
       "display_name": "NiKo",
-      "role": "star_rifler",
+      "role": "rifler",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "Falcon-7B",
@@ -616,19 +619,22 @@
           "Star Rifler",
           "closer"
         ],
-        "primary_role": "star_rifler",
+        "primary_role": "rifler",
         "secondary_roles": [
+          "star",
           "closer"
         ],
         "position_tags": [
-          "star_rifler",
-          "closer"
+          "star",
+          "closer",
+          "rifler"
         ],
         "confidence": "高",
         "notes": "核心步枪、后期收割与残局位。",
         "agent_major_responsibilities": [
-          "核心输出 / 关键回合 carry",
-          "残局处理 / 压力判断 / 终局收束"
+          "明星前缀 / 关键回合 carry",
+          "残局处理 / 压力判断 / 终局收束",
+          "通用火力 / 回合执行 / 补枪衔接"
         ]
       }
     },
@@ -639,33 +645,29 @@
       "entity_id": "player_falcon_7b_teses",
       "entity_type": "player",
       "display_name": "TeSeS",
-      "role": "support",
+      "role": "lurker",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "Falcon-7B",
         "member_type": "player",
-        "raw_position": "Support / Anchor / rifler",
+        "raw_position": "Lurker / supportive rifler",
         "raw_position_parts": [
-          "Support",
-          "Anchor",
-          "rifler"
+          "Lurker",
+          "supportive rifler"
         ],
-        "primary_role": "support",
+        "primary_role": "lurker",
         "secondary_roles": [
-          "anchor",
-          "rifler"
+          "supportive"
         ],
         "position_tags": [
-          "support",
-          "anchor",
-          "rifler"
+          "lurker",
+          "supportive"
         ],
         "confidence": "中-高",
-        "notes": "团队步枪、补位和锚点。",
+        "notes": "团队步枪、补位、断后和侧翼衔接。",
         "agent_major_responsibilities": [
-          "补全细节 / 修复方案 / 提供上下文",
-          "防守型论证 / 稳定性校验",
-          "通用火力 / 回合执行 / 补枪衔接"
+          "反制 / 偷点 / 找对手逻辑漏洞",
+          "补全细节 / 修复方案 / 提供上下文"
         ]
       }
     },
@@ -688,17 +690,17 @@
         ],
         "primary_role": "awper",
         "secondary_roles": [
-          "star_rifler"
+          "star"
         ],
         "position_tags": [
           "awper",
-          "star_rifler"
+          "star"
         ],
         "confidence": "高",
         "notes": "主狙与明星位。",
         "agent_major_responsibilities": [
           "高精度关键论点 / 单点突破 / 高风险高收益调用",
-          "核心输出 / 关键回合 carry"
+          "明星前缀 / 关键回合 carry"
         ]
       }
     },
@@ -721,17 +723,17 @@
         ],
         "primary_role": "entry",
         "secondary_roles": [
-          "star_rifler"
+          "star"
         ],
         "position_tags": [
           "entry",
-          "star_rifler"
+          "star"
         ],
         "confidence": "中",
         "notes": "新锐火力位，项目中可设为突破/爆发位。",
         "agent_major_responsibilities": [
           "首轮出击 / 激进创意 / 打开局面",
-          "核心输出 / 关键回合 carry"
+          "明星前缀 / 关键回合 carry"
         ]
       }
     },
@@ -803,7 +805,7 @@
       "entity_id": "player_parivision_omni_belchonokk",
       "entity_type": "player",
       "display_name": "BELCHONOKK",
-      "role": "rifler",
+      "role": "entry",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "PariVision-Omni",
@@ -813,9 +815,9 @@
           "Rifler",
           "Entry-style"
         ],
-        "primary_role": "rifler",
+        "primary_role": "entry",
         "secondary_roles": [
-          "entry"
+          "rifler"
         ],
         "position_tags": [
           "rifler",
@@ -836,28 +838,28 @@
       "entity_id": "player_parivision_omni_xielo",
       "entity_type": "player",
       "display_name": "xiELO",
-      "role": "rifler",
+      "role": "awper",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "PariVision-Omni",
         "member_type": "player",
-        "raw_position": "Rifler / Flex",
+        "raw_position": "AWPer / Flex",
         "raw_position_parts": [
-          "Rifler",
+          "AWPer",
           "Flex"
         ],
-        "primary_role": "rifler",
+        "primary_role": "awper",
         "secondary_roles": [
           "flex"
         ],
         "position_tags": [
-          "rifler",
+          "awper",
           "flex"
         ],
         "confidence": "中",
-        "notes": "公开角色信息较少，项目中设为灵活步枪。",
+        "notes": "公开角色信息较少；项目中固定为主狙位以补齐五角色。",
         "agent_major_responsibilities": [
-          "通用火力 / 回合执行 / 补枪衔接",
+          "高精度关键论点 / 单点突破 / 高风险高收益调用",
           "多场景适配 / 缺口填补 / 角色切换"
         ]
       }
@@ -869,28 +871,28 @@
       "entity_id": "player_parivision_omni_nota",
       "entity_type": "player",
       "display_name": "nota",
-      "role": "support",
+      "role": "lurker",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "PariVision-Omni",
         "member_type": "player",
-        "raw_position": "Support / Anchor",
+        "raw_position": "Lurker / Anchor",
         "raw_position_parts": [
-          "Support",
+          "Lurker",
           "Anchor"
         ],
-        "primary_role": "support",
+        "primary_role": "lurker",
         "secondary_roles": [
           "anchor"
         ],
         "position_tags": [
-          "support",
+          "lurker",
           "anchor"
         ],
         "confidence": "中",
-        "notes": "公开角色信息较少，项目中设为辅助/锚点。",
+        "notes": "公开角色信息较少，项目中设为断后/锚点。",
         "agent_major_responsibilities": [
-          "补全细节 / 修复方案 / 提供上下文",
+          "反制 / 偷点 / 找对手逻辑漏洞",
           "防守型论证 / 稳定性校验"
         ]
       }
@@ -914,17 +916,17 @@
         ],
         "primary_role": "rifler",
         "secondary_roles": [
-          "star_rifler"
+          "star"
         ],
         "position_tags": [
           "rifler",
-          "star_rifler"
+          "star"
         ],
         "confidence": "中",
         "notes": "项目中设为年轻火力步枪。",
         "agent_major_responsibilities": [
           "通用火力 / 回合执行 / 补枪衔接",
-          "核心输出 / 关键回合 carry"
+          "明星前缀 / 关键回合 carry"
         ]
       }
     },
@@ -1003,17 +1005,17 @@
         ],
         "primary_role": "entry",
         "secondary_roles": [
-          "star_rifler"
+          "star"
         ],
         "position_tags": [
           "entry",
-          "star_rifler"
+          "star"
         ],
         "confidence": "高",
         "notes": "高爆发步枪、强主动性。",
         "agent_major_responsibilities": [
           "首轮出击 / 激进创意 / 打开局面",
-          "核心输出 / 关键回合 carry"
+          "明星前缀 / 关键回合 carry"
         ]
       }
     },
@@ -1085,29 +1087,29 @@
       "entity_id": "player_aulora_wicadia",
       "entity_type": "player",
       "display_name": "Wicadia",
-      "role": "rifler",
+      "role": "lurker",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "AuLoRA",
         "member_type": "player",
-        "raw_position": "Rifler / Entry-support",
+        "raw_position": "Lurker / rifler",
         "raw_position_parts": [
-          "Rifler",
-          "Entry-support"
+          "Lurker",
+          "rifler"
         ],
-        "primary_role": "rifler",
+        "primary_role": "lurker",
         "secondary_roles": [
-          "entry"
+          "rifler"
         ],
         "position_tags": [
-          "rifler",
-          "entry"
+          "lurker",
+          "rifler"
         ],
         "confidence": "中-高",
-        "notes": "年轻步枪手，项目中可设为副突破。",
+        "notes": "年轻步枪手；项目中固定为断后/侧翼位以补齐五角色。",
         "agent_major_responsibilities": [
-          "通用火力 / 回合执行 / 补枪衔接",
-          "首轮出击 / 激进创意 / 打开局面"
+          "反制 / 偷点 / 找对手逻辑漏洞",
+          "通用火力 / 回合执行 / 补枪衔接"
         ]
       }
     },
@@ -1186,17 +1188,17 @@
         ],
         "primary_role": "lurker",
         "secondary_roles": [
-          "star_rifler"
+          "star"
         ],
         "position_tags": [
           "lurker",
-          "star_rifler"
+          "star"
         ],
         "confidence": "高",
         "notes": "典型 lurker / 高资源步枪位。",
         "agent_major_responsibilities": [
           "反制 / 偷点 / 找对手逻辑漏洞",
-          "核心输出 / 关键回合 carry"
+          "明星前缀 / 关键回合 carry"
         ]
       }
     },
@@ -1207,7 +1209,7 @@
       "entity_id": "player_mouse_jl",
       "entity_type": "player",
       "display_name": "jL",
-      "role": "rifler",
+      "role": "entry",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "Mouse",
@@ -1218,9 +1220,9 @@
           "Entry-style",
           "Flex"
         ],
-        "primary_role": "rifler",
+        "primary_role": "entry",
         "secondary_roles": [
-          "entry",
+          "rifler",
           "flex"
         ],
         "position_tags": [
@@ -1290,20 +1292,20 @@
         ],
         "primary_role": "rifler",
         "secondary_roles": [
-          "support",
-          "star_rifler"
+          "supportive",
+          "star"
         ],
         "position_tags": [
           "rifler",
-          "support",
-          "star_rifler"
+          "supportive",
+          "star"
         ],
         "confidence": "中",
         "notes": "从 MOUZ NXT 提拔，具体一线角色可项目化设定。",
         "agent_major_responsibilities": [
           "通用火力 / 回合执行 / 补枪衔接",
           "补全细节 / 修复方案 / 提供上下文",
-          "核心输出 / 关键回合 carry"
+          "明星前缀 / 关键回合 carry"
         ]
       }
     },
@@ -1375,7 +1377,7 @@
       "entity_id": "player_the_mongolzk_techno",
       "entity_type": "player",
       "display_name": "Techno",
-      "role": "rifler",
+      "role": "entry",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "The MongolZK",
@@ -1385,9 +1387,9 @@
           "Rifler",
           "Entry-style"
         ],
-        "primary_role": "rifler",
+        "primary_role": "entry",
         "secondary_roles": [
-          "entry"
+          "rifler"
         ],
         "position_tags": [
           "rifler",
@@ -1421,12 +1423,12 @@
         ],
         "primary_role": "rifler",
         "secondary_roles": [
-          "support",
+          "supportive",
           "anchor"
         ],
         "position_tags": [
           "rifler",
-          "support",
+          "supportive",
           "anchor"
         ],
         "confidence": "中",
@@ -1473,28 +1475,28 @@
       "entity_id": "player_the_mongolzk_cobrazera",
       "entity_type": "player",
       "display_name": "cobrazera",
-      "role": "rifler",
+      "role": "lurker",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "The MongolZK",
         "member_type": "player",
-        "raw_position": "Rifler / Flex",
+        "raw_position": "Lurker / Flex",
         "raw_position_parts": [
-          "Rifler",
+          "Lurker",
           "Flex"
         ],
-        "primary_role": "rifler",
+        "primary_role": "lurker",
         "secondary_roles": [
           "flex"
         ],
         "position_tags": [
-          "rifler",
+          "lurker",
           "flex"
         ],
         "confidence": "中",
-        "notes": "新加入步枪位，项目中设为灵活火力。",
+        "notes": "新加入步枪位，项目中设为断后/灵活火力。",
         "agent_major_responsibilities": [
-          "通用火力 / 回合执行 / 补枪衔接",
+          "反制 / 偷点 / 找对手逻辑漏洞",
           "多场景适配 / 缺口填补 / 角色切换"
         ]
       }
@@ -1546,17 +1548,17 @@
         ],
         "primary_role": "entry",
         "secondary_roles": [
-          "star_rifler"
+          "star"
         ],
         "position_tags": [
           "entry",
-          "star_rifler"
+          "star"
         ],
         "confidence": "高",
         "notes": "超高影响力突破/明星步枪。",
         "agent_major_responsibilities": [
           "首轮出击 / 激进创意 / 打开局面",
-          "核心输出 / 关键回合 carry"
+          "明星前缀 / 关键回合 carry"
         ]
       }
     },
@@ -1661,28 +1663,28 @@
       "entity_id": "player_team_spirit_zont1x",
       "entity_type": "player",
       "display_name": "zont1x",
-      "role": "rifler",
+      "role": "lurker",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "Team SpirIT",
         "member_type": "player",
-        "raw_position": "Rifler / Anchor",
+        "raw_position": "Lurker / Anchor",
         "raw_position_parts": [
-          "Rifler",
+          "Lurker",
           "Anchor"
         ],
-        "primary_role": "rifler",
+        "primary_role": "lurker",
         "secondary_roles": [
           "anchor"
         ],
         "position_tags": [
-          "rifler",
+          "lurker",
           "anchor"
         ],
         "confidence": "中-高",
-        "notes": "步枪与防守锚点。",
+        "notes": "项目中固定为断后/锚点位。",
         "agent_major_responsibilities": [
-          "通用火力 / 回合执行 / 补枪衔接",
+          "反制 / 偷点 / 找对手逻辑漏洞",
           "防守型论证 / 稳定性校验"
         ]
       }
@@ -1734,17 +1736,17 @@
         ],
         "primary_role": "rifler",
         "secondary_roles": [
-          "star_rifler"
+          "star"
         ],
         "position_tags": [
           "rifler",
-          "star_rifler"
+          "star"
         ],
         "confidence": "中",
         "notes": "步枪火力位。",
         "agent_major_responsibilities": [
           "通用火力 / 回合执行 / 补枪衔接",
-          "核心输出 / 关键回合 carry"
+          "明星前缀 / 关键回合 carry"
         ]
       }
     },
@@ -1767,17 +1769,17 @@
         ],
         "primary_role": "entry",
         "secondary_roles": [
-          "star_rifler"
+          "star"
         ],
         "position_tags": [
           "entry",
-          "star_rifler"
+          "star"
         ],
         "confidence": "中",
         "notes": "以高火力步枪位处理。",
         "agent_major_responsibilities": [
           "首轮出击 / 激进创意 / 打开局面",
-          "核心输出 / 关键回合 carry"
+          "明星前缀 / 关键回合 carry"
         ]
       }
     },
@@ -1788,29 +1790,29 @@
       "entity_id": "player_futuretoken_krabeni",
       "entity_type": "player",
       "display_name": "Krabeni",
-      "role": "support",
+      "role": "lurker",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "FUtureToken",
         "member_type": "player",
-        "raw_position": "Support / Rifler",
+        "raw_position": "Lurker / supportive rifler",
         "raw_position_parts": [
-          "Support",
-          "Rifler"
+          "Lurker",
+          "supportive rifler"
         ],
-        "primary_role": "support",
+        "primary_role": "lurker",
         "secondary_roles": [
-          "rifler"
+          "supportive"
         ],
         "position_tags": [
-          "support",
-          "rifler"
+          "lurker",
+          "supportive"
         ],
         "confidence": "低-中",
-        "notes": "公开角色资料较少，项目中设为辅助步枪。",
+        "notes": "公开角色资料较少，项目中固定为断后/辅助步枪。",
         "agent_major_responsibilities": [
-          "补全细节 / 修复方案 / 提供上下文",
-          "通用火力 / 回合执行 / 补枪衔接"
+          "反制 / 偷点 / 找对手逻辑漏洞",
+          "补全细节 / 修复方案 / 提供上下文"
         ]
       }
     },
@@ -1833,11 +1835,11 @@
         ],
         "primary_role": "igl",
         "secondary_roles": [
-          "support"
+          "supportive"
         ],
         "position_tags": [
           "igl",
-          "support"
+          "supportive"
         ],
         "confidence": "低-中",
         "notes": "公开角色资料较少；项目中暂设为指挥/辅助位。",
@@ -1971,7 +1973,7 @@
       "entity_id": "player_astrallm_jabbi",
       "entity_type": "player",
       "display_name": "jabbi",
-      "role": "rifler",
+      "role": "lurker",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "AstraLLM",
@@ -1981,9 +1983,9 @@
           "Rifler",
           "Lurker"
         ],
-        "primary_role": "rifler",
+        "primary_role": "lurker",
         "secondary_roles": [
-          "lurker"
+          "rifler"
         ],
         "position_tags": [
           "rifler",
@@ -2037,28 +2039,28 @@
       "entity_id": "player_astrallm_ryu",
       "entity_type": "player",
       "display_name": "ryu",
-      "role": "rifler",
+      "role": "entry",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "AstraLLM",
         "member_type": "player",
-        "raw_position": "Rifler / Flex",
+        "raw_position": "Entry / Flex",
         "raw_position_parts": [
-          "Rifler",
+          "Entry",
           "Flex"
         ],
-        "primary_role": "rifler",
+        "primary_role": "entry",
         "secondary_roles": [
           "flex"
         ],
         "position_tags": [
-          "rifler",
+          "entry",
           "flex"
         ],
         "confidence": "中",
-        "notes": "新阵容步枪，项目中设为灵活位。",
+        "notes": "新阵容步枪，项目中固定为突破/灵活位。",
         "agent_major_responsibilities": [
-          "通用火力 / 回合执行 / 补枪衔接",
+          "首轮出击 / 激进创意 / 打开局面",
           "多场景适配 / 缺口填补 / 角色切换"
         ]
       }
@@ -2131,7 +2133,7 @@
       "entity_id": "player_g2pt_nertz",
       "entity_type": "player",
       "display_name": "NertZ",
-      "role": "star_rifler",
+      "role": "lurker",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "G2PT",
@@ -2141,18 +2143,18 @@
           "Star Rifler",
           "Lurker"
         ],
-        "primary_role": "star_rifler",
+        "primary_role": "lurker",
         "secondary_roles": [
-          "lurker"
+          "star"
         ],
         "position_tags": [
-          "star_rifler",
+          "star",
           "lurker"
         ],
         "confidence": "中-高",
         "notes": "高影响力步枪位。",
         "agent_major_responsibilities": [
-          "核心输出 / 关键回合 carry",
+          "明星前缀 / 关键回合 carry",
           "反制 / 偷点 / 找对手逻辑漏洞"
         ]
       }
@@ -2192,7 +2194,7 @@
       "entity_id": "player_g2pt_heavygod",
       "entity_type": "player",
       "display_name": "HeavyGod",
-      "role": "rifler",
+      "role": "entry",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "G2PT",
@@ -2202,9 +2204,9 @@
           "Rifler",
           "Entry-style"
         ],
-        "primary_role": "rifler",
+        "primary_role": "entry",
         "secondary_roles": [
-          "entry"
+          "rifler"
         ],
         "position_tags": [
           "rifler",
@@ -2238,12 +2240,12 @@
         ],
         "primary_role": "rifler",
         "secondary_roles": [
-          "support",
+          "supportive",
           "flex"
         ],
         "position_tags": [
           "rifler",
-          "support",
+          "supportive",
           "flex"
         ],
         "confidence": "中",
@@ -2323,7 +2325,7 @@
       "entity_id": "player_legacy_v1_dumau",
       "entity_type": "player",
       "display_name": "dumau",
-      "role": "star_rifler",
+      "role": "rifler",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "Legacy.v1",
@@ -2332,15 +2334,19 @@
         "raw_position_parts": [
           "Star Rifler"
         ],
-        "primary_role": "star_rifler",
-        "secondary_roles": [],
+        "primary_role": "rifler",
+        "secondary_roles": [
+          "star"
+        ],
         "position_tags": [
-          "star_rifler"
+          "star",
+          "rifler"
         ],
         "confidence": "中-高",
         "notes": "核心步枪火力。",
         "agent_major_responsibilities": [
-          "核心输出 / 关键回合 carry"
+          "明星前缀 / 关键回合 carry",
+          "通用火力 / 回合执行 / 补枪衔接"
         ]
       }
     },
@@ -2351,28 +2357,28 @@
       "entity_id": "player_legacy_v1_latto",
       "entity_type": "player",
       "display_name": "latto",
-      "role": "rifler",
+      "role": "entry",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "Legacy.v1",
         "member_type": "player",
-        "raw_position": "Rifler / Support",
+        "raw_position": "Entry / supportive rifler",
         "raw_position_parts": [
-          "Rifler",
-          "Support"
+          "Entry",
+          "supportive rifler"
         ],
-        "primary_role": "rifler",
+        "primary_role": "entry",
         "secondary_roles": [
-          "support"
+          "supportive"
         ],
         "position_tags": [
-          "rifler",
-          "support"
+          "entry",
+          "supportive"
         ],
         "confidence": "中",
-        "notes": "团队步枪。",
+        "notes": "团队步枪；项目中固定为主动突破/补位。",
         "agent_major_responsibilities": [
-          "通用火力 / 回合执行 / 补枪衔接",
+          "首轮出击 / 激进创意 / 打开局面",
           "补全细节 / 修复方案 / 提供上下文"
         ]
       }
@@ -2384,28 +2390,28 @@
       "entity_id": "player_legacy_v1_n1ssim",
       "entity_type": "player",
       "display_name": "n1ssim",
-      "role": "rifler",
+      "role": "lurker",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "Legacy.v1",
         "member_type": "player",
-        "raw_position": "Rifler / Anchor",
+        "raw_position": "Lurker / Anchor",
         "raw_position_parts": [
-          "Rifler",
+          "Lurker",
           "Anchor"
         ],
-        "primary_role": "rifler",
+        "primary_role": "lurker",
         "secondary_roles": [
           "anchor"
         ],
         "position_tags": [
-          "rifler",
+          "lurker",
           "anchor"
         ],
         "confidence": "中",
-        "notes": "步枪/锚点。",
+        "notes": "项目中固定为断后/锚点位。",
         "agent_major_responsibilities": [
-          "通用火力 / 回合执行 / 补枪衔接",
+          "反制 / 偷点 / 找对手逻辑漏洞",
           "防守型论证 / 稳定性校验"
         ]
       }
@@ -2506,29 +2512,29 @@
       "entity_id": "player_bit8_npl",
       "entity_type": "player",
       "display_name": "npl",
-      "role": "rifler",
+      "role": "entry",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "Bit8",
         "member_type": "player",
-        "raw_position": "Rifler / Playmaker",
+        "raw_position": "Entry / Playmaker",
         "raw_position_parts": [
-          "Rifler",
+          "Entry",
           "Playmaker"
         ],
-        "primary_role": "rifler",
+        "primary_role": "entry",
         "secondary_roles": [
-          "star_rifler"
+          "star"
         ],
         "position_tags": [
-          "rifler",
-          "star_rifler"
+          "entry",
+          "star"
         ],
         "confidence": "中-高",
-        "notes": "官方队伍页曾将 npl 标注为 Playmaker。",
+        "notes": "官方队伍页曾将 npl 标注为 Playmaker；项目中固定为突破位。",
         "agent_major_responsibilities": [
-          "通用火力 / 回合执行 / 补枪衔接",
-          "核心输出 / 关键回合 carry"
+          "首轮出击 / 激进创意 / 打开局面",
+          "明星前缀 / 关键回合 carry"
         ]
       }
     },
@@ -2567,31 +2573,31 @@
       "entity_id": "player_bit8_esenthial",
       "entity_type": "player",
       "display_name": "esenthial",
-      "role": "support",
+      "role": "lurker",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "Bit8",
         "member_type": "player",
-        "raw_position": "Support / Anchor / Rifler",
+        "raw_position": "Lurker / Anchor / Rifler",
         "raw_position_parts": [
-          "Support",
+          "Lurker",
           "Anchor",
           "Rifler"
         ],
-        "primary_role": "support",
+        "primary_role": "lurker",
         "secondary_roles": [
           "anchor",
           "rifler"
         ],
         "position_tags": [
-          "support",
+          "lurker",
           "anchor",
           "rifler"
         ],
         "confidence": "中",
-        "notes": "项目中设为补位/锚点步枪。",
+        "notes": "项目中固定为断后/锚点步枪。",
         "agent_major_responsibilities": [
-          "补全细节 / 修复方案 / 提供上下文",
+          "反制 / 偷点 / 找对手逻辑漏洞",
           "防守型论证 / 稳定性校验",
           "通用火力 / 回合执行 / 补枪衔接"
         ]
@@ -2672,17 +2678,17 @@
         ],
         "primary_role": "rifler",
         "secondary_roles": [
-          "star_rifler"
+          "star"
         ],
         "position_tags": [
           "rifler",
-          "star_rifler"
+          "star"
         ],
         "confidence": "中",
         "notes": "核心步枪火力。",
         "agent_major_responsibilities": [
           "通用火力 / 回合执行 / 补枪衔接",
-          "核心输出 / 关键回合 carry"
+          "明星前缀 / 关键回合 carry"
         ]
       }
     },
@@ -2726,31 +2732,31 @@
       "entity_id": "player_prompt_gaming_piriajr",
       "entity_type": "player",
       "display_name": "piriajr",
-      "role": "rifler",
+      "role": "lurker",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "Prompt Gaming",
         "member_type": "player",
-        "raw_position": "Rifler / Support / Flex",
+        "raw_position": "Lurker / Support / Flex",
         "raw_position_parts": [
-          "Rifler",
+          "Lurker",
           "Support",
           "Flex"
         ],
-        "primary_role": "rifler",
+        "primary_role": "lurker",
         "secondary_roles": [
-          "support",
+          "supportive",
           "flex"
         ],
         "position_tags": [
-          "rifler",
-          "support",
+          "lurker",
+          "supportive",
           "flex"
         ],
         "confidence": "中",
-        "notes": "项目中设为灵活步枪/补位。",
+        "notes": "项目中固定为断后/灵活补位。",
         "agent_major_responsibilities": [
-          "通用火力 / 回合执行 / 补枪衔接",
+          "反制 / 偷点 / 找对手逻辑漏洞",
           "补全细节 / 修复方案 / 提供上下文",
           "多场景适配 / 缺口填补 / 角色切换"
         ]
@@ -2791,7 +2797,7 @@
       "entity_id": "player_prompt_gaming_snow",
       "entity_type": "player",
       "display_name": "snow",
-      "role": "rifler",
+      "role": "entry",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "Prompt Gaming",
@@ -2801,9 +2807,9 @@
           "Rifler",
           "Entry-style"
         ],
-        "primary_role": "rifler",
+        "primary_role": "entry",
         "secondary_roles": [
-          "entry"
+          "rifler"
         ],
         "position_tags": [
           "rifler",
@@ -2892,17 +2898,17 @@
         ],
         "primary_role": "igl",
         "secondary_roles": [
-          "star_rifler"
+          "star"
         ],
         "position_tags": [
           "igl",
-          "star_rifler"
+          "star"
         ],
         "confidence": "中-高",
         "notes": "近期语境中 Twistzz 作为新 captain/指挥核心处理。",
         "agent_major_responsibilities": [
           "战术规划 / 回合策略 / 资源分配",
-          "核心输出 / 关键回合 carry"
+          "明星前缀 / 关键回合 carry"
         ]
       }
     },
@@ -2946,7 +2952,7 @@
       "entity_id": "player_phaseclan_frozen",
       "entity_type": "player",
       "display_name": "frozen",
-      "role": "star_rifler",
+      "role": "lurker",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "PhaseClan",
@@ -2956,18 +2962,18 @@
           "Star Rifler",
           "Lurker"
         ],
-        "primary_role": "star_rifler",
+        "primary_role": "lurker",
         "secondary_roles": [
-          "lurker"
+          "star"
         ],
         "position_tags": [
-          "star_rifler",
+          "star",
           "lurker"
         ],
         "confidence": "高",
         "notes": "核心步枪，后期残局能力强。",
         "agent_major_responsibilities": [
-          "核心输出 / 关键回合 carry",
+          "明星前缀 / 关键回合 carry",
           "反制 / 偷点 / 找对手逻辑漏洞"
         ]
       }
@@ -2979,29 +2985,29 @@
       "entity_id": "player_phaseclan_neityu",
       "entity_type": "player",
       "display_name": "Neityu",
-      "role": "stand_in",
+      "role": "entry",
       "cs_role_profile": {
         "source_path": "raw/teams/agent_major_player_roles.md",
         "source_team_name": "PhaseClan",
         "member_type": "player",
-        "raw_position": "Stand-in / Rifler",
+        "raw_position": "Stand-in / Entry rifler",
         "raw_position_parts": [
           "Stand-in",
-          "Rifler"
+          "Entry rifler"
         ],
-        "primary_role": "stand_in",
+        "primary_role": "entry",
         "secondary_roles": [
-          "rifler"
+          "stand_in"
         ],
         "position_tags": [
           "stand_in",
-          "rifler"
+          "entry"
         ],
         "confidence": "中",
-        "notes": "近期 stand-in，项目中可设为临时火力位。",
+        "notes": "近期 stand-in，项目中固定为临时突破火力位。",
         "agent_major_responsibilities": [
           "临时接入 / 快速适配 / 低上下文执行",
-          "通用火力 / 回合执行 / 补枪衔接"
+          "首轮出击 / 激进创意 / 打开局面"
         ]
       }
     },

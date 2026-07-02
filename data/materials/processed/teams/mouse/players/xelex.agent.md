@@ -11,9 +11,9 @@
 ## CS Role Profile
 - 原始位置：Rifler / Support / young firepower
 - 主位置：rifler
-- 次级位置：support, star_rifler
+- 次级位置：supportive, star
 - 可信度：中
-- Agent Major 职责：通用火力 / 回合执行 / 补枪衔接；补全细节 / 修复方案 / 提供上下文；核心输出 / 关键回合 carry
+- Agent Major 职责：通用火力 / 回合执行 / 补枪衔接；补全细节 / 修复方案 / 提供上下文；明星前缀 / 关键回合 carry
 - 备注：从 MOUZ NXT 提拔，具体一线角色可项目化设定。
 - 来源：raw/teams/agent_major_player_roles.md
 

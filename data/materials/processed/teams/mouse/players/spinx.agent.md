@@ -11,9 +11,9 @@
 ## CS Role Profile
 - 原始位置：Lurker / Star Rifler
 - 主位置：lurker
-- 次级位置：star_rifler
+- 次级位置：star
 - 可信度：高
-- Agent Major 职责：反制 / 偷点 / 找对手逻辑漏洞；核心输出 / 关键回合 carry
+- Agent Major 职责：反制 / 偷点 / 找对手逻辑漏洞；明星前缀 / 关键回合 carry
 - 备注：典型 lurker / 高资源步枪位。
 - 来源：raw/teams/agent_major_player_roles.md
 

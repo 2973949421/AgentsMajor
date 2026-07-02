@@ -1,4 +1,4 @@
-export const tournamentStatuses = ["draft", "running", "completed", "archived"] as const;
+﻿export const tournamentStatuses = ["draft", "running", "completed", "archived"] as const;
 export type TournamentStatus = (typeof tournamentStatuses)[number];
 
 export const tournamentFormats = ["single_elimination_16"] as const;
@@ -46,7 +46,24 @@ export type SimulationRunMode = (typeof simulationRunModes)[number];
 export const agentRoles = ["coach", "igl", "awper", "entry", "star_rifler", "lurker", "support", "rifler", "stand_in"] as const;
 export type AgentRole = (typeof agentRoles)[number];
 
-export const agentRoleTags = ["anchor", "awper", "closer", "coach", "entry", "flex", "igl", "lurker", "rifler", "stand_in", "star_rifler", "support", "system_architect"] as const;
+export const agentRoleTags = [
+  "anchor",
+  "awper",
+  "closer",
+  "coach",
+  "entry",
+  "flex",
+  "igl",
+  "lurker",
+  "rifler",
+  "stand_in",
+  "star",
+  "star_rifler",
+  "support",
+  "supportive",
+  "system_architect",
+  "utility"
+] as const;
 export type AgentRoleTag = (typeof agentRoleTags)[number];
 
 export const agentStates = ["ready", "active", "down", "hot", "cold", "lowEco", "clutch", "boosted", "tilted", "resting"] as const;

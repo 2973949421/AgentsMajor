@@ -55,6 +55,9 @@ describe("Hex round runner", () => {
     if (combatAuditReasons.length > 0) {
       expect(combatAuditReasons).toContain("judge_input:submitted_finance_outputs");
     }
+    expect(trace.audit.objectiveBehaviorAudit).toBeDefined();
+    expect(typeof trace.audit.objectiveBehaviorAudit.objectiveStallCount).toBe("number");
+    expect(typeof trace.audit.objectiveBehaviorAudit.lateMeaningfulActionCount).toBe("number");
     expectNoDuplicateKilledCasualties(trace.phases);
   });
 

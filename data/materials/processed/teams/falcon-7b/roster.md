@@ -2,8 +2,8 @@
 
 ## Active Five
 - karrigan | igl | IGL | 高 | player_falcon_7b_karrigan
-- NiKo | star_rifler | Star Rifler / closer | 高 | player_falcon_7b_niko
-- TeSeS | support | Support / Anchor / rifler | 中-高 | player_falcon_7b_teses
+- NiKo | rifler | Star Rifler / closer | 高 | player_falcon_7b_niko
+- TeSeS | lurker | Lurker / supportive rifler | 中-高 | player_falcon_7b_teses
 - m0NESY | awper | AWPer / Star | 高 | player_falcon_7b_m0nesy
 - kyousuke | entry | Entry / star rifler | 中 | player_falcon_7b_kyousuke
 

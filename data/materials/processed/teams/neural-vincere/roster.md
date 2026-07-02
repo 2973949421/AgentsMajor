@@ -2,10 +2,10 @@
 
 ## Active Five
 - Aleksib | igl | IGL | 高 | player_neural_vincere_aleksib
-- iM | rifler | Rifler / Entry-style rifler | 中 | player_neural_vincere_im
+- iM | entry | Rifler / Entry-style rifler | 中 | player_neural_vincere_im
 - b1t | rifler | Rifler / Anchor | 中-高 | player_neural_vincere_bit
 - w0nderful | awper | AWPer | 高 | player_neural_vincere_w0nderful
-- makazze | rifler | Rifler / young firepower | 中 | player_neural_vincere_makazze
+- makazze | lurker | Lurker / young rifler | 中 | player_neural_vincere_makazze
 
 ## Coach
 - 正式教练：B1ad3 (coach_neural_vincere_b1ad3，Coach / system architect，可信度 高)

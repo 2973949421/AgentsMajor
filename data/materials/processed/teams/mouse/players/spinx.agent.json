@@ -19,17 +19,17 @@
     ],
     "primary_role": "lurker",
     "secondary_roles": [
-      "star_rifler"
+      "star"
     ],
     "position_tags": [
       "lurker",
-      "star_rifler"
+      "star"
     ],
     "confidence": "高",
     "notes": "典型 lurker / 高资源步枪位。",
     "agent_major_responsibilities": [
       "反制 / 偷点 / 找对手逻辑漏洞",
-      "核心输出 / 关键回合 carry"
+      "明星前缀 / 关键回合 carry"
     ]
   },
   "aliases": [

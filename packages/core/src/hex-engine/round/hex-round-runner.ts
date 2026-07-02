@@ -5,6 +5,7 @@ import type { HexCell, HexMapAsset } from "@agent-major/shared";
 import type { ArtifactStore } from "../../ports.js";
 import {
   buildHexRoundEconomyContext,
+  getHexAgentEconomyContext,
   type HexRoundEconomyContext
 } from "../economy/index.js";
 import {
@@ -47,6 +48,7 @@ import {
 } from "../state/index.js";
 import {
   createEnvHexAgentCommandProvider,
+  deriveHexEconomyActionStyle,
   createEnvHexRoundStartAgentOutputProvider,
   createFixtureHexAgentCommandProvider,
   createFixtureHexRoundStartAgentOutputProvider,
@@ -54,6 +56,7 @@ import {
   runHexAgentPhaseCommandHarness,
   runHexRoundStartAgentOutputHarness,
   isUsableRoundStartAgentOutput,
+  type HexAgentPhaseClock,
   type HexValidatedAgentAction,
   type HexAgentCommandProvider,
   type HexAgentCommandProviderMode,
@@ -206,6 +209,7 @@ export interface HexRoundTrace {
     roundQualitySummaryZh: string;
     roundQualityCounts: HexRoundQualityCounts;
     c4ContinuityAudit: HexC4ContinuityAudit;
+    objectiveBehaviorAudit: HexObjectiveBehaviorAudit;
     actionQualityWarnings: HexActionQualityWarning[];
     urgencyFailures: HexActionQualityWarning[];
     actionQualityWarningCount: number;
@@ -254,6 +258,17 @@ export interface HexC4ContinuityAudit {
   c4DroppedCellId?: string | undefined;
   c4DroppedUnrecoveredAtFinal: boolean;
   c4ContinuityReasons: string[];
+}
+
+export interface HexObjectiveBehaviorAudit {
+  objectiveStallCount: number;
+  objectiveStallPhaseIds: HexPhaseId[];
+  lateMeaningfulActionCount: number;
+  c4RecoveryOpportunityCount: number;
+  c4RecoveryAttemptCount: number;
+  c4AbandonReasonCount: number;
+  economyActionStyleCounts: Record<string, number>;
+  objectiveBehaviorReasons: string[];
 }
 
 interface HexRoundQualityAudit {
@@ -498,7 +513,9 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
     });
   }
 
-  const actionQualityWarnings = buildActionQualityWarnings(phases, finalWinCondition);
+  const c4ContinuityAudit = buildC4ContinuityAudit(phases, finalWinCondition);
+  const objectiveBehaviorAudit = buildObjectiveBehaviorAudit(phases, finalWinCondition, economyContext, c4ContinuityAudit);
+  const actionQualityWarnings = buildActionQualityWarnings(phases, finalWinCondition, objectiveBehaviorAudit);
   const urgencyFailures = actionQualityWarnings.filter((warning) => warning.severity === "urgency_failure");
 
   return {
@@ -532,7 +549,8 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
       roundQualityReasons: [...roundQualityAudit.roundQualityReasons],
       roundQualitySummaryZh: roundQualityAudit.roundQualitySummaryZh,
       roundQualityCounts: { ...roundQualityAudit.counts },
-      c4ContinuityAudit: buildC4ContinuityAudit(phases, finalWinCondition),
+      c4ContinuityAudit,
+      objectiveBehaviorAudit,
       actionQualityWarnings,
       urgencyFailures,
       actionQualityWarningCount: actionQualityWarnings.length,
@@ -545,7 +563,8 @@ export async function runDust2HexRound(input: RunDust2HexRoundInput): Promise<He
 
 function buildActionQualityWarnings(
   phases: readonly HexRoundPhaseTrace[],
-  finalWinCondition: HexWinConditionResult | undefined
+  finalWinCondition: HexWinConditionResult | undefined,
+  objectiveBehaviorAudit?: HexObjectiveBehaviorAudit | undefined
 ): HexActionQualityWarning[] {
   const warnings: HexActionQualityWarning[] = [];
   for (const phase of phases) {
@@ -577,6 +596,26 @@ function buildActionQualityWarnings(
     }
   }
   const finalPhase = phases.at(-1);
+  for (const phaseId of objectiveBehaviorAudit?.objectiveStallPhaseIds ?? []) {
+    const phase = phases.find((candidate) => candidate.phaseId === phaseId);
+    if (!phase) {
+      continue;
+    }
+    warnings.push(buildActionQualityWarning({
+      phase,
+      reason: "n67_objective_stall",
+      source: "objective",
+      severity: phase.phaseIndex >= maxPhaseIndex - 1 ? "urgency_failure" : "warning"
+    }));
+  }
+  if (finalPhase && objectiveBehaviorAudit && objectiveBehaviorAudit.c4AbandonReasonCount > 0) {
+    warnings.push(buildActionQualityWarning({
+      phase: finalPhase,
+      reason: "n67_c4_dropped_unrecovered_without_attempt",
+      source: "objective",
+      severity: "urgency_failure"
+    }));
+  }
   if (finalPhase && finalWinCondition?.roundWinType === "timeout_no_plant") {
     warnings.push(buildActionQualityWarning({
       phase: finalPhase,
@@ -625,6 +664,139 @@ function dedupeActionQualityWarnings(warnings: readonly HexActionQualityWarning[
     deduped.push(warning);
   }
   return deduped;
+}
+function buildObjectiveBehaviorAudit(
+  phases: readonly HexRoundPhaseTrace[],
+  finalWinCondition: HexWinConditionResult | undefined,
+  economyContext: HexRoundEconomyContext,
+  c4Audit: HexC4ContinuityAudit
+): HexObjectiveBehaviorAudit {
+  const objectiveStallPhaseIds: HexPhaseId[] = [];
+  const reasons: string[] = [];
+  const economyActionStyleCounts: Record<string, number> = {};
+  let lateMeaningfulActionCount = 0;
+  let c4RecoveryOpportunityCount = 0;
+  let c4RecoveryAttemptCount = 0;
+
+  for (const phase of phases) {
+    for (const action of phase.commandResult.acceptedActions) {
+      const agentEconomy = getHexAgentEconomyContext({
+        economyContext,
+        agentId: action.agentId
+      });
+      const style = deriveHexEconomyActionStyle({
+        side: action.side,
+        phaseClock: buildAuditPhaseClock(phase.phaseIndex),
+        economy: agentEconomy
+      });
+      economyActionStyleCounts[style] = (economyActionStyleCounts[style] ?? 0) + 1;
+    }
+
+    if (phase.phaseIndex < 2) {
+      continue;
+    }
+
+    const meaningfulActions = phase.commandResult.acceptedActions.filter((action) => isN67MeaningfulAction(action));
+    lateMeaningfulActionCount += meaningfulActions.length;
+    if (meaningfulActions.length === 0 && hasLiveActionCapableAgent(phase.memoryBefore)) {
+      objectiveStallPhaseIds.push(phase.phaseId);
+      reasons.push(`objective_stall:${phase.phaseId}`);
+    }
+
+    const droppedCellId = phase.memoryBefore.bombState.droppedCellId;
+    if (droppedCellId && hasLiveAttackAgent(phase.memoryBefore)) {
+      c4RecoveryOpportunityCount += 1;
+      reasons.push(`c4_recovery_opportunity:${phase.phaseId}:${droppedCellId}`);
+      if (phase.commandResult.acceptedActions.some((action) => isC4RecoveryAttempt(action, droppedCellId))) {
+        c4RecoveryAttemptCount += 1;
+        reasons.push(`c4_recovery_attempt:${phase.phaseId}:${droppedCellId}`);
+      }
+    }
+  }
+
+  const c4AbandonReasonCount = c4Audit.c4DroppedUnrecoveredAtFinal && c4RecoveryOpportunityCount > 0 && c4RecoveryAttemptCount === 0 ? 1 : 0;
+  if (c4AbandonReasonCount > 0) {
+    reasons.push(`c4_abandoned_unrecovered:${c4Audit.c4DroppedCellId ?? "unknown"}`);
+  }
+  if (finalWinCondition?.roundWinType === "timeout_no_plant" && objectiveStallPhaseIds.length > 0) {
+    reasons.push("timeout_no_plant_with_objective_stall");
+  }
+
+  return {
+    objectiveStallCount: objectiveStallPhaseIds.length,
+    objectiveStallPhaseIds,
+    lateMeaningfulActionCount,
+    c4RecoveryOpportunityCount,
+    c4RecoveryAttemptCount,
+    c4AbandonReasonCount,
+    economyActionStyleCounts,
+    objectiveBehaviorReasons: uniqueStrings(reasons)
+  };
+}
+
+function buildAuditPhaseClock(phaseIndex: number): HexAgentPhaseClock {
+  const remainingPhases = Math.max(0, hexPhaseIds.length - phaseIndex - 1);
+  const urgencyLevel = phaseIndex >= maxPhaseIndex
+    ? "final"
+    : phaseIndex >= maxPhaseIndex - 1
+      ? "late"
+      : phaseIndex <= 1
+        ? "early"
+        : "mid";
+  return {
+    totalPhases: hexPhaseIds.length,
+    phaseNumber: phaseIndex + 1,
+    remainingPhases,
+    isFinalPhase: phaseIndex >= maxPhaseIndex,
+    urgencyLevel,
+    clockPressureZh: ""
+  };
+}
+
+function isN67MeaningfulAction(action: HexValidatedAgentAction): boolean {
+  if (
+    action.actionType === "execute_site"
+    || action.actionType === "plant_bomb"
+    || action.actionType === "defuse_bomb"
+    || action.actionType === "retake"
+    || action.actionType === "seek_duel"
+    || action.actionType === "peek"
+    || action.actionType === "prepare_trade"
+    || action.actionType === "map_control"
+    || action.actionType === "use_utility"
+  ) {
+    return true;
+  }
+  if (action.actionType === "save") {
+    return mentionsSaveDecision(action);
+  }
+  return mentionsMeaningfulObjective(action);
+}
+
+function mentionsMeaningfulObjective(action: HexValidatedAgentAction): boolean {
+  return /下包|埋包|安包|拆包|回防|接包|捡包|护包|补枪|换人|清点|抢枪线|保枪|撤退|plant|defuse|retake|recover|protect|trade|duel|save/i.test(
+    `${action.businessIntent} ${action.actionRationaleZh ?? ""} ${action.tacticalIntent ?? ""} ${action.riskNotes.join(" ")}`
+  );
+}
+
+function mentionsSaveDecision(action: HexValidatedAgentAction): boolean {
+  return /保枪|保存|撤退|无法|放弃|save|exit|fallback/i.test(`${action.businessIntent} ${action.actionRationaleZh ?? ""} ${action.riskNotes.join(" ")}`);
+}
+
+function isC4RecoveryAttempt(action: HexValidatedAgentAction, droppedCellId: string): boolean {
+  return action.side === "attack"
+    && (
+      action.targetCellId === droppedCellId
+      || /接包|捡包|护包|恢复|找包|recover|protect.*c4|c4/i.test(`${action.businessIntent} ${action.actionRationaleZh ?? ""} ${action.riskNotes.join(" ")}`)
+    );
+}
+
+function hasLiveActionCapableAgent(memory: HexRoundMemory): boolean {
+  return memory.agents.some((agent) => agent.lifeStatus !== "dead" && agent.apRemaining > 0);
+}
+
+function hasLiveAttackAgent(memory: HexRoundMemory): boolean {
+  return memory.agents.some((agent) => agent.side === "attack" && agent.lifeStatus !== "dead" && agent.apRemaining > 0);
 }
 function buildHexRoundQualityAudit(
   roundStartAgentOutputs: readonly HexRoundStartAgentOutput[],
@@ -1315,15 +1487,15 @@ function withRoleRouteAssignments(plan: Omit<HexRoundTacticalPlan, "roleRouteAss
     ...plan,
     roleRouteAssignments: [
       roleRoute("attack", "entry", "take first contact on the primary lane", attackPrimaryRegions, attackPrimaryPoints, plan.attackAvoidRegions),
-      roleRoute("attack", "star_rifler", "trade the entry and convert pressure toward the bombsite", attackSecondaryRegions, attackSecondaryPoints, plan.attackAvoidRegions),
+      roleRoute("attack", "rifler", "trade the entry and convert pressure toward the bombsite", attackSecondaryRegions, attackSecondaryPoints, plan.attackAvoidRegions),
       roleRoute("attack", "awper", "hold the long angle or mid lane that supports the pack", preferAngleRegions(plan.attackFocusRegions), preferAnglePoints(plan.attackFocusPoints), plan.attackAvoidRegions),
       roleRoute("attack", "igl", "keep the pack route coherent and call the late commitment", plan.attackFocusRegions, plan.attackFocusPoints, plan.attackAvoidRegions),
-      roleRoute("attack", "support", "escort C4 and prepare trade utility on the selected site path", preferSiteRegions(plan.attackFocusRegions), preferSitePoints(plan.attackFocusPoints), plan.attackAvoidRegions),
+      roleRoute("attack", "lurker", "hold the late flank, recover loose space, and preserve C4 timing", preferSiteRegions(plan.attackFocusRegions), preferSitePoints(plan.attackFocusPoints), plan.attackAvoidRegions),
       roleRoute("defense", "entry", "contest safe early information without abandoning the anchor", defensePrimaryRegions, defensePrimaryPoints, plan.defenseAvoidRegions),
-      roleRoute("defense", "star_rifler", "anchor the highest pressure lane and prepare a trade", defenseSecondaryRegions, defenseSecondaryPoints, plan.defenseAvoidRegions),
+      roleRoute("defense", "rifler", "anchor the highest pressure lane and prepare a trade", defenseSecondaryRegions, defenseSecondaryPoints, plan.defenseAvoidRegions),
       roleRoute("defense", "awper", "hold the longest available angle and delay the hit", preferAngleRegions(plan.defenseFocusRegions), preferAnglePoints(plan.defenseFocusPoints), plan.defenseAvoidRegions),
       roleRoute("defense", "igl", "keep rotate discipline and avoid overstacking the previous route", plan.defenseFocusRegions, plan.defenseFocusPoints, plan.defenseAvoidRegions),
-      roleRoute("defense", "support", "support the anchor and preserve retake spacing", preferSiteRegions(plan.defenseFocusRegions), preferSitePoints(plan.defenseFocusPoints), plan.defenseAvoidRegions)
+      roleRoute("defense", "lurker", "hold late rotate space, watch flank timing, and preserve retake spacing", preferSiteRegions(plan.defenseFocusRegions), preferSitePoints(plan.defenseFocusPoints), plan.defenseAvoidRegions)
     ]
   };
 }

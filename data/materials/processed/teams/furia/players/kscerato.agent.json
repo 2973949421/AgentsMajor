@@ -6,7 +6,7 @@
   "real_name": null,
   "in_game_id": "KSCERATO",
   "display_name": "KSCERATO",
-  "role": "star_rifler",
+  "role": "lurker",
   "status": "active",
   "cs_role_profile": {
     "source_path": "raw/teams/agent_major_player_roles.md",
@@ -17,18 +17,18 @@
       "Star Rifler",
       "Lurker"
     ],
-    "primary_role": "star_rifler",
+    "primary_role": "lurker",
     "secondary_roles": [
-      "lurker"
+      "star"
     ],
     "position_tags": [
-      "star_rifler",
+      "star",
       "lurker"
     ],
     "confidence": "高",
     "notes": "核心步枪与残局强点。",
     "agent_major_responsibilities": [
-      "核心输出 / 关键回合 carry",
+      "明星前缀 / 关键回合 carry",
       "反制 / 偷点 / 找对手逻辑漏洞"
     ]
   },
@@ -41,13 +41,13 @@
     "稳点"
   ],
   "persona_tags": [
-    "headline-core",
-    "win-condition",
+    "timing-hunter",
+    "map-reader",
     "spine-player"
   ],
   "playstyle_tags": [
-    "impact-rifle",
-    "resource-heavy",
+    "late-map-control",
+    "timing-punish",
     "anchor-frag",
     "multi-kill"
   ],
@@ -61,15 +61,15 @@
     "brazil-heat"
   ],
   "cross_circle_tags": [
-    "band_to_superteam"
+    "lifetime_to_rivalry"
   ],
   "future_agent_profile": {
     "persona_summary": "巴西线最稳的那根脊梁，只要这支队真能走远，他必然是报道里的核心名字之一。",
     "voice_mode": "cn-live-room-competitive",
     "narrative_axes": [
       "brazil-heat",
-      "headline-core",
-      "win-condition",
+      "timing-hunter",
+      "map-reader",
       "spine-player"
     ],
     "reserved_memory_slots": [
@@ -83,8 +83,8 @@
     "binding_version": "2026-05-03-llm-binding-v1",
     "binding_scope": "asset_preallocation",
     "runtime_enabled": false,
-    "role_template_id": "llm_role_template_star_rifler",
-    "preferred_driver_model_id": "driver_kimi_k2_5",
+    "role_template_id": "llm_role_template_lurker",
+    "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
     "fallback_driver_model_ids": [
       "driver_qwen_3_6_plus"
     ],
@@ -102,6 +102,17 @@
       },
       {
         "task_id": "news_story_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "tactical_analysis_note",
         "model_profile_id": "llm_profile_strong_reasoning",
         "driver_model_id": "driver_qwen_3_max_2026_01_23",
         "fallback_driver_model_ids": [
@@ -135,10 +146,12 @@
       }
     ],
     "prompt_bias_tags": [
-      "headline-core",
-      "win-condition",
-      "impact-rifle",
-      "resource-heavy",
+      "timing-hunter",
+      "map-reader",
+      "late-round",
+      "flank-punish",
+      "late-map-control",
+      "timing-punish",
       "anchor-frag",
       "multi-kill",
       "spine-player"
@@ -153,7 +166,7 @@
       "llm_override_spotlight_player_furia_kscerato"
     ],
     "ops_notes": [
-      "Use star heat and resource-pressure framing."
+      "Use timing, information gap, and late-round payoff framing."
     ]
   },
   "ops_hooks": {

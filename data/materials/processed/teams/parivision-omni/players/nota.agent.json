@@ -6,29 +6,29 @@
   "real_name": null,
   "in_game_id": "nota",
   "display_name": "nota",
-  "role": "support",
+  "role": "lurker",
   "status": "active",
   "cs_role_profile": {
     "source_path": "raw/teams/agent_major_player_roles.md",
     "source_team_name": "PariVision-Omni",
     "member_type": "player",
-    "raw_position": "Support / Anchor",
+    "raw_position": "Lurker / Anchor",
     "raw_position_parts": [
-      "Support",
+      "Lurker",
       "Anchor"
     ],
-    "primary_role": "support",
+    "primary_role": "lurker",
     "secondary_roles": [
       "anchor"
     ],
     "position_tags": [
-      "support",
+      "lurker",
       "anchor"
     ],
     "confidence": "中",
-    "notes": "公开角色信息较少，项目中设为辅助/锚点。",
+    "notes": "公开角色信息较少，项目中设为断后/锚点。",
     "agent_major_responsibilities": [
-      "补全细节 / 修复方案 / 提供上下文",
+      "反制 / 偷点 / 找对手逻辑漏洞",
       "防守型论证 / 稳定性校验"
     ]
   },
@@ -39,18 +39,18 @@
     "暗线收尾"
   ],
   "persona_tags": [
-    "glue-piece",
-    "utility-worker",
+    "timing-hunter",
+    "map-reader",
     "shadow-route"
   ],
   "playstyle_tags": [
-    "trade-layer",
-    "utility-setup",
+    "late-map-control",
+    "timing-punish",
     "late-wrap",
     "route-punish"
   ],
   "caster_focus_tags": [
-    "machine_map_point_pressure"
+    "machine_star_carry"
   ],
   "barrage_focus_tags": [
     "player_targeting"
@@ -60,7 +60,7 @@
     "research-chaos"
   ],
   "cross_circle_tags": [
-    "customer_service_to_cleanup"
+    "lifetime_to_rivalry"
   ],
   "future_agent_profile": {
     "persona_summary": "常常在最不吵的时刻补上最关键的一刀。",
@@ -68,8 +68,8 @@
     "narrative_axes": [
       "upset-watch",
       "research-chaos",
-      "glue-piece",
-      "utility-worker",
+      "timing-hunter",
+      "map-reader",
       "shadow-route"
     ],
     "reserved_memory_slots": [
@@ -83,14 +83,36 @@
     "binding_version": "2026-05-03-llm-binding-v1",
     "binding_scope": "asset_preallocation",
     "runtime_enabled": false,
-    "role_template_id": "llm_role_template_support",
-    "preferred_driver_model_id": "driver_qwen_3_6_plus",
+    "role_template_id": "llm_role_template_lurker",
+    "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
     "fallback_driver_model_ids": [
-      "driver_qwen_3_5_plus"
+      "driver_qwen_3_6_plus"
     ],
     "task_bindings": [
       {
         "task_id": "profile_card_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "news_story_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "tactical_analysis_note",
         "model_profile_id": "llm_profile_strong_reasoning",
         "driver_model_id": "driver_qwen_3_max_2026_01_23",
         "fallback_driver_model_ids": [
@@ -110,25 +132,15 @@
         "enabled": false,
         "temperature": 0.6,
         "max_output_tokens": 500
-      },
-      {
-        "task_id": "barrage_style_line",
-        "model_profile_id": "llm_profile_barrage_chaos",
-        "driver_model_id": "driver_minimax_m2_5",
-        "fallback_driver_model_ids": [
-          "driver_qwen_3_5_plus"
-        ],
-        "enabled": false,
-        "temperature": 0.7,
-        "max_output_tokens": 450
       }
     ],
     "prompt_bias_tags": [
-      "glue-piece",
-      "utility-worker",
-      "trade-layer",
-      "setup-support",
-      "utility-setup",
+      "timing-hunter",
+      "map-reader",
+      "late-round",
+      "flank-punish",
+      "late-map-control",
+      "timing-punish",
       "late-wrap",
       "route-punish",
       "shadow-route"
@@ -141,7 +153,7 @@
     ],
     "override_ids": [],
     "ops_notes": [
-      "Keep framing around utility, spacing, and invisible value."
+      "Use timing, information gap, and late-round payoff framing."
     ]
   },
   "ops_hooks": {
@@ -153,7 +165,7 @@
     ],
     "card_priority": 34,
     "broadcast_entry_points": [
-      "machine_map_point_pressure"
+      "machine_star_carry"
     ]
   },
   "canon_notes": []

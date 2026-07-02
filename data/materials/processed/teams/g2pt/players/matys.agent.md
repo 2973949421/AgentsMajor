@@ -11,7 +11,7 @@
 ## CS Role Profile
 - 原始位置：Rifler / Support / Flex
 - 主位置：rifler
-- 次级位置：support, flex
+- 次级位置：supportive, flex
 - 可信度：中
 - Agent Major 职责：通用火力 / 回合执行 / 补枪衔接；补全细节 / 修复方案 / 提供上下文；多场景适配 / 缺口填补 / 角色切换
 - 备注：步枪/灵活位。

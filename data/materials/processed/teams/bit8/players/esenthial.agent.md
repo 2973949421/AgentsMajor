@@ -3,18 +3,18 @@
 ## Snapshot
 - 队伍：Bit8
 - 类型：player
-- 角色：support
+- 角色：lurker
 - 当前状态：active
 - 公开 ID：esenthial
 - 法定姓名：待回填
 
 ## CS Role Profile
-- 原始位置：Support / Anchor / Rifler
-- 主位置：support
+- 原始位置：Lurker / Anchor / Rifler
+- 主位置：lurker
 - 次级位置：anchor, rifler
 - 可信度：中
-- Agent Major 职责：补全细节 / 修复方案 / 提供上下文；防守型论证 / 稳定性校验；通用火力 / 回合执行 / 补枪衔接
-- 备注：项目中设为补位/锚点步枪。
+- Agent Major 职责：反制 / 偷点 / 找对手逻辑漏洞；防守型论证 / 稳定性校验；通用火力 / 回合执行 / 补枪衔接
+- 备注：项目中固定为断后/锚点步枪。
 - 来源：raw/teams/agent_major_player_roles.md
 
 ## Alias
@@ -27,20 +27,20 @@
 - 补位位
 
 ## Playstyle Tags
-- trade-layer
-- utility-setup
+- late-map-control
+- timing-punish
 - utility
 - anchor
 
 ## Broadcast / Barrage / News
-- 解说标签：machine_map_point_pressure
+- 解说标签：machine_star_carry
 - 弹幕标签：player_targeting
 - 新闻标签：upset-watch
-- 跨圈标签：customer_service_to_cleanup
+- 跨圈标签：lifetime_to_rivalry
 
 ## Future Interfaces
-- agent 人格接口：upset-watch, glue-piece, utility-worker, support-glue
-- 模型绑定接口：llm_role_template_support / driver_qwen_3_6_plus
+- agent 人格接口：upset-watch, timing-hunter, map-reader, support-glue
+- 模型绑定接口：llm_role_template_lurker / driver_qwen_3_max_2026_01_23
 - 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：补位位, upset-watch
 

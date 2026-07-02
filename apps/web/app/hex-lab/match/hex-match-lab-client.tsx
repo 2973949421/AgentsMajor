@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
@@ -12,6 +12,7 @@ import type {
 
 import { HexMatchAuditDrawer } from "./hex-match-audit-drawer";
 import { HexMatchMapViewer } from "./hex-match-map-viewer";
+import { buildHexMatchPhasePlaybackFrame, getHexMatchPhaseTickCount } from "./hex-match-phase-ticks";
 import { HexMatchPlayerPanel } from "./hex-match-player-panel";
 import { HexMatchTimeline } from "./hex-match-timeline";
 import styles from "./hex-match-lab.module.css";
@@ -43,6 +44,7 @@ export function HexMatchLabClient() {
   const [liveRun, setLiveRun] = useState<HexMatchLabLiveRunStatus | undefined>();
   const [elapsedMs, setElapsedMs] = useState(0);
   const [playbackRunning, setPlaybackRunning] = useState(false);
+  const [selectedPhaseTickIndex, setSelectedPhaseTickIndex] = useState(0);
   const [error, setError] = useState<{ message: string; details?: string } | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState<AuditTab>("business");
@@ -61,6 +63,14 @@ export function HexMatchLabClient() {
     ?? fallbackPhaseWithPlayers
     ?? selectedPhaseCandidate
     ?? phases[0];
+  const selectedPhasePlaybackFrame = useMemo(
+    () => buildHexMatchPhasePlaybackFrame(selectedPhase, selectedPhaseTickIndex),
+    [selectedPhase, selectedPhaseTickIndex]
+  );
+  const selectedPlaybackPhase = useMemo(
+    () => selectedPhase ? { ...selectedPhase, players: selectedPhasePlaybackFrame.players } : selectedPhase,
+    [selectedPhase, selectedPhasePlaybackFrame.players]
+  );
   const selectedRound = useMemo(
     () => rounds.find((round) => round.hexTraceArtifactId === selectedRoundArtifactId) ?? rounds.at(-1),
     [rounds, selectedRoundArtifactId]
@@ -74,8 +84,10 @@ export function HexMatchLabClient() {
   const completedMap = Boolean(progress?.completedMap);
   const canRunRound = Boolean(progress?.canRunRound);
   const roundProgressPct = rounds.length > 0 && selectedRoundIndex >= 0 ? ((selectedRoundIndex + 1) / rounds.length) * 100 : 0;
-  const phaseProgressPct = phases.length > 0 && selectedPhasePosition >= 0 ? ((selectedPhasePosition + 1) / phases.length) * 100 : 0;
-  const players = selectedPhase?.players ?? [];
+  const phaseProgressPct = phases.length > 0 && selectedPhasePosition >= 0
+    ? ((selectedPhasePosition + selectedPhasePlaybackFrame.tickProgressPct / 100) / phases.length) * 100
+    : 0;
+  const players = selectedPlaybackPhase?.players ?? [];
   const score = progress?.score;
 
   useEffect(() => {
@@ -92,11 +104,23 @@ export function HexMatchLabClient() {
   }, [busyLabel]);
 
   useEffect(() => {
+    setSelectedPhaseTickIndex(0);
+  }, [selectedRoundArtifactId, selectedPhaseIndex]);
+
+  useEffect(() => {
     if (!playbackRunning) return;
     const timer = window.setTimeout(() => {
+      const tickCount = getHexMatchPhaseTickCount(selectedPhase);
+      if (selectedPhaseTickIndex < tickCount - 1) {
+        setSelectedPhaseTickIndex((value) => Math.min(value + 1, tickCount - 1));
+        return;
+      }
       if (selectedPhasePosition >= 0 && selectedPhasePosition < phases.length - 1) {
         const nextPhase = phases[selectedPhasePosition + 1];
-        if (nextPhase) setSelectedPhaseIndex(nextPhase.phaseIndex);
+        if (nextPhase) {
+          setSelectedPhaseTickIndex(0);
+          setSelectedPhaseIndex(nextPhase.phaseIndex);
+        }
         return;
       }
       if (selectedRoundIndex >= 0 && selectedRoundIndex < rounds.length - 1) {
@@ -105,10 +129,10 @@ export function HexMatchLabClient() {
         return;
       }
       setPlaybackRunning(false);
-    }, 1200);
+    }, 360);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playbackRunning, selectedPhaseIndex, selectedRoundArtifactId, rounds.length, phases.length]);
+  }, [playbackRunning, selectedPhaseIndex, selectedPhaseTickIndex, selectedRoundArtifactId, rounds.length, phases.length]);
 
   useEffect(() => {
     if (!consoleDrag) return;
@@ -388,7 +412,8 @@ export function HexMatchLabClient() {
 
           <HexMatchMapViewer
             map={mapAsset}
-            phase={selectedPhase}
+            phase={selectedPlaybackPhase}
+            playbackFrame={selectedPhasePlaybackFrame}
             level={selectedLevel}
             selectedAgentId={selectedAgentId}
             showRegions={showRegions}
@@ -406,6 +431,9 @@ export function HexMatchLabClient() {
             selectedPhaseIndex={selectedPhaseIndex}
             roundProgressPct={roundProgressPct}
             phaseProgressPct={phaseProgressPct}
+            phaseTickLabel={selectedPhasePlaybackFrame.tickLabel}
+            phaseTickProgressPct={selectedPhasePlaybackFrame.tickProgressPct}
+            phaseTickLegacyFallback={selectedPhasePlaybackFrame.legacyFallback}
             playbackRunning={playbackRunning}
             onSelectRound={selectRound}
             onSelectPhase={setSelectedPhaseIndex}
@@ -413,6 +441,8 @@ export function HexMatchLabClient() {
             onNextRound={() => { const next = rounds[selectedRoundIndex + 1]; if (next) void selectRound(next); }}
             onPreviousPhase={() => { const previous = phases[selectedPhasePosition - 1]; if (previous) setSelectedPhaseIndex(previous.phaseIndex); }}
             onNextPhase={() => { const next = phases[selectedPhasePosition + 1]; if (next) setSelectedPhaseIndex(next.phaseIndex); }}
+            onPreviousTick={() => setSelectedPhaseTickIndex((value) => Math.max(0, value - 1))}
+            onNextTick={() => setSelectedPhaseTickIndex((value) => Math.min(selectedPhasePlaybackFrame.tickCount - 1, value + 1))}
             onTogglePlayback={() => setPlaybackRunning((value) => !value)}
           />
         </div>

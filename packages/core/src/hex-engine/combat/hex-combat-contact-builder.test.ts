@@ -244,4 +244,78 @@ describe("Hex combat contact builder", () => {
     expect(contact?.duelPairs[0]?.primaryAgentId).not.toBe("t_support");
     expect(contact?.duelPairs[0]?.contributorAgentIds).toContain("t_support");
   });
+  it("groups two attackers against one defender into one many_v_one contact", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [entryCell, tradeCell, defenseCell] = findCellsInRegion(asset, "a_site", 3);
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_entry", side: "attack", cellId: entryCell!.cellId },
+      { agentId: "t_trade", side: "attack", cellId: tradeCell!.cellId },
+      { agentId: "ct_anchor", side: "defense", cellId: defenseCell!.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({ memory, agentId: "t_entry", actionType: "execute_site", targetCellId: defenseCell!.cellId }),
+      buildCombatAction({ memory, agentId: "t_trade", actionType: "peek", targetCellId: defenseCell!.cellId }),
+      buildCombatAction({ memory, agentId: "ct_anchor", actionType: "peek" })
+    ];
+
+    const contacts = buildHexCombatContacts({ asset, memory, actions });
+    const contact = contacts.find((candidate) => candidate.attackAgentIds.includes("t_entry") && candidate.attackAgentIds.includes("t_trade") && candidate.defenseAgentIds.includes("ct_anchor"));
+
+    expect(contact).toBeDefined();
+    expect(contact?.combatShape).toBe("many_v_one");
+    expect(contact?.duelPairs.length).toBeGreaterThanOrEqual(2);
+    expect(contact?.primaryDuelPairId).toBe(contact?.duelPairs[0]?.duelPairId);
+    expect(contact?.secondaryDuelPairIds?.length).toBeGreaterThanOrEqual(1);
+    expect(contact?.surroundedSide).toBe("defense");
+    expect(contact?.pressureKeys.some((key) => key.startsWith("objective_exposure:") || key.startsWith("cell_contact:") || key.startsWith("fireLane:"))).toBe(true);
+  });
+
+  it("groups one attacker against two defenders into one one_v_many contact", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [attackCell, firstDefenseCell, secondDefenseCell] = findCellsInRegion(asset, "a_site", 3);
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_entry", side: "attack", cellId: attackCell!.cellId },
+      { agentId: "ct_anchor", side: "defense", cellId: firstDefenseCell!.cellId },
+      { agentId: "ct_rotator", side: "defense", cellId: secondDefenseCell!.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({ memory, agentId: "t_entry", actionType: "execute_site", targetCellId: firstDefenseCell!.cellId }),
+      buildCombatAction({ memory, agentId: "ct_anchor", actionType: "peek", targetCellId: attackCell!.cellId }),
+      buildCombatAction({ memory, agentId: "ct_rotator", actionType: "peek", targetCellId: attackCell!.cellId })
+    ];
+
+    const contacts = buildHexCombatContacts({ asset, memory, actions });
+    const contact = contacts.find((candidate) => candidate.attackAgentIds.includes("t_entry") && candidate.defenseAgentIds.includes("ct_anchor") && candidate.defenseAgentIds.includes("ct_rotator"));
+
+    expect(contact).toBeDefined();
+    expect(contact?.combatShape).toBe("one_v_many");
+    expect(contact?.duelPairs.length).toBeGreaterThanOrEqual(2);
+    expect(contact?.surroundedSide).toBe("attack");
+  });
+
+  it("groups two attackers and two defenders into one many_v_many contact", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [attackCell, tradeCell, firstDefenseCell, secondDefenseCell] = findCellsInRegion(asset, "a_site", 4);
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_entry", side: "attack", cellId: attackCell!.cellId },
+      { agentId: "t_trade", side: "attack", cellId: tradeCell!.cellId },
+      { agentId: "ct_anchor", side: "defense", cellId: firstDefenseCell!.cellId },
+      { agentId: "ct_rotator", side: "defense", cellId: secondDefenseCell!.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({ memory, agentId: "t_entry", actionType: "execute_site", targetCellId: firstDefenseCell!.cellId }),
+      buildCombatAction({ memory, agentId: "t_trade", actionType: "peek", targetCellId: firstDefenseCell!.cellId }),
+      buildCombatAction({ memory, agentId: "ct_anchor", actionType: "peek", targetCellId: attackCell!.cellId }),
+      buildCombatAction({ memory, agentId: "ct_rotator", actionType: "peek", targetCellId: attackCell!.cellId })
+    ];
+
+    const contacts = buildHexCombatContacts({ asset, memory, actions });
+    const contact = contacts.find((candidate) => candidate.attackAgentIds.includes("t_entry") && candidate.attackAgentIds.includes("t_trade") && candidate.defenseAgentIds.includes("ct_anchor") && candidate.defenseAgentIds.includes("ct_rotator"));
+
+    expect(contact).toBeDefined();
+    expect(contact?.combatShape).toBe("many_v_many");
+    expect(contact?.duelPairs.length).toBeGreaterThanOrEqual(2);
+    expect(contact?.secondaryDuelPairIds?.length).toBeGreaterThanOrEqual(1);
+    expect(contact?.surroundedSide).toBeUndefined();
+  });
 });

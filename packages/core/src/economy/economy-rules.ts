@@ -6,6 +6,7 @@ import type {
   LoadoutPackage,
   RoundReport
 } from "@agent-major/shared";
+import { normalizeCsRoleProfile } from "@agent-major/shared";
 
 import { mr6MapRules } from "../match/map-rules.js";
 
@@ -368,18 +369,19 @@ export function sideForTeam(teamId: string, teamAId: string, activeSide: "teamA"
 }
 
 export function sortAgentsForRound(agents: Agent[]): Agent[] {
-  const rank = new Map<string, number>([
-    ["entry", 0],
-    ["star_rifler", 1],
-    ["awper", 2],
-    ["igl", 3],
-    ["rifler", 4],
-    ["lurker", 5],
-    ["support", 6],
-    ["stand_in", 7],
-    ["coach", 8]
-  ]);
-  return [...agents].sort((left, right) => (rank.get(left.role) ?? 99) - (rank.get(right.role) ?? 99) || left.id.localeCompare(right.id));
+  return [...agents].sort((left, right) => rankAgentForRound(left) - rankAgentForRound(right) || left.id.localeCompare(right.id));
+}
+
+function rankAgentForRound(agent: Agent): number {
+  const profile = normalizeCsRoleProfile(agent.role, agent.secondaryRoles ?? []);
+  if (profile.role === "entry") return 0;
+  if (profile.isStar) return 1;
+  if (profile.role === "awper") return 2;
+  if (profile.role === "igl") return 3;
+  if (profile.role === "rifler") return 4;
+  if (profile.role === "lurker") return 5;
+  if (profile.role === "coach") return 8;
+  return 99;
 }
 
 export function isPostPistolFollowupRound(roundNumber: number): boolean {
@@ -404,20 +406,22 @@ export function roundsRemainingInCurrentHalf(roundNumber: number): number {
 }
 
 export function suggestedPistolRoundSpend(role: Agent["role"], side: "attack" | "defense"): number {
-  if (role === "entry" || role === "star_rifler") {
+  const profile = normalizeCsRoleProfile(role);
+  if (profile.role === "entry" || profile.isStar) {
     return side === "attack" ? 800 : 750;
   }
-  if (role === "igl" || role === "support") {
+  if (profile.role === "igl") {
     return 700;
   }
-  if (role === "awper") {
+  if (profile.role === "awper") {
     return 600;
   }
   return 650;
 }
 
 export function shouldPrioritizePistolArmorForce(role: Agent["role"]): boolean {
-  return role === "entry" || role === "star_rifler" || role === "igl";
+  const profile = normalizeCsRoleProfile(role);
+  return profile.role === "entry" || profile.isStar || profile.role === "igl";
 }
 
 export function timestamp(): string {

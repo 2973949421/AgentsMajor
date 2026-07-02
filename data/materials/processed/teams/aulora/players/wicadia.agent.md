@@ -3,18 +3,18 @@
 ## Snapshot
 - 队伍：AuLoRA
 - 类型：player
-- 角色：rifler
+- 角色：lurker
 - 当前状态：active
 - 公开 ID：Wicadia
 - 法定姓名：待回填
 
 ## CS Role Profile
-- 原始位置：Rifler / Entry-support
-- 主位置：rifler
-- 次级位置：entry
+- 原始位置：Lurker / rifler
+- 主位置：lurker
+- 次级位置：rifler
 - 可信度：中-高
-- Agent Major 职责：通用火力 / 回合执行 / 补枪衔接；首轮出击 / 激进创意 / 打开局面
-- 备注：年轻步枪手，项目中可设为副突破。
+- Agent Major 职责：反制 / 偷点 / 找对手逻辑漏洞；通用火力 / 回合执行 / 补枪衔接
+- 备注：年轻步枪手；项目中固定为断后/侧翼位以补齐五角色。
 - 来源：raw/teams/agent_major_player_roles.md
 
 ## Alias
@@ -27,20 +27,20 @@
 - 前线点火
 
 ## Playstyle Tags
-- rifle-trade
-- site-pressure
+- late-map-control
+- timing-punish
 - entry-poke
 - double-swing
 
 ## Broadcast / Barrage / News
-- 解说标签：machine_map_point_pressure
+- 解说标签：machine_star_carry
 - 弹幕标签：player_targeting
 - 新闻标签：upset-watch
-- 跨圈标签：customer_service_to_cleanup
+- 跨圈标签：lifetime_to_rivalry
 
 ## Future Interfaces
-- agent 人格接口：upset-watch, rifle-worker, round-connector, young-trigger
-- 模型绑定接口：llm_role_template_rifler / driver_qwen_3_6_plus
+- agent 人格接口：upset-watch, timing-hunter, map-reader, young-trigger
+- 模型绑定接口：llm_role_template_lurker / driver_qwen_3_max_2026_01_23
 - 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：前线点火, upset-watch
 

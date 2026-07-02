@@ -6,30 +6,30 @@
   "real_name": null,
   "in_game_id": "makazze",
   "display_name": "makazze",
-  "role": "rifler",
+  "role": "lurker",
   "status": "active",
   "cs_role_profile": {
     "source_path": "raw/teams/agent_major_player_roles.md",
     "source_team_name": "Neural Vincere",
     "member_type": "player",
-    "raw_position": "Rifler / young firepower",
+    "raw_position": "Lurker / young rifler",
     "raw_position_parts": [
-      "Rifler",
-      "young firepower"
+      "Lurker",
+      "young rifler"
     ],
-    "primary_role": "rifler",
+    "primary_role": "lurker",
     "secondary_roles": [
-      "star_rifler"
+      "rifler"
     ],
     "position_tags": [
-      "rifler",
-      "star_rifler"
+      "lurker",
+      "rifler"
     ],
     "confidence": "中",
-    "notes": "年轻步枪火力位，具体一线角色仍需随项目口径固定。",
+    "notes": "年轻步枪火力位；项目中固定为断后/侧翼位以补齐五角色。",
     "agent_major_responsibilities": [
-      "通用火力 / 回合执行 / 补枪衔接",
-      "核心输出 / 关键回合 carry"
+      "反制 / 偷点 / 找对手逻辑漏洞",
+      "通用火力 / 回合执行 / 补枪衔接"
     ]
   },
   "aliases": [
@@ -40,18 +40,18 @@
     "新窗口"
   ],
   "persona_tags": [
-    "rifle-worker",
-    "round-connector",
+    "timing-hunter",
+    "map-reader",
     "rookie-spotlight"
   ],
   "playstyle_tags": [
-    "rifle-trade",
-    "site-pressure",
+    "late-map-control",
+    "timing-punish",
     "confidence-peek",
     "swingy-impact"
   ],
   "caster_focus_tags": [
-    "machine_map_point_pressure"
+    "machine_star_carry"
   ],
   "barrage_focus_tags": [
     "player_targeting"
@@ -60,15 +60,15 @@
     "upset-watch"
   ],
   "cross_circle_tags": [
-    "customer_service_to_cleanup"
+    "lifetime_to_rivalry"
   ],
   "future_agent_profile": {
     "persona_summary": "项目世界观里的新血窗口。只要关键图爆一场，就很适合被写成豪门下一块新砖。",
     "voice_mode": "cn-live-room-competitive",
     "narrative_axes": [
       "upset-watch",
-      "rifle-worker",
-      "round-connector",
+      "timing-hunter",
+      "map-reader",
       "rookie-spotlight"
     ],
     "reserved_memory_slots": [
@@ -82,14 +82,36 @@
     "binding_version": "2026-05-03-llm-binding-v1",
     "binding_scope": "asset_preallocation",
     "runtime_enabled": false,
-    "role_template_id": "llm_role_template_rifler",
-    "preferred_driver_model_id": "driver_qwen_3_6_plus",
+    "role_template_id": "llm_role_template_lurker",
+    "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
     "fallback_driver_model_ids": [
-      "driver_qwen_3_5_plus"
+      "driver_qwen_3_6_plus"
     ],
     "task_bindings": [
       {
         "task_id": "profile_card_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "news_story_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "tactical_analysis_note",
         "model_profile_id": "llm_profile_strong_reasoning",
         "driver_model_id": "driver_qwen_3_max_2026_01_23",
         "fallback_driver_model_ids": [
@@ -109,25 +131,15 @@
         "enabled": false,
         "temperature": 0.6,
         "max_output_tokens": 500
-      },
-      {
-        "task_id": "barrage_style_line",
-        "model_profile_id": "llm_profile_barrage_chaos",
-        "driver_model_id": "driver_minimax_m2_5",
-        "fallback_driver_model_ids": [
-          "driver_qwen_3_5_plus"
-        ],
-        "enabled": false,
-        "temperature": 0.7,
-        "max_output_tokens": 450
       }
     ],
     "prompt_bias_tags": [
-      "rifle-worker",
-      "round-connector",
-      "site-pressure",
-      "trade-layer",
-      "rifle-trade",
+      "timing-hunter",
+      "map-reader",
+      "late-round",
+      "flank-punish",
+      "late-map-control",
+      "timing-punish",
       "confidence-peek",
       "swingy-impact",
       "rookie-spotlight"
@@ -140,7 +152,7 @@
     ],
     "override_ids": [],
     "ops_notes": [
-      "Use as the default player fallback when no sharper role is available."
+      "Use timing, information gap, and late-round payoff framing."
     ]
   },
   "ops_hooks": {
@@ -152,7 +164,7 @@
     ],
     "card_priority": 15,
     "broadcast_entry_points": [
-      "machine_map_point_pressure"
+      "machine_star_carry"
     ]
   },
   "canon_notes": []

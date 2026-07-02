@@ -17,6 +17,7 @@ import {
   normalizeHexAgentActionDraft
 } from "./hex-agent-command-boundary.js";
 import { buildHexRoundOpeningBrief } from "./hex-round-opening-brief.js";
+import { validateHexAgentActionDraft } from "./hex-agent-action-validator.js";
 
 describe("Hex agent command boundary", () => {
   it("builds a compact request from phase memory without treating last-seen as current truth", () => {
@@ -150,6 +151,61 @@ describe("Hex agent command boundary", () => {
     expect(request.constraints.some((line) => line.includes("Economy context is already resolved"))).toBe(true);
   });
 
+  it("allows low-economy active trade actions in late objective context without allowing full execute", () => {
+    const asset = loadOfficialDust2HexMap();
+    const memory = initializeHexRoundMemory({
+      asset,
+      agents: createAgents(asset),
+      bombCarrierAgentId: "t_0"
+    });
+    memory.phaseIndex = 2;
+    const economyContext = buildHexRoundEconomyContext({
+      memory,
+      teamEconomyPlans: {
+        t: buildPlan("t", "eco", "eco", ["t_0", "t_1", "t_2", "t_3", "t_4"]),
+        ct: buildPlan("ct", "rifle_buy", "fullBuy", ["ct_0", "ct_1", "ct_2", "ct_3", "ct_4"])
+      }
+    });
+    const request = buildHexAgentCommandRequest({
+      asset,
+      memory,
+      agentId: "t_0",
+      economyContext
+    });
+    const targetCellId = request.reachableCells.find((cell) => cell.cellId !== request.agent.currentCellId)?.cellId ?? request.reachableCells[0]!.cellId;
+
+    const activeTrade = validateHexAgentActionDraft({
+      asset,
+      memory,
+      economyContext,
+      draft: {
+        agentId: "t_0",
+        phaseId: memory.phaseId,
+        currentCellId: request.agent.currentCellId,
+        targetCellId,
+        actionType: "seek_duel",
+        businessIntent: "eco attack groups up to seek a trade instead of waiting for a future phase."
+      }
+    });
+    expect(activeTrade.valid).toBe(true);
+    expect(activeTrade.validationErrors).not.toContain("economy_disallows_action");
+
+    const fullExecute = validateHexAgentActionDraft({
+      asset,
+      memory,
+      economyContext,
+      draft: {
+        agentId: "t_0",
+        phaseId: memory.phaseId,
+        currentCellId: request.agent.currentCellId,
+        targetCellId,
+        actionType: "execute_site",
+        businessIntent: "eco attack incorrectly claims a full site execute."
+      }
+    });
+    expect(fullExecute.valid).toBe(false);
+    expect(fullExecute.validationErrors).toContain("resource_tier_too_low");
+  });
   it("adds round business duel context and the current agent assignment", () => {
     const asset = loadOfficialDust2HexMap();
     const memory = initializeHexRoundMemory({
@@ -207,8 +263,8 @@ describe("Hex agent command boundary", () => {
       instruction: "Attack should pressure B contact and avoid repeating long A.",
       roleRouteAssignments: [{
         side: "attack" as const,
-        role: "support",
-        routeIntent: "escort C4 and prepare B plant support",
+        role: "lurker",
+        routeIntent: "recover late flank timing and prepare B plant support",
         focusRegions: ["b_tunnels", "b_site"],
         focusPoints: ["upper_tunnels", "b_bombsite"],
         avoidRegions: ["a_long_approach"]
@@ -223,8 +279,8 @@ describe("Hex agent command boundary", () => {
     });
     const compact = buildHexAgentCompactCommandRequest(request);
 
-    expect(request.tacticalRoleAssignment?.role).toBe("support");
-    expect(compact.tacticalPlan?.roleRouteAssignment?.routeIntent).toContain("escort C4");
+    expect(request.tacticalRoleAssignment?.role).toBe("lurker");
+    expect(compact.tacticalPlan?.roleRouteAssignment?.routeIntent).toContain("late flank");
     expect(compact.tacticalPlan?.avoidRegions).toContain("a_long_approach");
     expect(compact.tacticalPlan?.antiRepeatRegions).toContain("a_long_approach");
     expect(request.constraints.some((line) => line.includes("Do not repeat the stale map route"))).toBe(true);

@@ -1,6 +1,6 @@
-import type { HexCell, HexMapAsset } from "@agent-major/shared";
+import { normalizeCsRole, type HexCell, type HexMapAsset } from "@agent-major/shared";
 import { getHexAgentBusinessAssignment, type HexAgentBusinessAssignment, type HexRoundBusinessDuel } from "../business/index.js";
-import { getHexAgentEconomyContext, type HexRoundEconomyContext } from "../economy/index.js";
+import { getHexAgentEconomyContext, type HexAgentEconomyContext, type HexRoundEconomyContext } from "../economy/index.js";
 import { getHexAgentFinanceAssignment, type HexAgentFinanceAssignment, type HexRoundFinanceDuel } from "../finance/index.js";
 import { buildHexPathGraph, calculateHexApCost } from "../path/index.js";
 import { buildHexAgentMemoryContext, hexPhaseIds, type HexAgentMemoryPromptContext, type HexPhaseId, type HexRoundMemory, type HexSide } from "../state/index.js";
@@ -59,6 +59,34 @@ export interface HexAgentPhaseClock {
   isFinalPhase: boolean;
   urgencyLevel: HexPhaseUrgencyLevel;
   clockPressureZh: string;
+}
+
+export type HexObjectiveIntent =
+  | "carry_to_site"
+  | "recover_c4"
+  | "protect_c4"
+  | "execute_site"
+  | "deny_plant"
+  | "retake"
+  | "defuse"
+  | "seek_trade"
+  | "save";
+
+export type HexEconomyActionStyle =
+  | "default_hold"
+  | "slow_control"
+  | "tempo_execute"
+  | "pack_trade"
+  | "gamble_stack"
+  | "info_push"
+  | "save_exit";
+
+export interface HexAgentObjectivePressure {
+  objectivePressureLevel: HexPhaseUrgencyLevel;
+  objectiveIntent: HexObjectiveIntent;
+  economyActionStyle: HexEconomyActionStyle;
+  objectiveWarningReasons: string[];
+  actionHints: string[];
 }
 
 export interface HexAgentRouteCandidate {
@@ -132,6 +160,7 @@ export interface HexAgentCommandRequest {
   roundStartAgentOutput?: HexRoundStartAgentOutputForAction;
   businessDuel?: HexAgentBusinessDuelPromptContext;
   businessAssignment?: HexAgentBusinessAssignment;
+  objectivePressure: HexAgentObjectivePressure;
   objectiveHints: string[];
   occupiedCellIds: string[];
   reservedCellIds: string[];
@@ -242,6 +271,7 @@ export interface HexAgentCompactCommandRequest {
     carrierAgentId?: string | undefined;
     droppedCellId?: string | undefined;
   };
+  objectivePressure: HexAgentObjectivePressure;
   targetCandidates: HexAgentRouteCandidate[];
   routeHistory?: HexAgentRouteHistory | undefined;
   occupiedCellIds: string[];
@@ -465,7 +495,23 @@ export function buildHexAgentCommandRequest(input: {
         agentId: input.agentId
       })
     : undefined;
-  const objectiveHints = buildObjectiveHints(input.asset, context, input.tacticalPlan, phaseClock);
+  const economyActionStyle = deriveHexEconomyActionStyle({
+    side: context.agent.side,
+    phaseClock,
+    economy
+  });
+  const objectivePressure = buildObjectivePressureContext({
+    asset: input.asset,
+    context,
+    phaseClock,
+    tacticalPlan: input.tacticalPlan,
+    economyActionStyle,
+    reachableCells
+  });
+  const objectiveHints = buildObjectiveHints(input.asset, context, input.tacticalPlan, phaseClock, objectivePressure);
+  const droppedC4ApproachCellIds = context.bombState.droppedCellId
+    ? findClosestReachableCellsToTarget(input.asset, reachableCells, context.bombState.droppedCellId, 3)
+    : [];
   const roleRouteAssignment = findTacticalRoleAssignment({
     tacticalPlan: input.tacticalPlan,
     side: context.agent.side,
@@ -500,7 +546,10 @@ export function buildHexAgentCommandRequest(input: {
       phaseClock,
       routeHistory,
       c4SitePreference: input.tacticalPlan?.c4SitePreference,
-      currentCellId: context.agent.currentCellId
+      currentCellId: context.agent.currentCellId,
+      objectiveIntent: objectivePressure.objectiveIntent,
+      economyActionStyle: objectivePressure.economyActionStyle,
+      droppedC4ApproachCellIds
     }
   );
   const businessAssignment = input.businessDuel
@@ -552,6 +601,7 @@ export function buildHexAgentCommandRequest(input: {
     ...(roundStartAgentOutput ? { roundStartAgentOutput } : {}),
     ...(input.businessDuel ? { businessDuel: summarizeBusinessDuelForRequest(input.businessDuel) } : {}),
     ...(businessAssignment ? { businessAssignment } : {}),
+    objectivePressure,
     objectiveHints,
     occupiedCellIds: [...(input.occupiedCellIds ?? [])],
     reservedCellIds: [...(input.reservedCellIds ?? [])],
@@ -678,6 +728,13 @@ export function buildHexAgentCompactCommandRequest(request: HexAgentCommandReque
       carrierAgentId: request.bombState.carrierAgentId,
       droppedCellId: request.bombState.droppedCellId
     },
+    objectivePressure: {
+      objectivePressureLevel: request.objectivePressure.objectivePressureLevel,
+      objectiveIntent: request.objectivePressure.objectiveIntent,
+      economyActionStyle: request.objectivePressure.economyActionStyle,
+      objectiveWarningReasons: request.objectivePressure.objectiveWarningReasons.slice(0, 6),
+      actionHints: request.objectivePressure.actionHints.slice(0, 6)
+    },
     targetCandidates: request.targetCandidates.slice(0, 8).map((candidate) => ({
       ...candidate,
       pointIds: [...candidate.pointIds],
@@ -702,6 +759,8 @@ export function buildHexAgentCompactCommandRequest(request: HexAgentCommandReque
       "缺失证据只能限制置信度、score cap 或投影强度，不能直接写成胜利理由。",
       "phase0 / roundStartAgentOutput 是本局材料依据；phase1+ 只输出局内行动、目标、风险和短句引用，不能重新写金融作文。",
       request.phaseClock.clockPressureZh,
+      `N67 objective intent: ${request.objectivePressure.objectiveIntent}; economy action style: ${request.objectivePressure.economyActionStyle}; reasons: ${request.objectivePressure.objectiveWarningReasons.join("; ") || "none"}.`,
+      ...request.objectivePressure.actionHints.slice(0, 4),
       "你要像想赢回合的 CS 选手行动：清点、抢枪线、补枪、换人、护包、拆包、转点或保枪必须服务于赢回合。",
       "进入包点入口、开阔枪线、下包/拆包附近或已知敌人接近时，行动理由要说明如何处理接触风险，而不是抽象移动。",
       "如果本阶段可能撞到敌人枪线，优先写清楚争取击杀、补枪、换人、护包或拆包的具体执行意图。",
@@ -984,7 +1043,7 @@ function findTacticalRoleAssignment(input: {
 }
 
 function normalizeRoleLabel(roleLabel: string | undefined): string {
-  return (roleLabel ?? "").toLowerCase().replace(/[^a-z0-9_]+/g, "_").replace(/^_+|_+$/g, "");
+  return normalizeCsRole(roleLabel);
 }
 
 interface HexRouteExposureCandidate {
@@ -1005,8 +1064,100 @@ interface BuildRouteCandidateOptions {
   routeHistory?: HexAgentRouteHistory | undefined;
   c4SitePreference?: "a" | "b" | undefined;
   currentCellId?: string | undefined;
+  objectiveIntent?: HexObjectiveIntent | undefined;
+  economyActionStyle?: HexEconomyActionStyle | undefined;
+  droppedC4ApproachCellIds?: readonly string[] | undefined;
 }
 
+export function deriveHexEconomyActionStyle(input: {
+  side: HexSide;
+  phaseClock: HexAgentPhaseClock;
+  economy?: HexAgentEconomyPromptContext | HexAgentEconomyContext | undefined;
+}): HexEconomyActionStyle {
+  const posture = input.economy?.economyPosture ?? "unknown";
+  const tier = input.economy?.resourceTier ?? "medium";
+  const lowOrSave = tier === "low" || /eco|save|pistol/i.test(posture);
+  if (lowOrSave) {
+    if (input.side === "attack") {
+      return input.phaseClock.urgencyLevel === "early" ? "pack_trade" : "tempo_execute";
+    }
+    return input.phaseClock.urgencyLevel === "early" ? "gamble_stack" : "info_push";
+  }
+  if (tier === "forced" || /force|broken|light/i.test(posture)) {
+    return input.side === "attack" ? "pack_trade" : "info_push";
+  }
+  if (input.side === "attack") {
+    return input.phaseClock.urgencyLevel === "late" || input.phaseClock.urgencyLevel === "final" ? "tempo_execute" : "slow_control";
+  }
+  return input.phaseClock.urgencyLevel === "late" || input.phaseClock.urgencyLevel === "final" ? "default_hold" : "slow_control";
+}
+
+function buildObjectivePressureContext(input: {
+  asset: HexMapAsset;
+  context: HexAgentMemoryPromptContext;
+  phaseClock: HexAgentPhaseClock;
+  tacticalPlan?: HexRoundTacticalPlan | undefined;
+  economyActionStyle: HexEconomyActionStyle;
+  reachableCells: readonly HexReachableCellSummary[];
+}): HexAgentObjectivePressure {
+  const warnings: string[] = [];
+  const hints: string[] = [];
+  const currentCell = input.asset.cells.find((cell) => cell.cellId === input.context.agent.currentCellId);
+  const onBombsite = Boolean(currentCell?.flags.includes("bombsite_a") || currentCell?.flags.includes("bombsite_b"));
+  let objectiveIntent: HexObjectiveIntent = input.context.agent.side === "attack" ? "seek_trade" : "deny_plant";
+
+  if (input.context.agent.side === "attack") {
+    if (input.context.bombState.planted) {
+      objectiveIntent = "protect_c4";
+      hints.push("C4 已下包：进攻方本阶段应护包、补枪、拖延拆包或明确保枪，不要离开目标区做抽象控图。");
+    } else if (input.context.bombState.droppedCellId && !input.context.agent.carryingC4) {
+      const canReachDropped = input.reachableCells.some((cell) => cell.cellId === input.context.bombState.droppedCellId);
+      objectiveIntent = canReachDropped || input.phaseClock.urgencyLevel === "late" || input.phaseClock.urgencyLevel === "final" ? "recover_c4" : "protect_c4";
+      warnings.push(canReachDropped ? "c4_dropped_reachable" : "c4_dropped_needs_route");
+      hints.push(`C4 已掉落在 ${input.context.bombState.droppedCellId}；相关 T 要优先恢复、保护接包路线，或明确说明为何放弃。`);
+    } else if (input.context.agent.carryingC4) {
+      objectiveIntent = onBombsite ? "execute_site" : "carry_to_site";
+      warnings.push(onBombsite ? "c4_carrier_on_bombsite" : "c4_carrier_needs_site_route");
+      hints.push(onBombsite
+        ? "你已带 C4 站在合法包点：若 AP 和敌人占位允许，优先 plant_bomb；否则必须清点/换人后再下包。"
+        : `你带 C4，应向 ${input.tacticalPlan?.c4SitePreference?.toUpperCase() ?? "目标"} 包点或可执行包点路线收敛。`);
+    } else if (input.phaseClock.urgencyLevel === "late" || input.phaseClock.urgencyLevel === "final") {
+      objectiveIntent = "execute_site";
+      warnings.push("late_attack_needs_execute_or_trade");
+      hints.push("进攻方后段不能继续只铺垫；本阶段应执行包点、主动换人、补枪、护 C4 或明确保枪。");
+    }
+  } else {
+    if (input.context.bombState.planted) {
+      objectiveIntent = onBombsite ? "defuse" : "retake";
+      warnings.push(onBombsite ? "defender_on_planted_cell" : "defender_needs_retake_route");
+      hints.push(onBombsite ? "防守方在下包点：若合法应 defuse_bomb，否则先清点。" : "C4 已下包：防守方应回防、拆包或明确保枪。");
+    } else if (input.phaseClock.urgencyLevel === "late" || input.phaseClock.urgencyLevel === "final") {
+      objectiveIntent = "deny_plant";
+      warnings.push("late_defense_deny_plant_route");
+      hints.push("防守方后段目标是阻止最后下包路线、守包点入口或主动清点，不要离开关键区做无关移动。");
+    }
+  }
+
+  if (input.economyActionStyle === "pack_trade" || input.economyActionStyle === "tempo_execute") {
+    hints.push("经济打法倾向：低资源/强起要靠抱团、提速、补枪和换人制造机会，不要单人慢磨。 ");
+  } else if (input.economyActionStyle === "gamble_stack" || input.economyActionStyle === "info_push") {
+    hints.push("经济打法倾向：防守低资源可赌点、压前拿信息或堆叠交叉火力，但要围绕阻止下包。 ");
+  } else if (input.economyActionStyle === "slow_control") {
+    hints.push("经济打法倾向：资源较好可以慢控和默认，但中后期仍必须转化为包点执行、守点或回防。 ");
+  }
+
+  if (input.phaseClock.urgencyLevel === "final") {
+    warnings.push("final_phase_requires_resolution_or_save");
+  }
+
+  return {
+    objectivePressureLevel: input.phaseClock.urgencyLevel,
+    objectiveIntent,
+    economyActionStyle: input.economyActionStyle,
+    objectiveWarningReasons: uniqueStrings(warnings),
+    actionHints: uniqueStrings(hints)
+  };
+}
 function buildPhaseClock(
   phaseIndex: number,
   phaseId: HexPhaseId,
@@ -1208,6 +1359,7 @@ function scoreRouteCandidate(
   score += scoreRoundRouteMemoryCandidate(cell, options);
   score += scoreDroppedC4RecoveryCandidate(cell, options);
   score += scoreC4PhasePressureCandidate(cell, preferredActionTypes, options);
+  score += scoreEconomyActionStyleCandidate(cell, preferredActionTypes, options);
   return score;
 }
 
@@ -1234,9 +1386,43 @@ function scoreDroppedC4RecoveryCandidate(cell: HexReachableCellSummary, options:
   if (cell.cellId === options.droppedC4CellId) {
     return options.phaseClock?.urgencyLevel === "final" ? 90 : 72;
   }
+  if (options.droppedC4ApproachCellIds?.includes(cell.cellId)) {
+    return options.phaseClock?.urgencyLevel === "final" ? 42 : 30;
+  }
   return 0;
 }
 
+function scoreEconomyActionStyleCandidate(
+  cell: HexReachableCellSummary,
+  preferredActionTypes: readonly HexAgentActionType[],
+  options: BuildRouteCandidateOptions
+): number {
+  const style = options.economyActionStyle;
+  if (!style) {
+    return 0;
+  }
+  if (style === "pack_trade" || style === "tempo_execute") {
+    let score = 0;
+    if (isDangerRouteCandidate(cell)) score += style === "tempo_execute" ? 10 : 7;
+    if (isAnyBombsiteCandidate(cell) || preferredActionTypes.includes("execute_site")) score += 6;
+    if (cell.flags.includes("choke") || cell.flags.includes("high_risk")) score += 5;
+    return score;
+  }
+  if (style === "gamble_stack" || style === "info_push") {
+    let score = 0;
+    if (cell.flags.includes("choke") || cell.flags.includes("high_risk")) score += 8;
+    if (cell.flags.includes("cover")) score += 4;
+    if (isAnyBombsiteCandidate(cell)) score += style === "gamble_stack" ? 6 : 3;
+    return score;
+  }
+  if (style === "slow_control") {
+    return (cell.flags.includes("cover") ? 4 : 0) + (cell.flags.includes("choke") ? 3 : 0);
+  }
+  if (style === "default_hold" || style === "save_exit") {
+    return (cell.flags.includes("cover") ? 5 : 0) - (cell.flags.includes("high_risk") ? 3 : 0);
+  }
+  return 0;
+}
 function scoreC4PhasePressureCandidate(
   cell: HexReachableCellSummary,
   preferredActionTypes: readonly HexAgentActionType[],
@@ -1296,9 +1482,10 @@ function buildObjectiveHints(
   asset: HexMapAsset,
   context: HexAgentMemoryPromptContext,
   tacticalPlan: HexRoundTacticalPlan | undefined,
-  phaseClock: HexAgentPhaseClock
+  phaseClock: HexAgentPhaseClock,
+  objectivePressure?: HexAgentObjectivePressure | undefined
 ): string[] {
-  const hints: string[] = [];
+  const hints: string[] = [...(objectivePressure?.actionHints ?? [])];
   const currentCell = asset.cells.find((cell) => cell.cellId === context.agent.currentCellId);
   const currentCellIsBombsite = Boolean(currentCell?.flags.includes("bombsite_a") || currentCell?.flags.includes("bombsite_b"));
   if (context.agent.side === "attack" && context.bombState.droppedCellId && !context.agent.carryingC4) {
@@ -1326,6 +1513,37 @@ function buildObjectiveHints(
   return hints;
 }
 
+function findClosestReachableCellsToTarget(
+  asset: HexMapAsset,
+  reachableCells: readonly HexReachableCellSummary[],
+  targetCellId: string,
+  limit: number
+): string[] {
+  const target = asset.cells.find((cell) => cell.cellId === targetCellId);
+  if (!target) {
+    return [];
+  }
+  return reachableCells
+    .filter((cell) => cell.cellId !== targetCellId)
+    .map((cell) => ({ cellId: cell.cellId, distance: approximateCellDistance(asset, cell.cellId, targetCellId), apCost: cell.apCost }))
+    .filter((item) => Number.isFinite(item.distance))
+    .sort((left, right) => left.distance - right.distance || left.apCost - right.apCost || left.cellId.localeCompare(right.cellId))
+    .slice(0, limit)
+    .map((item) => item.cellId);
+}
+
+function approximateCellDistance(asset: HexMapAsset, leftCellId: string, rightCellId: string): number {
+  const left = asset.cells.find((cell) => cell.cellId === leftCellId);
+  const right = asset.cells.find((cell) => cell.cellId === rightCellId);
+  if (!left || !right) {
+    return Number.POSITIVE_INFINITY;
+  }
+  return Math.abs(left.col - right.col) + Math.abs(left.row - right.row) + Math.abs((left.level ?? 0) - (right.level ?? 0)) * 4;
+}
+
+function uniqueStrings(values: readonly string[]): string[] {
+  return [...new Set(values.filter((value) => value.trim().length > 0))];
+}
 function buildRouteCandidateLabel(cell: HexReachableCellSummary): string {
   const parts = [
     cell.regionId ? `region:${cell.regionId}` : "region:unknown",
@@ -1578,7 +1796,31 @@ function canUseAction(request: HexAgentCommandRequest, actionType: HexAgentActio
   if (actionType === "plant_bomb" || actionType === "defuse_bomb") {
     return true;
   }
-  return request.economy?.economyAllowedActionTypes.includes(actionType) ?? true;
+  if (request.economy?.economyAllowedActionTypes.includes(actionType) ?? true) {
+    return true;
+  }
+  return isN67ObjectiveEconomyActionOverride(request, actionType);
+}
+
+function isN67ObjectiveEconomyActionOverride(request: HexAgentCommandRequest, actionType: HexAgentActionType): boolean {
+  if (request.economy?.resourceTier !== "low") {
+    return false;
+  }
+  if (
+    actionType !== "peek"
+    && actionType !== "seek_duel"
+    && actionType !== "prepare_trade"
+    && actionType !== "map_control"
+    && actionType !== "save"
+  ) {
+    return false;
+  }
+  return request.phaseClock.urgencyLevel === "late"
+    || request.phaseClock.urgencyLevel === "final"
+    || request.objectivePressure.economyActionStyle === "pack_trade"
+    || request.objectivePressure.economyActionStyle === "tempo_execute"
+    || request.objectivePressure.economyActionStyle === "gamble_stack"
+    || request.objectivePressure.economyActionStyle === "info_push";
 }
 
 function targetMatchesLastSeenEnemy(request: HexAgentCommandRequest, targetCellId: string): boolean {

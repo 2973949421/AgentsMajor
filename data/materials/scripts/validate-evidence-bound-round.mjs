@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -142,6 +142,13 @@ function analyzeTrace(path, mapSlug) {
   const combatContestedPressureApplied = combatWithN64PressureAudit.filter(hasContestedPressureApplied);
   const combatNonLethalPressureKillViolation = combatWithN64PressureAudit.filter(hasNonLethalPressureKillViolation);
   const combatDuelPairOnlyPrimaryPressure = combatWithN64PressureAudit.filter(hasDuelPairOnlyPrimaryPressure);
+  const multiPairCombats = combats.filter(isN65FullMultiPairCombat);
+  const oneVsManyCombats = multiPairCombats.filter((combat) => readN65FullMultiPairing(combat)?.combatShape === "one_v_many" || readN65FullMultiPairing(combat)?.combatShape === "many_v_one");
+  const manyVsManyCombats = multiPairCombats.filter((combat) => readN65FullMultiPairing(combat)?.combatShape === "many_v_many");
+  const supportPrimaryViolations = multiPairCombats.filter(hasSupportPrimaryViolation);
+  const duplicateVictimCasualties = collectDuplicateVictimCasualties(combats);
+  const multiPairWithoutPrimaryDuel = multiPairCombats.filter(hasMultiPairWithoutPrimaryDuel);
+  const regionOrSidePressureKeyRegression = directCombats.filter(hasRegionOnlyPressureKey);
   const traceHasN64AuditFields = hasN64TraceAuditFields(trace, combats);
   const traceRequiresN64bPressureScope = trace.audit?.n64bPressureScopeVersion === "pressure_scope_v1";
   const combatN65WithoutN64PressureAudit = traceHasN64AuditFields
@@ -149,6 +156,11 @@ function analyzeTrace(path, mapSlug) {
     : [];
   const actionQualityWarningCount = readNumber(trace.audit?.actionQualityWarningCount ?? trace.audit?.actionQualityWarnings?.length);
   const urgencyFailureCount = readNumber(trace.audit?.urgencyFailureCount ?? trace.audit?.urgencyFailures?.length);
+  const objectiveBehaviorAudit = trace.audit?.objectiveBehaviorAudit && typeof trace.audit.objectiveBehaviorAudit === "object" ? trace.audit.objectiveBehaviorAudit : null;
+  const objectiveStallCount = readNumber(objectiveBehaviorAudit?.objectiveStallCount);
+  const lateMeaningfulActionCount = readNumber(objectiveBehaviorAudit?.lateMeaningfulActionCount);
+  const c4RecoveryOpportunityCount = readNumber(objectiveBehaviorAudit?.c4RecoveryOpportunityCount);
+  const c4RecoveryAttemptCount = readNumber(objectiveBehaviorAudit?.c4RecoveryAttemptCount);
   const targetClaimBindRate = challengeCatalog.length > 0
     ? roundTo(challengeCatalog.filter((challenge) => claimCatalog.claimIds.has(challenge.targetClaimId)).length / challengeCatalog.length)
     : 0;
@@ -190,11 +202,22 @@ function analyzeTrace(path, mapSlug) {
     combatContestedPressureApplied,
     combatNonLethalPressureKillViolation,
     combatDuelPairOnlyPrimaryPressure,
+    multiPairCombats,
+    oneVsManyCombats,
+    manyVsManyCombats,
+    supportPrimaryViolations,
+    duplicateVictimCasualties,
+    multiPairWithoutPrimaryDuel,
+    regionOrSidePressureKeyRegression,
     combatN65WithoutN64PressureAudit,
     traceHasN64AuditFields,
     traceRequiresN64bPressureScope,
     actionQualityWarningCount,
     urgencyFailureCount,
+    objectiveStallCount,
+    lateMeaningfulActionCount,
+    c4RecoveryOpportunityCount,
+    c4RecoveryAttemptCount,
     combatExplanations,
     combatFinanceCsSeparatedRatio,
     phase0Diagnostics,
@@ -277,11 +300,22 @@ targetClaimBindRate,
     contestedPressureAppliedCount: combatContestedPressureApplied.length,
     nonLethalPressureKillViolationCount: combatNonLethalPressureKillViolation.length,
     combatDuelPairOnlyPrimaryPressureCount: combatDuelPairOnlyPrimaryPressure.length,
+    multiPairContactCount: multiPairCombats.length,
+    oneVsManyContactCount: oneVsManyCombats.length,
+    manyVsManyContactCount: manyVsManyCombats.length,
+    supportPrimaryViolationCount: supportPrimaryViolations.length,
+    duplicateVictimCasualtyCount: duplicateVictimCasualties.length,
+    multiPairWithoutPrimaryDuelCount: multiPairWithoutPrimaryDuel.length,
+    regionOrSidePressureKeyRegressionCount: regionOrSidePressureKeyRegression.length,
     legacyCombatWithoutPressureCount: combatN65WithoutN64PressureAudit.length,
     n64TraceFieldPresent: traceHasN64AuditFields,
     n64bPressureScopeVersionPresent: traceRequiresN64bPressureScope,
     actionQualityWarningCount,
     urgencyFailureCount,
+    objectiveStallCount,
+    lateMeaningfulActionCount,
+    c4RecoveryOpportunityCount,
+    c4RecoveryAttemptCount,
     combatExplanationCount: combatExplanations.length,
     combatFinanceCsSeparatedCount: combatFinanceCsSeparated.length,
     combatFinanceCsSeparatedRatio,
@@ -351,9 +385,20 @@ function buildBlockedRealProviderRun(reason) {
     contestedPressureAppliedCount: 0,
     nonLethalPressureKillViolationCount: 0,
     combatDuelPairOnlyPrimaryPressureCount: 0,
+    multiPairContactCount: 0,
+    oneVsManyContactCount: 0,
+    manyVsManyContactCount: 0,
+    supportPrimaryViolationCount: 0,
+    duplicateVictimCasualtyCount: 0,
+    multiPairWithoutPrimaryDuelCount: 0,
+    regionOrSidePressureKeyRegressionCount: 0,
     legacyCombatWithoutPressureCount: 0,
     actionQualityWarningCount: 0,
     urgencyFailureCount: 0,
+    objectiveStallCount: 0,
+    lateMeaningfulActionCount: 0,
+    c4RecoveryOpportunityCount: 0,
+    c4RecoveryAttemptCount: 0,
     combatExplanationCount: 0,
     combatFinanceCsSeparatedCount: 0,
     combatFinanceCsSeparatedRatio: 0,
@@ -391,7 +436,11 @@ function classifyRunQuality(failures) {
     "missing_n65_pressure_key",
     "invalid_n65_pressure_key",
     "n64_pressure_scope_missing",
-    "n64_nonlethal_pressure_kill_violation"
+    "n64_nonlethal_pressure_kill_violation",
+    "n65_support_primary_violation",
+    "n65_duplicate_victim_casualty",
+    "n65_multi_pair_missing_primary_duel",
+    "n65_pressure_key_regression"
   ]);
   return failures.some((failure) => hardFailureCategories.has(failure.category))
     ? "fail"
@@ -746,6 +795,73 @@ function hasRegionOnlyPressureKey(combat) {
 function isAllowedN65PressureKey(key) {
   return key.startsWith("duelPair:") || key.startsWith("fireLane:") || key.startsWith("objective_exposure:") || key.startsWith("cell_contact:");
 }
+function readN65FullMultiPairing(combat) {
+  return combat.audit?.multiPairing ?? null;
+}
+
+function isN65FullMultiPairCombat(combat) {
+  const multiPairing = readN65FullMultiPairing(combat);
+  if (!multiPairing) {
+    return false;
+  }
+  return ["one_v_many", "many_v_one", "many_v_many"].includes(multiPairing.combatShape)
+    || (Array.isArray(multiPairing.secondaryDuelPairIds) && multiPairing.secondaryDuelPairIds.length > 0);
+}
+
+function hasMultiPairWithoutPrimaryDuel(combat) {
+  return isN65FullMultiPairCombat(combat) && !readN65FullMultiPairing(combat)?.primaryDuelPairId;
+}
+
+function hasSupportPrimaryViolation(combat) {
+  const multiPairing = readN65FullMultiPairing(combat);
+  if (!multiPairing) {
+    return false;
+  }
+  const casualties = Array.isArray(combat.casualties) ? combat.casualties : [];
+  const participants = Array.isArray(combat.participants) ? combat.participants : [];
+  const participantByAgent = new Map(participants.map((participant) => [participant?.agentId, participant]));
+  const supportContributorIds = new Set(Array.isArray(multiPairing.supportContributorAgentIds) ? multiPairing.supportContributorAgentIds : []);
+  for (const casualty of casualties) {
+    const killerAgentId = casualty?.killerAgentId;
+    if (typeof killerAgentId !== "string" || killerAgentId.length === 0) {
+      continue;
+    }
+    const participant = participantByAgent.get(killerAgentId);
+    const roleLabel = normalizeRoleLabel(participant?.roleLabel);
+    const restrictedSupport = participant?.supportParticipant === true
+      || supportContributorIds.has(killerAgentId)
+      || roleLabel.includes("igl");
+    const allowed = Array.isArray(casualty?.attributionReasons)
+      && casualty.attributionReasons.includes("sole_direct_candidate_allowed");
+    if (!allowed && restrictedSupport && (supportContributorIds.has(killerAgentId) || participant?.supportParticipant === true)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function collectDuplicateVictimCasualties(combats) {
+  const counts = new Map();
+  for (const combat of combats) {
+    const casualties = Array.isArray(combat.casualties) ? combat.casualties : [];
+    for (const casualty of casualties) {
+      const targetAgentId = casualty?.targetAgentId ?? casualty?.agentId;
+      if (typeof targetAgentId !== "string" || targetAgentId.length === 0) {
+        continue;
+      }
+      const key = `${combat.phaseIndex ?? "unknown"}:${targetAgentId}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .filter(([, count]) => count > 1)
+    .map(([key, count]) => ({ key, count }));
+}
+
+function normalizeRoleLabel(roleLabel) {
+  return typeof roleLabel === "string" ? roleLabel.trim().toLowerCase() : "";
+}
+
 function isBenignOnlyActionDegraded(input) {
   return input.roundQualityStatus === "action_degraded"
     && readNumber(input.roundQualityCounts?.totalActionFallbackCount) === 0
@@ -869,6 +985,26 @@ function buildFailures(input) {
       count: input.combatNonLethalPressureKillViolation.length
     });
   }
+  if (input.supportPrimaryViolations?.length > 0) {
+    add("n65_support_primary_violation", "N65-full multi-pair combat 中支援贡献者 / IGL 成为 primary killer，违反归因边界。", {
+      count: input.supportPrimaryViolations.length
+    });
+  }
+  if (input.duplicateVictimCasualties?.length > 0) {
+    add("n65_duplicate_victim_casualty", "同一 phase 中同一 victim 被重复 casualty 落账。", {
+      count: input.duplicateVictimCasualties.length
+    });
+  }
+  if (input.multiPairWithoutPrimaryDuel?.length > 0) {
+    add("n65_multi_pair_missing_primary_duel", "新 trace 有 multi-pair contact 但缺 primaryDuelPair。", {
+      count: input.multiPairWithoutPrimaryDuel.length
+    });
+  }
+  if (input.regionOrSidePressureKeyRegression?.length > 0) {
+    add("n65_pressure_key_regression", "N65-full pressureKey 回退到 side / region 粗粒度。", {
+      count: input.regionOrSidePressureKeyRegression.length
+    });
+  }
   if (input.combats.length > 0 && input.combats.some((combat) => !combat.financeProjection)) {
     add("old_trace_missing_fields", "部分 combat 未记录 N60 financeProjection。");
   }
@@ -908,12 +1044,23 @@ function buildSummary(runs) {
     acc.contestedPressureAppliedCount += run.contestedPressureAppliedCount ?? 0;
     acc.nonLethalPressureKillViolationCount += run.nonLethalPressureKillViolationCount ?? 0;
     acc.combatDuelPairOnlyPrimaryPressureCount += run.combatDuelPairOnlyPrimaryPressureCount ?? 0;
+    acc.multiPairContactCount += run.multiPairContactCount ?? 0;
+    acc.oneVsManyContactCount += run.oneVsManyContactCount ?? 0;
+    acc.manyVsManyContactCount += run.manyVsManyContactCount ?? 0;
+    acc.supportPrimaryViolationCount += run.supportPrimaryViolationCount ?? 0;
+    acc.duplicateVictimCasualtyCount += run.duplicateVictimCasualtyCount ?? 0;
+    acc.multiPairWithoutPrimaryDuelCount += run.multiPairWithoutPrimaryDuelCount ?? 0;
+    acc.regionOrSidePressureKeyRegressionCount += run.regionOrSidePressureKeyRegressionCount ?? 0;
     for (const [kind, count] of Object.entries(run.combatPressureScopeKindDistribution ?? {})) {
       acc.combatPressureScopeKindDistribution[kind] = (acc.combatPressureScopeKindDistribution[kind] ?? 0) + count;
     }
     acc.legacyCombatWithoutPressureCount += run.legacyCombatWithoutPressureCount ?? 0;
     acc.actionQualityWarningCount += run.actionQualityWarningCount ?? 0;
     acc.urgencyFailureCount += run.urgencyFailureCount ?? 0;
+    acc.objectiveStallCount += run.objectiveStallCount ?? 0;
+    acc.lateMeaningfulActionCount += run.lateMeaningfulActionCount ?? 0;
+    acc.c4RecoveryOpportunityCount += run.c4RecoveryOpportunityCount ?? 0;
+    acc.c4RecoveryAttemptCount += run.c4RecoveryAttemptCount ?? 0;
     acc.phase0OutputCount += run.phase0OutputCount;
     acc.usablePhase0OutputCount += run.usablePhase0OutputCount;
     acc.invalidPhase0OutputCount += run.invalidPhase0OutputCount;
@@ -977,9 +1124,20 @@ function buildSummary(runs) {
     contestedPressureAppliedCount: 0,
     nonLethalPressureKillViolationCount: 0,
     combatDuelPairOnlyPrimaryPressureCount: 0,
+    multiPairContactCount: 0,
+    oneVsManyContactCount: 0,
+    manyVsManyContactCount: 0,
+    supportPrimaryViolationCount: 0,
+    duplicateVictimCasualtyCount: 0,
+    multiPairWithoutPrimaryDuelCount: 0,
+    regionOrSidePressureKeyRegressionCount: 0,
     legacyCombatWithoutPressureCount: 0,
     actionQualityWarningCount: 0,
     urgencyFailureCount: 0,
+    objectiveStallCount: 0,
+    lateMeaningfulActionCount: 0,
+    c4RecoveryOpportunityCount: 0,
+    c4RecoveryAttemptCount: 0,
     phase0OutputCount: 0,
     usablePhase0OutputCount: 0,
     invalidPhase0OutputCount: 0,

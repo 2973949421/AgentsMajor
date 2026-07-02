@@ -135,71 +135,6 @@
       "runtime_enabled": false
     },
     {
-      "template_id": "llm_role_template_star_rifler",
-      "role": "star_rifler",
-      "summary": "Expressive star framing with news hooks for headline rifle impact.",
-      "preferred_driver_model_id": "driver_kimi_k2_5",
-      "fallback_driver_model_ids": [
-        "driver_qwen_3_6_plus"
-      ],
-      "prompt_bias_tags": [
-        "headline-core",
-        "win-condition",
-        "impact-rifle",
-        "resource-heavy"
-      ],
-      "task_bindings": [
-        {
-          "task_id": "profile_card_copy",
-          "model_profile_id": "llm_profile_strong_reasoning",
-          "driver_model_id": "driver_qwen_3_max_2026_01_23",
-          "fallback_driver_model_ids": [
-            "driver_qwen_3_6_plus"
-          ],
-          "enabled": false,
-          "temperature": 0.4,
-          "max_output_tokens": 900
-        },
-        {
-          "task_id": "news_story_copy",
-          "model_profile_id": "llm_profile_strong_reasoning",
-          "driver_model_id": "driver_qwen_3_max_2026_01_23",
-          "fallback_driver_model_ids": [
-            "driver_qwen_3_6_plus"
-          ],
-          "enabled": false,
-          "temperature": 0.4,
-          "max_output_tokens": 900
-        },
-        {
-          "task_id": "broadcast_caster_line",
-          "model_profile_id": "llm_profile_caster_expressive",
-          "driver_model_id": "driver_kimi_k2_5",
-          "fallback_driver_model_ids": [
-            "driver_qwen_3_6_plus"
-          ],
-          "enabled": false,
-          "temperature": 0.6,
-          "max_output_tokens": 500
-        },
-        {
-          "task_id": "spotlight_moment_copy",
-          "model_profile_id": "llm_profile_caster_expressive",
-          "driver_model_id": "driver_kimi_k2_5",
-          "fallback_driver_model_ids": [
-            "driver_qwen_3_6_plus"
-          ],
-          "enabled": false,
-          "temperature": 0.6,
-          "max_output_tokens": 500
-        }
-      ],
-      "ops_notes": [
-        "Use star heat and resource-pressure framing."
-      ],
-      "runtime_enabled": false
-    },
-    {
       "template_id": "llm_role_template_entry",
       "role": "entry",
       "summary": "Barrage and caster first for opening-duel volatility and live-room effect.",
@@ -330,60 +265,6 @@
       "runtime_enabled": false
     },
     {
-      "template_id": "llm_role_template_support",
-      "role": "support",
-      "summary": "Stable narrative for utility, trade layers, and team glue copy.",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
-      "fallback_driver_model_ids": [
-        "driver_qwen_3_5_plus"
-      ],
-      "prompt_bias_tags": [
-        "glue-piece",
-        "utility-worker",
-        "trade-layer",
-        "setup-support"
-      ],
-      "task_bindings": [
-        {
-          "task_id": "profile_card_copy",
-          "model_profile_id": "llm_profile_strong_reasoning",
-          "driver_model_id": "driver_qwen_3_max_2026_01_23",
-          "fallback_driver_model_ids": [
-            "driver_qwen_3_6_plus"
-          ],
-          "enabled": false,
-          "temperature": 0.4,
-          "max_output_tokens": 900
-        },
-        {
-          "task_id": "broadcast_caster_line",
-          "model_profile_id": "llm_profile_caster_expressive",
-          "driver_model_id": "driver_kimi_k2_5",
-          "fallback_driver_model_ids": [
-            "driver_qwen_3_6_plus"
-          ],
-          "enabled": false,
-          "temperature": 0.6,
-          "max_output_tokens": 500
-        },
-        {
-          "task_id": "barrage_style_line",
-          "model_profile_id": "llm_profile_barrage_chaos",
-          "driver_model_id": "driver_minimax_m2_5",
-          "fallback_driver_model_ids": [
-            "driver_qwen_3_5_plus"
-          ],
-          "enabled": false,
-          "temperature": 0.7,
-          "max_output_tokens": 450
-        }
-      ],
-      "ops_notes": [
-        "Keep framing around utility, spacing, and invisible value."
-      ],
-      "runtime_enabled": false
-    },
-    {
       "template_id": "llm_role_template_rifler",
       "role": "rifler",
       "summary": "Balanced default player template and fallback for ordinary rifle roles.",
@@ -434,60 +315,6 @@
       ],
       "ops_notes": [
         "Use as the default player fallback when no sharper role is available."
-      ],
-      "runtime_enabled": false
-    },
-    {
-      "template_id": "llm_role_template_stand_in",
-      "role": "stand_in",
-      "summary": "Temporary identity template. Avoid overfitting long-term persona.",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
-      "fallback_driver_model_ids": [
-        "driver_qwen_3_5_plus"
-      ],
-      "prompt_bias_tags": [
-        "temporary-slot",
-        "volatile-interface",
-        "low-context",
-        "adaptation"
-      ],
-      "task_bindings": [
-        {
-          "task_id": "profile_card_copy",
-          "model_profile_id": "llm_profile_strong_reasoning",
-          "driver_model_id": "driver_qwen_3_max_2026_01_23",
-          "fallback_driver_model_ids": [
-            "driver_qwen_3_6_plus"
-          ],
-          "enabled": false,
-          "temperature": 0.4,
-          "max_output_tokens": 900
-        },
-        {
-          "task_id": "broadcast_caster_line",
-          "model_profile_id": "llm_profile_caster_expressive",
-          "driver_model_id": "driver_kimi_k2_5",
-          "fallback_driver_model_ids": [
-            "driver_qwen_3_6_plus"
-          ],
-          "enabled": false,
-          "temperature": 0.6,
-          "max_output_tokens": 500
-        },
-        {
-          "task_id": "barrage_style_line",
-          "model_profile_id": "llm_profile_barrage_chaos",
-          "driver_model_id": "driver_minimax_m2_5",
-          "fallback_driver_model_ids": [
-            "driver_qwen_3_5_plus"
-          ],
-          "enabled": false,
-          "temperature": 0.7,
-          "max_output_tokens": 450
-        }
-      ],
-      "ops_notes": [
-        "Do not lock permanent persona assumptions until canon confirms the slot."
       ],
       "runtime_enabled": false
     },

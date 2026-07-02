@@ -11,9 +11,9 @@
 ## CS Role Profile
 - 原始位置：IGL / Star Rifler
 - 主位置：igl
-- 次级位置：star_rifler
+- 次级位置：star
 - 可信度：中-高
-- Agent Major 职责：战术规划 / 回合策略 / 资源分配；核心输出 / 关键回合 carry
+- Agent Major 职责：战术规划 / 回合策略 / 资源分配；明星前缀 / 关键回合 carry
 - 备注：近期语境中 Twistzz 作为新 captain/指挥核心处理。
 - 来源：raw/teams/agent_major_player_roles.md
 

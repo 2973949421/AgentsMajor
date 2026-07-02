@@ -5,7 +5,7 @@
 - ropz | lurker | Lurker / late-round rifler | 高 | player_vitallmty_ropz
 - ZywOo | awper | AWPer / Star | 高 | player_vitallmty_zywoo
 - flameZ | entry | Entry / aggressive rifler | 高 | player_vitallmty_flamez
-- mezii | support | Support / Anchor / flex rifler | 中-高 | player_vitallmty_mezii
+- mezii | rifler | Support / Anchor / flex rifler | 中-高 | player_vitallmty_mezii
 
 ## Coach
 - 正式教练：XTQZZZ (coach_vitallmty_xtqzzz，Coach，可信度 高)

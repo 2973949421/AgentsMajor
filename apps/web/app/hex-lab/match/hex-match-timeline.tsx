@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type {
   HexMatchLabPhaseSummary,
@@ -14,6 +14,9 @@ interface HexMatchTimelineProps {
   selectedPhaseIndex: number;
   roundProgressPct: number;
   phaseProgressPct: number;
+  phaseTickLabel: string;
+  phaseTickProgressPct: number;
+  phaseTickLegacyFallback: boolean;
   playbackRunning: boolean;
   onSelectRound: (round: HexMatchLabRoundSummary) => void;
   onSelectPhase: (phaseIndex: number) => void;
@@ -21,6 +24,8 @@ interface HexMatchTimelineProps {
   onNextRound: () => void;
   onPreviousPhase: () => void;
   onNextPhase: () => void;
+  onPreviousTick: () => void;
+  onNextTick: () => void;
   onTogglePlayback: () => void;
 }
 
@@ -38,6 +43,8 @@ export function HexMatchTimeline(props: HexMatchTimelineProps) {
           <button type="button" onClick={props.onNextRound}>下一回合</button>
           <button type="button" onClick={props.onPreviousPhase}>上一 phase</button>
           <button type="button" onClick={props.onNextPhase}>下一 phase</button>
+          <button type="button" onClick={props.onPreviousTick}>上一 tick</button>
+          <button type="button" onClick={props.onNextTick}>下一 tick</button>
           <button type="button" onClick={props.onTogglePlayback}>
             {props.playbackRunning ? "暂停播放" : "播放 trace"}
           </button>
@@ -46,6 +53,8 @@ export function HexMatchTimeline(props: HexMatchTimelineProps) {
 
       <ProgressLine label="地图回合进度" value={props.roundProgressPct} />
       <ProgressLine label="当前回合阶段进度" value={props.phaseProgressPct} />
+      <ProgressLine label={props.phaseTickLabel} value={props.phaseTickProgressPct} />
+      {props.phaseTickLegacyFallback ? <p className={styles.emptyInline}>旧 trace 无 pathCellIds，当前使用 phase 级快照播放。</p> : null}
 
       <div className={styles.timelineRows}>
         <div className={styles.timelineBlock}>

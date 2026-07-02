@@ -11,7 +11,7 @@
 ## CS Role Profile
 - 原始位置：IGL / Support
 - 主位置：igl
-- 次级位置：support
+- 次级位置：supportive
 - 可信度：低-中
 - Agent Major 职责：战术规划 / 回合策略 / 资源分配；补全细节 / 修复方案 / 提供上下文
 - 备注：公开角色资料较少；项目中暂设为指挥/辅助位。

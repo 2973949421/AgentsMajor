@@ -11,7 +11,7 @@
 ## CS Role Profile
 - 原始位置：Rifler / Support / Anchor
 - 主位置：rifler
-- 次级位置：support, anchor
+- 次级位置：supportive, anchor
 - 可信度：中
 - Agent Major 职责：通用火力 / 回合执行 / 补枪衔接；补全细节 / 修复方案 / 提供上下文；防守型论证 / 稳定性校验
 - 备注：团队型步枪/补位。

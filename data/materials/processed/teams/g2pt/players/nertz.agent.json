@@ -6,7 +6,7 @@
   "real_name": null,
   "in_game_id": "NertZ",
   "display_name": "NertZ",
-  "role": "star_rifler",
+  "role": "lurker",
   "status": "active",
   "cs_role_profile": {
     "source_path": "raw/teams/agent_major_player_roles.md",
@@ -17,18 +17,18 @@
       "Star Rifler",
       "Lurker"
     ],
-    "primary_role": "star_rifler",
+    "primary_role": "lurker",
     "secondary_roles": [
-      "lurker"
+      "star"
     ],
     "position_tags": [
-      "star_rifler",
+      "star",
       "lurker"
     ],
     "confidence": "中-高",
     "notes": "高影响力步枪位。",
     "agent_major_responsibilities": [
-      "核心输出 / 关键回合 carry",
+      "明星前缀 / 关键回合 carry",
       "反制 / 偷点 / 找对手逻辑漏洞"
     ]
   },
@@ -39,13 +39,13 @@
     "爆点位"
   ],
   "persona_tags": [
-    "headline-core",
-    "win-condition",
+    "timing-hunter",
+    "map-reader",
     "impact-opener"
   ],
   "playstyle_tags": [
-    "impact-rifle",
-    "resource-heavy",
+    "late-map-control",
+    "timing-punish",
     "entry-bite",
     "mid-round-swing"
   ],
@@ -60,7 +60,7 @@
     "money-superteam"
   ],
   "cross_circle_tags": [
-    "band_to_superteam"
+    "lifetime_to_rivalry"
   ],
   "future_agent_profile": {
     "persona_summary": "爆点位，决定 G2PT 的进攻是不是只有名气没有冲击。",
@@ -68,8 +68,8 @@
     "narrative_axes": [
       "upset-watch",
       "money-superteam",
-      "headline-core",
-      "win-condition",
+      "timing-hunter",
+      "map-reader",
       "impact-opener"
     ],
     "reserved_memory_slots": [
@@ -83,8 +83,8 @@
     "binding_version": "2026-05-03-llm-binding-v1",
     "binding_scope": "asset_preallocation",
     "runtime_enabled": false,
-    "role_template_id": "llm_role_template_star_rifler",
-    "preferred_driver_model_id": "driver_kimi_k2_5",
+    "role_template_id": "llm_role_template_lurker",
+    "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
     "fallback_driver_model_ids": [
       "driver_qwen_3_6_plus"
     ],
@@ -112,18 +112,18 @@
         "max_output_tokens": 900
       },
       {
-        "task_id": "broadcast_caster_line",
-        "model_profile_id": "llm_profile_caster_expressive",
-        "driver_model_id": "driver_kimi_k2_5",
+        "task_id": "tactical_analysis_note",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
         "fallback_driver_model_ids": [
           "driver_qwen_3_6_plus"
         ],
         "enabled": false,
-        "temperature": 0.6,
-        "max_output_tokens": 500
+        "temperature": 0.4,
+        "max_output_tokens": 900
       },
       {
-        "task_id": "spotlight_moment_copy",
+        "task_id": "broadcast_caster_line",
         "model_profile_id": "llm_profile_caster_expressive",
         "driver_model_id": "driver_kimi_k2_5",
         "fallback_driver_model_ids": [
@@ -135,10 +135,12 @@
       }
     ],
     "prompt_bias_tags": [
-      "headline-core",
-      "win-condition",
-      "impact-rifle",
-      "resource-heavy",
+      "timing-hunter",
+      "map-reader",
+      "late-round",
+      "flank-punish",
+      "late-map-control",
+      "timing-punish",
       "entry-bite",
       "mid-round-swing",
       "impact-opener"
@@ -151,7 +153,7 @@
     ],
     "override_ids": [],
     "ops_notes": [
-      "Use star heat and resource-pressure framing."
+      "Use timing, information gap, and late-round payoff framing."
     ]
   },
   "ops_hooks": {

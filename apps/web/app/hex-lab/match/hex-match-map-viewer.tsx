@@ -1,9 +1,10 @@
-"use client";
+﻿"use client";
 
 import type {
   HexMatchLabMapAssetView,
   HexMatchLabPhaseSummary
 } from "../../server-hex-match-lab";
+import type { HexMatchPhasePlaybackFrame } from "./hex-match-phase-ticks";
 
 import styles from "./hex-match-lab.module.css";
 
@@ -14,6 +15,7 @@ const stepY = Math.sqrt(3) * hexRadius;
 interface HexMatchMapViewerProps {
   map: HexMatchLabMapAssetView | undefined;
   phase?: HexMatchLabPhaseSummary | undefined;
+  playbackFrame?: HexMatchPhasePlaybackFrame | undefined;
   level: number;
   selectedAgentId?: string | undefined;
   showRegions: boolean;
@@ -39,6 +41,7 @@ export function HexMatchMapViewer(props: HexMatchMapViewerProps) {
   const regionById = new Map(props.map.regions.map((region) => [region.regionId, region]));
   const pointById = new Map(props.map.points.map((point) => [point.pointId, point]));
   const allPlayers = props.phase?.players ?? [];
+  const playbackStateByAgentId = new Map((props.playbackFrame?.agentStates ?? []).map((state) => [state.agentId, state]));
   const players = allPlayers.filter((player) => cellById.get(player.currentCellId)?.level === props.level);
   const ghostPlayers = allPlayers.filter((player) => {
     const cell = cellById.get(player.currentCellId);
@@ -64,6 +67,11 @@ export function HexMatchMapViewer(props: HexMatchMapViewerProps) {
         <div>
           <h2>Dust2 Hex 地图</h2>
           <p>只读比赛视图：当前 phase 的位置、C4、行动路径、交火接触和最后目击会覆盖在官方 Hex 资产上。</p>
+          {props.playbackFrame ? (
+            <p className={styles.tickPlaybackNote}>
+              {props.playbackFrame.tickLabel}{props.playbackFrame.legacyFallback ? " · 旧 trace 无逐 tick 路径，使用 phase 快照" : " · phase 内逐 tick 播放"}
+            </p>
+          ) : null}
         </div>
         <span>level {props.level}</span>
       </div>
@@ -193,12 +201,12 @@ export function HexMatchMapViewer(props: HexMatchMapViewerProps) {
           const pos = cellCenter(cell.col, cell.row);
           const selected = props.selectedAgentId === player.agentId;
           return (
-            <g key={`ghost_${player.agentId}`} className={selected ? styles.mapAgentGhostSelected : styles.mapAgentGhost} onClick={() => props.onSelectAgent(player.agentId)}>
+            <g key={`ghost_${player.agentId}`} className={`${selected ? styles.mapAgentGhostSelected : styles.mapAgentGhost} ${player.lifeStatus === "dead" ? styles.mapAgentDead : ""}`} onClick={() => props.onSelectAgent(player.agentId)}>
               <circle cx={pos.x + offset(index).x} cy={pos.y + offset(index).y} r={selected ? 7.4 : 6.1} className={player.side === "attack" ? styles.mapAgentAttack : styles.mapAgentDefense} />
               <text x={pos.x + offset(index).x} y={pos.y + offset(index).y + 1.8} className={styles.mapAgentText}>
-                L{cell.level}
+                {player.lifeStatus === "dead" ? "×" : `L${cell.level}`}
               </text>
-              <title>{player.displayName ?? player.agentId} - 当前在 level {cell.level}</title>
+              <title>{player.displayName ?? player.agentId} - 当前在 level {cell.level} - {player.lifeStatus === "dead" ? "阵亡" : playbackStateByAgentId.get(player.agentId)?.moving ? "tick moving" : "tick stopped"}</title>
             </g>
           );
         })}
@@ -209,13 +217,13 @@ export function HexMatchMapViewer(props: HexMatchMapViewerProps) {
           const pos = cellCenter(cell.col, cell.row);
           const selected = props.selectedAgentId === player.agentId;
           return (
-            <g key={player.agentId} className={selected ? styles.mapAgentSelected : styles.mapAgent} onClick={() => props.onSelectAgent(player.agentId)}>
+            <g key={player.agentId} className={`${selected ? styles.mapAgentSelected : styles.mapAgent} ${player.lifeStatus === "dead" ? styles.mapAgentDead : ""}`} onClick={() => props.onSelectAgent(player.agentId)}>
               <circle cx={pos.x + offset(index).x} cy={pos.y + offset(index).y} r={selected ? 9 : 7.2} className={styles.mapAgentHalo} />
               <circle cx={pos.x + offset(index).x} cy={pos.y + offset(index).y} r={selected ? 7.2 : 5.8} className={player.side === "attack" ? styles.mapAgentAttack : styles.mapAgentDefense} />
               <text x={pos.x + offset(index).x} y={pos.y + offset(index).y + 1.8} className={styles.mapAgentText}>
-                {agentInitial(player.displayName ?? player.agentId)}
+                {player.lifeStatus === "dead" ? "×" : agentInitial(player.displayName ?? player.agentId)}
               </text>
-              <title>{player.displayName ?? player.agentId} - {player.currentRegionName ?? player.currentCellId}</title>
+              <title>{player.displayName ?? player.agentId} - {player.currentRegionName ?? player.currentCellId} - {player.lifeStatus === "dead" ? "阵亡" : playbackStateByAgentId.get(player.agentId)?.moving ? "tick moving" : "tick stopped"}</title>
             </g>
           );
         })}

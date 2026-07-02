@@ -69,10 +69,10 @@
       "team_id": "team_vitallmty",
       "display_name": "mezii",
       "in_game_id": "mezii",
-      "role": "support",
+      "role": "rifler",
       "cs_role_profile": {
         "raw_position": "Support / Anchor / flex rifler",
-        "primary_role": "support",
+        "primary_role": "rifler",
         "confidence": "中-高"
       },
       "status": "active",
@@ -114,10 +114,10 @@
       "team_id": "team_neural_vincere",
       "display_name": "iM",
       "in_game_id": "iM",
-      "role": "rifler",
+      "role": "entry",
       "cs_role_profile": {
         "raw_position": "Rifler / Entry-style rifler",
-        "primary_role": "rifler",
+        "primary_role": "entry",
         "confidence": "中"
       },
       "status": "active",
@@ -159,10 +159,10 @@
       "team_id": "team_neural_vincere",
       "display_name": "makazze",
       "in_game_id": "makazze",
-      "role": "rifler",
+      "role": "lurker",
       "cs_role_profile": {
-        "raw_position": "Rifler / young firepower",
-        "primary_role": "rifler",
+        "raw_position": "Lurker / young rifler",
+        "primary_role": "lurker",
         "confidence": "中"
       },
       "status": "active",
@@ -234,10 +234,10 @@
       "team_id": "team_furia",
       "display_name": "KSCERATO",
       "in_game_id": "KSCERATO",
-      "role": "star_rifler",
+      "role": "lurker",
       "cs_role_profile": {
         "raw_position": "Star Rifler / Lurker",
-        "primary_role": "star_rifler",
+        "primary_role": "lurker",
         "confidence": "高"
       },
       "status": "active",
@@ -294,10 +294,10 @@
       "team_id": "team_falcon_7b",
       "display_name": "NiKo",
       "in_game_id": "NiKo",
-      "role": "star_rifler",
+      "role": "rifler",
       "cs_role_profile": {
         "raw_position": "Star Rifler / closer",
-        "primary_role": "star_rifler",
+        "primary_role": "rifler",
         "confidence": "高"
       },
       "status": "active",
@@ -309,10 +309,10 @@
       "team_id": "team_falcon_7b",
       "display_name": "TeSeS",
       "in_game_id": "TeSeS",
-      "role": "support",
+      "role": "lurker",
       "cs_role_profile": {
-        "raw_position": "Support / Anchor / rifler",
-        "primary_role": "support",
+        "raw_position": "Lurker / supportive rifler",
+        "primary_role": "lurker",
         "confidence": "中-高"
       },
       "status": "active",
@@ -384,10 +384,10 @@
       "team_id": "team_parivision_omni",
       "display_name": "BELCHONOKK",
       "in_game_id": "BELCHONOKK",
-      "role": "rifler",
+      "role": "entry",
       "cs_role_profile": {
         "raw_position": "Rifler / Entry-style",
-        "primary_role": "rifler",
+        "primary_role": "entry",
         "confidence": "中"
       },
       "status": "active",
@@ -399,10 +399,10 @@
       "team_id": "team_parivision_omni",
       "display_name": "xiELO",
       "in_game_id": "xiELO",
-      "role": "rifler",
+      "role": "awper",
       "cs_role_profile": {
-        "raw_position": "Rifler / Flex",
-        "primary_role": "rifler",
+        "raw_position": "AWPer / Flex",
+        "primary_role": "awper",
         "confidence": "中"
       },
       "status": "active",
@@ -414,10 +414,10 @@
       "team_id": "team_parivision_omni",
       "display_name": "nota",
       "in_game_id": "nota",
-      "role": "support",
+      "role": "lurker",
       "cs_role_profile": {
-        "raw_position": "Support / Anchor",
-        "primary_role": "support",
+        "raw_position": "Lurker / Anchor",
+        "primary_role": "lurker",
         "confidence": "中"
       },
       "status": "active",
@@ -519,10 +519,10 @@
       "team_id": "team_aulora",
       "display_name": "Wicadia",
       "in_game_id": "Wicadia",
-      "role": "rifler",
+      "role": "lurker",
       "cs_role_profile": {
-        "raw_position": "Rifler / Entry-support",
-        "primary_role": "rifler",
+        "raw_position": "Lurker / rifler",
+        "primary_role": "lurker",
         "confidence": "中-高"
       },
       "status": "active",
@@ -579,10 +579,10 @@
       "team_id": "team_mouse",
       "display_name": "jL",
       "in_game_id": "jL",
-      "role": "rifler",
+      "role": "entry",
       "cs_role_profile": {
         "raw_position": "Rifler / Entry-style / Flex",
-        "primary_role": "rifler",
+        "primary_role": "entry",
         "confidence": "中"
       },
       "status": "active",
@@ -654,10 +654,10 @@
       "team_id": "team_the_mongolzk",
       "display_name": "Techno",
       "in_game_id": "Techno",
-      "role": "rifler",
+      "role": "entry",
       "cs_role_profile": {
         "raw_position": "Rifler / Entry-style",
-        "primary_role": "rifler",
+        "primary_role": "entry",
         "confidence": "中-高"
       },
       "status": "active",
@@ -699,10 +699,10 @@
       "team_id": "team_the_mongolzk",
       "display_name": "cobrazera",
       "in_game_id": "cobrazera",
-      "role": "rifler",
+      "role": "lurker",
       "cs_role_profile": {
-        "raw_position": "Rifler / Flex",
-        "primary_role": "rifler",
+        "raw_position": "Lurker / Flex",
+        "primary_role": "lurker",
         "confidence": "中"
       },
       "status": "active",
@@ -789,10 +789,10 @@
       "team_id": "team_team_spirit",
       "display_name": "zont1x",
       "in_game_id": "zont1x",
-      "role": "rifler",
+      "role": "lurker",
       "cs_role_profile": {
-        "raw_position": "Rifler / Anchor",
-        "primary_role": "rifler",
+        "raw_position": "Lurker / Anchor",
+        "primary_role": "lurker",
         "confidence": "中-高"
       },
       "status": "active",
@@ -849,10 +849,10 @@
       "team_id": "team_futuretoken",
       "display_name": "Krabeni",
       "in_game_id": "Krabeni",
-      "role": "support",
+      "role": "lurker",
       "cs_role_profile": {
-        "raw_position": "Support / Rifler",
-        "primary_role": "support",
+        "raw_position": "Lurker / supportive rifler",
+        "primary_role": "lurker",
         "confidence": "低-中"
       },
       "status": "active",
@@ -939,10 +939,10 @@
       "team_id": "team_astrallm",
       "display_name": "jabbi",
       "in_game_id": "jabbi",
-      "role": "rifler",
+      "role": "lurker",
       "cs_role_profile": {
         "raw_position": "Rifler / Lurker",
-        "primary_role": "rifler",
+        "primary_role": "lurker",
         "confidence": "中-高"
       },
       "status": "active",
@@ -969,10 +969,10 @@
       "team_id": "team_astrallm",
       "display_name": "ryu",
       "in_game_id": "ryu",
-      "role": "rifler",
+      "role": "entry",
       "cs_role_profile": {
-        "raw_position": "Rifler / Flex",
-        "primary_role": "rifler",
+        "raw_position": "Entry / Flex",
+        "primary_role": "entry",
         "confidence": "中"
       },
       "status": "active",
@@ -1014,10 +1014,10 @@
       "team_id": "team_g2pt",
       "display_name": "NertZ",
       "in_game_id": "NertZ",
-      "role": "star_rifler",
+      "role": "lurker",
       "cs_role_profile": {
         "raw_position": "Star Rifler / Lurker",
-        "primary_role": "star_rifler",
+        "primary_role": "lurker",
         "confidence": "中-高"
       },
       "status": "active",
@@ -1044,10 +1044,10 @@
       "team_id": "team_g2pt",
       "display_name": "HeavyGod",
       "in_game_id": "HeavyGod",
-      "role": "rifler",
+      "role": "entry",
       "cs_role_profile": {
         "raw_position": "Rifler / Entry-style",
-        "primary_role": "rifler",
+        "primary_role": "entry",
         "confidence": "中"
       },
       "status": "active",
@@ -1104,10 +1104,10 @@
       "team_id": "team_legacy_v1",
       "display_name": "dumau",
       "in_game_id": "dumau",
-      "role": "star_rifler",
+      "role": "rifler",
       "cs_role_profile": {
         "raw_position": "Star Rifler",
-        "primary_role": "star_rifler",
+        "primary_role": "rifler",
         "confidence": "中-高"
       },
       "status": "active",
@@ -1119,10 +1119,10 @@
       "team_id": "team_legacy_v1",
       "display_name": "latto",
       "in_game_id": "latto",
-      "role": "rifler",
+      "role": "entry",
       "cs_role_profile": {
-        "raw_position": "Rifler / Support",
-        "primary_role": "rifler",
+        "raw_position": "Entry / supportive rifler",
+        "primary_role": "entry",
         "confidence": "中"
       },
       "status": "active",
@@ -1134,10 +1134,10 @@
       "team_id": "team_legacy_v1",
       "display_name": "n1ssim",
       "in_game_id": "n1ssim",
-      "role": "rifler",
+      "role": "lurker",
       "cs_role_profile": {
-        "raw_position": "Rifler / Anchor",
-        "primary_role": "rifler",
+        "raw_position": "Lurker / Anchor",
+        "primary_role": "lurker",
         "confidence": "中"
       },
       "status": "active",
@@ -1194,10 +1194,10 @@
       "team_id": "team_bit8",
       "display_name": "npl",
       "in_game_id": "npl",
-      "role": "rifler",
+      "role": "entry",
       "cs_role_profile": {
-        "raw_position": "Rifler / Playmaker",
-        "primary_role": "rifler",
+        "raw_position": "Entry / Playmaker",
+        "primary_role": "entry",
         "confidence": "中-高"
       },
       "status": "active",
@@ -1224,10 +1224,10 @@
       "team_id": "team_bit8",
       "display_name": "esenthial",
       "in_game_id": "esenthial",
-      "role": "support",
+      "role": "lurker",
       "cs_role_profile": {
-        "raw_position": "Support / Anchor / Rifler",
-        "primary_role": "support",
+        "raw_position": "Lurker / Anchor / Rifler",
+        "primary_role": "lurker",
         "confidence": "中"
       },
       "status": "active",
@@ -1299,10 +1299,10 @@
       "team_id": "team_prompt_gaming",
       "display_name": "piriajr",
       "in_game_id": "piriajr",
-      "role": "rifler",
+      "role": "lurker",
       "cs_role_profile": {
-        "raw_position": "Rifler / Support / Flex",
-        "primary_role": "rifler",
+        "raw_position": "Lurker / Support / Flex",
+        "primary_role": "lurker",
         "confidence": "中"
       },
       "status": "active",
@@ -1329,10 +1329,10 @@
       "team_id": "team_prompt_gaming",
       "display_name": "snow",
       "in_game_id": "snow",
-      "role": "rifler",
+      "role": "entry",
       "cs_role_profile": {
         "raw_position": "Rifler / Entry-style",
-        "primary_role": "rifler",
+        "primary_role": "entry",
         "confidence": "中"
       },
       "status": "active",
@@ -1404,10 +1404,10 @@
       "team_id": "team_phaseclan",
       "display_name": "frozen",
       "in_game_id": "frozen",
-      "role": "star_rifler",
+      "role": "lurker",
       "cs_role_profile": {
         "raw_position": "Star Rifler / Lurker",
-        "primary_role": "star_rifler",
+        "primary_role": "lurker",
         "confidence": "高"
       },
       "status": "active",
@@ -1419,10 +1419,10 @@
       "team_id": "team_phaseclan",
       "display_name": "Neityu",
       "in_game_id": "Neityu",
-      "role": "stand_in",
+      "role": "entry",
       "cs_role_profile": {
-        "raw_position": "Stand-in / Rifler",
-        "primary_role": "stand_in",
+        "raw_position": "Stand-in / Entry rifler",
+        "primary_role": "entry",
         "confidence": "中"
       },
       "status": "active",

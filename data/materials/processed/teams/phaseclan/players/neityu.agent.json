@@ -6,30 +6,30 @@
   "real_name": null,
   "in_game_id": "Neityu",
   "display_name": "Neityu",
-  "role": "stand_in",
+  "role": "entry",
   "status": "active",
   "cs_role_profile": {
     "source_path": "raw/teams/agent_major_player_roles.md",
     "source_team_name": "PhaseClan",
     "member_type": "player",
-    "raw_position": "Stand-in / Rifler",
+    "raw_position": "Stand-in / Entry rifler",
     "raw_position_parts": [
       "Stand-in",
-      "Rifler"
+      "Entry rifler"
     ],
-    "primary_role": "stand_in",
+    "primary_role": "entry",
     "secondary_roles": [
-      "rifler"
+      "stand_in"
     ],
     "position_tags": [
       "stand_in",
-      "rifler"
+      "entry"
     ],
     "confidence": "中",
-    "notes": "近期 stand-in，项目中可设为临时火力位。",
+    "notes": "近期 stand-in，项目中固定为临时突破火力位。",
     "agent_major_responsibilities": [
       "临时接入 / 快速适配 / 低上下文执行",
-      "通用火力 / 回合执行 / 补枪衔接"
+      "首轮出击 / 激进创意 / 打开局面"
     ]
   },
   "aliases": [
@@ -39,22 +39,22 @@
     "补位槽"
   ],
   "persona_tags": [
-    "temporary-slot",
-    "volatile-interface",
+    "frontline-instigator",
+    "heat-checker",
     "future-interface"
   ],
   "playstyle_tags": [
-    "adaptation",
-    "limited-context",
+    "first-contact",
+    "space-creator",
     "support",
     "utility"
   ],
   "caster_focus_tags": [
-    "machine_special_invite_drama"
+    "machine_force_buy_shock"
   ],
   "barrage_focus_tags": [
-    "special_invite",
-    "player_targeting"
+    "player_targeting",
+    "research"
   ],
   "news_focus_tags": [
     "special_invite",
@@ -71,8 +71,8 @@
       "special_invite",
       "money-superteam",
       "upset-watch",
-      "temporary-slot",
-      "volatile-interface",
+      "frontline-instigator",
+      "heat-checker",
       "future-interface"
     ],
     "reserved_memory_slots": [
@@ -86,8 +86,8 @@
     "binding_version": "2026-05-03-llm-binding-v1",
     "binding_scope": "asset_preallocation",
     "runtime_enabled": false,
-    "role_template_id": "llm_role_template_stand_in",
-    "preferred_driver_model_id": "driver_qwen_3_6_plus",
+    "role_template_id": "llm_role_template_entry",
+    "preferred_driver_model_id": "driver_minimax_m2_5",
     "fallback_driver_model_ids": [
       "driver_qwen_3_5_plus"
     ],
@@ -124,16 +124,27 @@
         "enabled": false,
         "temperature": 0.7,
         "max_output_tokens": 450
+      },
+      {
+        "task_id": "meme_reaction_line",
+        "model_profile_id": "llm_profile_barrage_chaos",
+        "driver_model_id": "driver_minimax_m2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_5_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.7,
+        "max_output_tokens": 450
       }
     ],
     "prompt_bias_tags": [
-      "temporary-slot",
-      "volatile-interface",
-      "low-context",
-      "adaptation",
-      "limited-context",
+      "frontline-instigator",
+      "first-contact",
+      "space-creator",
+      "high-variance",
       "support",
       "utility",
+      "heat-checker",
       "future-interface"
     ],
     "env_contract_refs": [
@@ -144,7 +155,7 @@
     ],
     "override_ids": [],
     "ops_notes": [
-      "Do not lock permanent persona assumptions until canon confirms the slot."
+      "Prefer first-contact, overpeek, space creation, and instant reaction hooks."
     ]
   },
   "ops_hooks": {
@@ -157,7 +168,7 @@
     ],
     "card_priority": 46,
     "broadcast_entry_points": [
-      "machine_special_invite_drama"
+      "machine_force_buy_shock"
     ]
   },
   "canon_notes": []

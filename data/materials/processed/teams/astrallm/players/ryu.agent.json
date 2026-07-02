@@ -6,29 +6,29 @@
   "real_name": null,
   "in_game_id": "ryu",
   "display_name": "ryu",
-  "role": "rifler",
+  "role": "entry",
   "status": "active",
   "cs_role_profile": {
     "source_path": "raw/teams/agent_major_player_roles.md",
     "source_team_name": "AstraLLM",
     "member_type": "player",
-    "raw_position": "Rifler / Flex",
+    "raw_position": "Entry / Flex",
     "raw_position_parts": [
-      "Rifler",
+      "Entry",
       "Flex"
     ],
-    "primary_role": "rifler",
+    "primary_role": "entry",
     "secondary_roles": [
       "flex"
     ],
     "position_tags": [
-      "rifler",
+      "entry",
       "flex"
     ],
     "confidence": "中",
-    "notes": "新阵容步枪，项目中设为灵活位。",
+    "notes": "新阵容步枪，项目中固定为突破/灵活位。",
     "agent_major_responsibilities": [
-      "通用火力 / 回合执行 / 补枪衔接",
+      "首轮出击 / 激进创意 / 打开局面",
       "多场景适配 / 缺口填补 / 角色切换"
     ]
   },
@@ -39,28 +39,29 @@
     "新暗线"
   ],
   "persona_tags": [
-    "rifle-worker",
-    "round-connector",
+    "frontline-instigator",
+    "heat-checker",
     "quiet-angle"
   ],
   "playstyle_tags": [
-    "rifle-trade",
-    "site-pressure",
+    "first-contact",
+    "space-creator",
     "late-route",
     "lurking"
   ],
   "caster_focus_tags": [
-    "machine_map_point_pressure"
+    "machine_force_buy_shock"
   ],
   "barrage_focus_tags": [
-    "player_targeting"
+    "player_targeting",
+    "research"
   ],
   "news_focus_tags": [
     "history-burden",
     "upset-watch"
   ],
   "cross_circle_tags": [
-    "customer_service_to_cleanup"
+    "cabinet_to_live_room_chaos"
   ],
   "future_agent_profile": {
     "persona_summary": "新暗线窗口位，适合在后续运营里继续补人物画像。",
@@ -68,8 +69,8 @@
     "narrative_axes": [
       "history-burden",
       "upset-watch",
-      "rifle-worker",
-      "round-connector",
+      "frontline-instigator",
+      "heat-checker",
       "quiet-angle"
     ],
     "reserved_memory_slots": [
@@ -83,8 +84,8 @@
     "binding_version": "2026-05-03-llm-binding-v1",
     "binding_scope": "asset_preallocation",
     "runtime_enabled": false,
-    "role_template_id": "llm_role_template_rifler",
-    "preferred_driver_model_id": "driver_qwen_3_6_plus",
+    "role_template_id": "llm_role_template_entry",
+    "preferred_driver_model_id": "driver_minimax_m2_5",
     "fallback_driver_model_ids": [
       "driver_qwen_3_5_plus"
     ],
@@ -121,16 +122,27 @@
         "enabled": false,
         "temperature": 0.7,
         "max_output_tokens": 450
+      },
+      {
+        "task_id": "meme_reaction_line",
+        "model_profile_id": "llm_profile_barrage_chaos",
+        "driver_model_id": "driver_minimax_m2_5",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_5_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.7,
+        "max_output_tokens": 450
       }
     ],
     "prompt_bias_tags": [
-      "rifle-worker",
-      "round-connector",
-      "site-pressure",
-      "trade-layer",
-      "rifle-trade",
+      "frontline-instigator",
+      "first-contact",
+      "space-creator",
+      "high-variance",
       "late-route",
       "lurking",
+      "heat-checker",
       "quiet-angle"
     ],
     "env_contract_refs": [
@@ -141,7 +153,7 @@
     ],
     "override_ids": [],
     "ops_notes": [
-      "Use as the default player fallback when no sharper role is available."
+      "Prefer first-contact, overpeek, space creation, and instant reaction hooks."
     ]
   },
   "ops_hooks": {
@@ -153,7 +165,7 @@
     ],
     "card_priority": 50,
     "broadcast_entry_points": [
-      "machine_map_point_pressure"
+      "machine_force_buy_shock"
     ]
   },
   "canon_notes": []

@@ -20,6 +20,7 @@ export type HexCombatVerdict = "kill" | "wound_or_forced_back" | "contested_supp
 export type HexCombatContactThreatLevel = "observation" | "suppression" | "lethal";
 export type HexCombatControlHint = "attack" | "defense" | "contested" | "neutral";
 export type HexCombatVarianceMode = "off" | "audited";
+export type HexCombatShape = "one_v_one" | "one_v_many" | "many_v_one" | "many_v_many";
 export type HexCombatBusinessVerdict =
   | "proof_rebutted_challenge"
   | "challenge_succeeded"
@@ -124,6 +125,7 @@ export interface HexCombatContact {
   contactId: string;
   phaseId: HexPhaseId;
   phaseIndex: number;
+  combatShape?: HexCombatShape;
   participants: HexCombatParticipant[];
   attackAgentIds: string[];
   defenseAgentIds: string[];
@@ -135,6 +137,12 @@ export interface HexCombatContact {
   pressureKeys: string[];
   pressureScope?: HexCombatPressureScope;
   primaryPressureKey?: string;
+  primaryDuelPairId?: string;
+  secondaryDuelPairIds?: string[];
+  supportContributorAgentIds?: string[];
+  outnumberedAgentIds?: string[];
+  surroundedSide?: HexSide;
+  multiPairReasons?: string[];
   minCellDistance?: number;
   contactThreatLevel?: HexCombatContactThreatLevel;
   lethalEligible?: boolean;
@@ -281,6 +289,17 @@ export interface HexCombatAudit {
     duelPairCount: number;
     fireLaneCount: number;
     pressureKeys: string[];
+    reasons: string[];
+  };
+  multiPairing?: {
+    combatShape: HexCombatShape;
+    primaryDuelPairId?: string;
+    secondaryDuelPairIds: string[];
+    supportContributorAgentIds: string[];
+    outnumberedAgentIds: string[];
+    surroundedSide?: HexSide;
+    attributionMode: "single_pair" | "multi_pair";
+    surroundedPressureApplied: boolean;
     reasons: string[];
   };
   pressure?: HexCombatPressureAudit;

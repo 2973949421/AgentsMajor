@@ -237,11 +237,12 @@ function collectEconomyValidationErrors(
   }
 
   const errors: HexAgentActionValidationError[] = [];
-  const actionType = resolveActionType(input, agent, input.asset.cells.find((cell) => cell.cellId === input.draft.targetCellId));
+  const targetCell = input.asset.cells.find((cell) => cell.cellId === input.draft.targetCellId);
+  const actionType = resolveActionType(input, agent, targetCell);
   if (isObjectiveAction(actionType)) {
     return errors;
   }
-  if (!economy.allowedActionTypes.includes(actionType)) {
+  if (!economy.allowedActionTypes.includes(actionType) && !isN67ObjectiveEconomyOverride(input, agent, targetCell, actionType, economy)) {
     errors.push("economy_disallows_action");
   }
   if (actionType === "use_utility" && economy.utilityTier === "none") {
@@ -339,6 +340,41 @@ function isObjectiveAction(actionType: HexAgentActionType): boolean {
 
 function isLowResourceEconomy(economy: HexAgentEconomyContext): boolean {
   return economy.resourceTier === "low";
+}
+
+function isN67ObjectiveEconomyOverride(
+  input: ValidateHexAgentActionDraftInput,
+  agent: HexAgentPhaseMemory,
+  targetCell: HexCell | undefined,
+  actionType: HexAgentActionType,
+  economy: HexAgentEconomyContext
+): boolean {
+  if (economy.resourceTier !== "low") {
+    return false;
+  }
+  if (!isN67LowResourceActiveAction(actionType)) {
+    return false;
+  }
+  const isLatePhase = input.memory.phaseIndex >= 2;
+  const targetIsObjectiveOrContact = Boolean(
+    targetCell
+      && (
+        isBombsiteCell(targetCell)
+        || targetCell.flags.includes("choke")
+        || targetCell.flags.includes("high_risk")
+        || isEnemyOccupyingCell(input.memory, agent, targetCell.cellId)
+      )
+  );
+  const targetIsDroppedC4 = Boolean(input.memory.bombState.droppedCellId && targetCell?.cellId === input.memory.bombState.droppedCellId);
+  return isLatePhase || targetIsObjectiveOrContact || targetIsDroppedC4;
+}
+
+function isN67LowResourceActiveAction(actionType: HexAgentActionType): boolean {
+  return actionType === "peek"
+    || actionType === "seek_duel"
+    || actionType === "prepare_trade"
+    || actionType === "map_control"
+    || actionType === "save";
 }
 
 function buildFallbackAction(

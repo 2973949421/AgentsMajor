@@ -130,8 +130,8 @@
       "team_id": "team_vitallmty",
       "team_slug": "vitallmty",
       "display_name": "mezii",
-      "role": "support",
-      "role_template_id": "llm_role_template_support",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
       "preferred_driver_model_id": "driver_qwen_3_6_plus",
       "fallback_driver_model_ids": [
         "driver_qwen_3_5_plus"
@@ -208,16 +208,17 @@
       "team_id": "team_neural_vincere",
       "team_slug": "neural-vincere",
       "display_name": "iM",
-      "role": "rifler",
-      "role_template_id": "llm_role_template_rifler",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "entry",
+      "role_template_id": "llm_role_template_entry",
+      "preferred_driver_model_id": "driver_minimax_m2_5",
       "fallback_driver_model_ids": [
         "driver_qwen_3_5_plus"
       ],
       "task_ids": [
         "profile_card_copy",
         "broadcast_caster_line",
-        "barrage_style_line"
+        "barrage_style_line",
+        "meme_reaction_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
@@ -286,21 +287,21 @@
       "team_id": "team_neural_vincere",
       "team_slug": "neural-vincere",
       "display_name": "makazze",
-      "role": "rifler",
-      "role_template_id": "llm_role_template_rifler",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "lurker",
+      "role_template_id": "llm_role_template_lurker",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
       "fallback_driver_model_ids": [
-        "driver_qwen_3_5_plus"
+        "driver_qwen_3_6_plus"
       ],
       "task_ids": [
         "profile_card_copy",
-        "broadcast_caster_line",
-        "barrage_style_line"
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
-        "llm_profile_caster_expressive",
-        "llm_profile_barrage_chaos"
+        "llm_profile_caster_expressive"
       ],
       "override_ids": [],
       "runtime_enabled": false,
@@ -423,15 +424,16 @@
       "team_id": "team_furia",
       "team_slug": "furia",
       "display_name": "KSCERATO",
-      "role": "star_rifler",
-      "role_template_id": "llm_role_template_star_rifler",
-      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "role": "lurker",
+      "role_template_id": "llm_role_template_lurker",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
       "fallback_driver_model_ids": [
         "driver_qwen_3_6_plus"
       ],
       "task_ids": [
         "profile_card_copy",
         "news_story_copy",
+        "tactical_analysis_note",
         "broadcast_caster_line",
         "spotlight_moment_copy"
       ],
@@ -532,21 +534,22 @@
       "team_id": "team_falcon_7b",
       "team_slug": "falcon-7b",
       "display_name": "NiKo",
-      "role": "star_rifler",
-      "role_template_id": "llm_role_template_star_rifler",
-      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
       "fallback_driver_model_ids": [
-        "driver_qwen_3_6_plus"
+        "driver_qwen_3_5_plus"
       ],
       "task_ids": [
         "profile_card_copy",
-        "news_story_copy",
         "broadcast_caster_line",
+        "barrage_style_line",
         "spotlight_moment_copy"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
-        "llm_profile_caster_expressive"
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
       ],
       "override_ids": [
         "llm_override_spotlight_player_falcon_7b_niko"
@@ -560,21 +563,21 @@
       "team_id": "team_falcon_7b",
       "team_slug": "falcon-7b",
       "display_name": "TeSeS",
-      "role": "support",
-      "role_template_id": "llm_role_template_support",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "lurker",
+      "role_template_id": "llm_role_template_lurker",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
       "fallback_driver_model_ids": [
-        "driver_qwen_3_5_plus"
+        "driver_qwen_3_6_plus"
       ],
       "task_ids": [
         "profile_card_copy",
-        "broadcast_caster_line",
-        "barrage_style_line"
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
-        "llm_profile_caster_expressive",
-        "llm_profile_barrage_chaos"
+        "llm_profile_caster_expressive"
       ],
       "override_ids": [],
       "runtime_enabled": false,
@@ -696,16 +699,17 @@
       "team_id": "team_parivision_omni",
       "team_slug": "parivision-omni",
       "display_name": "BELCHONOKK",
-      "role": "rifler",
-      "role_template_id": "llm_role_template_rifler",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "entry",
+      "role_template_id": "llm_role_template_entry",
+      "preferred_driver_model_id": "driver_minimax_m2_5",
       "fallback_driver_model_ids": [
         "driver_qwen_3_5_plus"
       ],
       "task_ids": [
         "profile_card_copy",
         "broadcast_caster_line",
-        "barrage_style_line"
+        "barrage_style_line",
+        "meme_reaction_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
@@ -722,21 +726,21 @@
       "team_id": "team_parivision_omni",
       "team_slug": "parivision-omni",
       "display_name": "xiELO",
-      "role": "rifler",
-      "role_template_id": "llm_role_template_rifler",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "awper",
+      "role_template_id": "llm_role_template_awper",
+      "preferred_driver_model_id": "driver_kimi_k2_5",
       "fallback_driver_model_ids": [
-        "driver_qwen_3_5_plus"
+        "driver_qwen_3_6_plus"
       ],
       "task_ids": [
         "profile_card_copy",
+        "news_story_copy",
         "broadcast_caster_line",
-        "barrage_style_line"
+        "spotlight_moment_copy"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
-        "llm_profile_caster_expressive",
-        "llm_profile_barrage_chaos"
+        "llm_profile_caster_expressive"
       ],
       "override_ids": [],
       "runtime_enabled": false,
@@ -748,21 +752,21 @@
       "team_id": "team_parivision_omni",
       "team_slug": "parivision-omni",
       "display_name": "nota",
-      "role": "support",
-      "role_template_id": "llm_role_template_support",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "lurker",
+      "role_template_id": "llm_role_template_lurker",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
       "fallback_driver_model_ids": [
-        "driver_qwen_3_5_plus"
+        "driver_qwen_3_6_plus"
       ],
       "task_ids": [
         "profile_card_copy",
-        "broadcast_caster_line",
-        "barrage_style_line"
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
-        "llm_profile_caster_expressive",
-        "llm_profile_barrage_chaos"
+        "llm_profile_caster_expressive"
       ],
       "override_ids": [],
       "runtime_enabled": false,
@@ -934,21 +938,21 @@
       "team_id": "team_aulora",
       "team_slug": "aulora",
       "display_name": "Wicadia",
-      "role": "rifler",
-      "role_template_id": "llm_role_template_rifler",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "lurker",
+      "role_template_id": "llm_role_template_lurker",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
       "fallback_driver_model_ids": [
-        "driver_qwen_3_5_plus"
+        "driver_qwen_3_6_plus"
       ],
       "task_ids": [
         "profile_card_copy",
-        "broadcast_caster_line",
-        "barrage_style_line"
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
-        "llm_profile_caster_expressive",
-        "llm_profile_barrage_chaos"
+        "llm_profile_caster_expressive"
       ],
       "override_ids": [],
       "runtime_enabled": false,
@@ -1038,16 +1042,17 @@
       "team_id": "team_mouse",
       "team_slug": "mouse",
       "display_name": "jL",
-      "role": "rifler",
-      "role_template_id": "llm_role_template_rifler",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "entry",
+      "role_template_id": "llm_role_template_entry",
+      "preferred_driver_model_id": "driver_minimax_m2_5",
       "fallback_driver_model_ids": [
         "driver_qwen_3_5_plus"
       ],
       "task_ids": [
         "profile_card_copy",
         "broadcast_caster_line",
-        "barrage_style_line"
+        "barrage_style_line",
+        "meme_reaction_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
@@ -1168,16 +1173,17 @@
       "team_id": "team_the_mongolzk",
       "team_slug": "the-mongolzk",
       "display_name": "Techno",
-      "role": "rifler",
-      "role_template_id": "llm_role_template_rifler",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "entry",
+      "role_template_id": "llm_role_template_entry",
+      "preferred_driver_model_id": "driver_minimax_m2_5",
       "fallback_driver_model_ids": [
         "driver_qwen_3_5_plus"
       ],
       "task_ids": [
         "profile_card_copy",
         "broadcast_caster_line",
-        "barrage_style_line"
+        "barrage_style_line",
+        "meme_reaction_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
@@ -1248,21 +1254,21 @@
       "team_id": "team_the_mongolzk",
       "team_slug": "the-mongolzk",
       "display_name": "cobrazera",
-      "role": "rifler",
-      "role_template_id": "llm_role_template_rifler",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "lurker",
+      "role_template_id": "llm_role_template_lurker",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
       "fallback_driver_model_ids": [
-        "driver_qwen_3_5_plus"
+        "driver_qwen_3_6_plus"
       ],
       "task_ids": [
         "profile_card_copy",
-        "broadcast_caster_line",
-        "barrage_style_line"
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
-        "llm_profile_caster_expressive",
-        "llm_profile_barrage_chaos"
+        "llm_profile_caster_expressive"
       ],
       "override_ids": [],
       "runtime_enabled": false,
@@ -1408,21 +1414,21 @@
       "team_id": "team_team_spirit",
       "team_slug": "team-spirit",
       "display_name": "zont1x",
-      "role": "rifler",
-      "role_template_id": "llm_role_template_rifler",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "lurker",
+      "role_template_id": "llm_role_template_lurker",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
       "fallback_driver_model_ids": [
-        "driver_qwen_3_5_plus"
+        "driver_qwen_3_6_plus"
       ],
       "task_ids": [
         "profile_card_copy",
-        "broadcast_caster_line",
-        "barrage_style_line"
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
-        "llm_profile_caster_expressive",
-        "llm_profile_barrage_chaos"
+        "llm_profile_caster_expressive"
       ],
       "override_ids": [],
       "runtime_enabled": false,
@@ -1513,21 +1519,21 @@
       "team_id": "team_futuretoken",
       "team_slug": "futuretoken",
       "display_name": "Krabeni",
-      "role": "support",
-      "role_template_id": "llm_role_template_support",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "lurker",
+      "role_template_id": "llm_role_template_lurker",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
       "fallback_driver_model_ids": [
-        "driver_qwen_3_5_plus"
+        "driver_qwen_3_6_plus"
       ],
       "task_ids": [
         "profile_card_copy",
-        "broadcast_caster_line",
-        "barrage_style_line"
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
-        "llm_profile_caster_expressive",
-        "llm_profile_barrage_chaos"
+        "llm_profile_caster_expressive"
       ],
       "override_ids": [],
       "runtime_enabled": false,
@@ -1669,21 +1675,21 @@
       "team_id": "team_astrallm",
       "team_slug": "astrallm",
       "display_name": "jabbi",
-      "role": "rifler",
-      "role_template_id": "llm_role_template_rifler",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "lurker",
+      "role_template_id": "llm_role_template_lurker",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
       "fallback_driver_model_ids": [
-        "driver_qwen_3_5_plus"
+        "driver_qwen_3_6_plus"
       ],
       "task_ids": [
         "profile_card_copy",
-        "broadcast_caster_line",
-        "barrage_style_line"
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
-        "llm_profile_caster_expressive",
-        "llm_profile_barrage_chaos"
+        "llm_profile_caster_expressive"
       ],
       "override_ids": [],
       "runtime_enabled": false,
@@ -1721,16 +1727,17 @@
       "team_id": "team_astrallm",
       "team_slug": "astrallm",
       "display_name": "ryu",
-      "role": "rifler",
-      "role_template_id": "llm_role_template_rifler",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "entry",
+      "role_template_id": "llm_role_template_entry",
+      "preferred_driver_model_id": "driver_minimax_m2_5",
       "fallback_driver_model_ids": [
         "driver_qwen_3_5_plus"
       ],
       "task_ids": [
         "profile_card_copy",
         "broadcast_caster_line",
-        "barrage_style_line"
+        "barrage_style_line",
+        "meme_reaction_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
@@ -1799,17 +1806,17 @@
       "team_id": "team_g2pt",
       "team_slug": "g2pt",
       "display_name": "NertZ",
-      "role": "star_rifler",
-      "role_template_id": "llm_role_template_star_rifler",
-      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "role": "lurker",
+      "role_template_id": "llm_role_template_lurker",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
       "fallback_driver_model_ids": [
         "driver_qwen_3_6_plus"
       ],
       "task_ids": [
         "profile_card_copy",
         "news_story_copy",
-        "broadcast_caster_line",
-        "spotlight_moment_copy"
+        "tactical_analysis_note",
+        "broadcast_caster_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
@@ -1851,16 +1858,17 @@
       "team_id": "team_g2pt",
       "team_slug": "g2pt",
       "display_name": "HeavyGod",
-      "role": "rifler",
-      "role_template_id": "llm_role_template_rifler",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "entry",
+      "role_template_id": "llm_role_template_entry",
+      "preferred_driver_model_id": "driver_minimax_m2_5",
       "fallback_driver_model_ids": [
         "driver_qwen_3_5_plus"
       ],
       "task_ids": [
         "profile_card_copy",
         "broadcast_caster_line",
-        "barrage_style_line"
+        "barrage_style_line",
+        "meme_reaction_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
@@ -1955,21 +1963,21 @@
       "team_id": "team_legacy_v1",
       "team_slug": "legacy-v1",
       "display_name": "dumau",
-      "role": "star_rifler",
-      "role_template_id": "llm_role_template_star_rifler",
-      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "role": "rifler",
+      "role_template_id": "llm_role_template_rifler",
+      "preferred_driver_model_id": "driver_qwen_3_6_plus",
       "fallback_driver_model_ids": [
-        "driver_qwen_3_6_plus"
+        "driver_qwen_3_5_plus"
       ],
       "task_ids": [
         "profile_card_copy",
-        "news_story_copy",
         "broadcast_caster_line",
-        "spotlight_moment_copy"
+        "barrage_style_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
-        "llm_profile_caster_expressive"
+        "llm_profile_caster_expressive",
+        "llm_profile_barrage_chaos"
       ],
       "override_ids": [],
       "runtime_enabled": false,
@@ -1981,16 +1989,17 @@
       "team_id": "team_legacy_v1",
       "team_slug": "legacy-v1",
       "display_name": "latto",
-      "role": "rifler",
-      "role_template_id": "llm_role_template_rifler",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "entry",
+      "role_template_id": "llm_role_template_entry",
+      "preferred_driver_model_id": "driver_minimax_m2_5",
       "fallback_driver_model_ids": [
         "driver_qwen_3_5_plus"
       ],
       "task_ids": [
         "profile_card_copy",
         "broadcast_caster_line",
-        "barrage_style_line"
+        "barrage_style_line",
+        "meme_reaction_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
@@ -2007,21 +2016,21 @@
       "team_id": "team_legacy_v1",
       "team_slug": "legacy-v1",
       "display_name": "n1ssim",
-      "role": "rifler",
-      "role_template_id": "llm_role_template_rifler",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "lurker",
+      "role_template_id": "llm_role_template_lurker",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
       "fallback_driver_model_ids": [
-        "driver_qwen_3_5_plus"
+        "driver_qwen_3_6_plus"
       ],
       "task_ids": [
         "profile_card_copy",
-        "broadcast_caster_line",
-        "barrage_style_line"
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
-        "llm_profile_caster_expressive",
-        "llm_profile_barrage_chaos"
+        "llm_profile_caster_expressive"
       ],
       "override_ids": [],
       "runtime_enabled": false,
@@ -2111,16 +2120,17 @@
       "team_id": "team_bit8",
       "team_slug": "bit8",
       "display_name": "npl",
-      "role": "rifler",
-      "role_template_id": "llm_role_template_rifler",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "entry",
+      "role_template_id": "llm_role_template_entry",
+      "preferred_driver_model_id": "driver_minimax_m2_5",
       "fallback_driver_model_ids": [
         "driver_qwen_3_5_plus"
       ],
       "task_ids": [
         "profile_card_copy",
         "broadcast_caster_line",
-        "barrage_style_line"
+        "barrage_style_line",
+        "meme_reaction_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
@@ -2163,21 +2173,21 @@
       "team_id": "team_bit8",
       "team_slug": "bit8",
       "display_name": "esenthial",
-      "role": "support",
-      "role_template_id": "llm_role_template_support",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "lurker",
+      "role_template_id": "llm_role_template_lurker",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
       "fallback_driver_model_ids": [
-        "driver_qwen_3_5_plus"
+        "driver_qwen_3_6_plus"
       ],
       "task_ids": [
         "profile_card_copy",
-        "broadcast_caster_line",
-        "barrage_style_line"
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
-        "llm_profile_caster_expressive",
-        "llm_profile_barrage_chaos"
+        "llm_profile_caster_expressive"
       ],
       "override_ids": [],
       "runtime_enabled": false,
@@ -2293,21 +2303,21 @@
       "team_id": "team_prompt_gaming",
       "team_slug": "prompt-gaming",
       "display_name": "piriajr",
-      "role": "rifler",
-      "role_template_id": "llm_role_template_rifler",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "lurker",
+      "role_template_id": "llm_role_template_lurker",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
       "fallback_driver_model_ids": [
-        "driver_qwen_3_5_plus"
+        "driver_qwen_3_6_plus"
       ],
       "task_ids": [
         "profile_card_copy",
-        "broadcast_caster_line",
-        "barrage_style_line"
+        "news_story_copy",
+        "tactical_analysis_note",
+        "broadcast_caster_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
-        "llm_profile_caster_expressive",
-        "llm_profile_barrage_chaos"
+        "llm_profile_caster_expressive"
       ],
       "override_ids": [],
       "runtime_enabled": false,
@@ -2345,16 +2355,17 @@
       "team_id": "team_prompt_gaming",
       "team_slug": "prompt-gaming",
       "display_name": "snow",
-      "role": "rifler",
-      "role_template_id": "llm_role_template_rifler",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "entry",
+      "role_template_id": "llm_role_template_entry",
+      "preferred_driver_model_id": "driver_minimax_m2_5",
       "fallback_driver_model_ids": [
         "driver_qwen_3_5_plus"
       ],
       "task_ids": [
         "profile_card_copy",
         "broadcast_caster_line",
-        "barrage_style_line"
+        "barrage_style_line",
+        "meme_reaction_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",
@@ -2480,15 +2491,16 @@
       "team_id": "team_phaseclan",
       "team_slug": "phaseclan",
       "display_name": "frozen",
-      "role": "star_rifler",
-      "role_template_id": "llm_role_template_star_rifler",
-      "preferred_driver_model_id": "driver_kimi_k2_5",
+      "role": "lurker",
+      "role_template_id": "llm_role_template_lurker",
+      "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
       "fallback_driver_model_ids": [
         "driver_qwen_3_6_plus"
       ],
       "task_ids": [
         "profile_card_copy",
         "news_story_copy",
+        "tactical_analysis_note",
         "broadcast_caster_line",
         "spotlight_moment_copy"
       ],
@@ -2508,16 +2520,17 @@
       "team_id": "team_phaseclan",
       "team_slug": "phaseclan",
       "display_name": "Neityu",
-      "role": "stand_in",
-      "role_template_id": "llm_role_template_stand_in",
-      "preferred_driver_model_id": "driver_qwen_3_6_plus",
+      "role": "entry",
+      "role_template_id": "llm_role_template_entry",
+      "preferred_driver_model_id": "driver_minimax_m2_5",
       "fallback_driver_model_ids": [
         "driver_qwen_3_5_plus"
       ],
       "task_ids": [
         "profile_card_copy",
         "broadcast_caster_line",
-        "barrage_style_line"
+        "barrage_style_line",
+        "meme_reaction_line"
       ],
       "model_profile_ids": [
         "llm_profile_strong_reasoning",

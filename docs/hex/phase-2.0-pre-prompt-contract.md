@@ -1,4 +1,4 @@
-# Phase 2.0-pre Prompt Contract
+﻿# Phase 2.0-pre Prompt Contract
 
 ## 1. 定位
 
@@ -237,11 +237,11 @@ N49 起，Hex 金融对抗的 `agent_action` 必须区分两层：
 N51 起，`agentOpeningBrief` 不能只复制 team thesis。每个 round 必须先生成 10 份 `agentEvidenceSlice`：
 
 ```text
-PM / IGL：配置强度、风险收益、组合观点。
-Macro / AWPer：FRED 全球金属价格、宏观和周期锚。
-Commodity / entry：供需、品种、UN Comtrade 贸易线索或 unavailable observation。
-Company / star rifler：BaoStock 公司行情、估值代理和市场反应。
-Risk / support：missingEvidence、scoreCaps、反证、止损和仓位降级。
+PM：配置强度、风险收益、组合观点；CS 展示可落到 IGL 或 rifler。
+Macro：FRED 全球金属价格、宏观和周期锚；CS 展示可落到 AWPer。
+Commodity：供需、品种、UN Comtrade 贸易线索或 unavailable observation；CS 展示可落到 entry。
+Company：BaoStock 公司行情、估值代理和市场反应；CS 展示可落到 rifler + star 标签。
+Risk：missingEvidence、scoreCaps、反证、止损和仓位降级；CS 展示可落到 rifler + supportive / anchor 标签。
 ```
 
 约束：
@@ -441,6 +441,50 @@ LLM 写 winner / kill / damage / economyDelta。
 前端补战斗事实。
 为了急迫感降低 combat lethal gate 或伪造 plant。
 ```
+
+### 5.13 N67 行动 / 目标 / 经济行为校准
+
+N67 起，`agent_action` full request 和 compact request 可以包含 `objectivePressure`。它不是新胜负规则，而是让 agent 知道当前阶段的目标压力、C4 状态和经济打法倾向。
+
+`objectivePressure` 至少包含：
+
+```text
+objectivePressureLevel：early / mid / late / final。
+objectiveIntent：carry_to_site / recover_c4 / protect_c4 / execute_site / deny_plant / retake / defuse / seek_trade / save。
+economyActionStyle：default_hold / slow_control / tempo_execute / pack_trade / gamble_stack / info_push / save_exit。
+actionHints：当前阶段可执行的中文行动提示。
+objectiveWarningReasons：为什么本 agent 被要求更主动，或为什么允许保枪 / 放弃。
+```
+
+prompt 口径：
+
+```text
+phase3-5 不能继续把“为后续创造空间”写成主要行动理由。
+T 方中后期应围绕 C4、包点、换人、补枪或保枪决策。
+CT 方中后期应围绕阻止下包、回防、拆包、交叉火力或保枪决策。
+经济状态只能影响打法倾向，不能让模型输出 submitted 字数、胜负、击杀、伤害或经济变化。
+```
+
+仍然禁止：
+
+```text
+LLM 伪造 recover_c4 / plant_bomb / defuse_bomb 已经成功。
+LLM 因 objectivePressure 自行改写 C4 carrier、bombState、winner、kill 或 KDA。
+用经济风格模板固定所有 eco / force / full buy 行动；经济只给倾向，不写死战术脚本。
+```
+
+### 5.14 N67-role CS 角色口径
+
+局内 CS 主角色固定为 5 类：`IGL / AWPer / rifler / lurker / entry`。
+
+```text
+star：只作为英文前缀或标签，例如 star rifler -> rifler + star；首屏主角色仍显示英文。
+support / anchor / flex：不再作为局内主角色，只作为 supportive / anchor / flex 标签或行动语义。
+金融专家角色：仍是 phase0 观点身份，不等于 CS 主角色。
+supportContributorAgentIds：combat 支援贡献结构字段，不是选手主角色。
+```
+
+LLM 不得在新输出里发明第六 CS 主角色；旧 trace / 旧资产中的 `support / anchor / flex / star_rifler / entry_fragger / stand_in` 由代码兼容映射。新生成 active roster 应让每队五名上场选手各占一个主角色；展示层主角色保持英文。
 ## 6. Judge Scorecard v6
 
 `judge_verdict` 必须输出 `judgeScorecard`。评分标准由代码生成并写入输入中的 `rubricProfile`，LLM 只能消费，不能修改。

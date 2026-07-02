@@ -5,7 +5,7 @@
 - magixx | igl | IGL / Rifler | 中-高 | player_team_spirit_magixx
 - sh1ro | awper | AWPer | 高 | player_team_spirit_sh1ro
 - tN1R | rifler | Rifler / Flex | 中 | player_team_spirit_tn1r
-- zont1x | rifler | Rifler / Anchor | 中-高 | player_team_spirit_zont1x
+- zont1x | lurker | Lurker / Anchor | 中-高 | player_team_spirit_zont1x
 
 ## Coach
 - 正式教练：hally (coach_team_spirit_hally，Coach，可信度 高)

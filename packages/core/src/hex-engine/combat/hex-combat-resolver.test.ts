@@ -521,7 +521,7 @@ describe("Hex combat resolver", () => {
     ];
     const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
     contact.participants.find((participant) => participant.agentId === "t_entry")!.roleLabel = "entry";
-    contact.participants.find((participant) => participant.agentId === "ct_support")!.roleLabel = "support";
+    contact.participants.find((participant) => participant.agentId === "ct_support")!.roleLabel = "igl";
 
     const resolution = resolveHexCombat({ asset, memory, contact, actions });
 
@@ -680,7 +680,7 @@ describe("Hex combat resolver", () => {
     expect(resolution.casualties[0]?.attributionReasons).toEqual(expect.arrayContaining(["assist:t_1:support_action"]));
   });
 
-  it("uses role-aware attribution so riflers kill and IGL/support players assist", () => {
+  it("uses role-aware attribution so riflers kill and IGL setup actions assist", () => {
     const asset = loadOfficialDust2HexMap();
     const [entryCell, defenseCell, supportCell] = findCellsInRegion(asset, "a_site", 3);
     const memory = initializeCombatMemory(asset, [
@@ -848,11 +848,11 @@ describe("Hex combat resolver", () => {
         agentId: "ct_support",
         actionType: "map_control",
         targetCellId: attackCell!.cellId,
-        businessIntent: "Support is the only valid defender in this direct contact, so attribution may fall back to it."
+        businessIntent: "IGL is the only valid defender in this direct contact, so attribution may fall back to it."
       })
     ];
     const contact = buildHexCombatContacts({ asset, memory, actions })[0]!;
-    contact.participants.find((participant) => participant.agentId === "ct_support")!.roleLabel = "support";
+    contact.participants.find((participant) => participant.agentId === "ct_support")!.roleLabel = "igl";
 
     const resolution = resolveHexCombat({ asset, memory, contact, actions });
 
@@ -1014,7 +1014,40 @@ describe("Hex combat resolver", () => {
     expect(result.audit.varianceApplied).toBe(false);
     expect(result.audit.reason).toBe("missing_seed");
   });
-});
+
+  it("audits many-v-one multi-pair attribution without promoting support as primary", () => {
+    const asset = loadOfficialDust2HexMap();
+    const [entryCell, tradeCell, defenseCell] = findCellsInRegion(asset, "a_site", 3);
+    const memory = initializeCombatMemory(asset, [
+      { agentId: "t_entry", side: "attack", cellId: entryCell!.cellId },
+      { agentId: "t_trade", side: "attack", cellId: tradeCell!.cellId },
+      { agentId: "ct_anchor", side: "defense", cellId: defenseCell!.cellId }
+    ]);
+    const actions = [
+      buildCombatAction({ memory, agentId: "t_entry", actionType: "execute_site", targetCellId: defenseCell!.cellId }),
+      buildCombatAction({ memory, agentId: "t_trade", actionType: "peek", targetCellId: defenseCell!.cellId }),
+      buildCombatAction({ memory, agentId: "ct_anchor", actionType: "hold_position", targetCellId: defenseCell!.cellId, valid: false })
+    ];
+    const contact = buildHexCombatContacts({ asset, memory, actions }).find((candidate) => candidate.combatShape === "many_v_one")!;
+
+    const resolution = resolveHexCombat({ asset, memory, contact, actions });
+
+    expect(contact).toBeDefined();
+    expect(resolution.audit.multiPairing).toEqual(expect.objectContaining({
+      combatShape: "many_v_one",
+      attributionMode: "multi_pair",
+      surroundedSide: "defense"
+    }));
+    expect(resolution.audit.multiPairing?.secondaryDuelPairIds.length).toBeGreaterThanOrEqual(1);
+    expect(resolution.audit.roleContributions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ agentId: "t_entry", reasons: expect.arrayContaining(["n65_primary_duel_pair"]) }),
+      expect.objectContaining({ agentId: "t_trade", reasons: expect.arrayContaining(["n65_secondary_duel_pair"]) })
+    ]));
+    if (resolution.casualties[0]) {
+      expect(resolution.casualties[0].targetAgentId).toBe("ct_anchor");
+      expect(resolution.casualties[0].killerAgentId).not.toBe("ct_anchor");
+    }
+  });});
 
 function buildResolverStanceOutput(input: { evidenceRefs?: string[]; claimType?: string } = {}): HexRoundStartAgentOutputForAction {
   const evidenceRefs = input.evidenceRefs ?? ["FRED002"];

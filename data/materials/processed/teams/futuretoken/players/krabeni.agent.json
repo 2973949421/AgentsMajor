@@ -6,30 +6,30 @@
   "real_name": null,
   "in_game_id": "Krabeni",
   "display_name": "Krabeni",
-  "role": "support",
+  "role": "lurker",
   "status": "active",
   "cs_role_profile": {
     "source_path": "raw/teams/agent_major_player_roles.md",
     "source_team_name": "FUtureToken",
     "member_type": "player",
-    "raw_position": "Support / Rifler",
+    "raw_position": "Lurker / supportive rifler",
     "raw_position_parts": [
-      "Support",
-      "Rifler"
+      "Lurker",
+      "supportive rifler"
     ],
-    "primary_role": "support",
+    "primary_role": "lurker",
     "secondary_roles": [
-      "rifler"
+      "supportive"
     ],
     "position_tags": [
-      "support",
-      "rifler"
+      "lurker",
+      "supportive"
     ],
     "confidence": "低-中",
-    "notes": "公开角色资料较少，项目中设为辅助步枪。",
+    "notes": "公开角色资料较少，项目中固定为断后/辅助步枪。",
     "agent_major_responsibilities": [
-      "补全细节 / 修复方案 / 提供上下文",
-      "通用火力 / 回合执行 / 补枪衔接"
+      "反制 / 偷点 / 找对手逻辑漏洞",
+      "补全细节 / 修复方案 / 提供上下文"
     ]
   },
   "aliases": [
@@ -39,18 +39,18 @@
     "拼图支持"
   ],
   "persona_tags": [
-    "glue-piece",
-    "utility-worker",
+    "timing-hunter",
+    "map-reader",
     "mid-pack-worker"
   ],
   "playstyle_tags": [
-    "trade-layer",
-    "utility-setup",
+    "late-map-control",
+    "timing-punish",
     "utility",
     "trade"
   ],
   "caster_focus_tags": [
-    "machine_map_point_pressure"
+    "machine_star_carry"
   ],
   "barrage_focus_tags": [
     "player_targeting"
@@ -59,15 +59,15 @@
     "upset-watch"
   ],
   "cross_circle_tags": [
-    "customer_service_to_cleanup"
+    "lifetime_to_rivalry"
   ],
   "future_agent_profile": {
     "persona_summary": "偏中段拼图位，负责让高波动队不是只有火没有骨架。",
     "voice_mode": "cn-live-room-competitive",
     "narrative_axes": [
       "upset-watch",
-      "glue-piece",
-      "utility-worker",
+      "timing-hunter",
+      "map-reader",
       "mid-pack-worker"
     ],
     "reserved_memory_slots": [
@@ -81,14 +81,36 @@
     "binding_version": "2026-05-03-llm-binding-v1",
     "binding_scope": "asset_preallocation",
     "runtime_enabled": false,
-    "role_template_id": "llm_role_template_support",
-    "preferred_driver_model_id": "driver_qwen_3_6_plus",
+    "role_template_id": "llm_role_template_lurker",
+    "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
     "fallback_driver_model_ids": [
-      "driver_qwen_3_5_plus"
+      "driver_qwen_3_6_plus"
     ],
     "task_bindings": [
       {
         "task_id": "profile_card_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "news_story_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "tactical_analysis_note",
         "model_profile_id": "llm_profile_strong_reasoning",
         "driver_model_id": "driver_qwen_3_max_2026_01_23",
         "fallback_driver_model_ids": [
@@ -108,25 +130,15 @@
         "enabled": false,
         "temperature": 0.6,
         "max_output_tokens": 500
-      },
-      {
-        "task_id": "barrage_style_line",
-        "model_profile_id": "llm_profile_barrage_chaos",
-        "driver_model_id": "driver_minimax_m2_5",
-        "fallback_driver_model_ids": [
-          "driver_qwen_3_5_plus"
-        ],
-        "enabled": false,
-        "temperature": 0.7,
-        "max_output_tokens": 450
       }
     ],
     "prompt_bias_tags": [
-      "glue-piece",
-      "utility-worker",
-      "trade-layer",
-      "setup-support",
-      "utility-setup",
+      "timing-hunter",
+      "map-reader",
+      "late-round",
+      "flank-punish",
+      "late-map-control",
+      "timing-punish",
       "utility",
       "trade",
       "mid-pack-worker"
@@ -139,7 +151,7 @@
     ],
     "override_ids": [],
     "ops_notes": [
-      "Keep framing around utility, spacing, and invisible value."
+      "Use timing, information gap, and late-round payoff framing."
     ]
   },
   "ops_hooks": {
@@ -150,7 +162,7 @@
     ],
     "card_priority": 47,
     "broadcast_entry_points": [
-      "machine_map_point_pressure"
+      "machine_star_carry"
     ]
   },
   "canon_notes": []

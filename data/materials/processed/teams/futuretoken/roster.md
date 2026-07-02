@@ -3,7 +3,7 @@
 ## Active Five
 - dem0n | rifler | Rifler / Star | 中 | player_futuretoken_dem0n
 - lauNX | entry | Entry / Star Rifler | 中 | player_futuretoken_launx
-- Krabeni | support | Support / Rifler | 低-中 | player_futuretoken_krabeni
+- Krabeni | lurker | Lurker / supportive rifler | 低-中 | player_futuretoken_krabeni
 - cmtry | igl | IGL / Support | 低-中 | player_futuretoken_cmtry
 - dziugss | awper | AWPer / Rifler | 低-中 | player_futuretoken_dziugss
 

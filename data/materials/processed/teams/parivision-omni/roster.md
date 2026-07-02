@@ -2,9 +2,9 @@
 
 ## Active Five
 - Jame | igl | IGL / AWPer | 高 | player_parivision_omni_jame
-- BELCHONOKK | rifler | Rifler / Entry-style | 中 | player_parivision_omni_belchonokk
-- xiELO | rifler | Rifler / Flex | 中 | player_parivision_omni_xielo
-- nota | support | Support / Anchor | 中 | player_parivision_omni_nota
+- BELCHONOKK | entry | Rifler / Entry-style | 中 | player_parivision_omni_belchonokk
+- xiELO | awper | AWPer / Flex | 中 | player_parivision_omni_xielo
+- nota | lurker | Lurker / Anchor | 中 | player_parivision_omni_nota
 - zweih | rifler | Rifler / young firepower | 中 | player_parivision_omni_zweih
 
 ## Coach

@@ -11,9 +11,9 @@
 ## CS Role Profile
 - 原始位置：Entry / Star Rifler
 - 主位置：entry
-- 次级位置：star_rifler
+- 次级位置：star
 - 可信度：高
-- Agent Major 职责：首轮出击 / 激进创意 / 打开局面；核心输出 / 关键回合 carry
+- Agent Major 职责：首轮出击 / 激进创意 / 打开局面；明星前缀 / 关键回合 carry
 - 备注：高爆发步枪、强主动性。
 - 来源：raw/teams/agent_major_player_roles.md
 

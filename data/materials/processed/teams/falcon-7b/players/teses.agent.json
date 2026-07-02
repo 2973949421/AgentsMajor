@@ -6,33 +6,30 @@
   "real_name": null,
   "in_game_id": "TeSeS",
   "display_name": "TeSeS",
-  "role": "support",
+  "role": "lurker",
   "status": "active",
   "cs_role_profile": {
     "source_path": "raw/teams/agent_major_player_roles.md",
     "source_team_name": "Falcon-7B",
     "member_type": "player",
-    "raw_position": "Support / Anchor / rifler",
+    "raw_position": "Lurker / supportive rifler",
     "raw_position_parts": [
-      "Support",
-      "Anchor",
-      "rifler"
+      "Lurker",
+      "supportive rifler"
     ],
-    "primary_role": "support",
+    "primary_role": "lurker",
     "secondary_roles": [
-      "anchor",
-      "rifler"
+      "supportive"
     ],
     "position_tags": [
-      "support",
-      "anchor",
-      "rifler"
+      "lurker",
+      "supportive"
     ],
     "confidence": "中-高",
-    "notes": "团队步枪、补位和锚点。",
+    "notes": "团队步枪、补位、断后和侧翼衔接。",
     "agent_major_responsibilities": [
-      "Structural glue / execution stability / gap repair",
-      "Hold the baseline and provide support fire when the plan starts to drift"
+      "反制 / 偷点 / 找对手逻辑漏洞",
+      "补全细节 / 修复方案 / 提供上下文"
     ]
   },
   "aliases": [
@@ -42,18 +39,18 @@
     "补枪块"
   ],
   "persona_tags": [
-    "glue-piece",
-    "utility-worker",
+    "timing-hunter",
+    "map-reader",
     "glue-fragger"
   ],
   "playstyle_tags": [
-    "trade-layer",
-    "utility-setup",
+    "late-map-control",
+    "timing-punish",
     "trade-pack",
     "anchor-cover"
   ],
   "caster_focus_tags": [
-    "machine_map_point_pressure"
+    "machine_star_carry"
   ],
   "barrage_focus_tags": [
     "player_targeting"
@@ -64,21 +61,18 @@
     "upset-watch"
   ],
   "cross_circle_tags": [
-    "customer_service_to_cleanup"
+    "lifetime_to_rivalry"
   ],
   "future_agent_profile": {
-    "persona_summary": "TeSeS 在 Finance Major 中承担风控 / 交易专家职责：把研究判断转成交易规则：仓位、止损、回撤、拥挤度、反证信号和再平衡条件。",
+    "persona_summary": "这支豪阵里最容易被忽略，但一旦站不住就会显得整艘船都松动。",
     "voice_mode": "cn-live-room-competitive",
     "narrative_axes": [
       "money-superteam",
       "old-guard-last-dance",
       "upset-watch",
-      "glue-piece",
-      "utility-worker",
-      "glue-fragger",
-      "finance-major",
-      "nonferrous-research",
-      "Risk / Trading"
+      "timing-hunter",
+      "map-reader",
+      "glue-fragger"
     ],
     "reserved_memory_slots": [
       "career-arc",
@@ -91,14 +85,36 @@
     "binding_version": "2026-05-03-llm-binding-v1",
     "binding_scope": "asset_preallocation",
     "runtime_enabled": false,
-    "role_template_id": "llm_role_template_support",
-    "preferred_driver_model_id": "driver_qwen_3_6_plus",
+    "role_template_id": "llm_role_template_lurker",
+    "preferred_driver_model_id": "driver_qwen_3_max_2026_01_23",
     "fallback_driver_model_ids": [
-      "driver_qwen_3_5_plus"
+      "driver_qwen_3_6_plus"
     ],
     "task_bindings": [
       {
         "task_id": "profile_card_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "news_story_copy",
+        "model_profile_id": "llm_profile_strong_reasoning",
+        "driver_model_id": "driver_qwen_3_max_2026_01_23",
+        "fallback_driver_model_ids": [
+          "driver_qwen_3_6_plus"
+        ],
+        "enabled": false,
+        "temperature": 0.4,
+        "max_output_tokens": 900
+      },
+      {
+        "task_id": "tactical_analysis_note",
         "model_profile_id": "llm_profile_strong_reasoning",
         "driver_model_id": "driver_qwen_3_max_2026_01_23",
         "fallback_driver_model_ids": [
@@ -118,31 +134,18 @@
         "enabled": false,
         "temperature": 0.6,
         "max_output_tokens": 500
-      },
-      {
-        "task_id": "barrage_style_line",
-        "model_profile_id": "llm_profile_barrage_chaos",
-        "driver_model_id": "driver_minimax_m2_5",
-        "fallback_driver_model_ids": [
-          "driver_qwen_3_5_plus"
-        ],
-        "enabled": false,
-        "temperature": 0.7,
-        "max_output_tokens": 450
       }
     ],
     "prompt_bias_tags": [
-      "glue-piece",
-      "utility-worker",
-      "trade-layer",
-      "setup-support",
-      "utility-setup",
+      "timing-hunter",
+      "map-reader",
+      "late-round",
+      "flank-punish",
+      "late-map-control",
+      "timing-punish",
       "trade-pack",
       "anchor-cover",
-      "glue-fragger",
-      "finance-duel",
-      "nonferrous",
-      "risk---trading"
+      "glue-fragger"
     ],
     "env_contract_refs": [
       "AGENT_MAJOR_REAL_LLM_ENABLED",
@@ -152,7 +155,7 @@
     ],
     "override_ids": [],
     "ops_notes": [
-      "Emphasize structure repair, completion, and stable execution value."
+      "Use timing, information gap, and late-round payoff framing."
     ]
   },
   "ops_hooks": {
@@ -165,37 +168,8 @@
     ],
     "card_priority": 38,
     "broadcast_entry_points": [
-      "machine_map_point_pressure"
+      "machine_star_carry"
     ]
   },
-  "canon_notes": [],
-  "finance_agent_profile": {
-    "version": "2026-06-14-n43-finance-v1",
-    "financeRole": "Risk / Trading",
-    "financeRoleCn": "风控 / 交易专家",
-    "responsibility": "识别拥挤交易、止损条件、反证信号和仓位降级边界。",
-    "investmentStyle": "进攻型周期成长",
-    "domainFocus": [
-      "回撤控制",
-      "拥挤度",
-      "止损与反证"
-    ],
-    "expectedContribution": "围绕 Dust2 有色 / 行业判断 round 子命题输出可审计金融判断，引用证据或明确缺口，不使用旧商业空话。",
-    "failureMode": "过度防守导致结论不可执行。",
-    "promptGuidance": [
-      "语义输出使用中文。",
-      "结构字段、枚举和 cell id 保持英文。",
-      "不得写 winner、kill、economyDelta 或数据库事实。",
-      "必须区分代理事实、推断和 missingEvidence。"
-    ],
-    "signatureLens": "把研究判断转成交易规则：仓位、止损、回撤、拥挤度、反证信号和再平衡条件。",
-    "preferredEvidenceType": "波动率、成交结构、相对强弱、回撤幅度、仓位拥挤、趋势失效信号。",
-    "attackStyle": "攻击对方观点不可交易：没有入场条件、退出条件、仓位上限或反证处理。",
-    "defenseStyle": "为进攻观点设置风险阀门；承认方向判断可能错，但要求损失可控。",
-    "decisionThreshold": "只要方向证据足够试仓，且退出条件清楚，就允许小到中等仓位行动。",
-    "blindSpot": "可能高估交易规则对研究缺口的补偿能力，在流动性恶化时低估执行风险。",
-    "crossMapStrength": "高波动、高分歧、高 beta、事件驱动地图。",
-    "crossMapWeakness": "流动性弱、价格反馈慢、基本面验证周期很长的地图。",
-    "oneLineVoice": "没有退出条件的观点，不是投资计划。"
-  }
+  "canon_notes": []
 }

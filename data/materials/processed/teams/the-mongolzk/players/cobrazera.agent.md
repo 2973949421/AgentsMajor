@@ -3,18 +3,18 @@
 ## Snapshot
 - 队伍：The MongolZK
 - 类型：player
-- 角色：rifler
+- 角色：lurker
 - 当前状态：active
 - 公开 ID：cobrazera
 - 法定姓名：待回填
 
 ## CS Role Profile
-- 原始位置：Rifler / Flex
-- 主位置：rifler
+- 原始位置：Lurker / Flex
+- 主位置：lurker
 - 次级位置：flex
 - 可信度：中
-- Agent Major 职责：通用火力 / 回合执行 / 补枪衔接；多场景适配 / 缺口填补 / 角色切换
-- 备注：新加入步枪位，项目中设为灵活火力。
+- Agent Major 职责：反制 / 偷点 / 找对手逻辑漏洞；多场景适配 / 缺口填补 / 角色切换
+- 备注：新加入步枪位，项目中设为断后/灵活火力。
 - 来源：raw/teams/agent_major_player_roles.md
 
 ## Alias
@@ -27,20 +27,20 @@
 - 前顶位
 
 ## Playstyle Tags
-- rifle-trade
-- site-pressure
+- late-map-control
+- timing-punish
 - first-contact
 - entry-heat
 
 ## Broadcast / Barrage / News
-- 解说标签：machine_map_point_pressure
+- 解说标签：machine_star_carry
 - 弹幕标签：player_targeting
 - 新闻标签：asia-rise, upset-watch
-- 跨圈标签：customer_service_to_cleanup
+- 跨圈标签：lifetime_to_rivalry
 
 ## Future Interfaces
-- agent 人格接口：asia-rise, upset-watch, rifle-worker, round-connector, charge-piece
-- 模型绑定接口：llm_role_template_rifler / driver_qwen_3_6_plus
+- agent 人格接口：asia-rise, upset-watch, timing-hunter, map-reader, charge-piece
+- 模型绑定接口：llm_role_template_lurker / driver_qwen_3_max_2026_01_23
 - 模型运行状态：v1 asset preallocation only，runtime_enabled=false
 - 产品运营接口：前顶位, asia-rise, upset-watch
 

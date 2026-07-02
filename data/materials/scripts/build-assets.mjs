@@ -1,4 +1,4 @@
-import fs from "node:fs";
+﻿import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -351,73 +351,57 @@ const roleResponsibilityMap = {
   igl: "战术规划 / 回合策略 / 资源分配",
   awper: "高精度关键论点 / 单点突破 / 高风险高收益调用",
   entry: "首轮出击 / 激进创意 / 打开局面",
-  star_rifler: "核心输出 / 关键回合 carry",
+  star: "明星前缀 / 关键回合 carry",
   lurker: "反制 / 偷点 / 找对手逻辑漏洞",
-  support: "补全细节 / 修复方案 / 提供上下文",
+  supportive: "补全细节 / 修复方案 / 提供上下文",
   anchor: "防守型论证 / 稳定性校验",
   rifler: "通用火力 / 回合执行 / 补枪衔接",
   flex: "多场景适配 / 缺口填补 / 角色切换",
   stand_in: "临时接入 / 快速适配 / 低上下文执行",
   closer: "残局处理 / 压力判断 / 终局收束",
+  utility: "道具协同 / 细节补充",
   coach: "战术暂停 / 赛前准备 / 赛后复盘"
 };
 
 function normalizeRoleTag(value) {
   const lower = value.trim().toLowerCase();
-  if (!lower) {
-    return null;
-  }
-  if (lower.includes("coach")) {
-    return "coach";
-  }
-  if (lower.includes("stand-in") || lower.includes("stand in")) {
-    return "stand_in";
-  }
-  if (lower.includes("igl") || lower.includes("caller")) {
-    return "igl";
-  }
-  if (lower.includes("awper") || lower.includes("awp") || lower.includes("狙")) {
-    return "awper";
-  }
-  if (lower.includes("star rifler") || lower === "star" || lower.includes("young firepower") || lower.includes("playmaker")) {
-    return "star_rifler";
-  }
-  if (lower.includes("entry")) {
-    return "entry";
-  }
-  if (lower.includes("lurker")) {
-    return "lurker";
-  }
-  if (lower.includes("support")) {
-    return "support";
-  }
-  if (lower.includes("anchor")) {
-    return "anchor";
-  }
-  if (lower.includes("flex")) {
-    return "flex";
-  }
-  if (lower.includes("closer")) {
-    return "closer";
-  }
-  if (lower.includes("rifler")) {
-    return "rifler";
-  }
+  if (!lower) return null;
+  if (lower.includes("coach")) return "coach";
+  if (lower.includes("stand-in") || lower.includes("stand in")) return "stand_in";
+  if (lower.includes("igl") || lower.includes("caller")) return "igl";
+  if (lower.includes("awper") || lower.includes("awp") || lower.includes("狙")) return "awper";
+  if (lower.includes("star rifler") || lower === "star" || lower.includes("young firepower") || lower.includes("playmaker")) return "star";
+  if (lower.includes("entry")) return "entry";
+  if (lower.includes("lurker")) return "lurker";
+  if (lower.includes("support")) return "supportive";
+  if (lower.includes("anchor")) return "anchor";
+  if (lower.includes("flex")) return "flex";
+  if (lower.includes("closer")) return "closer";
+  if (lower.includes("utility")) return "utility";
+  if (lower.includes("rifler") || lower.includes("rifle")) return "rifler";
   return lower.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || null;
 }
 
-function parseRoleParts(rawPosition) {
-  const rawParts = rawPosition.split("/").map((part) => part.trim()).filter(Boolean);
-  const normalizedTags = uniq(rawParts.map(normalizeRoleTag));
-  const primaryRole = normalizedTags[0] ?? "rifler";
-  return {
-    rawParts,
-    normalizedTags,
-    primaryRole,
-    secondaryRoles: normalizedTags.slice(1)
-  };
+function canonicalPrimaryRoleFromTags(tags, memberType = "player") {
+  if (memberType === "coach" || tags.includes("coach")) return "coach";
+  for (const role of ["igl", "awper", "entry", "lurker", "rifler"]) {
+    if (tags.includes(role)) return role;
+  }
+  return "rifler";
 }
 
+function parseRoleParts(rawPosition, memberType = "player") {
+  const rawParts = rawPosition.split("/").map((part) => part.trim()).filter(Boolean);
+  const normalizedTags = uniq(rawParts.map(normalizeRoleTag));
+  const primaryRole = canonicalPrimaryRoleFromTags(normalizedTags, memberType);
+  const positionTags = uniq([...normalizedTags, primaryRole].filter((tag) => tag !== "coach" || primaryRole === "coach"));
+  return {
+    rawParts,
+    normalizedTags: positionTags,
+    primaryRole,
+    secondaryRoles: positionTags.filter((tag) => tag !== primaryRole && tag !== "coach")
+  };
+}
 function roleProfileKey(teamName, inGameId) {
   return `${teamName.toLowerCase()}::${inGameId.toLowerCase()}`;
 }
@@ -452,11 +436,12 @@ function loadRoleProfiles() {
       continue;
     }
 
-    const parsed = parseRoleParts(rawPosition);
+    const memberKind = memberType === "教练" ? "coach" : "player";
+    const parsed = parseRoleParts(rawPosition, memberKind);
     profiles.set(roleProfileKey(currentTeam, inGameId), {
       source_path: "raw/teams/agent_major_player_roles.md",
       source_team_name: currentTeam,
-      member_type: memberType === "教练" ? "coach" : "player",
+      member_type: memberKind,
       raw_position: rawPosition,
       raw_position_parts: parsed.rawParts,
       primary_role: parsed.primaryRole,
@@ -1122,7 +1107,7 @@ const teams = [
       definePlayer({
         slug: "teses",
         inGameId: "TeSeS",
-        role: "support",
+        role: "lurker",
         aliases: ["TeSeS"],
         memeTags: ["补枪块"],
         personaTags: ["glue-fragger"],
@@ -2690,7 +2675,9 @@ const roleProfiles = loadRoleProfiles();
 
 function buildEntity(team, spec, entityType) {
   const roleProfile = roleProfiles.get(roleProfileKey(team.agentTeamName, spec.inGameId));
-  const resolvedRole = roleProfile?.primary_role ?? spec.role;
+  const fallbackRoleTags = uniq([normalizeRoleTag(spec.role)]);
+  const resolvedRole = roleProfile?.primary_role ?? canonicalPrimaryRoleFromTags(fallbackRoleTags, entityType);
+  const fallbackPositionTags = uniq([...fallbackRoleTags, resolvedRole]);
   const defaults = roleDefaults[resolvedRole] ?? roleDefaults[spec.role] ?? {};
   const entityIdPrefix = entityType === "coach" ? "coach" : "player";
   const entityId = `${entityIdPrefix}_${team.slug.replace(/-/g, "_")}_${spec.slug.replace(/-/g, "_")}`;
@@ -2720,8 +2707,8 @@ function buildEntity(team, spec, entityType) {
       raw_position: spec.role,
       raw_position_parts: [spec.role],
       primary_role: resolvedRole,
-      secondary_roles: [],
-      position_tags: [resolvedRole],
+      secondary_roles: fallbackPositionTags.filter((tag) => tag !== resolvedRole && tag !== "coach"),
+      position_tags: fallbackPositionTags,
       confidence: "unverified",
       notes: "Generated from local asset fallback because no raw role profile was found.",
       agent_major_responsibilities: uniq([roleResponsibilityMap[resolvedRole]].filter(Boolean))
@@ -3176,7 +3163,7 @@ function buildLlmRoleBindingTemplatesRegistry() {
     version: LLM_BINDING_VERSION,
     binding_scope: LLM_BINDING_SCOPE,
     runtime_enabled: LLM_RUNTIME_ENABLED,
-    templates: Object.values(llmRoleBindingTemplates).map((template) => ({
+    templates: ["igl", "awper", "entry", "lurker", "rifler", "coach"].map((role) => llmRoleBindingTemplates[role]).map((template) => ({
       ...template,
       runtime_enabled: LLM_RUNTIME_ENABLED,
       task_bindings: template.task_bindings.map(makeLlmTaskBinding)

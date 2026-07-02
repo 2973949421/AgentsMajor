@@ -5,11 +5,12 @@
 ```text
 docs/current/current-state.md
 docs/current/priority-roadmap.md
+docs/current/hex-map-acceptance-standard-v0.1.md
 docs/current/delivery-framework.md
 docs/current/module-map.md
 ```
 
-先读 `current-state.md`，再读 roadmap 和交付规则。
+先读 `current-state.md`，再读 roadmap、地图验收标准和交付规则。
 
 ## 2. HexGrid 当前主线
 

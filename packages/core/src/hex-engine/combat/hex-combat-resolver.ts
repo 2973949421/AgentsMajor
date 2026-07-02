@@ -1,4 +1,4 @@
-import type { HexMapAsset } from "@agent-major/shared";
+﻿import { normalizeCsRole, normalizeCsRoleProfile, type HexMapAsset } from "@agent-major/shared";
 import type { HexRoundStartAgentOutputForAction, HexValidatedAgentAction } from "../action/index.js";
 import type { HexRoundBusinessDuel } from "../business/index.js";
 import { summarizeHexEconomyEvidence, type HexEconomyCombatEvidence, type HexRoundEconomyContext } from "../economy/index.js";
@@ -231,6 +231,7 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
     : undefined;
   const csReasonZh = buildCsReasonZh(csReasons);
   const duelPairingAudit = buildDuelPairingAudit(input.contact);
+  const multiPairingAudit = buildMultiPairingAudit(input.contact);
   const audit: HexCombatAudit = {
     businessWeight,
     financeWeight,
@@ -262,6 +263,7 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
       ...(input.contact.prunedCandidateCount ? { prunedCandidateCount: input.contact.prunedCandidateCount } : {})
     },
     ...(duelPairingAudit ? { duelPairing: duelPairingAudit } : {}),
+    ...(multiPairingAudit ? { multiPairing: multiPairingAudit } : {}),
     ...(pressureAudit ? { pressure: pressureAudit } : {}),
     roleContributions: [...attributionScores.entries()].map(([agentId, score]) => {
       const participant = input.contact.participants.find((candidate) => candidate.agentId === agentId);
@@ -316,6 +318,44 @@ export function resolveHexCombat(input: ResolveHexCombatInput): HexCombatResolut
   };
 }
 
+function buildMultiPairingAudit(contact: HexCombatContact): HexCombatAudit["multiPairing"] | undefined {
+  const combatShape = contact.combatShape ?? inferCombatShape(contact);
+  const primaryDuelPairId = contact.primaryDuelPairId ?? [...contact.duelPairs].sort((left, right) => right.directnessScore - left.directnessScore || left.duelPairId.localeCompare(right.duelPairId))[0]?.duelPairId;
+  const secondaryDuelPairIds = contact.secondaryDuelPairIds ?? contact.duelPairs.filter((pair) => pair.duelPairId !== primaryDuelPairId).map((pair) => pair.duelPairId);
+  const supportContributorAgentIds = contact.supportContributorAgentIds ?? uniqueStrings([
+    ...contact.participants.filter((participant) => participant.supportParticipant).map((participant) => participant.agentId),
+    ...contact.duelPairs.flatMap((pair) => pair.contributorAgentIds)
+  ]);
+  const outnumberedAgentIds = contact.outnumberedAgentIds ?? [];
+  const reasons = uniqueStrings([
+    ...(contact.multiPairReasons ?? []),
+    `combat_shape:${combatShape}`,
+    ...(primaryDuelPairId ? [`primary_duel_pair:${primaryDuelPairId}`] : []),
+    ...(secondaryDuelPairIds.length > 0 ? [`secondary_duel_pairs:${secondaryDuelPairIds.length}`] : []),
+    ...(supportContributorAgentIds.length > 0 ? [`support_contributors:${supportContributorAgentIds.length}`] : []),
+    ...(contact.surroundedSide ? [`surrounded_side:${contact.surroundedSide}`] : [])
+  ]);
+  return {
+    combatShape,
+    ...(primaryDuelPairId ? { primaryDuelPairId } : {}),
+    secondaryDuelPairIds,
+    supportContributorAgentIds,
+    outnumberedAgentIds,
+    ...(contact.surroundedSide ? { surroundedSide: contact.surroundedSide } : {}),
+    attributionMode: combatShape === "one_v_one" ? "single_pair" : "multi_pair",
+    surroundedPressureApplied: Boolean(contact.surroundedSide && contact.lethalEligible),
+    reasons
+  };
+}
+
+function inferCombatShape(contact: HexCombatContact): "one_v_one" | "one_v_many" | "many_v_one" | "many_v_many" {
+  const directAttack = contact.participants.filter((participant) => participant.side === "attack" && !participant.supportParticipant).length;
+  const directDefense = contact.participants.filter((participant) => participant.side === "defense" && !participant.supportParticipant).length;
+  if (directAttack <= 1 && directDefense <= 1) return "one_v_one";
+  if (directAttack <= 1 && directDefense > 1) return "one_v_many";
+  if (directAttack > 1 && directDefense <= 1) return "many_v_one";
+  return "many_v_many";
+}
 export function applyHexCombatVariance(input: HexCombatVarianceInput): HexCombatVarianceResult {
   const beforeAttackScore = roundScore(input.attackScore);
   const beforeDefenseScore = roundScore(input.defenseScore);
@@ -1189,10 +1229,14 @@ function buildDirectDuelPressure(side: HexSide, contact: HexCombatContact): HexD
       score += 2;
       reasons.push(`${prefix}:exposure_pressure`);
     }
-    const roleLabel = normalizeRoleLabel(participant.roleLabel);
-    if (["entry", "star_rifler", "awper", "rifler"].includes(roleLabel)) {
+    const roleProfile = normalizeCsRoleProfile(participant.roleLabel);
+    if (["entry", "awper", "rifler"].includes(roleProfile.role)) {
       score += 2;
       reasons.push(`${prefix}:role_duel_pressure`);
+    }
+    if (roleProfile.isStar) {
+      score += 1;
+      reasons.push(`${prefix}:star_role_pressure_tag`);
     }
   }
   if (directParticipants.length > 0 && contact.participants.some((participant) =>
@@ -1298,6 +1342,12 @@ function buildAttributionScores(input: {
 }): Map<string, HexCombatAttributionScore> {
   const actionByAgent = new Map(input.actions.map((action) => [action.agentId, action]));
   const financeEvidenceIndex = input.financeDuel ? buildFinanceEvidenceIndex(input.financeDuel) : undefined;
+  const primaryDuelPairId = input.contact.primaryDuelPairId ?? [...input.contact.duelPairs].sort((left, right) => right.directnessScore - left.directnessScore || left.duelPairId.localeCompare(right.duelPairId))[0]?.duelPairId;
+  const primaryPair = input.contact.duelPairs.find((pair) => pair.duelPairId === primaryDuelPairId);
+  const primaryDuelistIds = new Set([primaryPair?.primaryAgentId, primaryPair?.targetAgentId].filter((agentId): agentId is string => Boolean(agentId)));
+  const secondaryPairIds = new Set(input.contact.secondaryDuelPairIds ?? input.contact.duelPairs.filter((pair) => pair.duelPairId !== primaryDuelPairId).map((pair) => pair.duelPairId));
+  const secondaryDuelistIds = new Set(input.contact.duelPairs.filter((pair) => secondaryPairIds.has(pair.duelPairId)).flatMap((pair) => [pair.primaryAgentId, pair.targetAgentId]));
+  const supportContributorIds = new Set(input.contact.supportContributorAgentIds ?? input.contact.duelPairs.flatMap((pair) => pair.contributorAgentIds));
   const scores = new Map<string, HexCombatAttributionScore>();
   for (const participant of input.contact.participants) {
     const action = actionByAgent.get(participant.agentId) ?? participant.action;
@@ -1349,6 +1399,27 @@ function buildAttributionScores(input: {
     killerScore += roleContribution.killerDelta;
     assistScore += roleContribution.assistDelta;
     reasons.push(...roleContribution.reasons);
+    if (primaryDuelistIds.has(participant.agentId)) {
+      killerScore += 8;
+      assistScore += 3;
+      reasons.push("n65_primary_duel_pair");
+    } else if (secondaryDuelistIds.has(participant.agentId)) {
+      killerScore += 2;
+      assistScore += 6;
+      reasons.push("n65_secondary_duel_pair");
+    }
+    if (supportContributorIds.has(participant.agentId) && !primaryDuelistIds.has(participant.agentId)) {
+      assistScore += 5;
+      reasons.push("n65_support_contributor");
+    }
+    if (input.contact.surroundedSide && participant.side !== input.contact.surroundedSide && input.contact.combatShape !== "one_v_one") {
+      killerScore += 2;
+      assistScore += 2;
+      reasons.push(`n65_surrounded_pressure_against:${input.contact.surroundedSide}`);
+    }
+    if (input.contact.surroundedSide === participant.side) {
+      reasons.push(`n65_outnumbered:${participant.side}`);
+    }
     if (isSetupRoleRestrictedToAssist(roleContribution.roleLabel, action)) {
       assistScore += 4;
       killerScore = Math.min(killerScore, 1);
@@ -1396,10 +1467,11 @@ function scoreRoleContribution(input: {
     assistDelta += 2;
     reasons.push("role_awper_angle_or_pick");
   }
-  if (input.roleLabel === "star_rifler" && ["peek", "seek_duel", "execute_site", "retake"].includes(input.action.actionType)) {
-    killerDelta += 9;
+  const roleProfile = normalizeCsRoleProfile(input.roleLabel);
+  if (roleProfile.isStar && ["peek", "seek_duel", "execute_site", "retake"].includes(input.action.actionType)) {
+    killerDelta += 4;
     assistDelta += 2;
-    reasons.push("role_star_rifler_pressure");
+    reasons.push("role_star_pressure_tag");
   }
   if (input.roleLabel === "entry" && ["peek", "seek_duel", "execute_site"].includes(input.action.actionType)) {
     killerDelta += 8;
@@ -1411,9 +1483,9 @@ function scoreRoleContribution(input: {
     assistDelta += 9;
     reasons.push("role_igl_control_or_trade_setup");
   }
-  if (input.roleLabel === "support" && ["prepare_trade", "use_utility", "map_control", "watch_angle", "hold_position"].includes(input.action.actionType)) {
-    assistDelta += 10;
-    reasons.push("role_support_setup_or_cover");
+  if (roleProfile.tags.includes("supportive") && ["prepare_trade", "use_utility", "map_control", "watch_angle", "hold_position"].includes(input.action.actionType)) {
+    assistDelta += 8;
+    reasons.push("role_supportive_tag_setup_or_cover");
   }
   if (reasons.length === 0) {
     reasons.push(`role_${input.roleLabel}_neutral`);
@@ -1422,7 +1494,7 @@ function scoreRoleContribution(input: {
 }
 
 function isSetupRoleRestrictedToAssist(roleLabel: string, action: HexValidatedAgentAction): boolean {
-  return ["igl", "support"].includes(roleLabel) && !isDirectDuelAction(action);
+  return roleLabel === "igl" && !isDirectDuelAction(action);
 }
 
 function resolveRoleLabel(
@@ -1436,29 +1508,6 @@ function resolveRoleLabel(
   }
   const fromDuel = businessDuel?.agentAssignments.find((assignment) => assignment.agentId === participant.agentId)?.role;
   return normalizeRoleLabel(fromDuel ?? participant.roleLabel);
-}
-
-function normalizeRoleLabel(role: string | undefined): string {
-  const normalized = (role ?? "unknown").toLowerCase().replace(/[\s-]+/g, "_");
-  if (normalized.includes("awp")) {
-    return "awper";
-  }
-  if (normalized.includes("star")) {
-    return "star_rifler";
-  }
-  if (normalized.includes("entry")) {
-    return "entry";
-  }
-  if (normalized.includes("igl") || normalized.includes("leader")) {
-    return "igl";
-  }
-  if (normalized.includes("support")) {
-    return "support";
-  }
-  if (normalized.includes("rifler")) {
-    return "rifler";
-  }
-  return normalized || "unknown";
 }
 
 function actionMatchesBusinessAssignment(
@@ -1505,6 +1554,9 @@ function actionMatchesFinanceAssignment(
     || matchesRoundFinanceLanguage(side, action.businessIntent, financeDuel)
     || referencesFinanceEvidence(action.businessIntent, financeDuel)
   );
+}
+function normalizeRoleLabel(role: string | undefined): string {
+  return normalizeCsRole(role);
 }
 
 function matchesRoundBusinessLanguage(

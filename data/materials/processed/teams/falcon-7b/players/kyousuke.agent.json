@@ -19,17 +19,17 @@
     ],
     "primary_role": "entry",
     "secondary_roles": [
-      "star_rifler"
+      "star"
     ],
     "position_tags": [
       "entry",
-      "star_rifler"
+      "star"
     ],
     "confidence": "中",
     "notes": "新锐火力位，项目中可设为突破/爆发位。",
     "agent_major_responsibilities": [
-      "First-contact probing / space opening / weakness exposure",
-      "Use early collisions to test opportunity windows and risk boundaries"
+      "首轮出击 / 激进创意 / 打开局面",
+      "明星前缀 / 关键回合 carry"
     ]
   },
   "aliases": [
@@ -63,16 +63,13 @@
     "cabinet_to_live_room_chaos"
   ],
   "future_agent_profile": {
-    "persona_summary": "kyousuke 在 Finance Major 中承担供需机制 / 行业机制专家职责：寻找行业机制中的瓶颈、弹性和错配：需求拐点、供给约束、渠道变化、成本传导、产能反应。",
+    "persona_summary": "新刃口位，打出来就是豪阵年轻血，不行就会被反问为什么豪阵还缺最后一块。",
     "voice_mode": "cn-live-room-competitive",
     "narrative_axes": [
       "upset-watch",
       "frontline-instigator",
       "heat-checker",
-      "fresh-edge",
-      "finance-major",
-      "nonferrous-research",
-      "Commodity Supply-Demand"
+      "fresh-edge"
     ],
     "reserved_memory_slots": [
       "career-arc",
@@ -144,10 +141,7 @@
       "entry-burst",
       "follow-up-space",
       "heat-checker",
-      "fresh-edge",
-      "finance-duel",
-      "nonferrous",
-      "commodity-supply-demand"
+      "fresh-edge"
     ],
     "env_contract_refs": [
       "AGENT_MAJOR_REAL_LLM_ENABLED",
@@ -157,7 +151,7 @@
     ],
     "override_ids": [],
     "ops_notes": [
-      "Emphasize first-contact probing, space opening, and opportunity testing."
+      "Prefer first-contact, overpeek, space creation, and instant reaction hooks."
     ]
   },
   "ops_hooks": {
@@ -171,34 +165,5 @@
       "machine_force_buy_shock"
     ]
   },
-  "canon_notes": [],
-  "finance_agent_profile": {
-    "version": "2026-06-14-n43-finance-v1",
-    "financeRole": "Commodity Supply-Demand / Sector Mechanism",
-    "financeRoleCn": "供需机制 / 行业机制专家",
-    "responsibility": "分析库存、产能、进口、需求弹性和品种强弱，直接验证主假设。",
-    "investmentStyle": "进攻型周期成长",
-    "domainFocus": [
-      "供需缺口",
-      "库存产能",
-      "进口与需求弹性"
-    ],
-    "expectedContribution": "围绕 Dust2 有色 / 行业判断 round 子命题输出可审计金融判断，引用证据或明确缺口，不使用旧商业空话。",
-    "failureMode": "短期价格或单一品种信号外推过度。",
-    "promptGuidance": [
-      "语义输出使用中文。",
-      "结构字段、枚举和 cell id 保持英文。",
-      "不得写 winner、kill、economyDelta 或数据库事实。",
-      "必须区分代理事实、推断和 missingEvidence。"
-    ],
-    "signatureLens": "寻找行业机制中的瓶颈、弹性和错配：需求拐点、供给约束、渠道变化、成本传导、产能反应。",
-    "preferredEvidenceType": "行业高频指标、产能利用、价格链条、订单与渠道反馈、供给响应速度、产业政策。",
-    "attackStyle": "质疑对方只谈估值或股价，不解释行业机制；逼问利润改善从哪里来，持续性靠什么。",
-    "defenseStyle": "将机制判断拆成事实、假设和待验证变量；不把单一价格或单一指标当成完整供需结论。",
-    "decisionThreshold": "需要看到行业机制与价格/盈利方向互相支持，才愿意给强判断。",
-    "blindSpot": "在缺少直接经营数据时，可能用价格反推机制，形成过度解释。",
-    "crossMapStrength": "周期、消费链条、制造、医药供需、TMT 硬件链。",
-    "crossMapWeakness": "纯平台型、纯金融资产、主要由估值叙事驱动的地图。",
-    "oneLineVoice": "我不只看涨没涨，我要知道为什么能继续。"
-  }
+  "canon_notes": []
 }

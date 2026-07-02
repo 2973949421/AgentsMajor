@@ -40,7 +40,7 @@ function team(id: string): Team {
 }
 
 function agents(teamId: string): Agent[] {
-  return ["entry", "star_rifler", "awper", "igl", "support"].map((role, index) => ({
+  return ["entry", "rifler", "awper", "igl", "lurker"].map((role, index) => ({
     id: `${teamId}_agent_${index + 1}`,
     teamId,
     driverModelId: "driver_test",

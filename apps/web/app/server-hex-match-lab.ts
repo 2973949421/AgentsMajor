@@ -892,6 +892,17 @@ export interface HexMatchLabCombatPressureSummary {
   resetReasons: string[];
   escalationReasons: string[];
 }
+export interface HexMatchLabMultiPairingSummary {
+  combatShape: string;
+  primaryDuelPairId?: string | undefined;
+  secondaryDuelPairIds: string[];
+  supportContributorAgentIds: string[];
+  outnumberedAgentIds: string[];
+  surroundedSide?: string | undefined;
+  attributionMode: string;
+  surroundedPressureApplied: boolean;
+  reasons: string[];
+}
 export interface HexMatchLabCombatSummary {
   contactId: string;
   participants: string[];
@@ -899,6 +910,7 @@ export interface HexMatchLabCombatSummary {
   fireLanes: HexMatchLabFireLaneSummary[];
   pressureKeys: string[];
   pressure?: HexMatchLabCombatPressureSummary | undefined;
+  multiPairing?: HexMatchLabMultiPairingSummary | undefined;
   advantage?: string | undefined;
   verdict?: string | undefined;
   contactThreatLevel?: string | undefined;
@@ -1068,6 +1080,17 @@ export interface HexMatchLabC4ContinuitySummary {
   c4ContinuityReasons: string[];
 }
 
+export interface HexMatchLabObjectiveBehaviorSummary {
+  objectiveStallCount: number;
+  objectiveStallPhaseIds: string[];
+  lateMeaningfulActionCount: number;
+  c4RecoveryOpportunityCount: number;
+  c4RecoveryAttemptCount: number;
+  c4AbandonReasonCount: number;
+  economyActionStyleCounts: Record<string, number>;
+  objectiveBehaviorReasons: string[];
+}
+
 export interface HexMatchLabLlmAuditSummary {
   providerMode?: string | undefined;
   modelId?: string | undefined;
@@ -1097,6 +1120,7 @@ export interface HexMatchLabLlmAuditSummary {
   roundQualitySummaryZh?: string | undefined;
   roundQualityCounts?: Record<string, number> | undefined;
   c4ContinuityAudit?: HexMatchLabC4ContinuitySummary | undefined;
+  objectiveBehaviorAudit?: HexMatchLabObjectiveBehaviorSummary | undefined;
   tacticalAudit?: HexMatchLabTacticalAuditSummary | undefined;
 }
 
@@ -3680,6 +3704,7 @@ function summarizePhase(
       fireLanes: readFireLanes(resolution.fireLanes),
       pressureKeys: readStringArray(resolution.pressureKeys),
       pressure: readCombatPressure(resolution.audit.pressure),
+      multiPairing: readMultiPairing(resolution.audit.multiPairing),
       advantage: resolution.advantage,
       verdict: resolution.verdict,
       contactThreatLevel: resolution.audit.contactThreat?.level,
@@ -3787,6 +3812,7 @@ function summarizeTraceAudit(trace: HexRoundTrace): HexMatchLabLlmAuditSummary {
     roundQualitySummaryZh: trace.audit.roundQualitySummaryZh,
     roundQualityCounts: { ...trace.audit.roundQualityCounts },
     c4ContinuityAudit: cloneC4ContinuityAudit(trace.audit.c4ContinuityAudit),
+    objectiveBehaviorAudit: cloneObjectiveBehaviorAudit(trace.audit.objectiveBehaviorAudit),
     tacticalAudit
   };
 }
@@ -3803,6 +3829,22 @@ function cloneC4ContinuityAudit(audit: HexRoundTrace["audit"]["c4ContinuityAudit
     c4DroppedCellId: audit.c4DroppedCellId,
     c4DroppedUnrecoveredAtFinal: audit.c4DroppedUnrecoveredAtFinal,
     c4ContinuityReasons: [...audit.c4ContinuityReasons]
+  };
+}
+
+function cloneObjectiveBehaviorAudit(audit: HexRoundTrace["audit"]["objectiveBehaviorAudit"] | undefined): HexMatchLabObjectiveBehaviorSummary | undefined {
+  if (!audit) {
+    return undefined;
+  }
+  return {
+    objectiveStallCount: audit.objectiveStallCount,
+    objectiveStallPhaseIds: [...audit.objectiveStallPhaseIds],
+    lateMeaningfulActionCount: audit.lateMeaningfulActionCount,
+    c4RecoveryOpportunityCount: audit.c4RecoveryOpportunityCount,
+    c4RecoveryAttemptCount: audit.c4RecoveryAttemptCount,
+    c4AbandonReasonCount: audit.c4AbandonReasonCount,
+    economyActionStyleCounts: { ...audit.economyActionStyleCounts },
+    objectiveBehaviorReasons: [...audit.objectiveBehaviorReasons]
   };
 }
 function summarizeTacticalAudit(audit: HexRoundTrace["audit"]): HexMatchLabTacticalAuditSummary | undefined {
@@ -4012,6 +4054,21 @@ function readFireLanes(value: unknown): HexMatchLabFireLaneSummary[] {
       exposureFlags: readStringArray(record.exposureFlags)
     };
   }) : [];
+}
+function readMultiPairing(value: unknown): HexMatchLabMultiPairingSummary | undefined {
+  const record = parseRecord(value);
+  if (!record) return undefined;
+  return {
+    combatShape: readString(record.combatShape) ?? "unknown",
+    primaryDuelPairId: readString(record.primaryDuelPairId),
+    secondaryDuelPairIds: readStringArray(record.secondaryDuelPairIds),
+    supportContributorAgentIds: readStringArray(record.supportContributorAgentIds),
+    outnumberedAgentIds: readStringArray(record.outnumberedAgentIds),
+    surroundedSide: readString(record.surroundedSide),
+    attributionMode: readString(record.attributionMode) ?? "unknown",
+    surroundedPressureApplied: record.surroundedPressureApplied === true,
+    reasons: readStringArray(record.reasons)
+  };
 }
 function readCombatPressure(value: unknown): HexMatchLabCombatPressureSummary | undefined {
   const record = parseRecord(value);
@@ -4341,27 +4398,83 @@ function readAgentIdentities(repositories: SqliteRepositoryBundle, matchId: stri
   }));
 }
 
-function deriveRoleLabel(row: Row): string {
-  return normalizeRoleLabel(row.role)
-    ?? normalizeRoleLabelFromJson(row.secondaryRolesJson)
-    ?? normalizeRoleLabelFromJson(row.roleProfileJson)
-    ?? normalizeRoleLabelFromJson(row.baseProfileJson)
-    ?? "role unknown";
+type CanonicalCsPlayerRoleForDisplay = "igl" | "awper" | "entry" | "lurker" | "rifler";
+type CanonicalCsRoleForDisplay = CanonicalCsPlayerRoleForDisplay | "coach";
+
+const canonicalCsRoleTagsForDisplay = new Set(["igl", "awper", "entry", "lurker", "rifler"]);
+
+function formatCsRoleLabel(roleValue: unknown, tagValues: unknown = []): string {
+  const role = normalizeCsRoleForDisplay(roleValue);
+  const tags = normalizeCsRoleTags(tagValues);
+  const isStar = tags.includes("star") || normalizeCsRoleTags(roleValue).includes("star");
+  if (role === "coach") return "coach";
+  if (isStar && role !== "igl") return `star ${role}`;
+  return role;
 }
 
-function normalizeRoleLabelFromJson(value: unknown): string | undefined {
+function normalizeCsRoleForDisplay(value: unknown, fallback: CanonicalCsRoleForDisplay = "rifler"): CanonicalCsRoleForDisplay {
+  const text = normalizeRoleTextForDisplay(value);
+  if (!text) return fallback;
+  if (text.includes("coach")) return "coach";
+  if (text.includes("igl") || text.includes("leader") || text.includes("caller") || text.includes("指挥")) return "igl";
+  if (text.includes("awper") || text.includes("awp") || text.includes("sniper") || text.includes("狙")) return "awper";
+  if (text.includes("entry") || text.includes("opener") || text.includes("突破")) return "entry";
+  if (text.includes("lurker") || text.includes("自由人") || text.includes("lurk")) return "lurker";
+  if (text.includes("rifler") || text.includes("rifle") || text.includes("star") || text.includes("support") || text.includes("anchor") || text.includes("flex") || text.includes("closer") || text.includes("stand_in") || text.includes("standin") || text.includes("stand-in")) return "rifler";
+  return fallback;
+}
+
+function normalizeCsRoleTags(values: unknown): string[] {
+  const rawValues = Array.isArray(values) ? values : [values];
+  const tags = rawValues.flatMap((value) => normalizeOneCsRoleTagsForDisplay(value));
+  return [...new Set(tags)];
+}
+
+function normalizeOneCsRoleTagsForDisplay(value: unknown): string[] {
+  const text = normalizeRoleTextForDisplay(value);
+  if (!text) return [];
+  const tags: string[] = [];
+  if (text.includes("star") || text.includes("明星") || text.includes("carry")) tags.push("star");
+  if (text.includes("support") || text.includes("utility") || text.includes("辅助") || text.includes("补位")) tags.push("supportive");
+  if (text.includes("anchor") || text.includes("site_hold") || text.includes("site-hold") || text.includes("守点")) tags.push("anchor");
+  if (text.includes("flex") || text.includes("adapter") || text.includes("补缺")) tags.push("flex");
+  if (text.includes("stand_in") || text.includes("standin") || text.includes("stand-in") || text.includes("临时")) tags.push("stand_in");
+  if (text.includes("closer") || text.includes("clutch") || text.includes("残局")) tags.push("closer");
+  const role = normalizeCsRoleForDisplay(text);
+  if (role !== "coach" && !canonicalCsRoleTagsForDisplay.has(role)) tags.push(role);
+  return [...new Set(tags)];
+}
+
+function normalizeRoleTextForDisplay(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value.trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+function deriveRoleLabel(row: Row): string {
+  const primaryRole = readString(row.role)
+    ?? findRoleLabelInJson(row.roleProfileJson)
+    ?? findRoleLabelInJson(row.secondaryRolesJson)
+    ?? findRoleLabelInJson(row.baseProfileJson);
+  if (!primaryRole) return "role unknown";
+  const tags = [
+    ...collectRoleTagsFromJson(row.secondaryRolesJson),
+    ...collectRoleTagsFromJson(row.roleProfileJson),
+    ...collectRoleTagsFromJson(row.baseProfileJson)
+  ];
+  return formatCsRoleLabel(primaryRole, tags);
+}
+
+function findRoleLabelInJson(value: unknown): string | undefined {
   const text = readString(value);
   if (!text) return undefined;
   try {
     return findRoleLabelInValue(JSON.parse(text));
   } catch {
-    return normalizeRoleLabel(text);
+    return typeof text === "string" ? text : undefined;
   }
 }
 
 function findRoleLabelInValue(value: unknown): string | undefined {
-  const direct = normalizeRoleLabel(value);
-  if (direct) return direct;
+  if (typeof value === "string" && value.trim()) return value;
   if (Array.isArray(value)) {
     for (const item of value) {
       const role = findRoleLabelInValue(item);
@@ -4370,6 +4483,8 @@ function findRoleLabelInValue(value: unknown): string | undefined {
   }
   const record = parseRecord(value);
   if (record) {
+    const direct = readString(record.role) ?? readString(record.primary_role) ?? readString(record.primaryRole);
+    if (direct) return direct;
     for (const item of Object.values(record)) {
       const role = findRoleLabelInValue(item);
       if (role) return role;
@@ -4378,19 +4493,31 @@ function findRoleLabelInValue(value: unknown): string | undefined {
   return undefined;
 }
 
-function normalizeRoleLabel(value: unknown): string | undefined {
-  if (typeof value !== "string") return undefined;
-  const text = value.toLowerCase();
-  if (text.includes("igl") || text.includes("leader") || text.includes("caller")) return "IGL";
-  if (text.includes("awp") || text.includes("sniper")) return "AWPer";
-  if (text.includes("entry") || text.includes("opener")) return "entry";
-  if (text.includes("support") || text.includes("utility")) return "support";
-  if (text.includes("anchor") || text.includes("site hold")) return "anchor";
-  if (text.includes("star")) return "star rifler";
-  if (text.includes("rif")) return "rifler";
-  return undefined;
+function collectRoleTagsFromJson(value: unknown): string[] {
+  const terms: string[] = [];
+  const text = readString(value);
+  if (!text) return terms;
+  try {
+    collectRoleTerms(JSON.parse(text), terms);
+  } catch {
+    terms.push(text);
+  }
+  return normalizeCsRoleTags(terms);
 }
 
+function collectRoleTerms(value: unknown, terms: string[]): void {
+  if (typeof value === "string") {
+    terms.push(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectRoleTerms(item, terms);
+    return;
+  }
+  const record = parseRecord(value);
+  if (!record) return;
+  for (const item of Object.values(record)) collectRoleTerms(item, terms);
+}
 function summarizeHardCondition(value: unknown): HexMatchLabHardConditionSummary | undefined {
   const record = parseRecord(value);
   if (!record) {

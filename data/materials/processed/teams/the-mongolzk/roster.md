@@ -2,10 +2,10 @@
 
 ## Active Five
 - bLitz | igl | IGL / Rifler | 高 | player_the_mongolzk_blitz
-- Techno | rifler | Rifler / Entry-style | 中-高 | player_the_mongolzk_techno
+- Techno | entry | Rifler / Entry-style | 中-高 | player_the_mongolzk_techno
 - mzinho | rifler | Rifler / Support / Anchor | 中 | player_the_mongolzk_mzinho
 - 910 | awper | AWPer | 高 | player_the_mongolzk_910
-- cobrazera | rifler | Rifler / Flex | 中 | player_the_mongolzk_cobrazera
+- cobrazera | lurker | Lurker / Flex | 中 | player_the_mongolzk_cobrazera
 
 ## Coach
 - 正式教练：maaRaa (coach_the_mongolzk_maaraa，Coach，可信度 高)

@@ -19,17 +19,17 @@
     ],
     "primary_role": "awper",
     "secondary_roles": [
-      "star_rifler"
+      "star"
     ],
     "position_tags": [
       "awper",
-      "star_rifler"
+      "star"
     ],
     "confidence": "高",
     "notes": "队伍核心主狙与超级明星位。",
     "agent_major_responsibilities": [
-      "Reliable bailout / precision conversion / pressure-time takeover",
-      "Close critical rounds and keep the system alive under strain"
+      "高精度关键论点 / 单点突破 / 高风险高收益调用",
+      "明星前缀 / 关键回合 carry"
     ]
   },
   "aliases": [
@@ -68,17 +68,14 @@
     "customer_service_to_cleanup"
   ],
   "future_agent_profile": {
-    "persona_summary": "ZywOo 在 Finance Major 中承担宏观策略专家职责：区分宏观背景、资产价格和企业盈利传导；重视宏观信号能否真正穿透到行业利润。",
+    "persona_summary": "默认兜底位，也是官方新闻最容易直接抬成 MVP 头条的人。",
     "voice_mode": "cn-live-room-competitive",
     "narrative_axes": [
       "title-favorite",
       "precision-core",
       "high-leverage",
       "mvp-engine",
-      "soft-spoken-hammer",
-      "finance-major",
-      "nonferrous-research",
-      "Macro / Strategy"
+      "soft-spoken-hammer"
     ],
     "reserved_memory_slots": [
       "career-arc",
@@ -151,10 +148,7 @@
       "multikill-anchor",
       "late-clutch",
       "mvp-engine",
-      "soft-spoken-hammer",
-      "finance-duel",
-      "nonferrous",
-      "macro---strategy"
+      "soft-spoken-hammer"
     ],
     "env_contract_refs": [
       "AGENT_MAJOR_REAL_LLM_ENABLED",
@@ -166,7 +160,7 @@
       "llm_override_spotlight_player_vitallmty_zywoo"
     ],
     "ops_notes": [
-      "Prioritize reliability proof, precision, and pressure-time takeover framing."
+      "Prioritize key-shot, clutch, and single-round pressure hooks."
     ]
   },
   "ops_hooks": {
@@ -181,34 +175,5 @@
       "machine_star_carry"
     ]
   },
-  "canon_notes": [],
-  "finance_agent_profile": {
-    "version": "2026-06-14-n43-finance-v1",
-    "financeRole": "Macro / Strategy",
-    "financeRoleCn": "宏观策略专家",
-    "responsibility": "用宏观周期、美元、利率和政策变量校准行业景气上限。",
-    "investmentStyle": "稳健质量风控",
-    "domainFocus": [
-      "宏观周期",
-      "美元利率",
-      "政策与制造业周期"
-    ],
-    "expectedContribution": "围绕 Dust2 有色 / 行业判断 round 子命题输出可审计金融判断，引用证据或明确缺口，不使用旧商业空话。",
-    "failureMode": "宏观框架压过行业微观证据。",
-    "promptGuidance": [
-      "语义输出使用中文。",
-      "结构字段、枚举和 cell id 保持英文。",
-      "不得写 winner、kill、economyDelta 或数据库事实。",
-      "必须区分代理事实、推断和 missingEvidence。"
-    ],
-    "signatureLens": "区分宏观背景、资产价格和企业盈利传导；重视宏观信号能否真正穿透到行业利润。",
-    "preferredEvidenceType": "宏观趋势、政策环境、利率与信用条件、跨资产验证、盈利传导路径。",
-    "attackStyle": "攻击对方把宏观顺风直接等同于行业或公司胜利；要求说明中间传导环节。",
-    "defenseStyle": "承认宏观信号的方向价值，但把它限制为背景变量，不轻易升级为投资强结论。",
-    "decisionThreshold": "宏观方向、行业响应、估值位置三者一致时，才支持中高强度判断。",
-    "blindSpot": "对早期市场预期变化要求过多验证，可能错失第一段估值修复。",
-    "crossMapStrength": "全球宏观、金融地产、跨资产配置、利率敏感行业。",
-    "crossMapWeakness": "产品周期、公司执行、单一产业变量主导的地图。",
-    "oneLineVoice": "宏观能解释环境，不能替代传导证明。"
-  }
+  "canon_notes": []
 }

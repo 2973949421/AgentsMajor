@@ -372,6 +372,16 @@ function minimalTrace(agentA: Agent, attackTeamId: string, defenseTeamId: string
         c4DroppedUnrecoveredAtFinal: false,
         c4ContinuityReasons: []
       },
+      objectiveBehaviorAudit: {
+        objectiveStallCount: 0,
+        objectiveStallPhaseIds: [],
+        lateMeaningfulActionCount: 0,
+        c4RecoveryOpportunityCount: 0,
+        c4RecoveryAttemptCount: 0,
+        c4AbandonReasonCount: 0,
+        economyActionStyleCounts: {},
+        objectiveBehaviorReasons: []
+      },
       actionQualityWarnings: [],
       urgencyFailures: [],
       actionQualityWarningCount: 0,
